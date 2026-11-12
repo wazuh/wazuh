@@ -20,6 +20,7 @@
 #include <cstring>
 #include <string>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <thread>
 #include <unistd.h>
@@ -84,6 +85,10 @@ namespace
             ADD_FAILURE() << "could not connect to " << socketPath;
             return {};
         }
+
+        // Bounded, so a request the server never answers fails the case instead of hanging it.
+        const timeval timeout {5, 0};
+        ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
         const auto size = static_cast<std::uint32_t>(request.size());
         std::string frame(sizeof(size), '\0');
@@ -194,6 +199,18 @@ TEST_F(KeystoreServerProtocolTest, AMalformedQueryIsAnErrorNotACrash)
     const auto response = query(m_path, "garbage-without-pipes");
     EXPECT_EQ("error", response.value("status", ""));
     EXPECT_EQ("Invalid query format", response.value("message", ""));
+}
+
+TEST_F(KeystoreServerProtocolTest, AnEmptyFrameIsAnsweredWithAnError)
+{
+    // A frame whose size header is 0 carries no query at all. It must be answered like any other
+    // malformed query, not left waiting for a body that will never come.
+    const auto response = query(m_path, "");
+    EXPECT_EQ("error", response.value("status", ""));
+    EXPECT_EQ("Invalid query format", response.value("message", ""));
+
+    // The server keeps serving afterwards.
+    EXPECT_EQ("ok", query(m_path, "GET|default|" + uniqueKey("after-empty")).value("status", ""));
 }
 
 TEST_F(KeystoreServerProtocolTest, StopIsIdempotentAndTheModuleRestarts)

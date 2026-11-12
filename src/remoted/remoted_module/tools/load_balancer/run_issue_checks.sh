@@ -155,7 +155,7 @@ rm -f "$STORE_TMP"
 # that the token works, not how fast it propagates (measure_propagation.py does that).
 MODES=""
 for _ in $(seq 1 12); do
-    MODES="$(probe /probe/enroll_modes.py --password labpassword)"
+    MODES="$(probe /probe/enroll_modes.py --password labenrollpassword)"
     grep -qE '^  enrollment token *-> 200' <<<"$MODES" && break
     sleep 3
 done
@@ -173,7 +173,7 @@ echo "=== 8. every route answers through every front end ==="
 # authenticated rows exercise the routes instead of the propagation window. Reusing an agent
 # whose credentials re-enrollment rotated turns every authenticated row into a 401 that still
 # "answers" -- which reads as a pass and proves nothing.
-MATRIX="$(probe /probe/route_matrix.py --password labpassword 2>&1)"
+MATRIX="$(probe /probe/route_matrix.py --password labenrollpassword 2>&1)"
 if [[ -n "$MATRIX" ]]; then
     sed "s/^/  /" <<<"$MATRIX"
     ERRS="$(grep -c "ERR:" <<<"$MATRIX" || true)"
@@ -223,7 +223,7 @@ check_at_least() {  # check_at_least <description> <minimum> <actual>
 
 # AC1: whichever node the /control went to, every node serves the agent's configuration -- the
 # nodes that never saw the agent read its groups from their own database. Never a 403.
-OUT="$(probe /probe/cross_node_download.py --password labpassword --control-on worker1 "${NODES[@]}" \
+OUT="$(probe /probe/cross_node_download.py --password labenrollpassword --control-on worker1 "${NODES[@]}" \
         --json-out /results/e6a_cross_node.json)"; RC=$?
 sed 's/^/  /' <<<"$OUT"
 check "cross-node config download is served everywhere (AC1)" "0" "$RC"
@@ -237,7 +237,7 @@ check "cross-node config download is served everywhere (AC1)" "0" "$RC"
 REFRESH="$(refresh_interval wazuh-worker1)"
 echo "  worker1 remoted.control_groups_refresh_interval = ${REFRESH} s"
 BEFORE="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
-OUT="$(probe /probe/revocation_by_push.py --password labpassword --expiry "$REFRESH" \
+OUT="$(probe /probe/revocation_by_push.py --password labenrollpassword --expiry "$REFRESH" \
         --json-out /results/e6a_revocation.json)"; RC=$?
 sed 's/^/  /' <<<"$OUT"
 AFTER="$(admin_metric wazuh-worker1 remoted.control.registry.push.invalidated)"
@@ -247,7 +247,7 @@ check_at_least "worker1 received the cluster daemon's publications" "1" "$(delta
 # AC3: a restarted remoted holds no membership at all, and still serves without its own /control.
 docker exec wazuh-worker2 /var/wazuh-manager/bin/wazuh-manager-control restart >/dev/null 2>&1
 for _ in $(seq 1 60); do [[ "$(status wazuh-worker2 41519)" == "200" ]] && break; sleep 2; done
-OUT="$(probe /probe/cross_node_download.py --password labpassword --control-on master --download-on worker2 \
+OUT="$(probe /probe/cross_node_download.py --password labenrollpassword --control-on master --download-on worker2 \
         "${NODES[@]}" --json-out /results/e6a_restart.json)"; RC=$?
 sed 's/^/  /' <<<"$OUT"
 check "a restarted node serves without its own /control (AC3)" "0" "$RC"
@@ -258,8 +258,8 @@ check "a restarted node serves without its own /control (AC3)" "0" "$RC"
 # left hanging. B is enrolled and its key awaited BEFORE the freeze: once the database stops, the
 # worker's cluster daemon can stall on it and the key would never arrive.
 WDB="/var/wazuh-manager/bin/wazuh-manager-db"   # -f: the process name is truncated to 15 characters
-A="$(probe /probe/download_status.py --password labpassword --node https://wazuh-worker2:1517 --fresh --emit-key)"
-B="$(probe /probe/download_status.py --password labpassword --node https://wazuh-worker2:1517 --wait-key \
+A="$(probe /probe/download_status.py --password labenrollpassword --node https://wazuh-worker2:1517 --fresh --emit-key)"
+B="$(probe /probe/download_status.py --password labenrollpassword --node https://wazuh-worker2:1517 --wait-key \
         --no-download --emit-key)"
 trap 'docker exec wazuh-worker2 pkill -CONT -f "$WDB" >/dev/null 2>&1' EXIT
 docker exec wazuh-worker2 pkill -STOP -f "$WDB"

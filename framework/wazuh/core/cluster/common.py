@@ -418,6 +418,9 @@ class Handler(asyncio.Protocol):
         self.server = None
         # Handle for the per-message payload-completion deadline timer.
         self._payload_deadline = None
+        # Whether the reason this connection is being closed was already logged, so connection_lost does not log
+        # a second, reason-less line for it.
+        self.close_reason_logged = False
 
     def _start_payload_deadline(self) -> None:
         """Arm a timer that closes this connection if the payload never completes."""
@@ -437,6 +440,7 @@ class Handler(asyncio.Protocol):
     def _close_on_payload_deadline(self) -> None:
         """Close the transport when a declared payload never arrives within the deadline."""
         self.logger.warning("Closing connection: incomplete message payload not received within deadline.")
+        self.close_reason_logged = True
         if self.transport is not None:
             self.transport.close()
         self._payload_deadline = None
@@ -681,6 +685,39 @@ class Handler(asyncio.Protocol):
             self.send_seq += 1
         return msg_list
 
+    def _check_incoming_frame(self, size: int, divided: bool) -> None:
+        """Refuse a frame a peer that has not proven the cluster key must not be allowed to send, or one too large.
+
+        Until a whole message of this peer has decrypted under the session key (recv_seq advances only in _open), a
+        keyed connection accepts only the hello, which is a single small frame: it must not make the event loop
+        buffer and join a divided message, nor buffer and decrypt a single frame larger than one chunk. A divided
+        frame is a piece of one token and cannot be authenticated on its own; the hello, on both sides, is never
+        divided. No sender builds a frame larger than request_chunk, which MAX_CHUNK_SIZE bounds.
+
+        Parameters
+        ----------
+        size : int
+            Payload size declared in the frame header.
+        divided : bool
+            Whether the frame carries the division flag.
+
+        Raises
+        ------
+        WazuhClusterError(3063)
+            If the peer has not proven the key yet, or the frame is larger than MAX_CHUNK_SIZE.
+        """
+        if self.cluster_key is not None and self.recv_seq == 0:
+            if divided:
+                raise exception.WazuhClusterError(3063, extra_message='divided message received before the handshake '
+                                                                      'completed')
+            if size > MAX_CHUNK_SIZE:
+                raise exception.WazuhClusterError(3063, extra_message=f'message of {size} bytes received before the '
+                                                                      f'handshake exceeds the maximum of '
+                                                                      f'{MAX_CHUNK_SIZE}')
+        if divided and size > MAX_CHUNK_SIZE:
+            raise exception.WazuhClusterError(3063, extra_message=f'divided message chunk of {size} bytes exceeds '
+                                                                  f'the maximum of {MAX_CHUNK_SIZE}')
+
     def msg_parse(self) -> bool:
         """Parse an incoming message.
 
@@ -696,6 +733,7 @@ class Handler(asyncio.Protocol):
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
+                self._check_incoming_frame(self.in_msg.total, bool(self.in_msg.flag_divided))
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
                 # If payload bytes are still outstanding, arm the completion deadline so a
                 # peer that stops after the header cannot hold memory indefinitely.
@@ -1049,16 +1087,15 @@ class Handler(asyncio.Protocol):
                     current_size = len(self.div_msg_box.get(counter, b''))
                     if current_size + len(payload) > MAX_TOTAL_SIZE:
                         raise WazuhClusterError(3050, extra_message=str(current_size + len(payload)))
-                    try:
-                        self.div_msg_box[counter] = self.div_msg_box[counter] + payload
-                    except KeyError:
-                        self.div_msg_box[counter] = payload
+                    # Extended in place: concatenating would copy the whole accumulated message on every chunk,
+                    # which is quadratic in the number of chunks.
+                    self.div_msg_box.setdefault(counter, bytearray()).extend(payload)
 
                 else:
                     # If the message is the last part of a division, join it.
                     if counter in self.div_msg_box:
-                        payload = self.div_msg_box[counter] + payload
-                        del self.div_msg_box[counter]
+                        self.div_msg_box[counter].extend(payload)
+                        payload = self.div_msg_box.pop(counter)
                         # Decrypt the joined payload
                         payload = self._open(bytes(payload), counter, command)
                     # If the message is the response of a previously sent request.
@@ -1079,11 +1116,13 @@ class Handler(asyncio.Protocol):
                     f"Details: {e.message} bytes received, but the maximum allowed is {MAX_TOTAL_SIZE} bytes. "
                     f"Closing connection."
                 )
+                self.close_reason_logged = True
                 if self.transport:
                     self.close()
                 return
             elif e.code in SESSION_ERROR_CODES:
                 self.logger.error(f"[Cluster] {e}. Closing connection.")
+                self.close_reason_logged = True
                 if self.transport:
                     self.close()
                 return
@@ -1108,7 +1147,7 @@ class Handler(asyncio.Protocol):
         try:
             command, payload = self.process_request(command, payload)
         except exception.WazuhException as e:
-            self.logger.error(f"Internal error processing request '{command}': {e}")
+            self.log_request_error(command, e)
             command, payload = b'err', json.dumps(e, cls=WazuhJSONEncoder).encode()
         except Exception as e:
             self.logger.error(f"Unhandled error processing request '{command}': {e}", exc_info=True)
@@ -1118,6 +1157,18 @@ class Handler(asyncio.Protocol):
             msgs = self.msg_build(command, counter, payload)
             for msg in msgs:
                 self.push(msg)
+
+    def log_request_error(self, command: bytes, error: exception.WazuhException) -> None:
+        """Log an error raised while processing a request. The error is sent back to the requester either way.
+
+        Parameters
+        ----------
+        command : bytes
+            Command being processed.
+        error : WazuhException
+            Error raised.
+        """
+        self.logger.error(f"Internal error processing request '{command}': {error}")
 
     def close(self):
         """Close the connection."""

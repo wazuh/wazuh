@@ -65,6 +65,17 @@ STATIC void w_initialize_file_status();
  */
 STATIC void w_save_file_status();
 
+/* Serializes the periodic status save of the main loop with the one of the shutdown thread: both write the same temporary file */
+static pthread_mutex_t file_status_save_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#ifndef WIN32
+/**
+ * @brief Run the atexit work (release the macOS log processes, save the files status) on a termination signal,
+ * which skips the atexit handlers
+ */
+STATIC void w_logcollector_shutdown(void);
+#endif
+
 /**
  * @brief Load files_status data to hash
  * @param global_json json wich contains the previous files_status hash
@@ -218,6 +229,10 @@ void LogCollectorStart()
     if (atexit(w_save_file_status)) {
         merror(ATEXIT_ERROR);
     }
+
+#ifndef WIN32
+    SetSIGShutdownFunc(w_logcollector_shutdown);
+#endif
 
     /* Initialize state component */
     if (state_interval == 0) {
@@ -481,6 +496,12 @@ void LogCollectorStart()
 
     /* Create the input threads */
     w_create_input_threads();
+
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+    if (macos_processes != NULL) {
+        w_create_thread(w_macos_log_reader, NULL);
+    }
+#endif
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
@@ -802,7 +823,7 @@ void LogCollectorStart()
 #ifdef WIN32
                     else if (current->size > w_get_file_size_from_info(&lpFileInformation))
 #else
-                    else if (current->size > tmp_stat.st_size)
+                    else if (current->size > tmp_stat.st_size || w_ftell(current->fp) > tmp_stat.st_size)
 #endif
                     {
                         current->exists = 1;
@@ -992,7 +1013,9 @@ void LogCollectorStart()
             }
 
             //Save status localfiles to disk
+            w_mutex_lock(&file_status_save_mutex);
             w_save_file_status();
+            w_mutex_unlock(&file_status_save_mutex);
 
             f_check = 0;
 
@@ -1941,13 +1964,36 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     return 0;
 }
 
-/* Minimum time between repeated "queue is full" warnings for the same target, so a
- * sustained outage stays visible in the log instead of going quiet after the first drop. */
-#define W_MSG_QUEUE_FULL_WARN_INTERVAL 60
+/* Minimum time between two warnings (queue full or recovered) for the same target, so a sustained
+ * outage stays visible in the log without a flapping queue flooding it. */
+#define W_MSG_QUEUE_WARN_INTERVAL 60
+
+/* Requires msg->mutex held. */
+static unsigned long w_msg_queue_take_drops(w_msg_queue_t * msg) {
+    unsigned long lost;
+    time_t now;
+
+    if (msg->dropped_since_warning == 0) {
+        return 0;
+    }
+
+    now = time(NULL);
+    if (now - msg->last_warned < W_MSG_QUEUE_WARN_INTERVAL) {
+        return 0;
+    }
+
+    lost = msg->dropped_since_warning;
+    msg->dropped_since_warning = 0;
+    msg->last_warned = now;
+
+    return lost;
+}
 
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {
     w_message_t *message;
     int result;
+    unsigned long lost;
+    size_t queue_size;
 
     w_mutex_lock(&msg->mutex);
 
@@ -1959,31 +2005,33 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
     message->log_target = log_target;
     message->queue_mq = queue_mq;
 
+    msg->target_name = log_target->log_socket->name;
+    queue_size = msg->msg_queue->size;
 
     if (result = queue_push(msg->msg_queue, message), result == 0) {
         w_cond_signal(&msg->available);
-    }
-
-    if (result < 0) {
-        /* Per-target, guarded by msg->mutex above (held for the whole function) --
-         * not a process-wide static, since each target has its own w_msg_queue_t. */
+    } else {
         msg->dropped_since_warning++;
-
-        time_t now = time(NULL);
-        if (now - msg->last_warned >= W_MSG_QUEUE_FULL_WARN_INTERVAL) {
-            #ifndef WIN32
-                mwarn("Target '%s' message queue is full (%zu). %lu log line(s) lost since the last warning.",
-                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
-            #else
-                mwarn("Target '%s' message queue is full (%u). %lu log line(s) lost since the last warning.",
-                      log_target->log_socket->name, msg->msg_queue->size, msg->dropped_since_warning);
-            #endif
-            msg->last_warned = now;
-            msg->dropped_since_warning = 0;
-        }
     }
+
+    lost = w_msg_queue_take_drops(msg);
 
     w_mutex_unlock(&msg->mutex);
+
+    if (lost > 0) {
+        if (result < 0) {
+            #ifndef WIN32
+                mwarn("Target '%s' message queue is full (%zu). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, queue_size, lost);
+            #else
+                mwarn("Target '%s' message queue is full (%u). %lu log line(s) lost since the last warning.",
+                      log_target->log_socket->name, (unsigned int) queue_size, lost);
+            #endif
+        } else {
+            mwarn("Target '%s' message queue accepting lines again. %lu log line(s) lost since the last warning.",
+                  log_target->log_socket->name, lost);
+        }
+    }
 
     if (result < 0) {
         free(message->file);
@@ -1997,10 +2045,26 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
 
 w_message_t * w_msg_queue_pop(w_msg_queue_t * msg){
     w_message_t *message;
+    unsigned long lost;
+
     w_mutex_lock(&msg->mutex);
 
     while (message = (w_message_t *)queue_pop(msg->msg_queue), !message) {
-        w_cond_wait(&msg->available, &msg->mutex);
+        if (msg->dropped_since_warning == 0) {
+            w_cond_wait(&msg->available, &msg->mutex);
+        } else if (lost = w_msg_queue_take_drops(msg), lost > 0) {
+            /* Report the tail of a burst once the source went quiet. */
+            const char * name = msg->target_name;
+
+            w_mutex_unlock(&msg->mutex);
+            mwarn("Target '%s' message queue accepting lines again. %lu log line(s) lost since the last warning.",
+                  name, lost);
+            w_mutex_lock(&msg->mutex);
+        } else {
+            struct timespec deadline = { msg->last_warned + W_MSG_QUEUE_WARN_INTERVAL, 0 };
+
+            pthread_cond_timedwait(&msg->available, &msg->mutex, &deadline);
+        }
     }
 
     w_mutex_unlock(&msg->mutex);
@@ -2180,12 +2244,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             current->read(current, &r, 0);
                         }
                     }
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-                    /* Read the macOS `log` process output */
-                    else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
-                        current->read(current, &r, 0);
-                    }
-#endif
 #ifdef __linux__
                     /* Read the journald logs */
                     else if (current->journal_log != NULL) {
@@ -2727,6 +2785,17 @@ STATIC void w_initialize_file_status() {
     fclose(fd);
 }
 
+#ifndef WIN32
+STATIC void w_logcollector_shutdown(void) {
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+    w_macos_release_log_execution();
+#endif
+    w_mutex_lock(&file_status_save_mutex);
+    w_save_file_status();
+    w_mutex_unlock(&file_status_save_mutex);
+}
+#endif
+
 STATIC void w_save_file_status() {
     static pthread_mutex_t save_status_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -3120,6 +3189,37 @@ void w_macos_release_log_execution(void) {
     macos_log_shutdown = 1;
     w_macos_release_log_show();
     w_macos_release_log_stream();
+}
+
+void * w_macos_log_reader(__attribute__((unused)) void * arg) {
+
+    bool running = true;
+    int r = 0;
+
+    while (running && FOREVER()) {
+        rwlock_lock_read(&files_update_rwlock);
+
+        /* logff may be shifted or reallocated while the files lock is released */
+        logreader * lf = logff;
+        while (lf->logformat && (lf->macos_log == NULL || lf->macos_log->state == LOG_NOT_RUNNING)) {
+            lf++;
+        }
+
+        running = !macos_log_shutdown && lf->logformat != NULL;
+        if (running) {
+            w_mutex_lock(&lf->mutex);
+            lf->read(lf, &r, 0);
+            w_mutex_unlock(&lf->mutex);
+        }
+
+        rwlock_unlock(&files_update_rwlock);
+
+        if (running) {
+            w_time_delay(MACOS_LOG_READ_INTERVAL_MS);
+        }
+    }
+
+    return NULL;
 }
 
 #endif

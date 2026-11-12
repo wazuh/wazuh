@@ -111,6 +111,16 @@ namespace remoted::scanvd
                 // cause detail is its LAST error) and send the operator to the wrong subsystem.
                 incIndexerUnavailable(m_metrics);
             }
+            else if (vdAnswer.second == "vd_not_initialized")
+            {
+                // VD is disabled on this node (or its start failed, which VD logs itself): a
+                // state, not a relay failure, and with VD disabled a permanent one. Since #41101
+                // notify no longer advertises an offset while VD is disabled, so this is a
+                // straggler (a request already in flight when VD went down); warning on it would
+                // tell an operator who disabled VD on purpose that something is wrong.
+                incVdError(m_metrics);
+                LOGFN_DEBUG1(logFn(), "VD scan request for agent %u refused: VD not initialized", agentId);
+            }
             else
             {
                 incVdError(m_metrics);
@@ -120,10 +130,10 @@ namespace remoted::scanvd
                 if (const auto decision = m_vdErrorThrottle.record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Answered %llu scan request(s) with 503 in the last %d s: VD did not queue them "
+                               "Answered %llu scan request(s) with 503 %s: VD did not queue them "
                                "(last: %s). The agents retry on their next notify.",
                                static_cast<unsigned long long>(decision.total),
-                               wazuh::uds_http::LogThrottle::kDefaultWindowSeconds,
+                               decision.period().c_str(),
                                vdAnswer.second.c_str());
                 }
             }

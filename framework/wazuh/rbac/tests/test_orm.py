@@ -602,6 +602,45 @@ def test_add_user_role_level(db_setup):
         assert user_roles == roles_ids
 
 
+def test_add_existing_user_role_with_position(db_setup):
+    """Check that linking an already linked role is refused with a position too, and the order is kept."""
+    with db_setup.UserRolesManager() as urm:
+        with db_setup.AuthenticationManager() as am:
+            assert am.add_user(username='relink_user', password='testingA1!')
+            user_id = am.get_user(username='relink_user')['id']
+        with db_setup.RolesManager() as rm:
+            assert rm.add_role('relink_first')
+            assert rm.add_role('relink_second')
+            roles_ids = [rm.get_role('relink_first')['id'], rm.get_role('relink_second')['id']]
+        for role_id in roles_ids:
+            assert urm.add_role_to_user(user_id=user_id, role_id=role_id) is True
+
+        for position in (None, 0, 1, 99):
+            assert urm.add_role_to_user(user_id=user_id, role_id=roles_ids[1], position=position) == \
+                   db_setup.SecurityError.ALREADY_EXIST
+        assert [role.id for role in urm.get_all_roles_from_user(user_id=user_id)] == roles_ids
+
+
+def test_add_existing_role_policy_with_position(db_setup):
+    """Check that linking an already linked policy is refused with a position too, and the order is kept."""
+    with db_setup.RolesPoliciesManager() as rpm:
+        with db_setup.RolesManager() as rm:
+            assert rm.add_role('relink_role')
+            role_id = rm.get_role('relink_role')['id']
+        with db_setup.PoliciesManager() as pm:
+            policies_ids = list()
+            for name, action in (('relink_first', 'agent:read'), ('relink_second', 'agent:delete')):
+                assert pm.add_policy(name, {'actions': [action], 'resources': ['agent:id:*'], 'effect': 'allow'})
+                policies_ids.append(pm.get_policy(name)['id'])
+        for policy_id in policies_ids:
+            assert rpm.add_policy_to_role(role_id=role_id, policy_id=policy_id) is True
+
+        for position in (None, 0, 1, 99):
+            assert rpm.add_policy_to_role(role_id=role_id, policy_id=policies_ids[1], position=position) == \
+                   db_setup.SecurityError.ALREADY_EXIST
+        assert [policy.id for policy in rpm.get_all_policies_from_role(role_id)] == policies_ids
+
+
 def test_add_role_policy_level(db_setup):
     """Check role-policy relation is added with level to database"""
     with db_setup.RolesPoliciesManager() as rpm:

@@ -159,7 +159,8 @@ An agent that installed without a token needs one of these afterwards to registe
 Both actions drive `wazuh-agent-auth`, the same command-line tool used directly on Linux and macOS (and available on Windows too, for scripting). It is installed in the agent's `bin/` directory, which is not on `PATH` (`/Library/Ossec/bin/` on macOS), and runs as root:
 
 ```bash
-sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll
+echo '<TOKEN>' | sudo /var/ossec/bin/wazuh-agent-auth                          # enroll
+sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token                  # enroll from a file
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --force-enroll   # re-register, new id
 sudo /var/ossec/bin/wazuh-agent-auth --token-file /root/token --certs-only     # refresh CA + address
 sudo /var/ossec/bin/wazuh-agent-auth --show-token --token-file /root/token     # decode a token
@@ -173,7 +174,7 @@ The token is read from `--token-file` or standard input, never from the command 
 |---|---|
 | *(none)* | Establishes the manager's certificate authority, enrolls, and writes the address the token names into `<manager><endpoint>`. Refused if the agent already has a key |
 | `--certs-only` | Installs the trust anchor and, when the token names a different address, writes that too. The registration is left alone, so the agent keeps its id. Refused on an agent that was never enrolled |
-| `--show-token` | Prints what a token carries, without its credential. Contacts nothing and writes nothing |
+| `--show-token` | Prints what a token carries, including the token id the manager lists and revokes it by, without its credential. Contacts nothing and writes nothing |
 | `-h`, `--help` | Usage |
 
 **Options**
@@ -197,9 +198,18 @@ It refuses to run while `wazuh-agentd` is running, with no override. A restart i
 | `1` | Could not run |
 | `2` | Token rejected |
 | `3` | CA not established |
-| `4` | Enrollment refused by the manager |
+| `4` | Enrollment refused by the manager, or not completed. When the failure may clear on its own (no answer, a `429` or `5xx`, a node that does not know the token, or a clock the manager refuses), the first line reads `the enrollment did not go through` and the command says what to try. A token the manager does not know may also be one that no longer exists there: if it keeps failing, mint a new one |
 | `5` | Not committed |
 | `6` | Configuration not updated |
+
+On exit code `4` the manager's reason is printed after `The manager said:`. When the manager refused the token itself (expired, revoked, out of uses, or unknown to the master, not merely to a worker that has not received it yet), a `Token refused:` line comes first, naming the token id, what happened to it and the fix. The Windows agent GUI shows that line's text in its message box, after "The manager refused the enrollment request:":
+
+```text
+wazuh-agent-auth: the manager refused the enrollment.
+  Token refused: enrollment token e0093KT752obCNyE_JHPKA was revoked. Create a new enrollment token on the manager.
+  The manager said: Invalid client authentication
+  Nothing was changed.
+```
 
 **Moving an agent to another manager.** Which action applies depends on whether the new manager already knows this agent:
 
@@ -237,6 +247,10 @@ sudo grep -E "cacerts|pin_mismatch|verified enrollment|TLS verification|\(41[0-9
 | `(4122)` | An explicit `none` on a host that holds a usable anchor | Remove `<verification_mode>none</verification_mode>` to verify against it |
 | `(4126)` | No anchor, but a remote upgrade delivered the manager's CA and could not install it (usually the `openssl` command is missing), so it is still in `var/incoming/root-ca.pem`. The agent runs with `none` | Install the anchor with [`--certs-only`](#enrolling-or-re-pointing-an-agent); a token minted with `--no-credential` is enough. See [When the CA cannot be validated on the agent](../../../guide/migration/remote-agent-upgrade.md#when-the-ca-cannot-be-validated-on-the-agent) |
 | `(4127)` | An explicit `none` on an agent enrolling with a token. `none` applies only after enrollment, and the enrollment is still verified against the token's CA | Nothing, if the enrollment succeeds. If it then fails with `pin_mismatch` or `The verified enrollment request could not be sent: (60)`, see those rows: `none` does not bypass either. Logged once per run, then at debug level |
+| `(4128)` | Logged after `(4112)`: `<manager><endpoint>` still holds the package's placeholder and `client.keys` is empty, so the agent was installed without a token and never enrolled. It does not start | Enroll it as described in [Enrolling or re-pointing an agent](#enrolling-or-re-pointing-an-agent), then start the agent |
+| `(4129)` | `<verification_mode>` is not set and there is no readable trust anchor, so the agent connects with `none` without checking the manager's certificate. An install that has held an anchor gets `(4125)` instead; this one has no `.anchor-committed` beside it | Install the anchor with [`--certs-only`](#enrolling-or-re-pointing-an-agent), or set `<verification_mode>none</verification_mode>` if running unverified is intended |
+| `/enroll answered HTTP <code> with no message the agent could read` (from `wazuh-agent-auth`) | Something answered `/enroll` with an error page or an empty body instead of the manager's JSON error: usually a load balancer or proxy in front of the manager. A `404` has its own message, below | Check the balancer and the manager nodes behind it. A `5xx` usually clears on its own; run the command again |
+| `/enroll answered HTTP 404: nothing serves /enroll under the path '/<path>'` (from `wazuh-agent-auth`) | The path in the enrollment address does not match the prefix the manager serves. The manager always serves `/enroll`, so its 404 means a wrong path. With a token that embeds the CA, `/cacerts` is skipped, so this is where a wrong prefix first shows | Correct the path in the token's address (or `<endpoint>`) to the manager's prefix, then run the command again; waiting does not help |
 | `TLS verification failed connecting to …: the certificate does not include that name` | The address the agent dials is not in the certificate | The line lists the names the certificate does carry |
 | `TLS verification failed connecting to …: the certificate has expired` / `is not valid yet` | The manager's certificate is outside its validity window, or the clock is wrong | The line gives the date it checked against |
 | `TLS verification is DISABLED (verification_mode=none)` | The resolved mode is `none` | See the resolution table under [`verification_mode`](configuration.md#verification_mode) |
@@ -257,7 +271,7 @@ sudo ls -l /var/ossec/etc/certs/root-ca.pem /var/ossec/etc/client.keys
 sudo grep -A4 "<ssl>" /var/ossec/etc/ossec.conf
 ```
 
-The trust anchor should be `0640 root:wazuh`. A root-owned file the `wazuh` user cannot read fails closed just as a missing one does, and a directory listing looks right until the group is checked.
+The trust anchor should be `0640 wazuh:wazuh`. A root-owned file the `wazuh` user cannot read fails closed just as a missing one does, and a directory listing looks right until the group is checked.
 
 If the agent has no anchor, or the manager's has changed, refresh it with [`wazuh-agent-auth --certs-only`](#enrolling-or-re-pointing-an-agent) rather than copying the file by hand. That includes a CA a remote upgrade left in `var/incoming/root-ca.pem` without installing it: once an anchor is in place, `--certs-only` (and a token enrollment) removes that staged copy, so a later upgrade cannot install it over the anchor.
 

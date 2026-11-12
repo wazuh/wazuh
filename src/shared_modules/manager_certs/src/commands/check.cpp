@@ -33,7 +33,12 @@ namespace manager_certs
             switch (failure)
             {
                 case ca_bundle::GuardFailure::no_certificates: return "no certificates";
-                case ca_bundle::GuardFailure::no_block: return "no publication block (unpublished)";
+                // The state a fresh install leaves the bundle in. remoted serves it, but announces
+                // generation 0, so `check` refuses it (D-18) -- and says how to publish it.
+                case ca_bundle::GuardFailure::no_block:
+                    return "no publication block (unpublished): remoted serves it but tells agents this manager "
+                           "has no published bundle (generation 0); publish it with 'wazuh-manager-certs stamp' "
+                           "(on a worker, 'wazuh-manager-certs --from-master')";
                 case ca_bundle::GuardFailure::hash_mismatch: return "content hash does not match the publication block";
                 case ca_bundle::GuardFailure::no_ca_signs_leaf: return "no CA signs the served leaf";
                 case ca_bundle::GuardFailure::too_many_certificates:

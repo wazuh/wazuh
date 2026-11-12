@@ -234,6 +234,32 @@ def test_aws_cloudwatchlogs_get_alerts_within_range(mock_debug, mock_sts_client,
                                f'available. Attempting again.', 1)
 
 
+@pytest.mark.parametrize('discard_regex, message, sent', [
+    (None, 'None', True),
+    ('^drop', 'drop this event', False),
+    ('^drop', 'keep this event', True),
+], ids=['no-regex-sent', 'regex-match-skipped', 'regex-no-match-sent'])
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('cloudwatchlogs.aws_tools.debug')
+def test_aws_cloudwatchlogs_get_alerts_within_range_plain_text_discard(mock_debug, mock_sts_client, mock_send_msg,
+                                                                       discard_regex, message, sent):
+    """Test 'get_alerts_within_range' only discards plain-text events when a discard regex is configured."""
+    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, discard_regex=discard_regex)
+    instance.client = MagicMock()
+    instance.client.get_log_events.side_effect = [
+        {'events': [{'timestamp': TEST_START_TIME, 'message': message, 'ingestionTime': 123}],
+         'nextForwardToken': TEST_TOKEN, 'nextBackwardToken': 'string'},
+        {'events': [], 'nextForwardToken': TEST_TOKEN, 'nextBackwardToken': 'string'}]
+
+    instance.get_alerts_within_range(TEST_LOG_GROUP, TEST_LOG_STREAM, TEST_TOKEN, TEST_START_TIME, None)
+
+    if sent:
+        mock_send_msg.assert_called_once_with(message, dump_json=False)
+    else:
+        mock_send_msg.assert_not_called()
+
+
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_aws_cloudwatchlogs_get_alerts_within_range_handles_exceptions_on_client_error(mock_sts_client):
     """Test 'get_alerts_within_range' method handles exceptions raised

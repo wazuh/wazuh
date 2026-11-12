@@ -315,7 +315,9 @@ def test_master_handler_init():
         assert master_handler.cluster_name == ""
         assert master_handler.node_type == ""
         assert master_handler.task_loggers == {}
-        assert master_handler.tag == "Worker"
+        # Not a worker until its hello says so; the hello then tags it 'Worker <name>'.
+        assert master_handler.tag == "Incoming connection"
+        assert master_handler.peer_tag == "Worker"
         assert master_handler.current_zip_limit == cluster_items['intervals']['communication']['max_zip_size']
         assert cv.get() == master_handler.tag
 
@@ -794,6 +796,27 @@ def test_master_handler_get_nodes():
     assert master_handler.server.get_connected_nodes_flag is True
 
 
+@pytest.mark.parametrize('command, error, level', [
+    (b'get_nodes', exception.WazuhResourceNotFound(1730), 'debug'),
+    (b'get_health', exception.WazuhError(1728), 'debug'),
+    (b'get_nodes', exception.WazuhInternalError(1000), 'error'),
+    # A WazuhError in a worker's own exchange is still this node's error.
+    (b'syn_i_w_m', exception.WazuhError(3001), 'error'),
+])
+def test_master_handler_log_request_error(command, error, level):
+    """A worker relaying its local client's mistake (an unknown node name) is not logged as an error."""
+    master_handler = get_master_handler()
+    with patch.object(master_handler.logger, 'debug') as debug_mock, \
+            patch.object(master_handler.logger, 'error') as error_mock:
+        master_handler.log_request_error(command, error)
+
+    if level == 'debug':
+        debug_mock.assert_called_once_with(f"Request '{command}' refused: {error}")
+        error_mock.assert_not_called()
+    else:
+        error_mock.assert_called_once_with(f"Internal error processing request '{command}': {error}")
+
+
 def test_master_handler_get_health():
     """Check if the 'get_health' request is being properly processed."""
 
@@ -999,11 +1022,36 @@ async def test_manager_handler_send_agent_groups_information(asyncwazuhdbconnect
 
     await master_handler.send_agent_groups_information("test_info")
     master_handler.agent_groups.sync.assert_called_once_with(
-        start_time=master_handler.send_agent_groups_status["date_start"], chunks="test_info")
+        start_time=datetime.strptime(master_handler.send_agent_groups_status["date_start"],
+                                     DECIMALS_DATE_FORMAT).replace(tzinfo=timezone.utc).timestamp(),
+        chunks="test_info")
 
     assert master_handler.task_loggers["Agent-groups send"]._info == ['Starting.']
     assert master_handler.task_loggers["Agent-groups send"]._error == [
         "Error sending agent-groups information to worker_test: object MagicMock can't be used in 'await' expression"]
+    # A failed send records no end and no chunks.
+    assert master_handler.send_agent_groups_status["date_end"] == DEFAULT_DATE
+    assert master_handler.send_agent_groups_status["n_synced_chunks"] == 0
+
+
+@pytest.mark.asyncio
+@freeze_time("2026-10-29 10:00:00")
+async def test_manager_handler_send_agent_groups_information_records_status():
+    """Check that the incremental agent-groups send records its end time and chunk count for the health check."""
+    master_handler = get_master_handler()
+    master_handler.name = "worker_test"
+    master_handler.task_loggers["Agent-groups send"] = MagicMock()
+    master_handler.agent_groups = MagicMock()
+    master_handler.agent_groups.sync = AsyncMock()
+
+    await master_handler.send_agent_groups_information(["chunk1", "chunk2"])
+
+    master_handler.agent_groups.sync.assert_awaited_once_with(
+        start_time=datetime(2026, 10, 29, 10, tzinfo=timezone.utc).timestamp(), chunks=["chunk1", "chunk2"])
+    assert master_handler.send_agent_groups_status == {'date_start': '2026-10-29T10:00:00.000000Z',
+                                                       'date_end': '2026-10-29T10:00:00.000000Z',
+                                                       'n_synced_chunks': 2}
+    master_handler.task_loggers["Agent-groups send"].error.assert_not_called()
 
 
 @pytest.mark.asyncio

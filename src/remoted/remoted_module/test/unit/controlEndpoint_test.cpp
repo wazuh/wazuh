@@ -41,6 +41,7 @@
 #include <string>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 using namespace remoted::control;
 using remoted::auth::AuthenticatedRequest;
@@ -421,4 +422,53 @@ TEST(ControlEndpointTest, SuccessResponsesAreApplicationJson)
             sawJson = true;
     }
     EXPECT_TRUE(sawJson);
+}
+
+// A host block of the wrong JSON type is a malformed notify, not an absent one: it answers
+// 400 invalid_host_info like an out-of-bounds string instead of being dropped with a 200.
+TEST(ControlEndpointTest, NotifyWithWrongHostTypesReturns400InvalidHostInfo)
+{
+    const std::vector<std::string> bodies {
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":"web01"})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":[1,2]})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"hostname":42}})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"architecture":true}})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"ip":["127.0.0.1"]}})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"hostname":"h1","os":"Ubuntu"}})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"hostname":"h1","os":{"version":24.04}}})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"hostname":"h1","os":{"name":{}}}})",
+    };
+
+    for (const auto& body : bodies)
+    {
+        DispatchFixture f;
+        auto resp = std::make_shared<CapturingResponder>();
+        f.endpointHandler(makeRequest("42", body), resp);
+
+        ASSERT_TRUE(resp->wait(3000ms)) << body;
+        EXPECT_EQ(resp->captured().status, 400) << body;
+        EXPECT_NE(resp->captured().body.find("invalid_host_info"), std::string::npos) << body;
+    }
+}
+
+// Absent and null fields mean "not reported yet" (the agent omits what its metadata does not
+// know), so they still answer 200.
+TEST(ControlEndpointTest, NotifyWithNullOrAbsentHostFieldsIsAccepted)
+{
+    const std::vector<std::string> bodies {
+        R"({"type":"notify","agent":{"version":"v5.0.0"}})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":null})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"hostname":null,"os":null}})",
+        R"({"type":"notify","agent":{"version":"v5.0.0"},"host":{"hostname":"h1","os":{}}})",
+    };
+
+    for (const auto& body : bodies)
+    {
+        DispatchFixture f;
+        auto resp = std::make_shared<CapturingResponder>();
+        f.endpointHandler(makeRequest("42", body), resp);
+
+        ASSERT_TRUE(resp->wait(3000ms)) << body;
+        EXPECT_EQ(resp->captured().status, 200) << body;
+    }
 }

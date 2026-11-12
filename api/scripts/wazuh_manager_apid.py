@@ -186,12 +186,14 @@ def drop_privileges(run_as_root: bool) -> None:
     setuid() leave them in place, so the dropped process would otherwise keep group access to
     whatever root's groups can read.
 
+    Only the command line (-r) keeps root; api.yaml has no option for it.
+
     Parameters
     ----------
     run_as_root : bool
         The API keeps running as root (-r).
     """
-    if not run_as_root and api_conf['drop_privileges']:
+    if not run_as_root:
         os.setgroups([])
         os.setgid(common.wazuh_gid())
         os.setuid(common.wazuh_uid())
@@ -490,7 +492,30 @@ def test_config(config_file: str):
         Path of the file
     """
     try:
-        read_yaml_config(config_file=config_file)
+        # A file named on purpose must exist: reading a missing one gives the defaults, which would pass.
+        if config_file is not None and not os.path.isfile(config_file):
+            raise FileNotFoundError(f"'{config_file}' does not exist or is not a regular file")
+        config = read_yaml_config(config_file=config_file)
+
+        # These checks previously ran only during API startup, after the configuration test had
+        # already returned success. Keep the test mode aligned with the values startup consumes.
+        if config['logs']['max_size']['enabled']:
+            from api.alogging import APILoggerSize
+            APILoggerSize(config['logs']['max_size']['size'])
+
+        if config['https']['enabled']:
+            import ssl
+            from api.api_exception import APIError
+
+            ciphers = config['https']['ssl_ciphers'] or DEFAULT_SSL_CIPHERS
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            try:
+                context.set_ciphers(ciphers)
+            except ssl.SSLError as exc:
+                try:
+                    context.set_ciphers(ciphers.upper())
+                except ssl.SSLError:
+                    raise APIError(2003, details=f'No usable cipher in https.ssl_ciphers: {ciphers}') from exc
     except Exception as exc:
         print(f"Configuration not valid. ERROR: {exc}")
         sys.exit(1)
@@ -592,6 +617,8 @@ if __name__ == '__main__':
 
     try:
         if args.config_file is not None:
+            if not os.path.isfile(args.config_file):
+                raise APIError(2004, details=f"'{args.config_file}' does not exist or is not a regular file")
             api_conf.update(read_yaml_config(config_file=args.config_file))
     except APIError as e:
         print(f"Error when trying to start the Wazuh API. {e}")

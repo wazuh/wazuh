@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <locale>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -245,6 +246,62 @@ inline std::string_view isoDateTimePart(std::string_view val)
 
 } // namespace detail
 
+namespace detail
+{
+
+/** @brief A date parsed by parseIsoDate(): its fields as written and the offset of its zone from UTC. */
+struct ParsedDate
+{
+    date::fields<std::chrono::nanoseconds> fields;
+    std::chrono::minutes offset;
+};
+
+/**
+ * @brief Parses a date in the layout checked by isoDateTimePart, with every field in range.
+ *
+ * @return The parsed date, or nothing if the value is not a valid date.
+ */
+inline std::optional<ParsedDate> parseIsoDate(std::string_view val)
+{
+    const auto dateTime = isoDateTimePart(val);
+    if (dateTime.empty())
+    {
+        return std::nullopt;
+    }
+
+    std::istringstream stream {std::string(dateTime)};
+    stream.imbue(std::locale::classic());
+    ParsedDate parsed {};
+    std::string abbrev {};
+    std::chrono::minutes ignored {0};
+    stream >> date::parse(dateTime.size() == 10 ? "%Y-%m-%d" : "%Y-%m-%dT%H:%M:%S", parsed.fields, abbrev, ignored);
+    if (stream.fail())
+    {
+        return std::nullopt;
+    }
+
+    // The date library does not check ranges: month 13, February 31 or hour 25 parse fine
+    const auto& fields = parsed.fields;
+    if (!fields.ymd.ok() || fields.tod.hours() >= std::chrono::hours {24}
+        || fields.tod.minutes() >= std::chrono::minutes {60} || fields.tod.seconds() >= std::chrono::seconds {60})
+    {
+        return std::nullopt;
+    }
+
+    // isoDateTimePart() already checked the zone: 'Z', 'Zulu' or [+-]HH:MM
+    const auto zone = val.substr(dateTime.size());
+    if (isNumericOffset(zone))
+    {
+        const auto hours = (zone[1] - '0') * 10 + (zone[2] - '0');
+        const auto minutes = (zone[4] - '0') * 10 + (zone[5] - '0');
+        parsed.offset = std::chrono::minutes {(zone[0] == '-' ? -1 : 1) * (hours * 60 + minutes)};
+    }
+
+    return parsed;
+}
+
+} // namespace detail
+
 /** @brief Validator that checks if a JSON value is a valid date string. */
 inline ValueValidator getDateValidator()
 {
@@ -258,28 +315,51 @@ inline ValueValidator getDateValidator()
 
         std::string_view val;
         value.getString(val);
-        const auto dateTime = detail::isoDateTimePart(val);
-        if (dateTime.empty())
+        if (!detail::parseIsoDate(val))
         {
             return base::Error {"Invalid date"};
         }
 
-        std::istringstream stream {std::string(dateTime)};
-        stream.imbue(std::locale::classic());
-        date::fields<std::chrono::nanoseconds> fields {};
-        std::string abbrev {};
-        std::chrono::minutes offset {0};
-        stream >> date::parse(dateTime.size() == 10 ? "%Y-%m-%d" : "%Y-%m-%dT%H:%M:%S", fields, abbrev, offset);
-        if (stream.fail())
+        return base::noError();
+    };
+}
+
+/**
+ * @brief Validator that checks if a JSON value is a valid date_nanos string.
+ *
+ * Same layout as a date, limited to what the index mapping can store: nanoseconds since the epoch in a signed 64-bit
+ * integer, from 1970-01-01T00:00:00Z to 2262-04-11T23:47:16.854775807Z.
+ */
+inline ValueValidator getDateNanosValidator()
+{
+    return [](const json::Json& value) -> base::OptError
+    {
+        if (!value.isString())
+        {
+            return base::Error {"Value is not a string"};
+        }
+
+        std::string_view val;
+        value.getString(val);
+        const auto parsed = detail::parseIsoDate(val);
+        if (!parsed)
         {
             return base::Error {"Invalid date"};
         }
 
-        // The date library does not check ranges: month 13, February 31 or hour 25 parse fine
-        if (!fields.ymd.ok() || fields.tod.hours() >= std::chrono::hours {24}
-            || fields.tod.minutes() >= std::chrono::minutes {60} || fields.tod.seconds() >= std::chrono::seconds {60})
+        // Compared in whole seconds and the fraction apart: the nanosecond count of a date past the maximum
+        // overflows int64. The zone's offset moves the instant, so it is applied before comparing.
+        constexpr auto MAX = std::chrono::nanoseconds::max();
+        constexpr auto MAX_SECONDS = std::chrono::floor<std::chrono::seconds>(MAX);
+        const auto timeOfDay = parsed->fields.tod.to_duration();
+        const auto wholeSeconds = std::chrono::floor<std::chrono::seconds>(timeOfDay);
+        const auto fraction = timeOfDay - wholeSeconds;
+        const auto seconds = std::chrono::seconds {date::sys_days {parsed->fields.ymd}.time_since_epoch()}
+                             + wholeSeconds - parsed->offset;
+        if (seconds.count() < 0 || seconds > MAX_SECONDS || (seconds == MAX_SECONDS && fraction > MAX - MAX_SECONDS))
         {
-            return base::Error {"Invalid date"};
+            return base::Error {
+                "Date out of the date_nanos range [1970-01-01T00:00:00Z, 2262-04-11T23:47:16.854775807Z]"};
         }
 
         return base::noError();

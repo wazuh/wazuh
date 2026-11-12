@@ -137,6 +137,58 @@ static void test_populate_metadata_publishes_identity(void **state) {
     assert_int_equal(last_published.vd_feed_offset, 0);
 }
 
+/* os_platform: a fixed "windows" on Windows, whatever get_win_version() returned (it never
+ * fills the field); on the other platforms, the value read by get_unix_version(). */
+static void test_populate_metadata_os_platform_from_os_info(void **state) {
+    (void)state;
+
+    os_info os = {0};
+    os.os_name = "Test OS";
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, &os);
+#else
+    os.os_platform = "ubuntu";
+    will_return(__wrap_get_unix_version, &os);
+#endif
+    expect_any(__wrap_metadata_provider_update, metadata);
+    will_return(__wrap_metadata_provider_update, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "Early metadata populated into shared memory");
+
+    w_agentd_populate_metadata();
+
+    assert_string_equal(last_published.os_name, "Test OS");
+#ifdef TEST_WINAGENT
+    assert_string_equal(last_published.os_platform, "windows");
+    assert_string_equal(last_published.os_type, "windows");
+#else
+    assert_string_equal(last_published.os_platform, "ubuntu");
+#endif
+}
+
+/* Without OS info at all, Windows still publishes its platform; elsewhere it stays empty
+ * rather than guessed. */
+static void test_populate_metadata_os_platform_without_os_info(void **state) {
+    (void)state;
+
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, NULL);
+#else
+    will_return(__wrap_get_unix_version, NULL);
+#endif
+    expect_any(__wrap_metadata_provider_update, metadata);
+    will_return(__wrap_metadata_provider_update, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, "Early metadata populated into shared memory");
+
+    w_agentd_populate_metadata();
+
+    assert_string_equal(last_published.os_name, "");
+#ifdef TEST_WINAGENT
+    assert_string_equal(last_published.os_platform, "windows");
+#else
+    assert_string_equal(last_published.os_platform, "");
+#endif
+}
+
 /* A failed publication is reported and swallowed: it must not abort the start. */
 static void test_populate_metadata_update_failure(void **state) {
     (void)state;
@@ -158,6 +210,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_start_agent_not_startup_is_a_noop, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup_goes_to_https, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_populate_metadata_publishes_identity, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_populate_metadata_os_platform_from_os_info, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_populate_metadata_os_platform_without_os_info, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_populate_metadata_update_failure, setup_test, teardown_test),
     };
 

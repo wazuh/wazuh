@@ -40,8 +40,9 @@ The installer writes this section:
 List of Indexer node URLs, one per `<host>` child element.
 
 - **Default value:** None (required)
-- **Allowed values:** URLs starting with `http://` or `https://` (e.g. `https://10.0.0.1:9200`); at
-  least one, no duplicates
+- **Allowed values:** URLs starting with `http://` or `https://` that name a host — a host name, an IPv4
+  address, or an IPv6 address in brackets — then an optional `:port` and path (e.g. `https://10.0.0.1:9200`,
+  `https://[fd00::1]:9200`); at least one, no duplicates. `https://` alone is refused
 - **Note:** The connector load-balances requests round-robin across the hosts its health monitor
   sees as available, and skips the ones that are not.
 
@@ -102,7 +103,8 @@ set to `wazuh-manager` when it is not set, and, while the keystore holds no pass
 `WAZUH_INDEXER_MANAGER_PASSWORD` (see [Credentials](../../getting-started/credentials.md#the-keys) for where it
 is looked up). There is no default password: when the keystore holds none and no source supplies one, the start
 is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. A password already in the keystore is never replaced
-from those sources, so changing `local.env` afterwards changes nothing.
+from the environment or `local.env`, so changing `local.env` afterwards changes nothing; it is replaced only when it
+comes from a co-located indexer's `/etc/wazuh-indexer/export/credentials.env` and differs (a reinstalled indexer).
 
 To change them by hand (as root):
 
@@ -111,7 +113,9 @@ printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f i
 printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-Each process reads the credentials once, so restart the manager after changing them.
+The C daemons that link the connector (`wazuh-manager-modulesd`, `wazuh-manager-analysisd`) read the
+credentials once per process, so restart the manager after changing them. The Python framework (API,
+cluster) reads them again for every Indexer client it builds and needs no restart.
 
 ---
 
@@ -180,10 +184,12 @@ any of the listed CAs.
 ```xml
 <indexer>
   <hosts>
-    <host>http://127.0.0.1:9200</host>
+    <host>http://INDEXER_HOST:9200</host>
   </hosts>
 </indexer>
 ```
+
+`INDEXER_HOST` is a placeholder for the indexer's address.
 
 Without `<ssl>` no CA file or client pair is required or imported, but the indexer password is still
 required in the keystore.
@@ -200,14 +206,16 @@ Validate the configuration, then the TLS files and their modes (as root):
 ```
 
 Check that the Indexer accepts the manager's certificate and credentials, using the same files and
-account the connector uses:
+account the connector uses. The command sends the indexer password, so send it only to a host this
+manager is configured for: take `<indexer>` from the output of
+`/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` rather than assuming the indexer is local.
 
 ```bash
 curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
      --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
      --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
-     https://127.0.0.1:9200/_cluster/health
+     https://<indexer>:9200/_cluster/health
 ```
 
 The connector treats a node as available when its health is `green` or `yellow`.
@@ -225,7 +233,15 @@ grep -E "Indexer node|Health check failed|indexer credentials" /var/wazuh-manage
 | `Indexer node '<host>' is no longer available. Reason: <reason>` | The node stopped answering `green`/`yellow`; `<reason>` carries the cause above (for example `Unauthorized - Check indexer credentials`) |
 | `Indexer node '<host>' is available again.` | The node recovered |
 | `Indexer node '<host>' is throttling requests (<reason>); it stays in rotation and requests back off.` | The node answered `429` (for example a tripped circuit breaker) |
+| `Indexer node '<host>' accepts requests again.` | A throttled node answered `green`/`yellow` without `429` again |
+| `Indexer node '<host>' has reported a PERMANENT circuit breaker on 3 consecutive health checks (<reason>): heap usage stays above the breaker limit; check the indexer heap sizing.` | WARNING: three health checks in a row (about 20 s at the default interval) got a `429` naming a `PERMANENT` circuit breaker; logged once per episode **per connector health monitor** (see below). A single `PERMANENT` trip logs only the throttling line above: OpenSearch labels a parent-breaker trip `PERMANENT` whenever fielddata outweighs the transient breakers, even when most of the heap is garbage its next forced GC frees |
 | `No indexer credentials found in the keystore. ...` | The keystore has no `username` or `password` |
+
+Every node-state line above is written by a connector's health monitor, once per state change, and a
+process can run several monitors: each connector that does not share another's session has its own
+(the Content Manager's sliced initial load alone runs `numSlices` + 1 of them while it downloads). One
+throttling or breaker episode can therefore appear as several identical lines within one monitoring
+interval, some with the same tag. They describe the same node state, not repeated episodes.
 
 ---
 

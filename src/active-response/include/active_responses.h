@@ -17,6 +17,7 @@
 #endif
 
 #define COMMANDSIZE_4096 4096
+#define AR_COMMAND_ATTEMPTS 5
 
 #define AR_VERSION 1
 #define AR_MODULE_NAME "active-response"
@@ -205,5 +206,15 @@ void unlock(const char *lock_path, const char *log_path);
  * @retval OS_INVALID on Invalid IP or error
  * */
 int get_ip_version(const char *ip);
+
+/**
+ * Run a command and check that it exits with 0. Retries with a growing delay
+ * while it cannot be started or exits with 4. Logs the command when it fails
+ * @param ar_name Active response name for the log
+ * @param path Binary to run
+ * @param argv NULL-terminated argument list
+ * @return OS_SUCCESS or OS_INVALID
+ * */
+int execute_command_with_retry(const char *ar_name, const char *path, char * const *argv);
 
 #endif

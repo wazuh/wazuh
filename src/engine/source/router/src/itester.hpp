@@ -5,6 +5,7 @@
 #include <base/baseTypes.hpp>
 #include <base/error.hpp>
 #include <list>
+#include <optional>
 #include <router/types.hpp>
 #include <string>
 #include <unordered_map>
@@ -56,6 +57,15 @@ public:
      * @return An optional error if the operation failed.
      */
     virtual base::OptError renameEntry(const std::string& from, const std::string& to) = 0;
+
+    /**
+     * @brief Atomically replace the entry `to` with the entry `from` under the table lock.
+     *
+     * Removes `to` if present and re-keys `from` as `to`. Returns the replaced entry, std::nullopt when `to` did
+     * not exist, or an error when `from` is missing or the names are equal (the table is left untouched).
+     */
+    virtual base::RespOrError<std::optional<test::Entry>> replaceEntry(const std::string& from,
+                                                                       const std::string& to) = 0;
 
     /**
      * @brief Enables the environment if it is builded.

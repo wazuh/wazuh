@@ -103,6 +103,14 @@ namespace remoted::endpoints::control
             return {};
         }
 
+        // A present, non-null member of `obj` that is not a string. Absent and null both mean
+        // "not reported" (the agent omits what its metadata does not know yet).
+        bool isWrongStringType(const nlohmann::json& obj, const char* key)
+        {
+            const auto it = obj.find(key);
+            return it != obj.end() && !it->is_null() && !it->is_string();
+        }
+
         remoted::control::NotifyData parseNotify(const nlohmann::json& j)
         {
             remoted::control::NotifyData data;
@@ -112,22 +120,45 @@ namespace remoted::endpoints::control
                 data.version = readString(*agentIt, "version");
             }
 
-            if (auto hostIt = j.find("host"); hostIt != j.end() && hostIt->is_object())
+            const auto hostIt = j.find("host");
+            if (hostIt == j.end() || hostIt->is_null())
             {
-                remoted::control::HostInfo host;
-                host.hostname = readString(*hostIt, "hostname");
-                host.architecture = readString(*hostIt, "architecture");
-                host.ip = readString(*hostIt, "ip");
+                return data;
+            }
+            if (!hostIt->is_object())
+            {
+                data.hostMalformed = true;
+                return data;
+            }
 
-                if (auto osIt = hostIt->find("os"); osIt != hostIt->end() && osIt->is_object())
+            remoted::control::HostInfo host;
+            for (const char* key : {"hostname", "architecture", "ip"})
+            {
+                data.hostMalformed = data.hostMalformed || isWrongStringType(*hostIt, key);
+            }
+            host.hostname = readString(*hostIt, "hostname");
+            host.architecture = readString(*hostIt, "architecture");
+            host.ip = readString(*hostIt, "ip");
+
+            if (auto osIt = hostIt->find("os"); osIt != hostIt->end() && !osIt->is_null())
+            {
+                if (!osIt->is_object())
                 {
+                    data.hostMalformed = true;
+                }
+                else
+                {
+                    for (const char* key : {"name", "version", "platform", "type"})
+                    {
+                        data.hostMalformed = data.hostMalformed || isWrongStringType(*osIt, key);
+                    }
                     host.osName = readString(*osIt, "name");
                     host.osVersion = readString(*osIt, "version");
                     host.osPlatform = readString(*osIt, "platform");
                     host.osType = readString(*osIt, "type");
                 }
-                data.host = std::move(host);
             }
+            data.host = std::move(host);
 
             return data;
         }
@@ -159,11 +190,11 @@ namespace remoted::endpoints::control
                 if (const auto throttle = invalidBodyThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Invalid /control body size (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               "Invalid /control body size (agent %.*s): rejected %llu request(s) %s.",
                                static_cast<int>(authReq->agentId.size()),
                                authReq->agentId.data(),
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_body"));
@@ -179,11 +210,11 @@ namespace remoted::endpoints::control
                 if (const auto throttle = invalidJsonThrottle().record())
                 {
                     LOGFN_WARN(logFn(),
-                               "Invalid /control JSON (agent %.*s): rejected %llu request(s) in the last %d s.",
+                               "Invalid /control JSON (agent %.*s): rejected %llu request(s) %s.",
                                static_cast<int>(authReq->agentId.size()),
                                authReq->agentId.data(),
                                throttle.total,
-                               remoted::common::LogThrottle::kDefaultWindowSeconds);
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_json"));
@@ -195,13 +226,12 @@ namespace remoted::endpoints::control
             {
                 if (const auto throttle = invalidAgentIdThrottle().record())
                 {
-                    LOGFN_WARN(
-                        logFn(),
-                        "Invalid agent ID in /control request (%.*s): rejected %llu request(s) in the last %d s.",
-                        static_cast<int>(authReq->agentId.size()),
-                        authReq->agentId.data(),
-                        throttle.total,
-                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    LOGFN_WARN(logFn(),
+                               "Invalid agent ID in /control request (%.*s): rejected %llu request(s) %s.",
+                               static_cast<int>(authReq->agentId.size()),
+                               authReq->agentId.data(),
+                               throttle.total,
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "invalid_agent_id"));
@@ -232,13 +262,12 @@ namespace remoted::endpoints::control
             {
                 if (const auto throttle = unknownTypeThrottle().record())
                 {
-                    LOGFN_WARN(
-                        logFn(),
-                        "Unknown /control message type '%s' (agent %u): rejected %llu request(s) in the last %d s.",
-                        type.c_str(),
-                        id,
-                        throttle.total,
-                        remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    LOGFN_WARN(logFn(),
+                               "Unknown /control message type '%s' (agent %u): rejected %llu request(s) %s.",
+                               type.c_str(),
+                               id,
+                               throttle.total,
+                               throttle.period().c_str());
                 }
                 remoted::control::incRejected(metrics);
                 responder->send(errorJson(400, "unknown_message_type"));

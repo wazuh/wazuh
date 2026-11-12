@@ -27,6 +27,7 @@ adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& d
         auto [dumper, protoReq] = adapter::getRes(result);
 
         dumper->activate();
+        LOG_INFO_L(lambdaName.c_str(), "Event dumper activated: every incoming event is now written to its log");
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
@@ -52,6 +53,7 @@ adapter::RouteHandler deactivateDumper(const std::shared_ptr<::dumper::IDumper>&
         auto [dumper, protoReq] = adapter::getRes(result);
 
         dumper->deactivate();
+        LOG_INFO_L(lambdaName.c_str(), "Event dumper deactivated");
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);

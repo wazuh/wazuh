@@ -9,6 +9,7 @@
  */
 
 #include "curlPerformer.hpp"
+#include "contentCodingGuard.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -180,7 +181,9 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     // complete file.
     const FilePtr responseGuard {responseFile, std::fclose};
 
-    if (!configureRequest(*handle, spec, response))
+    ContentCodingGuard contentCoding;
+
+    if (!configureRequest(*handle, spec, response, offersEncoding(*handle, spec) ? &contentCoding : nullptr))
     {
         return response;
     }
@@ -197,6 +200,8 @@ HttpResponse CurlPerformer::attemptOnce(const HttpRequestSpec& spec, bool useFal
     response.curlError = handle->curlError();
     response.tlsFailure = handle->tlsFailureDetail();
     response.caFileLoadFailed = handle->caFileLoadFailed();
+    response.contentDecodingFailed = handle->contentDecodingFailed() || contentCoding.refused();
+    response.curlError += contentCoding.refusalNote(); // curl's own text only says the header write failed.
     return response;
 }
 
@@ -510,8 +515,24 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
     return true;
 }
 
+bool CurlPerformer::offersEncoding(ICurlHandle& handle, const HttpRequestSpec& spec)
+{
+    if (spec.acceptEncoding.empty() || handle.decodes(spec.acceptEncoding))
+    {
+        return !spec.acceptEncoding.empty();
+    }
+
+    if (!m_undecodableOfferWarned.exchange(true, std::memory_order_relaxed))
+    {
+        LOGFN_WARN(m_logFn, "https_client: this agent's libcurl was built without '%s' decoding, so "
+                   "requests don't offer it and replies come uncompressed.", spec.acceptEncoding.c_str());
+    }
+
+    return false;
+}
+
 bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
-                                     HttpResponse& response) const
+                                     HttpResponse& response, ContentCodingGuard* contentCoding) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
 
@@ -527,11 +548,19 @@ bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
 
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
 
+    // Not fail-closed like the TLS options: if curl rejects it, no Accept-Encoding goes out and
+    // the manager answers plain, which the caller handles anyway.
+    if (contentCoding != nullptr)
+    {
+        handle.setOptionString(CurlOption::AcceptEncoding, spec.acceptEncoding);
+    }
+
     // One HEADERFUNCTION slot per handle, so every captured header shares this struct.
     HeaderCapture capture;
     capture.retryAfter = &response.retryAfterSeconds;
     capture.serverDate = &response.serverDateSeconds;
     capture.caGeneration = &response.caGeneration;
+    capture.contentCoding = contentCoding;
 
     if (!handle.captureResponseHeaders(capture))
     {
@@ -570,7 +599,11 @@ bool CurlPerformer::applyTls(ICurlHandle& handle, bool useFallbackAnchor) const
            // Never let a forward-proxy's CONNECT-tunnel response headers reach
            // headerTrampoline: without this, a proxy's own Date could be
            // captured as if it were the manager's (#38439 clock-skew fix).
-           && setMandatoryOption(handle, CurlOption::SuppressConnectHeaders, 1L);
+           && setMandatoryOption(handle, CurlOption::SuppressConnectHeaders, 1L)
+           // HTTP/1.1 on every build, the only protocol the manager's listener speaks: the
+           // Windows curl isn't built --without-nghttp2, and ContentCodingGuard is checked
+           // against real curl replies over HTTP/1.1 only (#38514).
+           && setMandatoryOption(handle, CurlOption::HttpVersion, HTTP_VERSION_1_1);
 }
 
 bool CurlPerformer::applyTrustAnchors(ICurlHandle& handle, bool useFallbackAnchor) const

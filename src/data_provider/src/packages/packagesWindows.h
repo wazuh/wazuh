@@ -25,13 +25,6 @@
  */
 using AppxSizeCache = std::map<std::string, std::optional<int64_t>>;
 
-class FactoryWindowsPackage
-{
-    public:
-        static std::shared_ptr<IPackage>create(const HKEY key, const std::string& userId, const std::string& nameApp, const std::set<std::string>& cacheRegistry,
-                                               AppxSizeCache* sizeCache = nullptr);
-};
-
 class WindowsPackageImpl final : public IPackage
 {
     private:

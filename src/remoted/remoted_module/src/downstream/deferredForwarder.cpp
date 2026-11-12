@@ -155,12 +155,12 @@ namespace remoted::downstream
             if (const auto shed = m_impl->slotExhaustedThrottle.record())
             {
                 LOGFN_WARN(logFn(),
-                           "Deferred-work slots exhausted (capacity %zu): shed %llu request(s) with 503 in the last "
-                           "%d s. Consider increasing the value of 'max_deferred_requests', or investigate why the "
-                           "downstream service is not keeping up.",
+                           "Deferred-work slots exhausted (capacity %zu): shed %llu request(s) with 503 %s. Consider "
+                           "increasing the value of 'max_deferred_requests', or investigate why the downstream "
+                           "service is not keeping up.",
                            m_impl->limiter->capacity(),
                            static_cast<unsigned long long>(shed.total),
-                           remoted::common::LogThrottle::kDefaultWindowSeconds);
+                           shed.period().c_str());
             }
             // This 503 is the endpoint's answer, so it counts in its responses.* family (the
             // limiter's own rejected.total already moved inside tryAcquire()). No latency
@@ -237,12 +237,12 @@ namespace remoted::downstream
                     if (const auto failed = throttle.record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "Downstream call to the %s failed (%s) for %llu request(s) in the last %d s; "
+                                   "Downstream call to the %s failed (%s) for %llu request(s) %s; "
                                    "answering 503. %s",
                                    serviceName,
                                    toString(error),
                                    static_cast<unsigned long long>(failed.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds,
+                                   failed.period().c_str(),
                                    remediationFor(error));
                     }
                 }
@@ -257,11 +257,11 @@ namespace remoted::downstream
                     if (const auto failed = throttle.record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "The %s answered HTTP %d for %llu request(s) in the last %d s; answering 503.",
+                                   "The %s answered HTTP %d for %llu request(s) %s; answering 503.",
                                    serviceName,
                                    response.status,
                                    static_cast<unsigned long long>(failed.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   failed.period().c_str());
                     }
                 }
                 else if (response.status == 404 || response.status == 405)
@@ -273,13 +273,13 @@ namespace remoted::downstream
                     if (const auto failed = routeMismatchThrottle->record())
                     {
                         LOGFN_WARN(logFn(),
-                                   "The %s answered HTTP %d for %llu request(s) in the last %d s: the request path "
+                                   "The %s answered HTTP %d for %llu request(s) %s: the request path "
                                    "does not match a route on that service. The two sides are running mismatched "
                                    "versions or configurations; answering 503.",
                                    serviceName,
                                    response.status,
                                    static_cast<unsigned long long>(failed.total),
-                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                                   failed.period().c_str());
                     }
                 }
 

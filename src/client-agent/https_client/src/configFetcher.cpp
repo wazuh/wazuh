@@ -42,6 +42,7 @@ ConfigFetcher::ConfigFetcher(const ModuleConfig& config, IHttpPerformer& perform
     , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
                config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
+    , m_undecodableLimiter(clock)
 {
 }
 
@@ -71,6 +72,9 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     spec.responseFilePath = spool->path();
     spec.maxResponseBytes = CONFIG_MAX_DOWNLOAD_BYTES;
     spec.timeoutMs = m_config.statefulTimeoutMs; // The large-transfer class.
+    // Offer zstd (#38514): libcurl decodes the reply, so the cap above and the hash check below
+    // both see the plain bytes. A manager that doesn't compress just answers plain.
+    spec.acceptEncoding = "zstd";
 
     // Operational visibility (send-time debug log, mirroring controlStream.cpp's
     // sendStartup()/sendNotify()/sendShutdown()): confirms the download was
@@ -84,32 +88,11 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        // A permanent rejection (a 400 the manager repeats for the same request) never clears
-        // by itself and leaves the startup gate closed on a fresh install, so it is logged at
-        // WARN, once per advertised hash. Any other failure is expected, self-correcting noise:
-        // it can legitimately happen whenever the manager's config_hash doesn't (yet) resolve
-        // to real content -- e.g. its "0" sentinel for "nothing resolved yet for this group
-        // set" right after a group membership change (confirmed with the manager team) -- and
-        // the next notify simply re-triggers it either way.
-        if (result.outcome == OutcomeClass::Permanent && expectedHash != m_lastRejectedHash)
-        {
-            m_lastRejectedHash = expectedHash;
-            LOGFN_WARN(m_logFn,
-                       "The manager rejected the config download request (%s); the shared "
-                       "configuration cannot be updated from it.",
-                       outcomeName(result.outcome));
-        }
-        else
-        {
-            LOGFN_DEBUG1(m_logFn,
-                         "Config download failed (%s)%s; the next notify re-triggers it.",
-                         outcomeName(result.outcome),
-                         transportReason(result.response.curlError).c_str());
-        }
-
+        logFailedDownload(expectedHash, result);
         return nullptr;
     }
 
+    m_undecodableLimiter.reset(); // A later decoding failure is a new incident, reported at once.
     LOGFN_DEBUG2(m_logFn, "Config download delivered by the manager.");
 
     const auto actualHash = sha256FileHex(spool->path());
@@ -123,4 +106,52 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     }
 
     return spool;
+}
+
+void ConfigFetcher::logFailedDownload(const std::string& expectedHash, const RetrySender::Result& result)
+{
+    // Only a 2xx that couldn't be decoded ends here as Unreachable: an error reply is judged by its
+    // status (classifyOutcome()), and a stop during the wait before the retry is Interrupted.
+    if (result.outcome == OutcomeClass::Unreachable && result.response.contentDecodingFailed)
+    {
+        warnUndecodable(result.response);
+        return;
+    }
+
+    // A permanent rejection (a 400 the manager repeats for the same request) never clears
+    // by itself and leaves the startup gate closed on a fresh install, so it is logged at
+    // WARN, once per advertised hash. Any other failure is expected, self-correcting noise:
+    // it can legitimately happen whenever the manager's config_hash doesn't (yet) resolve
+    // to real content -- e.g. its "0" sentinel for "nothing resolved yet for this group
+    // set" right after a group membership change (confirmed with the manager team) -- and
+    // the next notify simply re-triggers it either way.
+    if (result.outcome == OutcomeClass::Permanent && expectedHash != m_lastRejectedHash)
+    {
+        m_lastRejectedHash = expectedHash;
+        LOGFN_WARN(m_logFn,
+                   "The manager rejected the config download request (%s); the shared "
+                   "configuration cannot be updated from it.",
+                   outcomeName(result.outcome));
+        return;
+    }
+
+    LOGFN_DEBUG1(m_logFn,
+                 "Config download failed (%s)%s; the next notify re-triggers it.",
+                 outcomeName(result.outcome),
+                 transportReason(result.response.curlError).c_str());
+}
+
+/// Not noise like the failures above: a reply this agent can't decode comes back the same on the
+/// next notify, and an agent still waiting for its first config keeps its modules waiting too.
+void ConfigFetcher::warnUndecodable(const HttpResponse& response)
+{
+    const auto decision = m_undecodableLimiter.record();
+
+    if (!decision)
+    {
+        return;
+    }
+
+    LOGFN_WARN(m_logFn, "Config download could not be decoded%s; the next notify retries it%s.",
+               transportReason(response.curlError).c_str(), m_undecodableLimiter.suppressedNote(decision).c_str());
 }

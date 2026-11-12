@@ -160,6 +160,7 @@ bool CMSync::syncSpace(Space& space)
     }
 
     space.deployment = space.sink->deployment();
+    reportPolicyPresence(space, previous, outcome.status);
     if (space.deployment.enabled.has_value())
     {
         space.policyKnown = true;
@@ -170,6 +171,50 @@ bool CMSync::syncSpace(Space& space)
         }
     }
     return changed;
+}
+
+void CMSync::reportPolicyPresence(Space& space, base::SyncStatus previous, content_manager::CycleStatus outcome) const
+{
+    // An absence is logged once: a warning when the engine still serves a route for the space (its
+    // content is kept, but nothing can refresh it), info for a space never deployed (a fresh install
+    // whose indexer is still loading its content). The sink logs every later cycle at DEBUG.
+    if (space.deployment.policyMissing)
+    {
+        if (!space.policyMissing)
+        {
+            if (space.deployment.available)
+            {
+                LOG_WARNING("[{}] Space '{}' does not exist in wazuh-indexer, the deployed content is kept until "
+                            "the space is published again",
+                            COMPONENT_NAME,
+                            space.name);
+            }
+            else
+            {
+                LOG_INFO("[{}] Space '{}' is not published in wazuh-indexer yet, skipping synchronization",
+                         COMPONENT_NAME,
+                         space.name);
+            }
+            space.policyMissing = true;
+        }
+        return;
+    }
+
+    if (space.policyMissing)
+    {
+        space.policyMissing = false;
+        LOG_INFO("[{}] Space '{}' is published in wazuh-indexer, resuming synchronization", COMPONENT_NAME, space.name);
+    }
+
+    // A space that failed and is now found current had nothing to apply: without this line the
+    // recovery from the earlier warning would not show at the default log level.
+    if (outcome == content_manager::CycleStatus::Unchanged && previous == base::SyncStatus::FAILED
+        && space.deployment.available)
+    {
+        LOG_INFO("[{}] Space '{}' is back in sync with wazuh-indexer, the deployed content is current",
+                 COMPONENT_NAME,
+                 space.name);
+    }
 }
 
 void CMSync::loadState()

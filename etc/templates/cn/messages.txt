@@ -89,7 +89,6 @@ configurationdone="已正确完成系统配置"
 tostart="要启动 Wazuh"
 tostop="要停止 Wazuh"
 configat="要查看或修改系统配置,请编辑 "
-addserveragent="为使代理能够联接服务器端, 您需要将每个代理添加到服务器."
 presskey="请按ENTER继续"
 
 # Update

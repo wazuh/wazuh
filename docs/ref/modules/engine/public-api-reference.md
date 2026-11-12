@@ -15,7 +15,7 @@ The conventions shared by every route (body parsing, status codes, content type)
 | `POST /content/ioc/update` | Schedule an IOC synchronization from an nd-json file |
 | `GET /content/ioc/state` | IOC synchronization state |
 | `POST /logtest` | Run one event through a tester session |
-| `DELETE /logtest` | Delete a tester session and its namespace |
+| `DELETE /logtest` | Delete a tester session and the namespace the tester created for it |
 | `POST /metrics/enable` | Enable or disable a metric |
 | `POST /metrics/get` | Read one metric |
 | `POST /metrics/list` | List metric names |

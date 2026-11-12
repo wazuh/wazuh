@@ -41,6 +41,45 @@ void __wrap_exit(int code) {
     mock_assert(0, "exit called", __FILE__, __LINE__);
 }
 
+// wm_setup() collaborators: a configuration test must stop before the PID file and the children pool.
+int __wrap_wm_config(void) {
+    return 0;
+}
+
+int __wrap_wm_check(void) {
+    return 0;
+}
+
+void __wrap_w_read_agent_batch(__attribute__((unused)) const char *cfgfile,
+                               __attribute__((unused)) const char *sharedcfg,
+                               __attribute__((unused)) agent_batch *batch) {
+}
+
+int __wrap_getDefine_Int_default(__attribute__((unused)) const char *high_name,
+                                 __attribute__((unused)) const char *low_name,
+                                 __attribute__((unused)) int min,
+                                 __attribute__((unused)) int max,
+                                 int default_val) {
+    return default_val;
+}
+
+gid_t __wrap_Privsep_GetGroup(__attribute__((unused)) const char *name) {
+    return getgid();
+}
+
+int __wrap_Privsep_SetGroup(__attribute__((unused)) gid_t gid) {
+    return 0;
+}
+
+int __wrap_CreatePID(__attribute__((unused)) const char *name, __attribute__((unused)) int pid) {
+    fail_msg("CreatePID() must not run under -t");
+    return -1;
+}
+
+void __wrap_wm_children_pool_init(void) {
+    fail_msg("wm_children_pool_init() must not run under -t");
+}
+
 static void record_stop(void * data) {
     (void)data;
     stop_calls++;
@@ -71,9 +110,24 @@ static void test_sigterm_raises_shutdown_flag_before_grace_wait(void ** state) {
     wmodules = NULL;
 }
 
+// -t (configuration test) reads and validates only: it must neither write a PID file nor start the
+// children pool, so a configuration check writes nothing under var/run.
+static void test_setup_in_test_mode_creates_no_pid_file(void ** state) {
+    (void)state;
+
+    flag_test_config = 1;
+    flag_foreground = 1;
+
+    wm_setup();
+
+    flag_test_config = 0;
+    flag_foreground = 0;
+}
+
 int main(void) {
-    // wm_handler() handles a single signal per process, so this binary holds a single test.
+    // wm_handler() handles a single signal per process, so this binary holds a single handler test.
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_setup_in_test_mode_creates_no_pid_file),
         cmocka_unit_test(test_sigterm_raises_shutdown_flag_before_grace_wait),
     };
 

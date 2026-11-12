@@ -82,6 +82,26 @@ void test_wdb_parse_global_open_global_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
+/* The HTTP routes enter through wdb_global_pre(), not wdb_parse(): they count in the total as well as
+ * in the global target, so getstats' "received" adds up to its breakdown. */
+void test_wdb_global_pre_counts_total_and_global(void **state)
+{
+    (void)state;
+    void *ctx = NULL;
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_wdb_open_global, NULL);
+    expect_string(__wrap__mdebug2, formatted_msg, "Couldn't open DB global: queue/db/global.db");
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+
+    assert_null(wdb_global_pre(&ctx));
+    assert_null(ctx);
+}
+
 void test_wdb_parse_global_no_space(void **state)
 {
     int ret = 0;
@@ -4935,6 +4955,7 @@ int main()
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_open_global_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_pre_counts_total_and_global, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_no_space, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_substr_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sql_error, test_setup, test_teardown),

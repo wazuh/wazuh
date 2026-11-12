@@ -210,7 +210,10 @@ bool ChannelHandler::rotateFile(RotationRequirement rotationType)
     }
 
     // Commit the new file path
-    m_stateData.currentFile = newFilePath;
+    {
+        std::lock_guard<std::mutex> lock(m_stateData.currentFileMutex);
+        m_stateData.currentFile = newFilePath;
+    }
     m_stateData.lastRotation = now;
 
     // Rotate the file by closing the current output file and opening a new one
@@ -225,7 +228,10 @@ bool ChannelHandler::rotateFile(RotationRequirement rotationType)
                   m_channelName,
                   e.what());
         // Restore previous state — the old file is still the active one on disk
-        m_stateData.currentFile = previousFile;
+        {
+            std::lock_guard<std::mutex> lock(m_stateData.currentFileMutex);
+            m_stateData.currentFile = previousFile;
+        }
         m_stateData.counter = previousCounter;
         m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
         return false;
@@ -460,21 +466,8 @@ void ChannelHandler::writeMessage(const std::string& message)
  */
 void ChannelHandler::validateChannelName(const std::string& channelName)
 {
-    // Validate length
-    if (channelName.empty())
-    {
-        throw std::runtime_error("Channel name cannot be empty");
-    }
-    else if (channelName.length() > 255)
-    {
-        throw std::runtime_error("Channel name cannot exceed 255 characters");
-    }
-
-    // Only allow alphanumeric characters, underscores, and dashes in channel names
-    if (!std::regex_match(channelName, std::regex("^[a-zA-Z0-9_-]+$")))
-    {
-        throw std::runtime_error("Channel name can only contain alphanumeric characters, underscores, and dashes");
-    }
+    // One rule for every caller: the interface's check, which the builder also applies before creating a channel
+    streamlog::validateChannelName(channelName);
 }
 
 /**

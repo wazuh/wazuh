@@ -10,6 +10,17 @@
 
 #include "outcomeClassifier.hpp"
 
+namespace
+{
+    /// An error reply whose body libcurl couldn't decode, or whose codings were refused (#38514),
+    /// still arrived with its status. Nothing reads such a body but a 401's class, which reads as
+    /// Unclassified, the fail-safe answer: the status decides, as it does when nothing is offered.
+    bool undecodableErrorReply(const HttpResponse& response)
+    {
+        return response.contentDecodingFailed && response.httpCode >= 300;
+    }
+} // namespace
+
 OutcomeClass classifyOutcome(const HttpResponse& response)
 {
     if (response.status == TransportStatus::Aborted)
@@ -17,11 +28,12 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
         return OutcomeClass::Interrupted;
     }
 
-    if (response.status != TransportStatus::Ok)
+    if (response.status != TransportStatus::Ok && !undecodableErrorReply(response))
     {
         // timeout / connect / DNS / TLS / other transport error: no HTTP status
-        // ever arrived, so the manager is not answering at all. This is the one
-        // class that arms the producer pause.
+        // ever arrived, so the manager is not answering at all. A 2xx whose body
+        // couldn't be decoded lands here too: no success, and a retry may get it
+        // plain. This is the one class that arms the producer pause.
         return OutcomeClass::Unreachable;
     }
 

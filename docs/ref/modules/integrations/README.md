@@ -19,6 +19,46 @@ and the manager does not start. To monitor a service, install an agent on a host
 - [Microsoft Graph Security API](microsoft-graph.md) – Collect Microsoft Graph resources such as security alerts and incidents.
 - [Docker Listener](docker.md) – Forward Docker daemon events.
 
+## Enable the integration's ruleset first
+
+Collecting the logs is only half of an integration: the manager's engine (`wazuh-manager-analysisd`) must
+also have the decoders that classify them. Those decoders come in the **standard** space's content, which
+the engine pulls from `wazuh-indexer`, grouped into one **integration** per log source, and each
+integration carries an `enabled` flag. When the engine builds the policy it skips every disabled
+integration and its decoders (see [Integrations](../engine/README.md#integrations) in the engine
+reference).
+
+Most standard integrations **ship disabled**, among them `docker`, `aws`, `gcp`, `github`, `azure` and
+`aws-amazon-security-lake`. Until the matching integration is enabled, the
+agent module runs and reports success, the events reach the manager and are counted, but they stay
+**unclassified** and no document reaches the integration's indices. With the default settings these events
+are **discarded**:
+
+- the policy indexes unclassified events (into `wazuh-events-v5-unclassified`) only when its
+  `index_unclassified_events` setting is enabled, and it is disabled by default (see
+  [Unclassified events](../engine/README.md#unclassified-events));
+- raw events are indexed only when `index_raw_events` is enabled, also disabled by default.
+
+The engine logs a warning in `logs/wazuh-manager.log` when the policy does not index unclassified events, at
+most once every 5 minutes per space, with how many were not indexed as processed events and their sources (for
+example `Wazuh-AWS`). The warning fires whether or not `index_raw_events` is enabled, because raw indexing
+happens before the policy runs: with raw indexing enabled, a raw copy of each of these events is still kept.
+A source may also be a custom log format that has no integration at all; then the only ways to keep its
+events are `index_unclassified_events`, `index_raw_events` or a decoder of your own.
+
+Without either setting, those events are gone: enabling the integration later does not recover them, and
+modules that track what they already collected (such as `aws-s3`, which records each processed S3 file) do not
+send them again.
+
+So before configuring an agent module:
+
+1. In the Wazuh dashboard, enable the integration for that log source in the standard ruleset. Content is
+   managed in `wazuh-indexer`, never on the manager (see
+   [Content Management](../engine/README.md#content-management-managing-the-engines-processing)).
+2. Wait for the engine's next content synchronization (CMSync), which pulls the change and rebuilds the
+   policy; no manager restart is needed.
+3. Then configure the agent module as its page describes, and check that its events are indexed.
+
 ## Where each integration runs
 
 | Integration | Configuration block | Implementation | Agent platforms |

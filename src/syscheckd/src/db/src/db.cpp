@@ -460,7 +460,7 @@ fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler, result_callback_t res_ca
 
 FIMDBErrorCode fim_db_transaction_close(TXN_HANDLE txn_handler)
 {
-    return dbsync_close_txn(txn_handler) == 0 ? FIMDB_OK : FIMDB_ERR;
+    return dbsync_close_txn_keep_rows(txn_handler) == 0 ? FIMDB_OK : FIMDB_ERR;
 }
 
 static std::atomic<bool (*)()> g_teardown_hook {nullptr};

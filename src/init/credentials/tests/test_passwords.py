@@ -302,6 +302,69 @@ def test_indexer_password_kept(resolver, sandbox, calls):
     assert sandbox.keystore()["indexer/password"] == GOOD_IDX
 
 
+NEW_IDX = "New.Passw0rd-246"
+
+
+def _store_indexer_password(sandbox, value):
+    import json
+    with open(os.path.join(sandbox.keystore_dir, "keystore.json"), "w") as handle:
+        json.dump({"indexer/password": value, "indexer/username": "wazuh-manager"}, handle)
+
+
+@pytest.mark.parametrize("mode", ["--prestart", "--upgrade", "--install"])
+def test_indexer_password_follows_the_export(resolver, sandbox, mode):
+    """A reinstalled indexer publishes a new password: the stored one is replaced, as the CA and pair are."""
+    sandbox.stage_ca()
+    _store_indexer_password(sandbox, GOOD_IDX)
+    sandbox.make_indexer_export(credentials=f"{IDX}={NEW_IDX}\n")
+    code, out, err = run(resolver, sandbox, mode)
+    assert code == 0, err
+    assert sandbox.keystore() == {"indexer/password": NEW_IDX, "indexer/username": "wazuh-manager"}
+    assert (f"replaced the indexer password in the keystore with the one from "
+            f"{sandbox.indexer_export}/credentials.env:1") in out
+    assert_no_secret([out, err], GOOD_IDX, NEW_IDX)
+
+
+def test_indexer_password_export_unchanged(resolver, sandbox, calls):
+    """The export publishes the stored password: nothing is written."""
+    sandbox.stage_ca()
+    _store_indexer_password(sandbox, GOOD_IDX)
+    sandbox.make_indexer_export(credentials=f"{IDX}={GOOD_IDX}\n")
+    code, out, err = run(resolver, sandbox, "--prestart")
+    assert code == 0, err
+    assert "the indexer password is in the keystore" in out
+    assert sandbox.keystore()["indexer/password"] == GOOD_IDX
+
+
+@pytest.mark.parametrize("source", ["environment", "local.env"])
+def test_indexer_password_operator_value_never_replaces(resolver, sandbox, source):
+    """A value from the environment or local.env seeds an empty keystore only, and shadows the export."""
+    sandbox.stage_ca()
+    _store_indexer_password(sandbox, GOOD_IDX)
+    sandbox.make_indexer_export(credentials=f"{IDX}={NEW_IDX}\n")
+    environ = {}
+    if source == "environment":
+        environ[IDX] = "Other.Passw0rd-1"
+    else:
+        sandbox.write(os.path.join(sandbox.conf, "local.env"), f"{IDX}=Other.Passw0rd-1\n")
+    code, out, err = run(resolver, sandbox, "--prestart", environ=environ)
+    assert code == 0, err
+    assert sandbox.keystore()["indexer/password"] == GOOD_IDX
+
+
+def test_indexer_password_replacement_refused(resolver, sandbox):
+    """The keystore refuses the new password: the start is refused, not left to fail with 401."""
+    sandbox.stage_ca()
+    _store_indexer_password(sandbox, GOOD_IDX)
+    sandbox.make_indexer_export(credentials=f"{IDX}={NEW_IDX}\n")
+    sandbox.control(keystore_fail=True)
+    code, _, err = run(resolver, sandbox, "--prestart")
+    assert code == 1
+    assert f"INVALID {IDX}: the keystore did not accept the new password from {sandbox.indexer_export}" in err
+    assert sandbox.keystore()["indexer/password"] == GOOD_IDX
+    assert_no_secret([err], GOOD_IDX, NEW_IDX)
+
+
 def test_username_backfill(resolver, sandbox):
     """A stored password with no username gets wazuh-manager as its username."""
     sandbox.stage_ca()

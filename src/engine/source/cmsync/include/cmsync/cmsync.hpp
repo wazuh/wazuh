@@ -98,6 +98,7 @@ private:
         std::uint32_t lastSuccessfulUpdate {0}; ///< Persisted.
         bool enabled {false};                   ///< Persisted.
         bool policyKnown {false};               ///< `enabled` comes from a policy read (now or persisted).
+        bool policyMissing {false};             ///< The indexer had no policy for the space (not persisted).
     };
 
     /**
@@ -107,6 +108,15 @@ private:
      * @return True when the persisted record changed.
      */
     bool syncSpace(Space& space);
+
+    /**
+     * @brief Log a change in whether the indexer has a policy for the space, and a recovery.
+     *
+     * @param space The space, with the deployment of the cycle that just ran.
+     * @param previous The space's status before that cycle.
+     * @param outcome That cycle's outcome.
+     */
+    void reportPolicyPresence(Space& space, base::SyncStatus previous, content_manager::CycleStatus outcome) const;
 
     void loadState();     ///< Read the persisted record, when there is one.
     void persistState();  ///< Write the persisted record.

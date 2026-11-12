@@ -276,11 +276,155 @@ set_target_properties(
 add_dependencies(ext_libyaml libyaml_external)
 # deps-entry libyaml: end
 
+# deps-entry brotli: begin
+# ------------------------------------------------------------------------------
+# brotli (Linux only: the decoder curl links for Accept-Encoding: br)
+# ------------------------------------------------------------------------------
+# Static, PIC, installed inside its own tree so the pool tarball carries the
+# include/ and lib/ layout curl's --with-brotli=DIR expects. CMAKE_INSTALL_LIBDIR
+# is pinned to lib and must stay so: curl 8.20's configure looks only in DIR/lib
+# (its $libsuff is never set) and stops with "BROTLI libs and/or directories were
+# not found", while GNUInstallDirs would pick lib64 on the x86_64 builders.
+# Other platforms keep a no-op target so curl's DEPENDS resolves everywhere.
+
+if(IS_LINUX)
+  set(BROTLI_INSTALL_DIR ${EXTERNAL_DIR}/brotli/install)
+  if(EXISTS ${BROTLI_INSTALL_DIR}/lib/libbrotlidec.a)
+    message(STATUS "Using precompiled brotli library")
+    add_custom_target(brotli_external)
+  else()
+    ExternalProject_Add(
+      brotli_external
+      SOURCE_DIR ${EXTERNAL_DIR}/brotli
+      BINARY_DIR ${EXTERNAL_DIR}/brotli/build
+      CMAKE_ARGS ${DEPS_CMAKE_ARGS}
+                 -DBUILD_SHARED_LIBS=OFF
+                 -DBROTLI_BUILD_TOOLS=OFF
+                 -DBROTLI_DISABLE_TESTS=ON
+                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                 -DCMAKE_INSTALL_PREFIX=${BROTLI_INSTALL_DIR}
+                 -DCMAKE_INSTALL_LIBDIR=lib
+      INSTALL_COMMAND ${CMAKE_COMMAND} --install ${EXTERNAL_DIR}/brotli/build
+      BUILD_BYPRODUCTS ${BROTLI_INSTALL_DIR}/lib/libbrotlidec.a
+                       ${BROTLI_INSTALL_DIR}/lib/libbrotlicommon.a)
+  endif()
+
+  # The headers appear only after brotli installs; CMake refuses an INTERFACE include
+  # directory that does not exist at generate time, so create it up front.
+  file(MAKE_DIRECTORY ${BROTLI_INSTALL_DIR}/include)
+  add_library(ext_brotlidec STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    ext_brotlidec PROPERTIES IMPORTED_LOCATION
+                             ${BROTLI_INSTALL_DIR}/lib/libbrotlidec.a)
+  add_dependencies(ext_brotlidec brotli_external)
+  target_include_directories(ext_brotlidec INTERFACE ${BROTLI_INSTALL_DIR}/include)
+
+  add_library(ext_brotlicommon STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    ext_brotlicommon PROPERTIES IMPORTED_LOCATION
+                                ${BROTLI_INSTALL_DIR}/lib/libbrotlicommon.a)
+  add_dependencies(ext_brotlicommon brotli_external)
+else()
+  add_custom_target(brotli_external)
+endif()
+# deps-entry brotli: end
+# deps-entry zstd: begin
+# ------------------------------------------------------------------------------
+# zstd (manager + agent, all platforms incl. winagent)
+# ------------------------------------------------------------------------------
+#
+# Upstream ships its CMake project under build/cmake (not at the repo root),
+# so SOURCE_DIR points there. BINARY_DIR is kept out of that tree (as
+# build/cmake-build, or build/cmake-build-win when cross-compiling for
+# Windows) to avoid colliding with the vendored build/{cmake,meson,VS2010,
+# single_file_libs} directories. The Windows BINARY_DIR is intentionally
+# distinct from the non-Windows one -- a Linux/macOS libzstd.a already built
+# on disk must never satisfy the Windows precompiled-artifact fast path
+# below (or vice versa); each platform gets its own EXISTS check. The static
+# archive lands under <BINARY_DIR>/lib/libzstd.a because upstream's
+# lib/CMakeLists.txt is pulled in via add_subdirectory(lib).
+#
+# Windows (winagent) cross-compiles via a nested ExternalProject_Add whose
+# own CMAKE_ARGS re-declare CMAKE_SYSTEM_NAME=Windows and forward the
+# already-cross-compiling top-level CMAKE_C_COMPILER/CMAKE_CXX_COMPILER/
+# CMAKE_AR/CMAKE_RANLIB (mirrors the GoogleTest Windows block below) instead
+# of re-deriving a MinGW prefix independently -- this file's own
+# MINGW_PREFIX is a second, non-synchronized source of truth vs.
+# src/Makefile's MING_BASE, so forwarding what the top-level configure
+# already resolved avoids adding to that split.
+#
+# CMAKE_CXX_COMPILER is required even though zstd's own library is C-only:
+# CMake's project() call, with no explicit LANGUAGES restriction, enables
+# CXX by default, so the nested configure's own compiler sanity-check tries
+# to find a C++ compiler regardless. Without forwarding it, that check falls
+# back to the HOST's /usr/bin/c++ (not the MinGW cross compiler), which
+# fails immediately on a MinGW-only linker flag -- confirmed empirically,
+# not just theorized.
+if(IS_WINDOWS)
+  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build-win)
+  find_program(FULL_RANLIB ${CMAKE_RANLIB} REQUIRED)
+  set(ZSTD_CMAKE_ARGS
+      -DCMAKE_SYSTEM_NAME=Windows
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      -DCMAKE_AR=${CMAKE_AR}
+      -DCMAKE_RANLIB=${FULL_RANLIB}
+      -DZSTD_MULTITHREAD_SUPPORT=OFF)
+else()
+  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build)
+  set(ZSTD_CMAKE_ARGS "")
+endif()
+
+if(EXISTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+  message(STATUS "Using precompiled zstd library")
+  add_custom_target(zstd_external)
+else()
+  ExternalProject_Add(
+    zstd_external
+    SOURCE_DIR ${EXTERNAL_DIR}/zstd/build/cmake
+    BINARY_DIR ${ZSTD_BINARY_DIR}
+    CMAKE_ARGS ${DEPS_CMAKE_ARGS}
+               -DBUILD_SHARED_LIBS=OFF
+               -DZSTD_BUILD_STATIC=ON
+               -DZSTD_BUILD_SHARED=OFF
+               -DZSTD_BUILD_PROGRAMS=OFF
+               -DZSTD_BUILD_TESTS=OFF
+               -DZSTD_LEGACY_SUPPORT=OFF
+               -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+               ${ZSTD_CMAKE_ARGS}
+    INSTALL_COMMAND ""
+    BUILD_BYPRODUCTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+
+  if(IS_WINDOWS)
+    ExternalProject_Add_Step(
+      zstd_external ranlib_libs
+      COMMAND ${FULL_RANLIB} ${ZSTD_BINARY_DIR}/lib/libzstd.a
+      DEPENDEES build
+      COMMENT "Running ranlib on zstd library")
+  endif()
+endif()
+
+add_library(ext_zstd STATIC IMPORTED GLOBAL)
+set_target_properties(
+  ext_zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_BINARY_DIR}/lib/libzstd.a)
+add_dependencies(ext_zstd zstd_external)
+target_include_directories(ext_zstd INTERFACE ${EXTERNAL_DIR}/zstd/lib)
+# deps-entry zstd: end
+
 # deps-entry curl: begin
 # ------------------------------------------------------------------------------
-# curl (depends on OpenSSL)
+# curl (depends on OpenSSL, zlib and zstd)
 # ------------------------------------------------------------------------------
 
+# zstd: the agent asks for zstd-encoded /download config replies and curl
+# decodes them (#38514). --with-zstd=PATH expects PATH/include and PATH/lib,
+# which the in-tree zstd build doesn't have, so every arm passes --with-zstd
+# plus the vendored -I/-L instead, and configure aborts when zstd.h is missing.
+#
+# PKG_CONFIG=false: curl's configure asks pkg-config about every library it
+# probes (CURL_CHECK_PKGCONFIG) and appends what it finds, so a host zstd or
+# zlib (Homebrew, a distro -dev package) ended up on the command line after the
+# vendored one. With no pkg-config, only the vendored trees can be found.
 if(IS_WINDOWS)
   # OpenSSL, not Schannel. Schannel cannot negotiate TLS 1.3 before Windows 11
   # / Server 2022, and it does not advertise SSLSUPP_TLS13_CIPHERSUITES, so
@@ -311,7 +455,9 @@ if(IS_WINDOWS)
       -E
       env
       "CFLAGS=-fPIC -D_WIN32_WINNT=0x0600"
-      "LDFLAGS=-L${EXTERNAL_DIR}/openssl"
+      "PKG_CONFIG=false"
+      "CPPFLAGS=-I${EXTERNAL_DIR}/zstd/lib"
+      "LDFLAGS=-L${EXTERNAL_DIR}/openssl -L${ZSTD_BINARY_DIR}/lib"
       "LIBS=-lcrypt32 -lws2_32"
       CC=${MINGW_CC}
       ${EXTERNAL_DIR}/curl/configure
@@ -323,7 +469,8 @@ if(IS_WINDOWS)
       --disable-ldap
       --without-libidn2
       --without-libpsl
-      --without-zstd)
+      --without-brotli
+      --with-zstd)
 elseif(IS_LINUX)
   if(IS_AARCH64)
     set(CURL_BUILD_FLAG "--build=${CMAKE_SYSTEM_PROCESSOR}-unknown-linux-gnu")
@@ -338,8 +485,9 @@ elseif(IS_LINUX)
       -E
       env
       ${DEPS_CFLAGS_ENV}
-      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include -I${EXTERNAL_DIR}/zlib"
-      "LDFLAGS=-L${EXTERNAL_DIR}/openssl -L${EXTERNAL_DIR}/zlib"
+      "PKG_CONFIG=false"
+      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include -I${EXTERNAL_DIR}/zlib -I${EXTERNAL_DIR}/zstd/lib"
+      "LDFLAGS=-L${EXTERNAL_DIR}/openssl -L${EXTERNAL_DIR}/zlib -L${ZSTD_BINARY_DIR}/lib"
       "LIBS=-ldl -lpthread"
       ${EXTERNAL_DIR}/curl/configure
       --with-openssl=${EXTERNAL_DIR}/openssl
@@ -347,9 +495,9 @@ elseif(IS_LINUX)
       --disable-ldap
       --without-libidn2
       --without-libpsl
-      --without-brotli
+      --with-brotli=${BROTLI_INSTALL_DIR}
       --without-nghttp2
-      --without-zstd
+      --with-zstd
       ${CURL_BUILD_FLAG})
 else() # Darwin
   set(CURL_CONFIGURE_CMD
@@ -357,8 +505,9 @@ else() # Darwin
       -E
       env
       ${DEPS_CFLAGS_ENV}
-      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include"
-      "LDFLAGS=-L${EXTERNAL_DIR}/openssl"
+      "PKG_CONFIG=false"
+      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include -I${EXTERNAL_DIR}/zstd/lib"
+      "LDFLAGS=-L${EXTERNAL_DIR}/openssl -L${ZSTD_BINARY_DIR}/lib"
       "LIBS=-lpthread"
       ${EXTERNAL_DIR}/curl/configure
       --with-openssl=${EXTERNAL_DIR}/openssl
@@ -368,7 +517,7 @@ else() # Darwin
       --without-brotli
       --without-nghttp2
       --without-librtmp
-      --without-zstd
+      --with-zstd
       --without-libpsl)
 endif()
 # curl's configure sets its own -O level; CFLAGS alone do not change it.
@@ -387,7 +536,7 @@ else()
     BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} -C lib
     BUILD_IN_SOURCE TRUE
     INSTALL_COMMAND ""
-    DEPENDS openssl_external zlib_external
+    DEPENDS openssl_external zlib_external brotli_external zstd_external
     BUILD_BYPRODUCTS ${EXTERNAL_DIR}/curl/lib/.libs/libcurl.a)
 endif()
 
@@ -1163,89 +1312,6 @@ if(IS_LINUX AND NOT IS_AGENT)
 endif()
 # deps-entry restinio: end
 
-# deps-entry zstd: begin
-# ------------------------------------------------------------------------------
-# zstd (manager + agent, all platforms incl. winagent)
-# ------------------------------------------------------------------------------
-#
-# Upstream ships its CMake project under build/cmake (not at the repo root),
-# so SOURCE_DIR points there. BINARY_DIR is kept out of that tree (as
-# build/cmake-build, or build/cmake-build-win when cross-compiling for
-# Windows) to avoid colliding with the vendored build/{cmake,meson,VS2010,
-# single_file_libs} directories. The Windows BINARY_DIR is intentionally
-# distinct from the non-Windows one -- a Linux/macOS libzstd.a already built
-# on disk must never satisfy the Windows precompiled-artifact fast path
-# below (or vice versa); each platform gets its own EXISTS check. The static
-# archive lands under <BINARY_DIR>/lib/libzstd.a because upstream's
-# lib/CMakeLists.txt is pulled in via add_subdirectory(lib).
-#
-# Windows (winagent) cross-compiles via a nested ExternalProject_Add whose
-# own CMAKE_ARGS re-declare CMAKE_SYSTEM_NAME=Windows and forward the
-# already-cross-compiling top-level CMAKE_C_COMPILER/CMAKE_CXX_COMPILER/
-# CMAKE_AR/CMAKE_RANLIB (mirrors the GoogleTest Windows block below) instead
-# of re-deriving a MinGW prefix independently -- this file's own
-# MINGW_PREFIX is a second, non-synchronized source of truth vs.
-# src/Makefile's MING_BASE, so forwarding what the top-level configure
-# already resolved avoids adding to that split.
-#
-# CMAKE_CXX_COMPILER is required even though zstd's own library is C-only:
-# CMake's project() call, with no explicit LANGUAGES restriction, enables
-# CXX by default, so the nested configure's own compiler sanity-check tries
-# to find a C++ compiler regardless. Without forwarding it, that check falls
-# back to the HOST's /usr/bin/c++ (not the MinGW cross compiler), which
-# fails immediately on a MinGW-only linker flag -- confirmed empirically,
-# not just theorized.
-if(IS_WINDOWS)
-  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build-win)
-  find_program(FULL_RANLIB ${CMAKE_RANLIB} REQUIRED)
-  set(ZSTD_CMAKE_ARGS
-      -DCMAKE_SYSTEM_NAME=Windows
-      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-      -DCMAKE_AR=${CMAKE_AR}
-      -DCMAKE_RANLIB=${FULL_RANLIB}
-      -DZSTD_MULTITHREAD_SUPPORT=OFF)
-else()
-  set(ZSTD_BINARY_DIR ${EXTERNAL_DIR}/zstd/build/cmake-build)
-  set(ZSTD_CMAKE_ARGS "")
-endif()
-
-if(EXISTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
-  message(STATUS "Using precompiled zstd library")
-  add_custom_target(zstd_external)
-else()
-  ExternalProject_Add(
-    zstd_external
-    SOURCE_DIR ${EXTERNAL_DIR}/zstd/build/cmake
-    BINARY_DIR ${ZSTD_BINARY_DIR}
-    CMAKE_ARGS ${DEPS_CMAKE_ARGS}
-               -DBUILD_SHARED_LIBS=OFF
-               -DZSTD_BUILD_STATIC=ON
-               -DZSTD_BUILD_SHARED=OFF
-               -DZSTD_BUILD_PROGRAMS=OFF
-               -DZSTD_BUILD_TESTS=OFF
-               -DZSTD_LEGACY_SUPPORT=OFF
-               -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-               ${ZSTD_CMAKE_ARGS}
-    INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${ZSTD_BINARY_DIR}/lib/libzstd.a)
-
-  if(IS_WINDOWS)
-    ExternalProject_Add_Step(
-      zstd_external ranlib_libs
-      COMMAND ${FULL_RANLIB} ${ZSTD_BINARY_DIR}/lib/libzstd.a
-      DEPENDEES build
-      COMMENT "Running ranlib on zstd library")
-  endif()
-endif()
-
-add_library(ext_zstd STATIC IMPORTED GLOBAL)
-set_target_properties(
-  ext_zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_BINARY_DIR}/lib/libzstd.a)
-add_dependencies(ext_zstd zstd_external)
-target_include_directories(ext_zstd INTERFACE ${EXTERNAL_DIR}/zstd/lib)
-# deps-entry zstd: end
-
 # deps-entry popt: begin
 # ------------------------------------------------------------------------------
 # popt (Linux agent only)
@@ -1608,11 +1674,29 @@ set(WAZUHEXT_WHOLE_LIBS
     ext_libyaml
     ext_pcre2)
 
-# Add curl on supported platforms
+# Add curl on supported platforms. zstd is curl's decoder for zstd replies
+# (#38514). On Linux and Windows it goes after the whole-archive group, so only
+# the objects curl needs are pulled in, and it stays out of the export table
+# (--exclude-libs below): https_client and remoted link their own zstd, and a
+# ZSTD_* exported from here clashes with it on MinGW
+# (https_client/CMakeLists.txt). On macOS -all_load (global) loads all of zstd
+# and nothing hides it, so it is all exported, and https_client binds to this
+# copy instead of its own; both come from the same libzstd.a.
+set(WAZUHEXT_CURL_DEPS)
 if(IS_LINUX
    OR IS_DARWIN
    OR IS_WINDOWS)
   list(APPEND WAZUHEXT_WHOLE_LIBS ext_curl)
+  list(APPEND WAZUHEXT_CURL_DEPS ext_zstd)
+endif()
+
+# curl's Brotli decoder (Linux only); dec before common for the static link order.
+# Unlike zstd it is linked whole and exported: no other module carries its own
+# brotli (the engine and wazuh-manager-certs link this same pool archive), so an
+# exported BrotliDecoder* cannot bind to a different copy, and the MinGW clash
+# that keeps zstd hidden does not apply to a Linux-only dependency.
+if(IS_LINUX)
+  list(APPEND WAZUHEXT_WHOLE_LIBS ext_brotlidec ext_brotlicommon)
 endif()
 
 # Non-Windows additions
@@ -1665,7 +1749,7 @@ if(IS_DARWIN)
   # LDFLAGS into whatever finally links it, so this has to be declared here too.
   target_link_libraries(
     wazuhext
-    PRIVATE "-Wl,-all_load" ${WAZUHEXT_WHOLE_LIBS} "-framework Security"
+    PRIVATE "-Wl,-all_load" ${WAZUHEXT_WHOLE_LIBS} ${WAZUHEXT_CURL_DEPS} "-framework Security"
             "-framework CoreFoundation" "-framework CoreServices"
             "-framework SystemConfiguration")
 
@@ -1677,12 +1761,14 @@ elseif(IS_WINDOWS)
     wazuhext
     PRIVATE -static-libgcc
             "-Wl,--export-all-symbols"
+            "-Wl,--exclude-libs,libzstd.a"
             "-Wl,--add-stdcall-alias"
             "-Wl,-L,${SRC_FOLDER}/build/lib"
             "-Wl,-Bstatic,--whole-archive"
             -lwinpthreadpatched
             ${WAZUHEXT_WHOLE_LIBS}
             "-Wl,--no-whole-archive"
+            ${WAZUHEXT_CURL_DEPS}
             "-Wl,-Bdynamic"
             -ldelayimp
             wsock32
@@ -1715,6 +1801,8 @@ else()
     PRIVATE "-Wl,--whole-archive"
             ${WAZUHEXT_WHOLE_LIBS}
             "-Wl,--no-whole-archive"
+            ${WAZUHEXT_CURL_DEPS}
+            "-Wl,--exclude-libs,libzstd.a"
             rt
             dl
             m

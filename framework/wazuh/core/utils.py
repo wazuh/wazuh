@@ -93,6 +93,69 @@ def clean_pid_files(daemon: str) -> None:
                     print(f'{daemon}: Could not remove {full_path} ({remove_error}).')
 
 
+def _distinct_key(value) -> typing.Hashable:
+    """Get a hashable key of a value, equal for two values only when the values compare equal.
+
+    Parameters
+    ----------
+    value
+        Value to get the key of.
+
+    Raises
+    ------
+    TypeError
+        If the value contains a type whose equality the key cannot represent.
+
+    Returns
+    -------
+    typing.Hashable
+        Key of the value.
+    """
+    if type(value) is dict:
+        return dict, frozenset((k, _distinct_key(v)) for k, v in value.items())
+    if type(value) is list:
+        return list, tuple(_distinct_key(v) for v in value)
+    if isinstance(value, tuple):
+        return tuple, tuple(_distinct_key(v) for v in value)
+
+    hash(value)
+    return value
+
+
+def get_distinct_items(array: list) -> list:
+    """Remove the repeated items of a list, keeping the first occurrence of each one.
+
+    Items are compared by equality. When an item cannot be turned into a hashable key, every item is compared
+    against the ones already kept instead.
+
+    Parameters
+    ----------
+    array : list
+        Items to process.
+
+    Returns
+    -------
+    list
+        Distinct items, in their original order.
+    """
+    distinct_array = []
+    try:
+        keys = [_distinct_key(element) for element in array]
+    except TypeError:
+        for element in array:
+            if element not in distinct_array:
+                distinct_array.append(element)
+        return distinct_array
+
+    seen = set()
+    for key, element in zip(keys, array):
+        if key not in seen:
+            seen.add(key)
+            distinct_array.append(element)
+
+    return distinct_array
+
+
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
                   search_in_fields: list = None, select: list = None, sort_by: list = None,
                   sort_ascending: bool = True, allowed_sort_fields: list = None, offset: int = 0, limit: int = None,
@@ -171,12 +234,7 @@ def process_array(array: list, search_text: str = None, complementary_search: bo
                              allowed_select_fields=allowed_select_fields)
 
     if distinct:
-        distinct_array = []
-        for element in array:
-            if element not in distinct_array:
-                distinct_array.append(element)
-
-        array = distinct_array
+        array = get_distinct_items(array)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -1127,7 +1185,9 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
             The clause itself, field name, nested field names, operator and value.
         """
         try:
-            field_name, field_subnames, op, value = re_get_elements.match(and_clause).groups()
+            # The whole clause must be a term: a match would stop at the first character the value cannot hold
+            # and silently drop the rest (`name=default*anything` filtering by `default`).
+            field_name, field_subnames, op, value = re_get_elements.fullmatch(and_clause).groups()
         except AttributeError:
             raise WazuhError(1407, extra_message=f"Parameter 'q' is not valid: '{and_clause}'")
 
@@ -1289,6 +1349,22 @@ class WazuhDBBackend(AbstractDatabaseBackend):
 
 
 QUERY_OPERATORS = {"=": "=", "!=": "!=", "<": "<", ">": ">", "~": 'LIKE'}
+
+
+def escape_like(value) -> str:
+    """Escape the LIKE wildcards of a value, for a pattern that declares `ESCAPE '\\'`.
+
+    Parameters
+    ----------
+    value : str
+        Value to search for literally.
+
+    Returns
+    -------
+    str
+        The value with '\\', '%' and '_' escaped.
+    """
+    return str(value).replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
 QUERY_SEPARATORS = {',': 'OR', ';': 'AND', '': ''}
 # To correctly turn a query into SQL, a regex is used. This regex will extract all necessary information:
 # For example, the following regex -> (name!=wazuh;id>5),group=webserver <- would return 3 different matches:
@@ -1429,7 +1505,6 @@ class WazuhDBQuery(object):
         self.query_operators = QUERY_OPERATORS
         self.query_separators = QUERY_SEPARATORS
         self.special_characters = "\'\""
-        self.wildcard_equal_fields = set()
         self.query_regex = QUERY_REGEX
         self.date_fields = date_fields
         self.extra_fields = extra_fields
@@ -1452,15 +1527,9 @@ class WazuhDBQuery(object):
             except ValueError:
                 pass
 
-        # Replace special characters with wildcards
-        for sp_char in self.special_characters:
-            if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:
-                if query_filter['operator'] != 'LIKE':
-                    # If original operator was not LIKE, do not append % at the beginning and end of the string
-                    self.wildcard_equal_fields.add(query_filter['field'])
-
-                query_filter['value'] = query_filter['value'].replace(sp_char, '_')
-                query_filter['operator'] = 'LIKE'
+        # Quotes in the value are kept as they are and the operator is never changed: every value is bound (SQLite) or
+        # rendered as a quoted literal (`WazuhDBBackend._substitute_params`), so rewriting a quote into a LIKE wildcard
+        # would only turn `!=` into a positive match and lose the exact match of `=`.
 
     def _add_limit_to_query(self):
         if self.limit:
@@ -1494,11 +1563,12 @@ class WazuhDBQuery(object):
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
+            # search is a literal substring match, as '~' in q: '%', '_' and the backslash are escaped
             self.query += " (" + " OR ".join(
-                f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)'
+                f'({x.split(" as ")[0]} LIKE :search ESCAPE \'\\\' AND {x.split(" as ")[0]} IS NOT NULL)'
                 for k, x in self.fields.items() if k not in self.extra_fields) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
+            self.request['search'] = "%{0}%".format(escape_like(self.search['value']))
 
     def _parse_select_filter(self, select_fields):
 
@@ -1608,10 +1678,12 @@ class WazuhDBQuery(object):
             if q_filter['value'] is not None:
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
-                if q_filter['operator'] == 'LIKE' and q_filter['field'] not in self.wildcard_equal_fields:
-                    self.request[field_filter] = "%{}%".format(self.request[field_filter])
                 self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'],
                                                  field_filter)
+                if q_filter['operator'] == 'LIKE':
+                    # '~' is a substring match, as on the collections filtered in memory: '%' and '_' are literal
+                    self.request[field_filter] = "%{}%".format(escape_like(self.request[field_filter]))
+                    self.query += " ESCAPE '\\'"
                 if not field_filter.isdigit():
                     # filtering without being uppercase/lowercase sensitive
                     self.query += ' COLLATE NOCASE'
@@ -1827,12 +1899,13 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.filter_fields = filter_fields
 
     def _get_total_items(self):
-        # take total items without grouping, and add the group by clause just after getting total items
-        WazuhDBQuery._get_total_items(self)
+        # Group before counting, so the total is the number of rows answered (one per combination of the fields),
+        # as everywhere else, and not the number of items grouped in them (that is each row's 'count').
         self.select.add('count')
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
+        WazuhDBQuery._get_total_items(self)
 
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)

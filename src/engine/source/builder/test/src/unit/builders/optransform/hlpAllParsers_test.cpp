@@ -312,6 +312,9 @@ TEST_F(HlpTestModeTest, ParserFailureWithTestModeTrace)
     EXPECT_FALSE(result.success());
     EXPECT_TRUE(result.hasTrace());
     EXPECT_THAT(result.trace(), testing::HasSubstr("->"));
+    // The failing parser is named after its target field, not a generic "parser"
+    EXPECT_THAT(result.trace(), testing::HasSubstr("Parser <target> failed at: not-an-ip"));
+    EXPECT_THAT(result.trace(), testing::Not(testing::HasSubstr("Parser parser")));
 }
 
 // =============================================================================
@@ -328,7 +331,7 @@ TEST_F(HlpTestModeTest, ParserFailureWithTestModeTrace)
 // specificHLPBuilder's captured sourceValue is fully consumed by
 // hlp::parser::run before any mapper writes to the event (hlp.cpp:164-165),
 // and because json::Json::setString() itself copies the value into an
-// independent temporary rapidjson::Value before committing the overwrite
+// independent temporary json::Value before committing the overwrite
 // (json.cpp). Neither guarantee was covered by a test, so pin both here
 // against real, shipped parsers.
 class HlpAliasingTest : public BaseBuilderTest

@@ -91,7 +91,10 @@ Utility functions `methodToStr()` and `strToMethod()` convert between enum and s
 |---------|----------------|
 | **Unix Domain Socket** | `set_address_family(AF_UNIX)`, binds to file path |
 | **Thread pool** | `CPPHTTPLIB_THREAD_POOL_COUNT` (unless predefined) = `cpp_get_nproc() - 1` clamped to `[2, 16]` (`include/httpsrv/server.hpp`) |
-| **Payload limit** | `set_payload_max_length()` — `413` with `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).` (or `Payload too large.` when unlimited); a 413 body set by a handler is kept |
+| **Payload limit** | `set_payload_max_length()` — `413` with `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).` (or `Payload too large.` when unlimited); a 413 body set by a handler is kept. httplib's separate 8 KiB cap on `application/x-www-form-urlencoded` bodies is lifted (`CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH` in `server.hpp`), so the content type never changes the limit |
+| **Body without a length** | A request with neither `Content-Length` nor `Transfer-Encoding` has an empty body (RFC 9112 §6.3): a pre-routing hook declares `Content-Length: 0`, so it reaches its handler at once instead of httplib reading until the peer closes (a client waiting for its answer used to get a bare `400` after the 5 s read timeout). Any other `400` httplib answers before a handler gets the body `Bad request: the request could not be read.` |
+| **404 / 405** | `addRoute()` records each literal path's methods. A `404` httplib answers for an unmatched request gets the body `Not found: no such route.`, or, when the path is registered under other methods only, becomes `405` with an `Allow` header and `Method not allowed. Allowed: <methods>.` (`HEAD` is listed with `GET`, which httplib also uses to answer it) A `404` set by a route's own handler is left as it is |
+| **One request per connection** | `set_keep_alive_max_count(1)`: every answer carries `Connection: close` (no `Keep-Alive`) and the connection is closed after it. httplib reads each request through a fresh stream, so a pipelined second request read together with the first was discarded unanswered and the connection hung for the 5 s keep-alive timeout; now the client sees the close at once and must send it on a new connection. In-tree clients do not pipeline: remoted's ingest client already sends `Connection: close`, and the framework's `httpx` client and the vulnerability scanner's curl client open a new connection after a close |
 | **Exception safety** | `set_exception_handler()` logs the exception at ERROR and answers `500` with `Internal server error` |
 | **Logging** | Detailed mode: TRACE before the handler (method, path, body) and after it (request body truncated to 1024 chars, response status and body); minimal mode: one TRACE line per request |
 | **Socket path** | `start()` throws if the path is empty, the server is running or the parent directory is missing; an existing socket file is removed first |
@@ -256,7 +259,10 @@ httpsrv/
 | `ServerStartTwice` | Double start throws |
 | `ServerStop` | Clean shutdown |
 | `RouteTest.*` (GET/POST/PUT/DELETE) | Adding routes before/after start and twice, serving, not serving when stopped, the ignored override, `500` on an uncaught handler exception |
-| `BodyRouteTest.*` | Payload at the limit accepted, over the limit `413`, unlimited accepts a large body, a handler's own `413` body preserved |
+| `BodyRouteTest.*` | Payload at the limit accepted, over the limit `413`, unlimited accepts a large body (also form-urlencoded), a handler's own `413` body preserved |
+| `NoContentLengthTest.*` (POST/PUT/DELETE), `ServerTest.BodyWithExplicitLengthIsStillRead` | A request without `Content-Length` reaches its handler at once with an empty body; an explicit length is still read |
+| `ServerTest.WrongMethodOnExistingRouteIs405WithAllow`, `WrongMethodOnGetRouteAllowsHead`, `UnknownRouteIs404WithReason`, `HandlerOwn404IsKept` | `405` with `Allow` (`HEAD` beside `GET`), `404` with a reason, a handler's own `404` kept |
+| `ServerTest.AnswerClosesTheConnection`, `PipelinedRequestIsNotLeftHanging` | Every answer carries `Connection: close`; sequential requests on one client still work; a pipelined pair gets the first answer and an immediate close instead of a 5 s hang |
 
 Build and run:
 

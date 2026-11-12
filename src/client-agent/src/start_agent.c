@@ -139,8 +139,8 @@ w_enroll_status_t try_enroll_to_server(void) {
     hc_enroll_result_t result;
     w_https_client_enroll(request.body_json, request.password, request.enroll_kid, request.enroll_key_hex,
                           &result);
-    /* Destroyed AFTER the response is read: a 403 names the enrollment token that was refused,
-     * and the id it names is the kid this request signed with. */
+    /* Destroyed AFTER the response is read: a refused enrollment token is named in the log, and
+     * the id it names is the kid this request signed with. */
     const w_enroll_status_t status = w_enrollment_process_response(&result, request.enroll_kid);
     w_enroll_request_destroy(&request);
 
@@ -228,6 +228,10 @@ void w_agentd_populate_metadata(void)
     /* OS type (compile-time constant) */
 #ifdef WIN32
     strncpy(metadata.os_type, "windows", sizeof(metadata.os_type) - 1);
+    /* get_win_version() never fills os_platform, and agent-info shares this record: an
+     * empty platform here overwrites its "windows" until agent-info's next publish, and the
+     * first keepalive after a (re)start carries that empty value to the manager. */
+    strncpy(metadata.os_platform, "windows", sizeof(metadata.os_platform) - 1);
 #elif defined(__MACH__)
     strncpy(metadata.os_type, "macos", sizeof(metadata.os_type) - 1);
 #else

@@ -99,6 +99,15 @@ Feature: Tester API Management
     Then the "test" session should not exist
     And no "logtest_" namespaces should exist
 
+  Scenario: Concurrent promotes of the same space all succeed and leave one temp namespace
+    Given I have no tester sessions
+    When I validate a full policy with load_in_tester enabled 8 times concurrently
+    Then the "test" session should exist
+    And exactly one "logtest_" namespace should exist
+    When I request logtest cleanup
+    Then the "test" session should not exist
+    And no "logtest_" namespaces should exist
+
   Scenario: Cleanup logtest is idempotent when nothing exists
     Given I have no tester sessions
     When I request logtest cleanup

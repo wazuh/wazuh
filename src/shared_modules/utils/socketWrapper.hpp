@@ -423,6 +423,60 @@ private:
         }
     }
 
+    // Binds inside a private directory, sets the mode through a pinned descriptor and moves the socket into place.
+    void bindUnix(const sockaddr_un& addr)
+    {
+        const std::string path {addr.sun_path};
+        const auto slash {path.rfind('/')};
+        std::string tmpDir {(slash == std::string::npos ? std::string {} : path.substr(0, slash + 1)) + ".wXXXXXX"};
+
+        if (::mkdtemp(tmpDir.data()) == nullptr)
+        {
+            const auto savedErrno {errno};
+            closeSocket();
+            throw std::runtime_error {"Failed to create bind directory " + std::string(std::strerror(savedErrno))};
+        }
+
+        const auto dirFd {::open(tmpDir.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)};
+        struct stat dirStat {};
+        bool success {false};
+
+        if (dirFd >= 0 && ::fstat(dirFd, &dirStat) == 0)
+        {
+            if (!S_ISDIR(dirStat.st_mode) || dirStat.st_uid != ::geteuid() ||
+                (dirStat.st_mode & (S_IRWXG | S_IRWXO)) != 0)
+            {
+                errno = EPERM;
+            }
+            else
+            {
+                // There is no bindat(): bind through the descriptor so a renamed directory cannot redirect it.
+                sockaddr_un tmpAddr {};
+                tmpAddr.sun_family = AF_UNIX;
+                std::snprintf(tmpAddr.sun_path, sizeof(tmpAddr.sun_path), "/proc/self/fd/%d/s", dirFd);
+                success = T::bind(m_sock, reinterpret_cast<const sockaddr*>(&tmpAddr), sizeof(tmpAddr)) == 0 &&
+                          ::fchmodat(dirFd, "s", 0660, 0) == 0 && ::renameat(dirFd, "s", AT_FDCWD, path.c_str()) == 0;
+            }
+        }
+
+        const auto savedErrno {errno};
+        if (dirFd >= 0)
+        {
+            if (!success)
+            {
+                ::unlinkat(dirFd, "s", 0);
+            }
+            ::close(dirFd);
+        }
+        ::rmdir(tmpDir.c_str());
+
+        if (!success)
+        {
+            closeSocket();
+            throw std::runtime_error {"Failed to bind socket " + std::string(std::strerror(savedErrno))};
+        }
+    }
+
 public:
     explicit Socket(const int sock = INVALID_SOCKET)
         : m_sock {sock}
@@ -511,6 +565,35 @@ public:
         ssize_t ret;
         bool dataToRead = true;
 
+        const auto deliverPacket = [&]()
+        {
+            auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
+            auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
+            auto headerOffset = TCommunicationProtocol::getHeaderOffset();
+
+            // The inner header size is untrusted too: it must fit inside the packet just read.
+            if (static_cast<uint64_t>(dataOffset) > m_totalReadSize)
+            {
+                resetReadState();
+                throw std::runtime_error {"Invalid header size."};
+            }
+
+            m_readPosition = 0;
+            m_readSize = PACKET_FIELD_SIZE;
+            m_status = SocketStatus::HEADER;
+
+            callback(m_sock,
+                     m_recvDataBuffer.data() + dataOffset,
+                     m_totalReadSize - dataOffset,
+                     m_recvDataBuffer.data() + headerOffset,
+                     headerDataSize);
+
+            if (m_totalReadSize > BUFFER_MAX_SIZE)
+            {
+                shrinkRecvBuffer();
+            }
+        };
+
         if (m_sock != INVALID_SOCKET)
         {
             while (dataToRead)
@@ -563,10 +646,19 @@ public:
                                 m_recvDataBuffer.resize(static_cast<size_t>(m_totalReadSize) + 1);
                             }
 
-                            // We have read the entire header, now we need to read the body.
-                            m_readPosition = 0;
-                            m_readSize = m_totalReadSize;
-                            m_status = SocketStatus::BODY;
+                            if (m_totalReadSize == 0)
+                            {
+                                // An empty packet has no body to wait for: recv() of zero bytes would never
+                                // complete it, leaving the peer without an answer. Deliver it now.
+                                deliverPacket();
+                            }
+                            else
+                            {
+                                // We have read the entire header, now we need to read the body.
+                                m_readPosition = 0;
+                                m_readSize = m_totalReadSize;
+                                m_status = SocketStatus::BODY;
+                            }
                         }
                     }
                 }
@@ -602,31 +694,7 @@ public:
                         }
                         else
                         {
-                            auto headerDataSize = TCommunicationProtocol::getHeaderSize(m_recvDataBuffer);
-                            auto dataOffset = TCommunicationProtocol::getDataOffset(headerDataSize);
-                            auto headerOffset = TCommunicationProtocol::getHeaderOffset();
-
-                            // The inner header size is untrusted too: it must fit inside the packet just read.
-                            if (static_cast<uint64_t>(dataOffset) > m_totalReadSize)
-                            {
-                                resetReadState();
-                                throw std::runtime_error {"Invalid header size."};
-                            }
-
-                            m_readPosition = 0;
-                            m_readSize = PACKET_FIELD_SIZE;
-                            m_status = SocketStatus::HEADER;
-
-                            callback(m_sock,
-                                     m_recvDataBuffer.data() + dataOffset,
-                                     m_totalReadSize - dataOffset,
-                                     m_recvDataBuffer.data() + headerOffset,
-                                     headerDataSize);
-
-                            if (m_totalReadSize > BUFFER_MAX_SIZE)
-                            {
-                                shrinkRecvBuffer();
-                            }
+                            deliverPacket();
                         }
                     }
                 }
@@ -780,27 +848,12 @@ public:
 
             if (connectInfo.type == SocketType::UNIX)
             {
-                if (T::fchmod(m_sock, 0660) != 0)
-                {
-                    closeSocket();
-                    throw std::runtime_error {"Failed to fchmod socket " + std::string(std::strerror(errno))};
-                }
+                bindUnix(*reinterpret_cast<const sockaddr_un*>(connectInfo.addr));
             }
-
-            if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
+            else if (T::bind(m_sock, connectInfo.addr, connectInfo.addrSize) != 0)
             {
                 closeSocket();
                 throw std::runtime_error {"Failed to bind socket " + std::string(std::strerror(errno))};
-            }
-
-            if (connectInfo.type == SocketType::UNIX)
-            {
-                auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
-                if (T::chmod(sunAddr->sun_path, 0660) != 0)
-                {
-                    closeSocket();
-                    throw std::runtime_error {"Failed to chmod socket " + std::string(std::strerror(errno))};
-                }
             }
 
             if (T::listen(m_sock, SOMAXCONN) != 0)

@@ -243,6 +243,22 @@ stages:
           restarted: False
       status_code: 200
 
+    # PUT /groups/group2/configuration, the same file behind a standard XML declaration
+  - name: Update group2 configuration with an XML declaration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group2/configuration"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: "application/xml"
+      data:
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n{file_xml:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+
     # PUT /groups/wrong_group/configuration
   - name: Try to update configuration of a non existing group
     request:

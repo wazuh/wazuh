@@ -319,9 +319,18 @@ int main(int argc, char **argv)
 
     /* Exit if testing config */
     if (test_config) {
-        // Validate rootcheck config too; rootcheck_init() with test_config=1
-        // only parses and exits without emitting STARTUP_MSG.
-        rootcheck_init(test_config);
+        // Validate rootcheck config too, from the same file; rootcheck_init()
+        // with test_config=1 only parses and exits without emitting STARTUP_MSG.
+        // Both sections are read before failing so that every error is reported.
+        // An invalid configuration fails the test, as the other daemons' -t does:
+        // outside the test it only disables the module, so the agent would start
+        // without FIM or rootcheck and wazuh-control would report success.
+        const int rootcheck_r = rootcheck_init(test_config, cfg);
+
+        if (r < 0 || rootcheck_r != 0) {
+            mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+        }
+
         exit(0);
     }
 
@@ -375,7 +384,7 @@ int main(int argc, char **argv)
     // INFO: Started"); running it before the gate would make rootcheck
     // appear as "Started" while every module is in fact still blocked
     // waiting for the manager's merged.mg hash to validate (issue 36239).
-    if (rootcheck_init(0) == 0) {
+    if (rootcheck_init(0, cfg) == 0) {
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
@@ -388,6 +397,12 @@ int main(int argc, char **argv)
     /* Connect to the queue */
 
     if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
+        /* A termination signal aborted the connection: fim_shutdown_waiter() ends the process */
+        if (fim_shutdown_process_on()) {
+            while (1) {
+                pause();
+            }
+        }
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 

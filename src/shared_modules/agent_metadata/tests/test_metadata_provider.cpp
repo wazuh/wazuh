@@ -397,7 +397,9 @@ TEST_F(MetadataProviderTest, ReadsNeverMixTwoConcurrentRecords)
     std::thread reader1(reader);
     std::thread reader2(reader);
 
-    for (int i = 0; i < 5000; ++i)
+    // Keep writing until a reader has read at least once: under valgrind the readers can start
+    // only after the 5000 updates are done, which would leave nothing racing.
+    for (int i = 0; i < 5000 || reads.load() == 0; ++i)
     {
         metadata_provider_update(i % 2 == 0 ? &recordB : &recordA);
     }

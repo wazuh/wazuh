@@ -151,8 +151,11 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
         w_journal_entry_free(entry);
 
         if (entry_str == NULL) {
+            // The cursor already moved past this entry: skip it and keep reading the newer ones.
+            // It still counts toward maximum_lines so a run of these cannot extend the pass.
             mdebug1(LOGCOLLECTOR_JOURNAL_LOG_FAIL_GET);
-            break;
+            count_logs++;
+            continue;
         }
 
         // Copy the message to the buffer

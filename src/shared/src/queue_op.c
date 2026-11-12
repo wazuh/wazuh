@@ -12,6 +12,13 @@
 
 w_queue_t * queue_init(size_t size) {
     w_queue_t * queue;
+
+    /* A zero size would divide by zero in queue_full(), and a size whose byte count overflows
+     * size_t would allocate a short buffer that queue_push() then writes past. */
+    if (size == 0 || size > SIZE_MAX / sizeof(void *)) {
+        merror_exit("Invalid queue size %zu: it must be between 1 and %zu.", size, SIZE_MAX / sizeof(void *));
+    }
+
     os_calloc(1, sizeof(w_queue_t), queue);
     os_malloc(size * sizeof(void *), queue->data);
     queue->size = size;

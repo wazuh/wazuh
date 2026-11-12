@@ -81,6 +81,21 @@ before reading the policy does not change it, and an unread policy is never pers
 A space that keeps an older route after a failed cycle does not ask for the retry: that route keeps
 processing events. A run ended by `requestShutdown()` returns `false`.
 
+### Logging of a missing space
+
+A space the indexer has no policy for is logged once per absence, at the level its effect deserves:
+`WARNING` when the engine still serves a route for it (the deployed content is kept and nothing can
+refresh it until the space is published again), `INFO` when the space was never deployed (a fresh
+install whose indexer is still loading its content). Later cycles log the absence at `DEBUG` only
+(the sink's `has no policy in the indexer`), and the space appearing again at `INFO` (`is published
+in wazuh-indexer, resuming synchronization`). The sink reports the absence through
+`RulesetDeployment::policyMissing`, as of its last probe; `CMSync` keeps the per-space flag, which is
+not persisted.
+
+A cycle that fails on the indexer leaves the space `FAILED` and keeps the deployed route. When the
+next cycle finds the deployed content current, the recovery is logged at `INFO` (`Space '<name>' is
+back in sync with wazuh-indexer`); a cycle that finds new content logs the usual deployment lines.
+
 ### Startup
 
 The constructor builds one sink and one topic per tracked space, deletes the space's namespaces no
@@ -175,7 +190,8 @@ constexpr std::size_t earlyRetryInterval(std::size_t retryInterval, std::size_t 
 
 - **Unit** — one topic per tracked space whose sink is also its token store, orphan collection at
   startup, the record and the deployment read back, a malformed record rejected, the status table
-  above, retries, shutdown, the early-retry return value and `earlyRetryInterval()`.
+  above, retries, shutdown, the early-retry return value and `earlyRetryInterval()`, and the logging
+  of a missing space and of a recovery.
 - **Component** — `CMSync` over real registrations with the router and stores faked: a cycle
   against an empty indexer defers or finds nothing without failing, and shutdown stops the run.
 - The download and deployment are covered by `cmcontent_utest` and `content_manager_utest`.

@@ -1,0 +1,25 @@
+policy:
+  id: requirements_not_met
+  file: requirements_not_met.yaml
+  name: SCA requirements not met
+  description: Mock policy whose requirements never pass on any system
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
+
+requirements:
+  name: Missing file
+  description: Requirement on a file that does not exist.
+  condition: all
+  rules:
+    - f:/wzsca-nonexistent/file
+
+checks:
+
+  - id: 1
+    name: Test_1
+    description: Check that is never evaluated because the requirements are not met
+    rationale: Test_1
+    remediation: Test_1
+    condition: all
+    rules:
+      - f:/proc/sys/kernel/ostype -> Linux

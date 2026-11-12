@@ -6,13 +6,15 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch, MagicMock, AsyncMock, call
+import base64
 import binascii
 import hashlib
 import json
 import jwt
 import pytest
+import time
 
-from starlette.requests import Request
+from starlette.requests import ClientDisconnect, Request
 from starlette.responses import Response
 
 from connexion import AsyncApp
@@ -24,15 +26,18 @@ from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
 from freezegun import freeze_time
 
 from wazuh.core.exception import WazuhInternalError
+from wazuh.core.utils import get_utc_now
 
 from api.middlewares import charge_unauthenticated_request, charge_authenticated_request, \
     is_authenticated_bucket_exhausted, check_blocked_ip, \
     settle_login_attempt, cleanup_general_request_stats, cleanup_login_attempt_stats, get_client_key, \
+    get_login_attempt_key, \
     UNKNOWN_USER_STRING, LOGIN_ENDPOINT, \
     RUN_AS_LOGIN_ENDPOINT, AUTH_CONTEXT_MAX_PAYLOAD_SIZE, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
     CheckAuthenticatedRateLimitMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, SecureHeadersMiddleware, \
     CheckExpectHeaderMiddleware, secure_headers, access_log, get_declared_content_length, read_capped_body, \
-    CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED
+    CACHED_BODY_KEY, AUTH_CONTEXT_NOT_LOGGED, warn_rate_limited, RATE_LIMIT_WARNING_INTERVAL_SECONDS, \
+    RATE_LIMIT_CODE_KEY
 from api.alogging import MAX_LOGGED_BODY_SIZE
 from api.api_exception import ExpectFailedException, PayloadTooLargeException
 
@@ -97,6 +102,12 @@ def chunked_receive(chunk, chunks):
         for index in range(chunks)
     ])
 
+# Keys the login lockout counts `mock_req` under: it carries no Basic credentials, so no user,
+# and the client across all users.
+LOGIN_KEY = ('ip', '')
+CLIENT_KEY = ('ip', None)
+
+
 @pytest.fixture
 def mock_req():
     """fixture to wrap functions with request"""
@@ -120,23 +131,30 @@ async def test_middlewares_check_blocked_ip(mock_req):
        Check if the ip_block is emptied when the blocking period has finished, and that the
        current attempt is then counted."""
     api_conf = {'access': {'block_time': 300, 'max_login_attempts': 50}}
-    with patch("api.middlewares.ip_stats", new={'ip': {'timestamp': -300}}) as mock_ip_stats, \
-         patch("api.middlewares.ip_block", new={"ip"}) as mock_ip_block, \
+    with patch("api.middlewares.ip_stats", new={LOGIN_KEY: {'timestamp': -300}}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new={LOGIN_KEY}) as mock_ip_block, \
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         await check_blocked_ip(mock_req)
-        assert "ip" not in mock_ip_block
-        assert mock_ip_stats == {'ip': {'attempts': 1, 'timestamp': 10.0}}
+        assert LOGIN_KEY not in mock_ip_block
+        assert mock_ip_stats == {LOGIN_KEY: {'attempts': 1, 'timestamp': 10.0},
+                                 CLIENT_KEY: {'attempts': 1, 'timestamp': 10.0}}
 
 
-@patch("api.middlewares.ip_stats", new={"ip": {'timestamp': 5}})
-@patch("api.middlewares.ip_block", new={"ip"})
+@patch("api.middlewares.ip_stats", new={LOGIN_KEY: {'timestamp': 5}})
+@patch("api.middlewares.ip_block", new={LOGIN_KEY})
 @freeze_time(datetime(1970, 1, 1))
 @pytest.mark.asyncio
 async def test_middlewares_check_blocked_ip_ko(mock_req):
-    """Test if `check_blocked_ip` raises an exception if the IP is still blocked."""
-    with patch('api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req):
+    """Test if `check_blocked_ip` raises an exception if the IP is still blocked, and logs the block."""
+    with patch('api.middlewares.ConnexionRequest.from_starlette_request', returns_value=mock_req), \
+         patch('api.middlewares.rate_limit_warnings', new={}), \
+         patch('api.middlewares.logger.warning') as mock_log_warning:
         with pytest.raises(ProblemException) as exc_info:
             await check_blocked_ip(mock_req)
+
+    mock_log_warning.assert_called_once_with(
+        f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}. "
+        f"User: {get_login_attempt_key(mock_req)[1]!r}.")
 
     assert exc_info.value.status == 403
     assert exc_info.value.title == "Permission Denied"
@@ -151,8 +169,8 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
 @pytest.mark.parametrize('stats, expected_attempts, expected_timestamp, expect_blocked', [
     ({}, 1, 10.0, False),
-    ({'ip': {'attempts': 3, 'timestamp': 5}}, 4, 5, False),
-    ({'ip': {'attempts': 4, 'timestamp': 5}}, 5, 5, True),
+    ({LOGIN_KEY: {'attempts': 3, 'timestamp': 5}}, 4, 5, False),
+    ({LOGIN_KEY: {'attempts': 4, 'timestamp': 5}}, 5, 5, True),
 ])
 async def test_middlewares_check_blocked_ip_counts_attempt(
         stats, expected_attempts, expected_timestamp, expect_blocked, mock_req):
@@ -165,9 +183,9 @@ async def test_middlewares_check_blocked_ip_counts_attempt(
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         await check_blocked_ip(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == expected_attempts
-        assert mock_ip_stats['ip']['timestamp'] == expected_timestamp
-        assert ('ip' in mock_ip_block) == expect_blocked
+        assert mock_ip_stats[LOGIN_KEY]['attempts'] == expected_attempts
+        assert mock_ip_stats[LOGIN_KEY]['timestamp'] == expected_timestamp
+        assert (LOGIN_KEY in mock_ip_block) == expect_blocked
 
 
 @pytest.mark.asyncio
@@ -185,8 +203,8 @@ async def test_middlewares_check_blocked_ip_enforces_limit_without_auth_failure(
         await check_blocked_ip(mock_req)
         await check_blocked_ip(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == 3
-        assert "ip" in mock_ip_block
+        assert mock_ip_stats[LOGIN_KEY]['attempts'] == 3
+        assert LOGIN_KEY in mock_ip_block
 
         with pytest.raises(ProblemException) as exc_info:
             await check_blocked_ip(mock_req)
@@ -195,10 +213,10 @@ async def test_middlewares_check_blocked_ip_enforces_limit_without_auth_failure(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('stats, max_login_attempts, expected_stats, expect_blocked', [
-    ({'ip': {'attempts': 1, 'timestamp': 10}}, 5, {}, False),
-    ({'ip': {'attempts': 3, 'timestamp': 10}}, 5, {'ip': {'attempts': 2, 'timestamp': 10}}, False),
-    ({'ip': {'attempts': 5, 'timestamp': 10}, }, 5, {'ip': {'attempts': 4, 'timestamp': 10}}, False),
-    ({'ip': {'attempts': 1, 'timestamp': 10}}, 1, {}, False),
+    ({LOGIN_KEY: {'attempts': 1, 'timestamp': 10}}, 5, {}, False),
+    ({LOGIN_KEY: {'attempts': 3, 'timestamp': 10}}, 5, {LOGIN_KEY: {'attempts': 2, 'timestamp': 10}}, False),
+    ({LOGIN_KEY: {'attempts': 5, 'timestamp': 10}, }, 5, {LOGIN_KEY: {'attempts': 4, 'timestamp': 10}}, False),
+    ({LOGIN_KEY: {'attempts': 1, 'timestamp': 10}}, 1, {}, False),
 ])
 async def test_middlewares_settle_login_attempt(
         stats, max_login_attempts, expected_stats, expect_blocked, mock_req):
@@ -206,14 +224,14 @@ async def test_middlewares_settle_login_attempt(
        for a successful login, drops the entry when no attempt is left, and unblocks the IP if
        the release brings it back under max_login_attempts."""
     api_conf = {'access': {'block_time': 300, 'max_login_attempts': max_login_attempts}}
-    starting_block = {'ip'} if stats['ip']['attempts'] >= max_login_attempts else set()
+    starting_block = {LOGIN_KEY} if stats[LOGIN_KEY]['attempts'] >= max_login_attempts else set()
     with patch("api.middlewares.ip_stats", new=dict(stats)) as mock_ip_stats, \
          patch("api.middlewares.ip_block", new=starting_block) as mock_ip_block, \
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         await settle_login_attempt(mock_req)
 
         assert mock_ip_stats == expected_stats
-        assert ('ip' in mock_ip_block) == expect_blocked
+        assert (LOGIN_KEY in mock_ip_block) == expect_blocked
 
 
 @pytest.mark.asyncio
@@ -244,7 +262,7 @@ async def test_middlewares_repeated_successful_logins_never_block_ip(mock_req):
             await settle_login_attempt(mock_req)
 
         assert mock_ip_stats == {}
-        assert "ip" not in mock_ip_block
+        assert LOGIN_KEY not in mock_ip_block
 
 
 @pytest.mark.asyncio
@@ -264,8 +282,8 @@ async def test_middlewares_login_traffic_does_not_slide_the_window(mock_req):
             if succeeds:
                 await settle_login_attempt(mock_req)
 
-        assert mock_ip_stats['ip']['attempts'] == 1
-        assert "ip" not in mock_ip_block
+        assert mock_ip_stats[LOGIN_KEY]['attempts'] == 1
+        assert LOGIN_KEY not in mock_ip_block
 
 
 @pytest.mark.asyncio
@@ -286,8 +304,8 @@ async def test_middlewares_window_starts_at_first_failed_attempt(mock_req):
             frozen.move_to(datetime(1970, 1, 1) + timedelta(seconds=elapsed))
             await check_blocked_ip(mock_req)
 
-        assert mock_ip_stats['ip'] == {'attempts': 3, 'timestamp': 50.0}
-        assert "ip" in mock_ip_block
+        assert mock_ip_stats[LOGIN_KEY] == {'attempts': 3, 'timestamp': 50.0}
+        assert LOGIN_KEY in mock_ip_block
 
 
 @pytest.mark.asyncio
@@ -568,29 +586,103 @@ async def test_check_blocked_ip_groups_an_ipv6_client_by_its_64():
          patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
          patch("api.middlewares.configuration.api_conf", new=api_conf):
         for suffix in ('1', '2', '3'):
-            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host=f'2001:db8::{suffix}')))
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host=f'2001:db8::{suffix}'), headers={}))
 
-        assert mock_ip_stats == {'2001:db8::/64': {'attempts': 3, 'timestamp': 10.0}}
-        assert mock_ip_block == {'2001:db8::/64'}
+        assert mock_ip_stats == {('2001:db8::/64', ''): {'attempts': 3, 'timestamp': 10.0},
+                                 ('2001:db8::/64', None): {'attempts': 3, 'timestamp': 10.0}}
+        assert mock_ip_block == {('2001:db8::/64', '')}
 
         with pytest.raises(ProblemException) as exc_info:
-            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8::ffff')))
+            await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8::ffff'), headers={}))
         assert exc_info.value.status == 403
 
         # A different /64 is a different client.
-        await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8:0:1::1')))
-        assert mock_ip_stats['2001:db8:0:1::/64']['attempts'] == 1
+        await check_blocked_ip(SimpleNamespace(client=SimpleNamespace(host='2001:db8:0:1::1'), headers={}))
+        assert mock_ip_stats[('2001:db8:0:1::/64', '')]['attempts'] == 1
 
 
 @pytest.mark.asyncio
 async def test_settle_login_attempt_uses_the_client_key():
     """A successful login releases the attempt under the same key it was charged to."""
-    with patch("api.middlewares.ip_stats", new={'2001:db8::/64': {'attempts': 2, 'timestamp': 10}}) as stats, \
+    with patch("api.middlewares.ip_stats", new={('2001:db8::/64', ''): {'attempts': 2, 'timestamp': 10}}) as stats, \
          patch("api.middlewares.ip_block", new=set()), \
          patch("api.middlewares.configuration.api_conf", new={'access': {'max_login_attempts': 5}}):
-        await settle_login_attempt(SimpleNamespace(client=SimpleNamespace(host='2001:db8::99')))
+        await settle_login_attempt(SimpleNamespace(client=SimpleNamespace(host='2001:db8::99'), headers={}))
 
-        assert stats['2001:db8::/64']['attempts'] == 1
+        assert stats[('2001:db8::/64', '')]['attempts'] == 1
+
+
+def _login_request(host: str, authorization: str = None) -> SimpleNamespace:
+    """Request to a login endpoint from `host`, with `authorization` as its Authorization header."""
+    return SimpleNamespace(client=SimpleNamespace(host=host),
+                           headers={'Authorization': authorization} if authorization else {})
+
+
+def _basic(user: str, password: str = 'pass') -> str:
+    return 'Basic ' + base64.b64encode(f'{user}:{password}'.encode('latin1')).decode()
+
+
+@pytest.mark.parametrize('authorization, expected_user', [
+    (None, ''),
+    (_basic('wazuh'), 'wazuh'),
+    (_basic('wazuh-internal-client', 'a:b'), 'wazuh-internal-client'),
+    (_basic('u' * 1000), 'u' * 64),
+    ('Basic not-base64!', ''),
+    ('Basic ñ', ''),
+    ('Bearer token', ''),
+    ('Basic', ''),
+])
+def test_get_login_attempt_key(authorization, expected_user):
+    """The lockout key is the client key and the user of the Basic credentials, truncated; a
+       request without readable Basic credentials has no user."""
+    assert get_login_attempt_key(_login_request('2001:db8::1', authorization)) == ('2001:db8::/64', expected_user)
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_blocked_ip_blocks_per_user():
+    """Failures for one user block that user from the address, not another one logging in from it."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 3}}
+    with patch("api.middlewares.ip_stats", new={}), \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for _ in range(3):
+            await check_blocked_ip(_login_request('127.0.0.1', _basic('wazuh', 'wrong')))
+
+        assert mock_ip_block == {('127.0.0.1', 'wazuh')}
+        with pytest.raises(ProblemException):
+            await check_blocked_ip(_login_request('127.0.0.1', _basic('wazuh')))
+
+        await check_blocked_ip(_login_request('127.0.0.1', _basic('wazuh-internal-client')))
+        await settle_login_attempt(_login_request('127.0.0.1', _basic('wazuh-internal-client')))
+        assert mock_ip_block == {('127.0.0.1', 'wazuh')}
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_check_blocked_ip_blocks_a_client_trying_many_users():
+    """A client failing for many user names is blocked for all of them once its failures across
+       users reach LOGIN_CLIENT_ATTEMPTS_FACTOR times max_login_attempts, which also bounds the
+       entries it can create."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 2}}
+    with patch("api.middlewares.ip_stats", new={}) as mock_ip_stats, \
+         patch("api.middlewares.ip_block", new=set()) as mock_ip_block, \
+         patch("api.middlewares.LOGIN_CLIENT_ATTEMPTS_FACTOR", new=3), \
+         patch("api.middlewares.configuration.api_conf", new=api_conf):
+        for user in ('a', 'b', 'c', 'd', 'e'):
+            await check_blocked_ip(_login_request('10.0.0.1', _basic(user)))
+        assert ('10.0.0.1', None) not in mock_ip_block
+
+        await check_blocked_ip(_login_request('10.0.0.1', _basic('f')))
+        assert ('10.0.0.1', None) in mock_ip_block
+        with pytest.raises(ProblemException):
+            await check_blocked_ip(_login_request('10.0.0.1', _basic('g')))
+        assert len(mock_ip_stats) == 7
+
+        # Another client is not affected, and a success gives the attempt back on both keys.
+        await check_blocked_ip(_login_request('10.0.0.2', _basic('a')))
+        await settle_login_attempt(_login_request('10.0.0.2', _basic('a')))
+        assert not any(key[0] == '10.0.0.2' for key in mock_ip_stats)
 
 
 @pytest.mark.asyncio
@@ -931,11 +1023,9 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
             endpoint, mock_req.query_params, expected_body, 0.0, response.status_code,
             hash_auth_context=hash, headers=mock_req.headers
         )
-        if status_code == 403 and \
-            endpoint in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} and \
-                method in {'GET', 'POST'}:
-            mock_log_warning.assert_called_once_with(
-                f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}")
+        # A 403 on a login endpoint is not necessarily a blocked client (an RBAC or run_as refusal is
+        # also a 403): the block is logged by `check_blocked_ip`, never here.
+        assert not any('IP blocked' in str(c) for c in mock_log_warning.call_args_list)
 
 
 @pytest.mark.asyncio
@@ -1113,6 +1203,37 @@ async def test_access_log_unreadable_keypair(mock_req):
         )
 
 
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_deeply_nested_token(mock_req):
+    """A bearer token whose header is nested too deep to decode must not turn the response into a 500.
+
+    PyJWT lets the decoder's RecursionError escape instead of raising a PyJWTError, and `access_log` runs
+    after the response has been produced: the logged user degrades to unknown.
+    """
+    response = MagicMock()
+    response.status_code = 401
+    endpoint = '/agents'
+
+    mock_req.json = AsyncMock(return_value={})
+    mock_req.method = 'GET'
+    mock_req.scope = {'path': endpoint}
+    mock_req.headers = {}
+    mock_req.query_params = {}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.generate_keypair', return_value=('private', 'public')), \
+        patch('api.middlewares.jwt.decode', side_effect=RecursionError), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
+              return_value=('bearer', 'token')):
+        await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+        mock_custom_logging.assert_called_once_with(
+            UNKNOWN_USER_STRING, mock_req.client.host, mock_req.method, endpoint, mock_req.query_params,
+            {}, 0.0, response.status_code, hash_auth_context='', headers=mock_req.headers
+        )
+
+
 @freeze_time(datetime(1970, 1, 1, 0, 0, 0))
 @pytest.mark.asyncio
 @pytest.mark.parametrize("exception", [
@@ -1153,6 +1274,50 @@ async def test_access_log_ko(mock_req, exception):
             endpoint, mock_req.query_params, body, 0.0, response.status_code,
             hash_auth_context='', headers=mock_req.headers
         )
+
+
+@freeze_time(datetime(1970, 1, 1, 0, 0, 0))
+@pytest.mark.asyncio
+@pytest.mark.parametrize('authorization', [
+    'Basic YWJj',                                     # 'abc': no colon
+    'Basic ' + base64.b64encode(b'wazuh').decode(),   # a bare user name, no colon
+    'Basic !!!!',                                     # not base64: decodes to nothing
+    'Basic =',                                        # bad padding
+    'Basic ',                                         # empty value
+    'Basic',                                          # no value at all
+], ids=['no-colon', 'user-only', 'not-base64', 'bad-padding', 'empty', 'no-value'])
+@pytest.mark.parametrize('status_code', [401, 429])
+async def test_access_log_malformed_basic_credentials(authorization, status_code, mock_req):
+    """A Basic credential that names no user is logged as an unknown user, never raised.
+
+    `access_log` runs after connexion has refused the request (401), or after the unauthenticated
+    limit has (429): an exception here would replace that response with a 500 and drop the access
+    line, so a flood of such requests would go unthrottled.
+    """
+    response = MagicMock()
+    response.status_code = status_code
+
+    mock_req.json = AsyncMock(return_value={})
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/agents', 'extensions': {RATE_LIMIT_CODE_KEY: 6005}}
+    mock_req.headers = {'Authorization': authorization}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.warn_rate_limited') as mock_warn_rate_limited:
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 0).timestamp())
+
+    mock_custom_logging.assert_called_once_with(
+        UNKNOWN_USER_STRING, mock_req.client.host, 'GET', '/agents', {}, {}, 0.0, status_code,
+        hash_auth_context='', headers=mock_req.headers
+    )
+    if status_code == 429:
+        mock_warn_rate_limited.assert_called_once_with(mock_req.client.host, UNKNOWN_USER_STRING,
+                                                       authenticated=False)
+    else:
+        mock_warn_rate_limited.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -1286,6 +1451,31 @@ async def test_wazuh_access_logger_middleware_reads_loggable_body():
     # at this point, so the object graph is not built here.
     assert request._body == body
     assert not hasattr(request, '_json')
+
+
+@pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_continues_after_client_disconnect():
+    """A disconnected body still reaches rate limiting and produces an access-log attempt."""
+    response = MagicMock()
+    response.status_code = 400
+    request = build_request(content_length=12, receive=AsyncMock(return_value={'type': 'http.disconnect'}))
+    endpoint = AsyncMock(return_value=response)
+    rate_limits = CheckAuthenticatedRateLimitMiddleware(AsyncApp(__name__), dispatch=endpoint)
+
+    async def dispatch_with_rate_limits(request):
+        return await rate_limits.dispatch(request, endpoint)
+
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_with_rate_limits)
+
+    with patch('api.middlewares.charge_unauthenticated_request', new=AsyncMock(return_value=0)) as charge, \
+         patch('api.middlewares.access_log') as mock_access_log, \
+         patch('api.middlewares.ConnexionRequest.from_starlette_request', return_value=request):
+        assert await middleware.dispatch(request=request, call_next=dispatch_with_rate_limits) == response
+
+    assert request._body == b''
+    charge.assert_awaited_once()
+    endpoint.assert_awaited_once()
+    mock_access_log.assert_awaited_once()
 
 
 @pytest.mark.parametrize('body', [
@@ -1528,6 +1718,27 @@ async def test_access_log_survives_an_unparsable_body(mock_req):
 
 
 @pytest.mark.asyncio
+async def test_access_log_survives_client_disconnect_while_parsing_body(mock_req):
+    """A disconnect during access-log body parsing must not suppress the log line."""
+    response = MagicMock()
+    response.status_code = 400
+    mock_req._body = b''
+    mock_req.json = AsyncMock(side_effect=ClientDisconnect)
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {'user': 'wazuh'}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'application/json'}
+
+    with patch('api.middlewares.custom_logging') as mock_custom_logging:
+        await access_log(request=mock_req, response=response,
+                         prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    mock_custom_logging.assert_called_once()
+    assert mock_custom_logging.call_args.args[5] == {}
+
+
+@pytest.mark.asyncio
 async def test_secure_headers_middleware(mock_req):
     """Test access logging."""
     response = MagicMock()
@@ -1608,7 +1819,7 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     mock_request = MagicMock(headers={
         'Expect': '100-continue',
         'Content-Length': '10'
-    })
+    }, scope={'path': '/agents'})
 
     call_next_mock = AsyncMock(return_value=Response("Success"))
 
@@ -1621,6 +1832,24 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     # like every other size ceiling in the API, not the 417 an unmeetable expectation gets.
     assert exc_info.value.status == 413
     assert "Maximum content size limit (5) exceeded" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_check_expect_header_middleware_escapes_the_logged_path():
+    """The refused path is logged escaped: a percent-encoded line break must not forge an api.log entry."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={'Expect': '100-continue', 'Content-Length': '10'},
+                             scope={'path': '/x\n2026/11/06 12:00:01 ERROR: FORGED-LINE'})
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}), \
+            patch('api.middlewares.logger') as mock_logger:
+        with pytest.raises(PayloadTooLargeException):
+            await middleware.dispatch(mock_request, AsyncMock())
+
+    args = mock_logger.warning.call_args.args
+    assert args[1] == '/x\\n2026/11/06 12:00:01 ERROR: FORGED-LINE'
+    assert '\n' not in args[0] % args[1:]
 
 
 @pytest.mark.asyncio
@@ -1816,12 +2045,149 @@ async def test_access_log_warns_on_429(mock_req):
 
     with TestContext(operation=operation), \
         patch('api.middlewares.custom_logging'), \
+        patch('api.middlewares.rate_limit_warnings', new={}), \
         patch('api.middlewares.logger.warning') as mock_warning:
         expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
         await access_log(request=mock_req, response=response, prev_time=expected_time)
 
         mock_warning.assert_called_once_with(
             f'Maximum number of requests per minute reached. IP: {mock_req.client.host}. User: wazuh.')
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize('code, context, expected', [
+    # Refused by the authenticated limit before authentication ran: no identity yet, still authenticated
+    (6001, {}, 'Maximum number of requests per minute reached. IP: ip. User: wazuh.'),
+    (6001, {'user': 'wazuh'}, 'Maximum number of requests per minute reached. IP: ip. User: wazuh.'),
+    (6005, {}, 'Maximum number of unauthenticated requests per minute reached. IP: ip.'),
+])
+async def test_access_log_names_the_limit_that_refused(mock_req, code, context, expected):
+    """The 429 warning names the limit the request hit, not whether the context carries an identity."""
+    middleware = CheckRateLimitsMiddleware(AsyncApp(__name__))
+    mock_req.url = MagicMock()
+    mock_req.url.path = '/agents'
+    mock_req.scope = {'path': '/agents', 'extensions': {}}
+    api_conf = {'access': {'max_request_per_minute': 300, 'max_unauthenticated_request_per_minute': 10}}
+
+    with patch('api.middlewares.configuration.api_conf', new=api_conf), \
+            patch('api.middlewares.is_authenticated_bucket_exhausted', new=AsyncMock(return_value=code == 6001)), \
+            patch('api.middlewares.charge_unauthenticated_request', new=AsyncMock(return_value=code)), \
+            pytest.raises(ProblemException) as exc_info:
+        await middleware.dispatch(request=mock_req, call_next=AsyncMock(side_effect=Unauthorized()))
+    assert exc_info.value.ext.get('code') == code
+
+    response = MagicMock()
+    response.status_code = 429
+    mock_req.json = AsyncMock(return_value={})
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = context
+    mock_req.headers = {'Authorization': 'Basic ' + base64.b64encode(b'wazuh:pass').decode()}
+
+    with patch('api.middlewares.custom_logging'), \
+            patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        await access_log(request=mock_req, response=response, prev_time=datetime(1970, 1, 1, 0, 0, 10).timestamp())
+
+    mock_warning.assert_called_once_with(expected)
+
+
+def test_warn_rate_limited_is_throttled():
+    """One WARNING per client and user and interval, carrying the count of the refusals it stood for."""
+    with patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning, \
+            freeze_time(datetime(1970, 1, 1, 0, 0, 10)) as frozen:
+        for _ in range(5):
+            warn_rate_limited('1.2.3.4', 'wazuh')
+        warn_rate_limited('1.2.3.4', 'other')
+        assert mock_warning.call_args_list == [
+            call('Maximum number of requests per minute reached. IP: 1.2.3.4. User: wazuh.'),
+            call('Maximum number of requests per minute reached. IP: 1.2.3.4. User: other.'),
+        ]
+
+        mock_warning.reset_mock()
+        frozen.tick(RATE_LIMIT_WARNING_INTERVAL_SECONDS)
+        warn_rate_limited('1.2.3.4', 'wazuh')
+        mock_warning.assert_called_once_with(
+            'Maximum number of requests per minute reached. IP: 1.2.3.4. User: wazuh. '
+            '4 more request(s) refused since the previous warning.')
+
+
+def test_warn_rate_limited_unauthenticated_is_keyed_by_client():
+    """An unauthenticated caller rotating the user it claims still gets one WARNING per client and interval."""
+    with patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning, \
+            freeze_time(datetime(1970, 1, 1, 0, 0, 10)) as frozen:
+        for i in range(16):
+            warn_rate_limited('1.2.3.4', f'user{i}', authenticated=False)
+        # Another address of the same IPv6 /64 is the same client.
+        warn_rate_limited('2001:db8::1', 'a', authenticated=False)
+        warn_rate_limited('2001:db8::2', 'b', authenticated=False)
+        assert mock_warning.call_args_list == [
+            call('Maximum number of unauthenticated requests per minute reached. IP: 1.2.3.4.'),
+            call('Maximum number of unauthenticated requests per minute reached. IP: 2001:db8::1.'),
+        ]
+
+        mock_warning.reset_mock()
+        frozen.tick(RATE_LIMIT_WARNING_INTERVAL_SECONDS)
+        warn_rate_limited('1.2.3.4', 'user99', authenticated=False)
+        mock_warning.assert_called_once_with(
+            'Maximum number of unauthenticated requests per minute reached. IP: 1.2.3.4. '
+            '15 more request(s) refused since the previous warning.')
+
+
+@pytest.mark.asyncio
+async def test_access_log_unauthenticated_429_is_keyed_by_client(mock_req):
+    """A 429 for a caller the API did not authenticate is not keyed by the user it claims."""
+    response = MagicMock()
+    response.status_code = 429
+    mock_req.query_params = {}
+    mock_req.method = 'POST'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/security/user/authenticate'}
+    mock_req.headers = {'content-type': 'None'}
+
+    with TestContext(operation=MagicMock()), \
+            patch('api.middlewares.custom_logging'), \
+            patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value') as mock_auth, \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        for name in ('alice', 'bob', 'carol'):
+            mock_auth.return_value = ('basic', base64.b64encode(f'{name}:x'.encode()).decode())
+            await access_log(request=mock_req, response=response, prev_time=time.time())
+
+    mock_warning.assert_called_once_with(
+        f'Maximum number of unauthenticated requests per minute reached. IP: {mock_req.client.host}.')
+
+
+@pytest.mark.asyncio
+async def test_check_blocked_ip_warning_is_throttled(mock_req):
+    """A blocked client retrying, under any user name, logs one WARNING per interval."""
+    api_conf = {'access': {'block_time': 300, 'max_login_attempts': 50}}
+    now = get_utc_now().timestamp()
+    with patch('api.middlewares.ip_stats', new={CLIENT_KEY: {'attempts': 500, 'timestamp': now}}), \
+            patch('api.middlewares.ip_block', new={CLIENT_KEY}), \
+            patch('api.middlewares.configuration.api_conf', new=api_conf), \
+            patch('api.middlewares.rate_limit_warnings', new={}), \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        for _ in range(6):
+            with pytest.raises(ProblemException):
+                await check_blocked_ip(mock_req)
+
+    mock_warning.assert_called_once()
+    assert 'IP blocked due to exceeded number of logins attempts' in mock_warning.call_args[0][0]
+
+
+def test_warn_rate_limited_bounds_its_memory():
+    """The tracked clients never exceed RATE_LIMIT_WARNING_MAX_KEYS."""
+    with patch('api.middlewares.rate_limit_warnings', new={}) as warnings, \
+            patch('api.middlewares.RATE_LIMIT_WARNING_MAX_KEYS', 3), \
+            patch('api.middlewares.logger.warning') as mock_warning:
+        for i in range(10):
+            warn_rate_limited(f'10.0.0.{i}', 'wazuh')
+        assert len(warnings) <= 3
+        assert mock_warning.call_count == 10
 
 
 @pytest.mark.asyncio

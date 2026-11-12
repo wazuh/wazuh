@@ -207,6 +207,29 @@ TEST_F(DBTestFixture, TestFimDBGetCountFileEntry)
     });
 }
 
+static void noopTxnCallback(ReturnTypeCallback, const cJSON*, void*) {}
+
+TEST_F(DBTestFixture, TestFimDBTransactionCloseKeepsRowsNotReached)
+{
+    const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
+    const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
+        ASSERT_EQ(fim_db_get_count_file_entry(), 2);
+
+        // A scan cut short after reaching only the first file.
+        const auto handler = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, noopTxnCallback, &txn_ctx);
+        ASSERT_TRUE(handler);
+        ASSERT_EQ(fim_db_transaction_sync_row(handler, fileFIMTest1->toFimEntry()), FIMDB_OK);
+        ASSERT_EQ(fim_db_transaction_close(handler), FIMDB_OK);
+
+        ASSERT_EQ(fim_db_get_count_file_entry(), 2);
+    });
+}
+
 TEST_F(DBTestFixture, TestFimDBGetCountFileInode)
 {
     const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};

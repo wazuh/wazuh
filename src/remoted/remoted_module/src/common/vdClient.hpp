@@ -73,6 +73,25 @@ namespace remoted::common
                           std::chrono::milliseconds failureRetryInterval = DEFAULT_FAILURE_RETRY_INTERVAL);
         ~VdClient() = default;
 
+        /// What the last answered offset query said about this node's VD module.
+        struct FeedState
+        {
+            /// Current (or last known) feed offset; 0 if never obtained.
+            uint64_t offset;
+            /// False only when VD answered `"enabled": false` (the module is disabled in
+            /// `wazuh-manager.conf`): no feed is downloaded and every scan request is refused, so
+            /// there is no offset worth advertising to agents. True when VD said so, when its
+            /// answer did not carry the field, and when no answer was ever obtained -- an
+            /// unreachable VD is not a disabled one.
+            bool enabled;
+        };
+
+        /**
+         * @brief Get the current VD feed offset and enablement, with the same caching,
+         * single-flight and failure behaviour as getOffset() (which is this call's `offset`).
+         */
+        FeedState getFeedState();
+
         /**
          * @brief Get the current VD feed offset.
          *
@@ -85,20 +104,28 @@ namespace remoted::common
          *
          * @return Current (or last known) VD feed offset, or 0 if never obtained.
          */
-        uint64_t getOffset();
+        uint64_t getOffset()
+        {
+            return getFeedState().offset;
+        }
 
     private:
         struct QueryResult
         {
             bool success;
             uint64_t offset;
+            bool enabled;
         };
 
         QueryResult queryVdModule() const;
 
+        /// The best-known state; m_mutex must be held.
+        FeedState cachedState() const;
+
         std::string m_socketPath;
         mutable std::mutex m_mutex;
         uint64_t m_cachedOffset;
+        bool m_cachedEnabled;
         bool m_hasValue;
         bool m_hasAttempted;
         bool m_lastAttemptFailed;

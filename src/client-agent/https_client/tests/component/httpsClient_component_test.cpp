@@ -150,8 +150,9 @@ TEST_F(ComponentTest, ResponseStreamsToAFileThroughTheRealCurlPath)
 
 TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
 {
-    // The echo returns the request body; capping the response below it makes the
-    // file-write trampoline abort the transfer instead of writing unbounded.
+    // The echo returns the request body with its Content-Length; capping the response
+    // below it makes curl's own cap (CURLOPT_MAXFILESIZE_LARGE) turn the reply away
+    // before the file sink sees a byte, instead of writing unbounded.
     const std::string body(4096, 'x');
     const std::string path = ::testing::TempDir() + "hc_component_capped.tmp";
 
@@ -166,7 +167,9 @@ TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
     spec.headers = {headers->protocolVersion, headers->authorization};
 
     const auto response = m_performer.perform(spec);
-    EXPECT_NE(TransportStatus::Ok, response.status); // The cap aborted the write.
+    EXPECT_NE(TransportStatus::Ok, response.status); // The cap aborted the transfer.
+    EXPECT_EQ(0u, response.curlError.rfind("(63)", 0)) << response.curlError; // CURLE_FILESIZE_EXCEEDED.
+    EXPECT_EQ(0, std::ifstream(path, std::ios::binary | std::ios::ate).tellg()); // Turned away, not cut at 1024.
     std::remove(path.c_str());
 }
 
@@ -310,8 +313,8 @@ TEST_F(ComponentTest, StatefulSessionCompressesToASmallerWireSizeAndDecompresses
 
     EXPECT_EQ(200, response.httpCode);
     // The fake manager reports the *inflated* size the way the real manager
-    // would see it -- decoded by cpp-httplib itself (0.25.0 in the manager tree,
-    // with CPPHTTPLIB_ZSTD_SUPPORT) or by the fake's own zstd pass (0.10.9 in
+    // would see it -- decoded by cpp-httplib itself (>= 0.20 with
+    // CPPHTTPLIB_ZSTD_SUPPORT) or by the fake's own zstd pass (0.10.9 in
     // agent builds hands the frame over untouched) -- so this proves the
     // smaller wire body inflated back to the full session on every CI leg.
     EXPECT_NE(std::string::npos, response.body.find("\"bytes\":" + std::to_string(payload.size())));

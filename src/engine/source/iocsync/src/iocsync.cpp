@@ -18,6 +18,8 @@
 
 #include <iocsync/iocsync.hpp>
 
+#include "errorSummary.hpp"
+
 namespace
 {
 
@@ -172,7 +174,11 @@ void IocSync::syncType(IocType& type, const ioc::kvdb::IKVDBManager& kvdb)
         case CycleStatus::FailedTransport:
         case CycleStatus::FailedSink:
         case CycleStatus::FailedConfig:
-            LOG_WARNING("[{}] Failed to synchronize IOC type '{}': {}", COMPONENT_NAME, type.type, outcome.detail);
+            // The detail can end with the indexer's whole response body: log its status, type and reason only.
+            LOG_WARNING("[{}] Failed to synchronize IOC type '{}': {}",
+                        COMPONENT_NAME,
+                        type.type,
+                        detail::summarizeError(outcome.detail));
             type.status = base::SyncStatus::FAILED;
             break;
     }

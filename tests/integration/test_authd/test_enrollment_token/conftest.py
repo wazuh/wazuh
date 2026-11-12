@@ -90,7 +90,7 @@ def write_enrollment_token_store():
             ],
         }
 
-        # Created 0640 from the start rather than chmod()ed afterwards, so the file is never
+        # Created with the store mode from the start rather than chmod()ed afterwards, so the file is never
         # readable by everyone, not even for an instant -- the same rule the master follows when it
         # renames a freshly written store into place.
         descriptor = os.open(utils.ENROLLMENT_TOKENS_PATH,

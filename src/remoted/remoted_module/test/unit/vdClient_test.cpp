@@ -134,6 +134,74 @@ TEST(VdClientTest, FailedAttemptGatesRetriesToFailureIntervalThenRecovers)
         << "after recovery, caching must follow cacheTtl again, not the short failure interval";
 }
 
+TEST(VdClientTest, AnswerWithoutEnabledFieldIsEnabled)
+{
+    const auto socketPath = makeUniqueVdSocketPath("enabledabsent");
+    FakeVdServer server(socketPath);
+    server.setOffset(42);
+
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    const auto state = client.getFeedState();
+    EXPECT_EQ(state.offset, 42u);
+    EXPECT_TRUE(state.enabled);
+}
+
+TEST(VdClientTest, DisabledVdIsReportedAndCached)
+{
+    const auto socketPath = makeUniqueVdSocketPath("disabled");
+    FakeVdServer server(socketPath);
+    server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
+                            { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
+
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    EXPECT_FALSE(client.getFeedState().enabled);
+    // Served from the cache: the enablement is part of the cached answer, not re-queried.
+    EXPECT_FALSE(client.getFeedState().enabled);
+    EXPECT_EQ(server.offsetRequestCount(), 1u);
+}
+
+TEST(VdClientTest, FailedQueryKeepsLastKnownEnablement)
+{
+    const auto socketPath = makeUniqueVdSocketPath("disabledstale");
+    FakeVdServer server(socketPath);
+    server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
+                            { res.set_content(R"({"offset":0,"enabled":false})", "application/json"); });
+
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+    EXPECT_FALSE(client.getFeedState().enabled);
+
+    server.setOffsetFailure(500);
+    std::this_thread::sleep_for(TEST_CACHE_TTL + 20ms);
+
+    EXPECT_FALSE(client.getFeedState().enabled) << "a transient failure must not re-enable a disabled VD";
+}
+
+TEST(VdClientTest, NeverAnsweredVdIsNotReportedDisabled)
+{
+    const auto socketPath = makeUniqueVdSocketPath("neveranswered");
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    const auto state = client.getFeedState();
+    EXPECT_EQ(state.offset, 0u);
+    EXPECT_TRUE(state.enabled);
+}
+
+TEST(VdClientTest, NonBooleanEnabledFieldIsEnabled)
+{
+    const auto socketPath = makeUniqueVdSocketPath("enabledbadtype");
+    FakeVdServer server(socketPath);
+    server.setOffsetHandler([](const httplib::Request&, httplib::Response& res)
+                            { res.set_content(R"({"offset":7,"enabled":"no"})", "application/json"); });
+
+    VdClient client(socketPath, TEST_CACHE_TTL, TEST_FAILURE_RETRY_INTERVAL);
+
+    const auto state = client.getFeedState();
+    EXPECT_EQ(state.offset, 7u);
+    EXPECT_TRUE(state.enabled);
+}
+
 TEST(VdClientTest, ConcurrentCallerDuringInFlightRefreshIsNeverBlocked)
 {
     const auto socketPath = makeUniqueVdSocketPath("singleflight");

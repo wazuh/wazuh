@@ -23,8 +23,10 @@ Examples:
     ./send_sync.py --bad-route
     ./send_sync.py --method PUT
 
-    # Over the body cap (expects 413)
-    ./send_sync.py --size 33554432
+    # Over the total in-flight budget, 256 MiB by default (expects 413). The server answers from the
+    # headers and closes without reading the body; the tool reads that answer rather than reporting
+    # the failed write.
+    ./send_sync.py --size 335544320
 
 Run it from the manager's home directory so the default relative socket path resolves, or pass
 --socket with an absolute path.
@@ -69,8 +71,19 @@ def send_once(socket_path, method, path, body, content_type, timeout, agent_id="
             # What remoted sets from the identity it authenticated; without it /stateful is a 400.
             headers["X-Wazuh-Agent-Id"] = agent_id
         # http.client sets Content-Length from the body automatically.
-        connection.request(method, path, body=body, headers=headers)
-        response = connection.getresponse()
+        try:
+            connection.request(method, path, body=body, headers=headers)
+        except (BrokenPipeError, ConnectionResetError) as send_error:
+            # The server may answer from the headers alone and close without reading the body -- an
+            # over-cap Content-Length gets its 413 that way. Writing the rest of the body then fails,
+            # but the answer is already waiting on the socket: read it instead of reporting the
+            # write error.
+            try:
+                response = connection.getresponse()
+            except (OSError, http.client.HTTPException):
+                raise send_error from None
+        else:
+            response = connection.getresponse()
         return response.status, response.reason, dict(response.getheaders()), response.read()
     finally:
         connection.close()

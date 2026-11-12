@@ -93,6 +93,7 @@ static int teardown(void **state) {
     if (ts->logr->https.ca) free(ts->logr->https.ca);
     if (ts->logr->https.ca_certificate) free(ts->logr->https.ca_certificate);
     if (ts->logr->https.ciphers) free(ts->logr->https.ciphers);
+    if (ts->logr->https.groups) free(ts->logr->https.groups);
     free(ts->logr);
     free(ts);
     return 0;
@@ -156,6 +157,17 @@ static void mock_remoted_internal_option_values(int legacy_value) {
     will_return(__wrap_getDefine_Int_default, 101);    // shared_reload_interval
     will_return(__wrap_getDefine_Int_default, 103);    // disk_storage
     will_return(__wrap_getDefine_Int_default, 107);    // _s_verify_counter
+    // The message-counter options: read here, on the path `-t` runs, with OS_StartCounter()'s ranges.
+    expect_string(__wrap_getDefine_Int_default, low_name, "recv_counter_flush");
+    expect_value(__wrap_getDefine_Int_default, min, 10);
+    expect_value(__wrap_getDefine_Int_default, max, 999999);
+    expect_value(__wrap_getDefine_Int_default, default_val, 128);
+    will_return(__wrap_getDefine_Int_default, 151);    // recv_counter_flush
+    expect_string(__wrap_getDefine_Int_default, low_name, "comp_average_printout");
+    expect_value(__wrap_getDefine_Int_default, min, 10);
+    expect_value(__wrap_getDefine_Int_default, max, 999999);
+    expect_value(__wrap_getDefine_Int_default, default_val, 19999);
+    will_return(__wrap_getDefine_Int_default, 157);    // comp_average_printout
     will_return(__wrap_getDefine_Int_default, 109);    // batch_events_capacity
     will_return(__wrap_getDefine_Int_default, 113);    // batch_events_per_agent_capacity
     will_return(__wrap_getDefine_Int_default, 1031);   // queue_max_bytes (prime >= 1024 to pass validation)
@@ -248,6 +260,8 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "shared_reload")->valueint, 101);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "disk_storage")->valueint, 103);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "verify_msg_id")->valueint, 107);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "recv_counter_flush")->valueint, 151);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "comp_average_printout")->valueint, 157);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_capacity")->valueint, 109);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_per_agent_capacity")->valueint, 113);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "queue_max_bytes")->valueint, 1031);
@@ -453,6 +467,8 @@ static void test_Read_Remote_JSON_effective_defaults(void **state) {
      * false keeps the module default, so it stays UNSET. */
     assert_string_equal(ts->logr->https.ciphers,
                         "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256");
+    /* groups has no schema default: absent, the module leaves them to OpenSSL (or OPENSSL_CONF). */
+    assert_null(ts->logr->https.groups);
     assert_int_equal(ts->logr->https.max_body_size, 10L * 1024 * 1024);
     assert_int_equal(ts->logr->https.dual_stack, REMOTED_HTTPS_DUAL_STACK_UNSET);
     assert_int_equal(ts->logr->https.enroll_rate_limit, 100);
@@ -712,6 +728,35 @@ static void test_Read_Remote_JSON_https_string_too_long(void **state) {
     cJSON_Delete(remote);
 }
 
+static void test_Read_Remote_JSON_https_groups(void **state) {
+    test_state *ts = *state;
+    cJSON *remote = json_or_fail("{\"https\":{\"groups\":\"X25519:P-256:P-384:P-521\"}}");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), 0);
+    assert_string_equal(ts->logr->https.groups, "X25519:P-256:P-384:P-521");
+
+    cJSON_Delete(remote);
+}
+
+static void test_Read_Remote_JSON_https_groups_too_long(void **state) {
+    test_state *ts = *state;
+    char groups[REMOTED_HTTPS_GROUPS_MAX_LEN + 2];
+    char json[REMOTED_HTTPS_GROUPS_MAX_LEN + 64];
+
+    memset(groups, 'a', sizeof(groups) - 1);
+    groups[sizeof(groups) - 1] = '\0';
+    snprintf(json, sizeof(json), "{\"https\":{\"groups\":\"%s\"}}", groups);
+    cJSON *remote = json_or_fail(json);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Value for 'remote.https.groups' exceeds the maximum length of 255 characters.");
+
+    assert_int_equal(Read_Remote_JSON(remote, ts->logr), OS_INVALID);
+    assert_null(ts->logr->https.groups);
+
+    cJSON_Delete(remote);
+}
+
 /* RemotedConfig() over the mocked document */
 
 static void test_RemotedConfig_loads_sections_from_mconf(void **state) {
@@ -826,6 +871,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limits_absent_stay_unset, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_rate_limit_rejects_out_of_range, setup, teardown),
         cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_https_string_too_long, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_https_groups, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_Read_Remote_JSON_https_groups_too_long, setup, teardown),
 
         /* RemotedConfig() and getconfig over the mocked document (global logr, no fixture) */
         cmocka_unit_test(test_RemotedConfig_loads_sections_from_mconf),

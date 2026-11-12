@@ -45,4 +45,20 @@ int __wrap_remoted_module_tls_ca_matches_leaf(void);
  */
 int __wrap_remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
 
+/**
+ * @brief Mock of the export remoted's `-t` uses to load the HTTPS listener's TLS material.
+ *
+ * Driven by TWO queued values, in this order: the reason to copy into @p error (or NULL), then the
+ * int to return (0 loads, -1 refused).
+ */
+int __wrap_remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity);
+
+
+/**
+ * @brief Mock of the export remoted calls before its privilege drop to load the OpenSSL configuration.
+ *
+ * Always returns 0 (success), with no queued value: the caller only logs a failure.
+ */
+int __wrap_remoted_module_init_tls_library(void);
+
 #endif

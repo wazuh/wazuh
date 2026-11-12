@@ -731,8 +731,14 @@ async def decode_token(token: str) -> dict:
         Dictionary with the token payload.
     """
     try:
-        # Decode JWT token with local secret
-        payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
+        # Decode JWT token with local secret. A header nested too deep for the JSON decoder raises a
+        # RecursionError that PyJWT does not wrap: it is an invalid token, answered with a 401 so the
+        # request is charged to the unauthenticated rate limit like any other bad token.
+        try:
+            payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM],
+                                 audience='Wazuh API REST')
+        except RecursionError as exc:
+            raise Unauthorized(INVALID_TOKEN) from exc
 
         # A run_as token is revoked on logout by its authorization context (see
         # `wazuh.security.revoke_current_user_tokens`), so one without it could not be logged out.

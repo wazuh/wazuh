@@ -37,7 +37,6 @@ STATIC int w_enrollment_load_reenroll_credential(w_enroll_request_t *out);
 STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_class,
                                                             const char *manager_message);
 STATIC int w_enrollment_fallback_credential_exists(void);
-STATIC const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
 
 int w_enrollment_build_request(w_enroll_request_t *out) {
     assert(out != NULL);
@@ -213,18 +212,16 @@ void w_enroll_request_destroy(w_enroll_request_t *request) {
     os_free(request->enroll_key_hex);
 }
 
-/**
- * @brief The enrollment token id to name in a 403, or "(id unknown)".
- *
+/*
  * Only a `kid` that IS a token id is printed. The parameter carries whichever credential the
  * request signed with, and the two keyed forms are disjoint by shape (jwtEnrollProfileV1.hpp): a
  * token id is 22 canonical base64url characters, a re-enrolling agent's is its canonical id, at
- * most ten digits. Against a real manager only the first can reach 9022/9023/9024 -- a
- * re-enrollment bearer's verdicts are 9026/9027/9028 and arrive as 401s -- but printing "Enrollment
- * token 001" for the other would name the wrong thing entirely, and an operator acting on it would
- * go looking for a token that does not exist.
+ * most ten digits. Against a real manager only the first can be refused as a token -- a
+ * re-enrollment bearer's verdicts are 9026/9027/9028 -- but printing "Enrollment token 001" for
+ * the other would name the wrong thing entirely, and an operator acting on it would go looking for
+ * a token that does not exist.
  */
-STATIC const char *w_enrollment_token_id_or_unknown(const char *enroll_kid) {
+const char *w_enrollment_token_id_or_unknown(const char *enroll_kid) {
     static const size_t token_kid_chars = 22;
     size_t i;
 
@@ -294,6 +291,50 @@ void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t
     }
 
     cJSON_Delete(response);
+}
+
+const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *error, char *reason,
+                                       size_t reason_size) {
+    assert(error != NULL);
+
+    const char *words = NULL;
+
+    /* A 401 is remoted's verdict from its replica of the token store, a 403 is authd's. A replica
+     * can miss a revocation but never report one the master does not have, and expiry is fixed
+     * when the token is minted -- though each node judges it by its own clock, so a node running
+     * ahead calls it expired that much early. Both are final whichever daemon answered.
+     * token_unknown is not: the replica may not have received the token yet. */
+    if (http_code == 401) {
+        if (strcmp(error->auth_class, "token_expired") == 0) {
+            words = "has expired";
+        } else if (strcmp(error->auth_class, "token_revoked") == 0) {
+            words = "was revoked";
+        }
+
+        if (words != NULL && reason != NULL) {
+            snprintf(reason, reason_size, "%s", error->auth_class);
+        }
+    } else if (http_code == 403 && error->has_numeric_code) {
+        switch (error->authd_code) {
+            case 9022:
+                words = "is unknown to the manager or was revoked";
+                break;
+            case 9023:
+                words = "has expired";
+                break;
+            case 9024:
+                words = "has no uses left";
+                break;
+            default:
+                break;
+        }
+
+        if (words != NULL && reason != NULL) {
+            snprintf(reason, reason_size, "code %d", error->authd_code);
+        }
+    }
+
+    return words;
 }
 
 w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result, const char *enroll_kid) {
@@ -372,6 +413,18 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
     const char *manager_message = error.message[0] != '\0' ? error.message : NULL;
     const char *auth_class = error.auth_class[0] != '\0' ? error.auth_class : NULL;
     const int authd_code = error.authd_code;
+    char token_reason[32];
+    const char *token_refusal = w_enrollment_token_refusal(result->http_code, &error, token_reason,
+                                                           sizeof(token_reason));
+
+    if (token_refusal != NULL) {
+        /* Named with the token id: the operator has to replace this token, and a fleet
+         * mid-rollout may be using several. The manager's message is left out: it only restates
+         * the class or code. */
+        merror("Enrollment token %s %s (%s). A new enrollment token is needed.",
+               w_enrollment_token_id_or_unknown(enroll_kid), token_refusal, token_reason);
+        return W_ENROLL_ERR_AUTH_FATAL;
+    }
 
     w_enroll_status_t status;
     switch (result->http_code) {
@@ -384,12 +437,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             status = w_enrollment_classify_auth_failure(auth_class, manager_message);
             break;
         case 403:
-            /* Three different 403s, told apart by the envelope and the code in it:
-             *
-             *   9022/9023/9024 -- authd's verdict on an enrollment token whose SIGNATURE remoted
-             *   already verified. Unknown/revoked, expired, or out of uses: an authoritative "no"
-             *   about this credential, so retrying with it is pointless and only the operator can
-             *   fix it (mint a new token).
+            /* Besides a refused token, handled above, two 403s told apart by the envelope:
              *
              *   nested, code 0 -- enrollment is administratively disabled on this manager. Kept as
              *   its own status, as before: an operator can re-enable it, so this one is worth
@@ -401,19 +449,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
              *   the operator to the wrong setting, so the manager's own reason is logged instead.
              *   Its own status, handled like "disabled": the fix is on the manager or in the
              *   certificate, not in this request, and an operator can make it. */
-            if (authd_code == 9022 || authd_code == 9023 || authd_code == 9024) {
-                /* Named with the token id (#39064: "surface 403 to operators with token ID"):
-                 * the whole point of this message is that an operator has to mint a replacement,
-                 * and without the id they cannot tell WHICH token to replace -- a fleet mid-rollout
-                 * may be using several. The kid is the token id for exactly these codes: only an
-                 * enrollment-token bearer can provoke 9022/9023/9024, a re-enrollment bearer's
-                 * verdicts are 9026/9027/9028 and arrive as 401s. */
-                merror("Enrollment token %s refused by the manager (code %d)%s%s. Retrying will "
-                       "not help: a new enrollment token is needed.",
-                       w_enrollment_token_id_or_unknown(enroll_kid), authd_code,
-                       manager_message ? ": " : "", manager_message ? manager_message : "");
-                status = W_ENROLL_ERR_AUTH_FATAL;
-            } else if (error.has_numeric_code && authd_code == 0) {
+            if (error.has_numeric_code && authd_code == 0) {
                 /* Administratively disabled, not a transport hiccup. The manager's message only
                  * restates it, so it is not appended. */
                 minfo("Enrollment is disabled on the manager.");
@@ -509,10 +545,9 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
          * trigger re-enrollment -- a new identity fixes none of them, and #39064 states the rule
          * as "preserves credentials and explicitly prevents re-enrollment".
          *
-         * It does NOT stop the loop, though, which is the other half of the same instruction:
-         * "surface 403 to operators with token ID; retry 401". Only a 403 is authd's
-         * authoritative refusal of a credential it verified. A 401 here can still be fixed
-         * without the agent doing anything -- the manager's own authd.pass corrected to match
+         * It does NOT stop the loop, though: only a refusal of the token itself does, and that
+         * never reaches this function. A 401 here can still be fixed without the agent doing
+         * anything -- the manager's own authd.pass corrected to match
          * this endpoint's, or a re-enrollment secret restored on the master -- and an agent that
          * stopped would not notice. The retry is bounded by the caller's backoff ramp. */
         merror("Enrollment rejected by the manager: the credential's signature was refused%s%s. "
@@ -521,21 +556,9 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
         return W_ENROLL_ERR_AUTH_RETRY;
     }
 
-    /* stale_token, token_unknown, token_expired, token_revoked, enrollment_key_unavailable,
-     * invalid_request, and anything this build has not heard of.
-     *
-     * token_expired and token_revoked look final, and against authd they are -- but they arrive
-     * here as a 401 only from remoted's own replica of the token store, which can lag the master
-     * (the same window that makes token_unknown retryable). authd's authoritative refusal of the
-     * same token comes back as the 403 handled above, and THAT is the one that stops the loop. */
-    if (strcmp(auth_class, "token_expired") == 0 || strcmp(auth_class, "token_revoked") == 0) {
-        /* Only the enrollment-token paths receive these two, and none of them retries them, so
-         * this line does not promise a retry. */
-        minfo("Enrollment rejected by the manager: %s%s%s. This enrollment token can no longer be "
-              "used; mint a new one.", auth_class, detail_sep, detail);
-        return W_ENROLL_ERR_AUTH_RETRY;
-    }
-
+    /* stale_token, token_unknown, enrollment_key_unavailable, invalid_request, and anything this
+     * build has not heard of. token_expired and token_revoked never get here: they refuse the
+     * token itself, and w_enrollment_process_response() stops on them first. */
     minfo("Enrollment rejected by the manager: %s%s%s. Retrying.", auth_class, detail_sep, detail);
     return W_ENROLL_ERR_AUTH_RETRY;
 }
@@ -565,8 +588,8 @@ w_enroll_action_t w_enrollment_apply_policy(w_enroll_status_t status) {
              * Stopping instead would cost an open-enrollment fleet any way to recover from a
              * rebuilt or restored manager without an operator visiting every endpoint, on a manager
              * that would have taken them all straight back. The refusal the DoD wanted stopped --
-             * one the manager has already judged authoritatively -- arrives as a 403, and that is
-             * W_ENROLL_ERR_AUTH_FATAL's job; it still stops. */
+             * the manager refusing the token itself -- is W_ENROLL_ERR_AUTH_FATAL's job; it still
+             * stops. */
             w_reenroll_secret_clear();
 
             if (w_enrollment_fallback_credential_exists()) {

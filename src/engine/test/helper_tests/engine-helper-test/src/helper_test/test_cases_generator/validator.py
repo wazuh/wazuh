@@ -6,6 +6,16 @@ from helper_test.definition_types.utils import *
 from pathlib import Path
 
 
+# Python type of an expected value for each output type name
+PYTHON_TYPE_OF_OUTPUT = {
+    "string": str,
+    "number": (int, float),
+    "boolean": bool,
+    "array": list,
+    "object": dict,
+}
+
+
 class Validator:
     def __init__(self, parser: Parser):
         """
@@ -159,7 +169,10 @@ class Validator:
                 for argument in test.get("arguments", []):
                     if argument in self.parser.get_name_id_arguments():
                         count += 1
-                if count < self.parser.get_minimum_arguments():
+                # Optional arguments may be left out of a test
+                required = sum(1 for argument in (self.parser.get_arguments() or {}).values()
+                               if not argument.get("optional", False))
+                if count < required:
                     sys.exit(
                         f"Helper {self.parser.get_name()}: There are arguments in 'test' that were not defined")
 
@@ -183,6 +196,29 @@ class Validator:
         """
         if self.parser.get_helper_type() == "map":
             output = self.parser.get_output()
+            if isinstance(output["type"], list):
+                # Several output types (e.g. string or array): the expected value must match one of them
+                unknown = [t for t in output["type"] if t not in PYTHON_TYPE_OF_OUTPUT]
+                if unknown:
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: output types {unknown} are not supported")
+                if output.get("subset") is not None:
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: a subset is not supported with several output types")
+                allowed = tuple(PYTHON_TYPE_OF_OUTPUT[t] for t in output["type"])
+                for test in self.parser.get_tests() or []:
+                    if "expected" not in test:
+                        continue
+                    expected = test["expected"]
+                    # bool is a subclass of int: accept it only when boolean is one of the output types
+                    if isinstance(expected, bool):
+                        valid = "boolean" in output["type"]
+                    else:
+                        valid = isinstance(expected, allowed)
+                    if not valid:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: expected type '{type(expected)}' is not one of the output types {output['type']}")
+                return
             new_type_ = convert_string_to_type(output["type"])
             new_subset = convert_string_to_subset(output.get("subset"))
             if not isinstance(new_type_, list):

@@ -288,6 +288,36 @@ def test_missing(resolver, sandbox, mode, expected):
             "a pair issued by the indexer's CA for this node\n") in err
 
 
+@pytest.mark.parametrize("mode,expected", [("--install", 0), ("--prestart", 1), ("--check", 1)])
+def test_missing_from_published_export(resolver, sandbox, mode, expected):
+    """An indexer whose CA key is elsewhere (the installation assistant) publishes its CA but no client pair: the
+    CA is imported and the advice names the pair to stage, not an indexer to install."""
+    sandbox.make_indexer_trust()
+    for name in ("manager-client.pem", "manager-client-key.pem"):
+        os.unlink(os.path.join(sandbox.indexer_export, name))
+    if mode != "--install":
+        sandbox.stage_ca()
+        if mode == "--check":
+            assert run(resolver, sandbox, "--prestart")[0] == 1
+    code, _, err = run(resolver, sandbox, mode)
+    assert code == expected
+    assert os.path.exists(certs(sandbox, "indexer-ca.pem"))
+    assert (f"MISSING {certs(sandbox, 'indexer-connector.pem')}: the Wazuh indexer on this host published no manager "
+            f"client pair in {sandbox.indexer_export} (its CA key is not on this host, as after the installation "
+            "assistant): stage this node's pair, issued by the indexer's CA (wazuh-install-files.tar with the "
+            "installation assistant), as certs/indexer-connector.pem and certs/indexer-connector-key.pem\n") in err
+    assert "install wazuh-indexer on this host first" not in err
+
+
+def test_missing_ca_from_published_export(resolver, sandbox):
+    sandbox.make_indexer_trust()
+    os.unlink(os.path.join(sandbox.indexer_export, "ca.pem"))
+    _, _, err = run(resolver, sandbox, "--install")
+    assert (f"MISSING {certs(sandbox, 'indexer-ca.pem')}: the Wazuh indexer on this host published no ca.pem in "
+            f"{sandbox.indexer_export}: stage the indexer's CA certificate as certs/indexer-ca.pem\n") in err
+    assert "install wazuh-indexer on this host first" not in err
+
+
 @pytest.mark.parametrize("eku,imported", [("none", False), ("server", False), ("client", True)])
 def test_strict_client_auth(resolver, sandbox, eku, imported):
     sandbox.make_indexer_trust(eku=eku)

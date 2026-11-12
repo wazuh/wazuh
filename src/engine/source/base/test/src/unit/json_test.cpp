@@ -770,7 +770,7 @@ TEST(JsonSanitizeKey, StrReparsesWithReplacedKey)
 {
     logging::testInit();
 
-    // The key bytes 6B FF go in through a raw JSON Pointer token ("/k" + FF): rapidjson::Pointer does not
+    // The key bytes 6B FF go in through a raw JSON Pointer token ("/k" + FF): json::Pointer does not
     // validate UTF-8 in plain (non URI-fragment) pointers, so the member name is stored unvalidated.
     const std::string rawPointer = std::string {"/k"} + bytes({0xFF});
     ASSERT_EQ(rawPointer.size(), 3u);
@@ -4207,7 +4207,7 @@ TEST_F(JsonBase, ParseBoundedRequiresNullDocument)
     // builds nothing is checked and EXPECT_DEBUG_DEATH only runs the statement.
     EXPECT_DEBUG_DEATH(
         {
-            rapidjson::Document doc;
+            json::Document doc;
             doc.SetObject();
             rapidjson::StringStream stream("[1]");
             static_cast<void>(Json::parseBounded(doc, stream));

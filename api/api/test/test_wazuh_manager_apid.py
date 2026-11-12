@@ -597,7 +597,6 @@ def test_drop_privileges_clears_supplementary_groups_before_switching_ids(apid):
     apid.common = MagicMock()
     apid.common.wazuh_gid.return_value = 998
     apid.common.wazuh_uid.return_value = 997
-    apid.api_conf = {'drop_privileges': True}
     calls = MagicMock()
     with patch.object(apid.os, 'setgroups', calls.setgroups), \
             patch.object(apid.os, 'setgid', calls.setgid), \
@@ -666,7 +665,6 @@ def ssl_apid(apid, tmp_path):
     apid.api_conf = {
         'https': {'key': str(tmp_path / 'apid-key.pem'), 'cert': str(tmp_path / 'apid.pem'),
                   'use_ca': False, 'ca': str(tmp_path / 'ca.pem'), 'ssl_ciphers': ''},
-        'drop_privileges': True,
     }
     apid.common = MagicMock()
     apid.common.wazuh_uid.return_value = 1001
@@ -947,10 +945,11 @@ def test_drop_privileges_keeps_root_when_asked(ssl_apid):
     assert _drop_privileges_calls(ssl_apid, run_as_root=True) == []
 
 
-def test_drop_privileges_honours_drop_privileges_false(ssl_apid):
-    """drop_privileges: false in api.yaml keeps the current user."""
-    ssl_apid.api_conf['drop_privileges'] = False
-    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == []
+def test_drop_privileges_does_not_read_api_conf(ssl_apid):
+    """The drop does not depend on api.yaml, even one that still sets the removed key: only -r keeps root."""
+    ssl_apid.api_conf = {'drop_privileges': False}
+    assert _drop_privileges_calls(ssl_apid, run_as_root=False) == [
+        call.setgroups([]), call.setgid(1002), call.setuid(1001)]
 
 
 # --- prepare_log_file ------------------------------------------------------------------------------
@@ -1111,3 +1110,34 @@ def test_main_drops_privileges_before_opening_logs_and_any_ssl_work():
                  and any(isinstance(inner, ast.Call) and _call_name(inner) == 'pyDaemon'
                          for stmt in node.body for inner in ast.walk(stmt)))
     assert 'args.foreground' in ast.unparse(guard.test)
+
+
+def test_test_config_refuses_a_missing_explicit_file(apid, tmp_path, capsys):
+    """`-t -c <file>` fails when the named file does not exist, instead of validating the defaults."""
+    apid.read_yaml_config = MagicMock()
+    missing = str(tmp_path / 'missing.yaml')
+
+    with pytest.raises(SystemExit) as exc:
+        apid.test_config(missing)
+
+    assert exc.value.code == 1
+    assert f"'{missing}' does not exist" in capsys.readouterr().out
+    apid.read_yaml_config.assert_not_called()
+
+
+@pytest.mark.parametrize('named', [True, False], ids=['-c file', 'no -c'])
+def test_test_config_reads_an_existing_file(apid, tmp_path, named):
+    """An existing file, or none named at all, is read and passes when valid."""
+    apid.read_yaml_config = MagicMock(return_value={
+        'logs': {'max_size': {'enabled': False}},
+        'https': {'enabled': False},
+    })
+    config = tmp_path / 'api.yaml'
+    config.write_text('logs:\n  level: info\n')
+    config_file = str(config) if named else None
+
+    with pytest.raises(SystemExit) as exc:
+        apid.test_config(config_file)
+
+    assert exc.value.code == 0
+    apid.read_yaml_config.assert_called_once_with(config_file=config_file)

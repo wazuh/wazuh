@@ -400,6 +400,32 @@ static void test_url_is_allowed_case_insensitive(void ** state) {
     assert_true(wm_url_is_allowed("HTTPS://API.GITHUB.COM/audit-log", "api.github.com"));
 }
 
+// modulesd -c: the daemon chdir()s to its home before reading the file, so a relative path is
+// resolved against the directory it was started from.
+static void test_resolve_config_path_relative(void ** state) {
+    char * path = wm_resolve_config_path("cases/addr.conf", "/home/tester");
+    assert_string_equal(path, "/home/tester/cases/addr.conf");
+    os_free(path);
+}
+
+static void test_resolve_config_path_relative_cwd_with_slash(void ** state) {
+    char * path = wm_resolve_config_path("addr.conf", "/");
+    assert_string_equal(path, "/addr.conf");
+    os_free(path);
+}
+
+static void test_resolve_config_path_absolute(void ** state) {
+    char * path = wm_resolve_config_path("/etc/wazuh-manager/wazuh-manager.conf", "/home/tester");
+    assert_string_equal(path, "/etc/wazuh-manager/wazuh-manager.conf");
+    os_free(path);
+}
+
+static void test_resolve_config_path_no_cwd(void ** state) {
+    char * path = wm_resolve_config_path("addr.conf", NULL);
+    assert_string_equal(path, "addr.conf");
+    os_free(path);
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_find_module_found, setup_modules, teardown_modules),
@@ -434,6 +460,10 @@ int main() {
         cmocka_unit_test(test_url_is_allowed_matching_host_with_query),
         cmocka_unit_test(test_url_is_allowed_matching_host_with_fragment),
         cmocka_unit_test(test_url_is_allowed_case_insensitive),
+        cmocka_unit_test(test_resolve_config_path_relative),
+        cmocka_unit_test(test_resolve_config_path_relative_cwd_with_slash),
+        cmocka_unit_test(test_resolve_config_path_absolute),
+        cmocka_unit_test(test_resolve_config_path_no_cwd),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

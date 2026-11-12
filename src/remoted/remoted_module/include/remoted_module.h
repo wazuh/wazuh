@@ -200,6 +200,8 @@ extern "C"
                                        ///< (empty -> module default).
         char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
                                        ///< empty -> library default).
+        char groups[256];              ///< TLS key exchange groups (SSL_CTX_set1_groups_list() naming scheme;
+                                       ///< empty -> library default, or what OPENSSL_CONF sets).
         int verification_mode;         ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
         int dual_stack;                ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
 
@@ -232,9 +234,9 @@ extern "C"
         char manager_version[64];        ///< Manager version string.
         bool allow_higher_versions;      ///< Allow agents with version > manager version.
         char limits_json[4096];          ///< Limits JSON (rendered from remote.limits in manager conf).
-        int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 60).
+        int groups_refresh_interval_sec; ///< Group refresh interval in seconds (<=0 -> 1).
         int wdb_request_connections;     ///< Wazuh-DB request connection pool size (<=0 -> 4).
-        int wdb_roundtrip_deadline_ms;   ///< Wazuh-DB roundtrip deadline in milliseconds (<=0 -> 2000).
+        int wdb_roundtrip_deadline_ms;   ///< Wazuh-DB roundtrip deadline in milliseconds (<=0 -> 5000).
         int wdb_request_deadline_ms;     ///< Wazuh-DB end-to-end request deadline from enqueue, in
                                          ///< milliseconds: queue wait + reconnection + round trip (<=0 -> 5000).
         int wdb_max_queue_size;          ///< Wazuh-DB request queue high-water mark; QueueFull over it (<=0 -> 10000).
@@ -350,6 +352,36 @@ extern "C"
      */
     EXPORTED int remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity);
 
+    /**
+     * @brief Load the HTTPS listener's TLS material the way remoted_module_start() would, without
+     *        starting anything: the certificate and private key (and that they match), and the CA
+     *        that verifies agent client certificates when `remote.https.verification_mode` loads it.
+     *
+     * For remoted's configuration test (`-t`, run by `wazuh-manager-control check` and before every
+     * start): a file that exists but does not hold what the listener loads -- a private key given as
+     * the CA, a text file -- is refused there instead of leaving remoted down after a restart.
+     *
+     * @param configuration Module configuration, as remoted builds it for the start (NULL -> defaults).
+     * @param error Receives a NUL-terminated reason on failure (truncated to @p capacity); may be NULL.
+     * @param capacity Bytes available at @p error.
+     * @return 0 when everything loads, -1 otherwise.
+     */
+    EXPORTED int remoted_module_validate_tls(const remoted_module_config_t* configuration, char* error, size_t capacity);
+
+    /**
+     * @brief Initialise the OpenSSL the HTTPS listener uses, loading its configuration file (OPENSSL_CONF, or the
+     *        library's default file) now.
+     *
+     * OpenSSL reads that file once, when the process first uses it. remoted calls this before it drops to the
+     * service account, so the file only has to be readable by root, as for the other components; left to the
+     * listener's start, the file would be read as the service account and silently skipped when that account
+     * cannot read it. Called from inside the module so that it initialises the same OpenSSL the listener's
+     * contexts are built with. Idempotent; a missing file is not an error (the library defaults apply).
+     *
+     * @return 0 on success, -1 when OpenSSL could not be initialised.
+     */
+    EXPORTED int remoted_module_init_tls_library(void);
+
 #ifdef __cplusplus
 }
 #endif
@@ -359,5 +391,6 @@ typedef void (*remoted_module_start_func)(full_log_fnc_t callbackLog, const remo
 typedef void (*remoted_module_stop_func)(void);
 typedef int (*remoted_module_tls_ca_matches_leaf_func)(void);
 typedef int (*remoted_module_tls_leaf_signer_pem_func)(char* buffer, size_t capacity);
+typedef int (*remoted_module_validate_tls_func)(const remoted_module_config_t* configuration, char* error, size_t capacity);
 
 #endif // _REMOTED_MODULE_H

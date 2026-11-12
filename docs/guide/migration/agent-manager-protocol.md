@@ -98,8 +98,12 @@ between agent and manager does not invalidate it.
 Three differences worth knowing before reading logs:
 
 - Every credential failure — unknown agent, key mismatch, address not allowed, bad signature, stale
-  or malformed token — collapses to a single generic **`401`** (with `WWW-Authenticate: Bearer`). The specific cause is deliberately not
-  exposed to the client; it is in the manager log and in the `remoted.auth.reject.*` metrics.
+  or malformed token — answers **`401`** with the same generic message. What the agent gets is a
+  coarse **failure class** — `unknown_agent`, `stale_token`, `invalid_signature` or
+  `invalid_request` — in the body's `code` and in the `WWW-Authenticate: Bearer` challenge, which
+  tells it what to do (re-enroll, fix its clock, keep its credential, send one). The precise cause is
+  deliberately not exposed; it is in the manager log and in the `remoted.auth.reject.*` metrics. See
+  [Error responses](../../ref/modules/remoted/https-events-api.md#error-responses).
 - Capacity is shed with **`503`**. The manager processes what it has capacity for instead of buffering into a fixed queue, which is why `<queue_size>` no longer applies to this channel.
 - Rate limiting is a separate mechanism that answers **`429 Too Many Requests`** with a `Retry-After`. It applies only to `POST /enroll` and `GET /cacerts`; see [HTTPS Agent API](../../ref/modules/remoted/https-events-api.md) and [the `remote.https` rate options](../../ref/modules/remoted/configuration.md#rate-limits-of-the-unauthenticated-routes).
 
@@ -113,6 +117,12 @@ configuration and remote upgrade. It does **not** get:
 - **Inventory synchronization.** `s:` messages are discarded — a 4.x agent's inventory is not synced
   to a 5.0 manager.
 - **dbsync deltas.** `5:` messages are discarded.
+- **Rootcheck signature and audit files.** The 5.0 `default` group carries only `agent.conf`, so
+  `rootkit_files.txt`, `rootkit_trojans.txt` and the CIS and system audit files leave the agent's
+  `etc/shared/` with its first 5.0 `merged.mg`. Rootcheck keeps running without them, and the agent
+  only logs `WARNING: No rootcheck_files file`. To keep these checks until the agents are upgraded,
+  copy the files from the 4.x `etc/shared/default/` into the 5.0 one; see
+  [Migrating a Wazuh manager from 4.x to 5.0](manager-4x-to-5x.md#1-back-up-the-4x-manager).
 
 Treat the legacy channel as a migration bridge for event collection and upgrade, not as feature
 parity. See [Remote agent upgrade](remote-agent-upgrade.md) for the upgrade path itself.
@@ -143,7 +153,7 @@ there is no automatic migration.
 | `<remote><denied-ips>` | Same |
 
 **New** — the HTTPS listener's own block, `<remote><https>`: `port`, `bind_addr`, `global_prefix`,
-`certificate`, `key`, `ca`, `ca_certificate`, `verification_mode`, `ciphers`, `max_body_size`,
+`certificate`, `key`, `ca`, `ca_certificate`, `verification_mode`, `ciphers`, `groups`, `max_body_size`,
 `dual_stack`, `enroll_rate_limit`, `cacerts_rate_limit`; and `<remote><legacy><enabled>` and
 `<ca_delivery>` for the legacy channel. `<remote><agents>` is unchanged. See
 [Remoted configuration](../../ref/modules/remoted/configuration.md#https-configuration).

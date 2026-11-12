@@ -4,6 +4,7 @@
 #include <csignal>
 #include <exception>
 #include <filesystem>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -83,31 +84,57 @@ struct Options
     int debugCount {0};
 };
 
-void printUsage(const char* progName)
+/// Print the usage and exit: to stdout with EXIT_SUCCESS for -h, to stderr with EXIT_FAILURE for an invalid option.
+[[noreturn]] void printUsage(const char* progName, int exitCode)
 {
-    std::cout << "Usage: " << progName << " [options]\n"
-              << "Options:\n"
-              << "  -f    Run in foreground (do not daemonize)\n"
-              << "  -t    Test configuration\n"
-              << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
-                 "messages.\n"
-              << "  -h    Show this help message and exit\n";
+    auto& out = (exitCode == EXIT_SUCCESS) ? std::cout : std::cerr;
+    out << "Usage: " << progName << " [options]\n"
+        << "Options:\n"
+        << "  -f    Run in foreground (do not daemonize)\n"
+        << "  -t    Test configuration\n"
+        << "  -d    Run in debug mode. This option may be repeated to increase the verbosity of the debug "
+           "messages.\n"
+        << "  -h    Show this help message and exit\n"
+        << "  -V    Print the version and exit\n";
+    std::exit(exitCode);
+}
+
+/// Print the version and exit, as the other manager daemons do (help.c print_version(): to stderr, exit 0).
+[[noreturn]] void printVersion()
+{
+#ifdef VERSION
+    constexpr const char* version = VERSION; // From VERSION.json, defined for every target by src/CMakeLists.txt
+#else
+    constexpr const char* version = "unknown";
+#endif
+    std::cerr << " \nWazuh " << version << " - Wazuh Inc.\n \n";
     std::exit(EXIT_SUCCESS);
+}
+
+/// The internal options file. Manager mode: in the fixed configuration directory. Standalone mode never reads the
+/// file (conf::Conf::load()); its path stays relative to the cwd.
+std::filesystem::path internalOptionsPath()
+{
+    return base::process::isStandaloneModeEnable()
+               ? base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf"
+               : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR))
+                     / "wazuh-manager-internal-options.conf";
 }
 
 Options parseOptions(int argc, char* argv[])
 {
     Options opts;
     int c;
-    while ((c = getopt(argc, argv, "ftdh")) != -1)
+    while ((c = getopt(argc, argv, "ftdhV")) != -1)
     {
         switch (c)
         {
             case 'f': opts.runForeground = true; break;
             case 't': opts.testConfig = true; break;
             case 'd': ++opts.debugCount; break;
-            case 'h':
-            default: printUsage(argv[0]);
+            case 'h': printUsage(argv[0], EXIT_SUCCESS);
+            case 'V': printVersion();
+            default: printUsage(argv[0], EXIT_FAILURE); // getopt already printed the invalid option
         }
     }
     return opts;
@@ -170,13 +197,25 @@ int main(int argc, char* argv[])
         }
 
         // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf; relative paths inside it resolve
-        // against the home). -t validates it, including the files it references; a normal start loads it
-        // once (no file checks) before the first log.
+        // against the home). -t validates it, including the files it references, and then the internal options;
+        // a normal start loads it once (no file checks) before the first log.
         if (opts.testConfig)
         {
             if (const auto error = base::managerConfig::validate(wazuhHome))
             {
                 fprintf(stderr, "Error loading configuration: %s\n", error->c_str());
+                return EXIT_FAILURE;
+            }
+
+            // Internal options: the same load a start does (environment > file > default), so a value of the
+            // wrong type or outside its range is refused here, before a restart stops the running daemon.
+            try
+            {
+                conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath())).load();
+            }
+            catch (const std::exception& e)
+            {
+                fprintf(stderr, "Error loading configuration: %s\n", e.what());
                 return EXIT_FAILURE;
             }
             return EXIT_SUCCESS;
@@ -233,13 +272,8 @@ int main(int argc, char* argv[])
         base::process::goDaemon();
     }
 
-    // Load the configuration. Manager mode: the internal options live in the fixed configuration directory.
-    // Standalone mode never reads the file (conf::Conf::load()); its path stays relative to the cwd.
-    const auto confPath = base::process::isStandaloneModeEnable()
-                              ? base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf"
-                              : std::filesystem::path(std::string(base::managerConfig::MANAGER_CONF_DIR))
-                                    / "wazuh-manager-internal-options.conf";
-    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(confPath));
+    // Load the configuration (types and ranges are checked here, as `-t` does)
+    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath()));
     try
     {
         confManager.load();
@@ -316,10 +350,9 @@ int main(int argc, char* argv[])
 
     try
     {
-        // Dropping privileges only if not in standalone mode. The group must be
-        // changed before the user: once the process is no longer root, setgid()
-        // is not permitted anymore.
-        if (!base::process::isStandaloneModeEnable() && confManager.get<bool>(conf::key::DROP_PRIVILEGES))
+        // Always drop privileges in manager mode; standalone mode keeps the launcher's user and group. The group
+        // must be changed before the user: once the process is no longer root, setgid() is not permitted anymore.
+        if (!base::process::isStandaloneModeEnable())
         {
             const auto gid = base::process::lookupGid(base::process::WAZUH_GROUP);
             base::process::dropToGroup(gid);
@@ -483,87 +516,19 @@ int main(int argc, char* argv[])
                 const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
                 jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
-                constexpr size_t INDEXER_BULK_MAX_BYTES_MIN = size_t {0x1} << 16; // 64 KB
-                constexpr size_t INDEXER_BULK_MAX_BYTES_MAX = size_t {100} << 20; // 100 MB
-                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
-                if (bulkMaxBytes < INDEXER_BULK_MAX_BYTES_MIN || bulkMaxBytes > INDEXER_BULK_MAX_BYTES_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_bulk_max_bytes must be between {} and {} (got {})",
-                                    INDEXER_BULK_MAX_BYTES_MIN,
-                                    INDEXER_BULK_MAX_BYTES_MAX,
-                                    bulkMaxBytes));
-                }
-                jsonCnf.setUint64(bulkMaxBytes, "/bulk_max_bytes");
-
-                constexpr size_t INDEXER_FLUSH_INTERVAL_MAX = 3600;
-                const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
-                if (flushInterval == 0 || flushInterval > INDEXER_FLUSH_INTERVAL_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_flush_interval must be between 1 and {} (got {})",
-                                    INDEXER_FLUSH_INTERVAL_MAX,
-                                    flushInterval));
-                }
-                jsonCnf.setUint64(flushInterval, "/flush_interval_seconds");
-
+                // The ranges of these settings are checked by confManager.load() (conf.cpp), as `-t` does
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES), "/bulk_max_bytes");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL),
+                                  "/flush_interval_seconds");
                 // Error-logger sizing: bounded queue + thread count (only error responses are queued)
-                constexpr size_t INDEXER_LOGGER_QUEUE_SIZE_MAX = 1024;
-                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
-                if (loggerQueueSize == 0 || loggerQueueSize > INDEXER_LOGGER_QUEUE_SIZE_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_logger_queue_size must be between 1 and {} (got {})",
-                                    INDEXER_LOGGER_QUEUE_SIZE_MAX,
-                                    loggerQueueSize));
-                }
-                jsonCnf.setUint64(loggerQueueSize, "/logger_queue_size");
-
-                constexpr size_t INDEXER_LOGGER_THREADS_MAX = 16;
-                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
-                if (loggerThreads == 0 || loggerThreads > INDEXER_LOGGER_THREADS_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_logger_threads must be between 1 and {} (got {})",
-                                    INDEXER_LOGGER_THREADS_MAX,
-                                    loggerThreads));
-                }
-                jsonCnf.setUint64(loggerThreads, "/logger_threads");
-
-                constexpr size_t INDEXER_MAX_RETRY_DELAY_MAX = 3600;
-                const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
-                if (maxRetryDelay == 0 || maxRetryDelay > INDEXER_MAX_RETRY_DELAY_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_max_retry_delay must be between 1 and {} (got {})",
-                                    INDEXER_MAX_RETRY_DELAY_MAX,
-                                    maxRetryDelay));
-                }
-                jsonCnf.setUint64(maxRetryDelay, "/max_retry_delay_seconds");
-
-                // 0 is legal and disables the per-request bound (the pre-fix behavior).
-                constexpr size_t INDEXER_REQUEST_TIMEOUT_MAX = 3600;
-                const auto requestTimeout = confManager.get<size_t>(conf::key::INDEXER_REQUEST_TIMEOUT);
-                if (requestTimeout > INDEXER_REQUEST_TIMEOUT_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_request_timeout must be between 0 and {} (got {})",
-                                    INDEXER_REQUEST_TIMEOUT_MAX,
-                                    requestTimeout));
-                }
-                jsonCnf.setUint64(requestTimeout, "/request_timeout_seconds");
-
-                // 0 is NOT legal: a zero polling period turns the health-monitor thread into a busy loop.
-                constexpr size_t INDEXER_MONITORING_INTERVAL_MAX = 3600;
-                const auto monitoringInterval = confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL);
-                if (monitoringInterval == 0 || monitoringInterval > INDEXER_MONITORING_INTERVAL_MAX)
-                {
-                    throw std::runtime_error(
-                        fmt::format("analysisd.indexer_monitoring_interval must be between 1 and {} (got {})",
-                                    INDEXER_MONITORING_INTERVAL_MAX,
-                                    monitoringInterval));
-                }
-                jsonCnf.setUint64(monitoringInterval, "/monitoring_interval_seconds");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE), "/logger_queue_size");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS), "/logger_threads");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY),
+                                  "/max_retry_delay_seconds");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_REQUEST_TIMEOUT),
+                                  "/request_timeout_seconds");
+                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL),
+                                  "/monitoring_interval_seconds");
 
                 // One connector for everything: event indexing and every content download share it,
                 // so there is one health monitor and an outage is reported once.
@@ -716,7 +681,7 @@ int main(int argc, char* argv[])
             const auto qMaxBytes = confManager.get<size_t>(conf::key::EVENT_QUEUE_MAX_BYTES);
 
             const auto eventQueue = std::make_shared<fastqueue::CQueue<router::IngestEvent>>(qSize, qEps);
-            eventQueue->setByteLimit(qMaxBytes, [](const router::IngestEvent& e) { return e.second.size(); });
+            eventQueue->setByteLimit(qMaxBytes, [](const router::IngestEvent& e) { return e.rawEvent.size(); });
             const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::EventTest>>(qSize);
 
             router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
@@ -807,16 +772,8 @@ int main(int argc, char* argv[])
                 }
             };
 
-            // 0 is legal and disables the early retry.
-            constexpr std::size_t CM_SYNC_RETRY_INTERVAL_MAX = 3600;
+            // 0 disables the early retry; the range is checked by confManager.load() (conf.cpp).
             const auto cmSyncRetryConfigured = confManager.get<std::size_t>(conf::key::CM_SYNC_RETRY_INTERVAL);
-            if (cmSyncRetryConfigured > CM_SYNC_RETRY_INTERVAL_MAX)
-            {
-                throw std::runtime_error(
-                    fmt::format("analysisd.cm_sync_retry_interval must be between 0 and {} (got {})",
-                                CM_SYNC_RETRY_INTERVAL_MAX,
-                                cmSyncRetryConfigured));
-            }
             // While a space has no route (indexer failure, content not ready yet), the next run comes after the
             // shorter retry interval instead of the regular one, and never later than the regular one.
             const auto cmSyncInterval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL);

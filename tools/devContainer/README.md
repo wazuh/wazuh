@@ -276,7 +276,7 @@ Creates the directory structure for running the engine in standalone mode under 
 (both it and `$ENGINE_SRC` must be set; `devcontainer.json` sets them):
 - `store/schema/{engine-schema,wazuh-logpar-overrides,allowed-fields}/0`, copied from
   `src/engine/ruleset/schemas/{engine-schema,wazuh-logpar-overrides,allowed-fields}.json`
-- the empty `logs/`, `tzdb/`, `kvdb/`, `queue/indexer/` and `outputs/` directories
+- the empty `logs/`, `tzdb/`, `kvdb/` and `outputs/` directories
 
 VS Code task: "Scripts: Create standalone structure".
 

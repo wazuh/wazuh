@@ -52,23 +52,54 @@ static int teardown_group(void **state) {
 
 #define N_PATHS 5
 
-static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
+#ifndef IO_REPARSE_TAG_MOUNT_POINT
+#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
+#endif
+#ifndef IO_REPARSE_TAG_SYMLINK
+#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
+#endif
+#ifndef IO_REPARSE_TAG_CLOUD
+#define IO_REPARSE_TAG_CLOUD 0x9000001AL
+#endif
+
+static void expect_find_first_file_tag(const wchar_t *file_path, const char *name, DWORD attrs, DWORD tag,
+                                       HANDLE handle) {
     expect_string(wrap_FindFirstFile, lpFileName, file_path);
     will_return(wrap_FindFirstFile, name);
     if (name != NULL) {
         will_return(wrap_FindFirstFile, attrs);
+        if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+            will_return(wrap_FindFirstFile, tag);
+        }
     }
 
     will_return(wrap_FindFirstFile, handle);
+    if (handle == INVALID_HANDLE_VALUE) {
+        will_return(wrap_FindFirstFile, ERROR_FILE_NOT_FOUND);
+    }
 }
 
-static void expect_find_next_file(HANDLE handle, const char *name, DWORD attrs, BOOL ret) {
+static void expect_find_first_file(const wchar_t *file_path, const char *name, DWORD attrs, HANDLE handle) {
+    expect_find_first_file_tag(file_path, name, attrs, IO_REPARSE_TAG_MOUNT_POINT, handle);
+}
+
+static void expect_find_next_file_error(HANDLE handle, const char *name, DWORD attrs, BOOL ret, DWORD error) {
     expect_value(wrap_FindNextFile, hFindFile, handle);
     will_return(wrap_FindNextFile, name);
     if (name != NULL) {
         will_return(wrap_FindNextFile, attrs);
+        if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+            will_return(wrap_FindNextFile, IO_REPARSE_TAG_MOUNT_POINT);
+        }
     }
     will_return(wrap_FindNextFile, ret);
+    if (!ret) {
+        will_return(wrap_FindNextFile, error);
+    }
+}
+
+static void expect_find_next_file(HANDLE handle, const char *name, DWORD attrs, BOOL ret) {
+    expect_find_next_file_error(handle, name, attrs, ret, ERROR_NO_MORE_FILES);
 }
 
 static int teardown_win32_wildcards(void **state) {
@@ -91,68 +122,94 @@ char * __wrap_getenv(const char *name) {
     return mock_type(char *);
 }
 
-void test_CreatePID_success(void **state)
-{
-    (void) state;
-    int ret;
-    char* content = NULL;
+/* Tests CreatePID */
 
-    *state = content;
+// Against the real file system, like the w_fopen_nofollow tests: the property under test is what the
+// operating system does with a link planted at the pid file's name. CreatePID writes var/run relative to
+// the working directory, so each test runs inside a fresh directory.
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+static char pid_dir[PATH_MAX + 1];
+static char pid_old_cwd[PATH_MAX + 1];
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 0);
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(0, ret);
+static int setup_create_pid(void **state) {
+    test_mode = 0;
+    assert_non_null(getcwd(pid_old_cwd, sizeof(pid_old_cwd)));
+    snprintf(pid_dir, sizeof(pid_dir), "/tmp/wazuh_create_pid_XXXXXX");
+    assert_non_null(mkdtemp(pid_dir));
+    assert_int_equal(chdir(pid_dir), 0);
+    assert_int_equal(mkdir("var", 0750), 0);
+    assert_int_equal(mkdir("var/run", 0770), 0);
+    return 0;
 }
 
-void test_CreatePID_failure_chmod(void **state)
+// remove(), not unlink()/rmdir(): those wrappers always expect a mock, remove()'s honours test_mode.
+static int teardown_create_pid(void **state) {
+    remove("var/run/test-2345.pid");
+    remove("victim");
+    remove("var/run");
+    remove("var");
+    assert_int_equal(chdir(pid_old_cwd), 0);
+    remove(pid_dir);
+    test_mode = 1;
+    return 0;
+}
+
+void test_CreatePID_success(void **state)
 {
-    (void) state;
-    int ret;
+    char content[16] = {0};
+    struct stat statbuf;
+    int fd;
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, 1);
+    assert_int_equal(CreatePID("test", 2345), 0);
 
-    expect_value(__wrap_fprintf, __stream, 1);
-    expect_string(__wrap_fprintf, formatted_msg, "2345\n");
-    will_return(__wrap_fprintf, 0);
+    fd = open("var/run/test-2345.pid", O_RDONLY);
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(read(fd, content, sizeof(content) - 1), 5);
+    close(fd);
+    assert_string_equal(content, "2345\n");
 
-    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
-    will_return(__wrap_chmod, 1);
+    assert_int_equal(stat("var/run/test-2345.pid", &statbuf), 0);
+    assert_int_equal(statbuf.st_mode & 07777, 0640);
+}
 
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/run/test-2345.pid' due to [(0)-(Success)].");
+void test_CreatePID_symlink_not_followed(void **state)
+{
+    // A link planted at the pid file's name, to a file that does not exist yet.
+    assert_int_equal(symlink("../../victim", "var/run/test-2345.pid"), 0);
 
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 0);
+    assert_int_equal(CreatePID("test", 2345), -1);
 
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    // Not created through the link.
+    errno = 0;
+    assert_int_equal(open("victim", O_RDONLY), -1);
+    assert_int_equal(errno, ENOENT);
+}
+
+void test_CreatePID_hardlink_rejected(void **state)
+{
+    char content[16] = {0};
+    int fd;
+
+    fd = open("victim", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    assert_int_not_equal(fd, -1);
+    close(fd);
+    assert_int_equal(link("victim", "var/run/test-2345.pid"), 0);
+
+    assert_int_equal(CreatePID("test", 2345), -1);
+
+    // The linked file is left empty.
+    fd = open("victim", O_RDONLY);
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(read(fd, content, sizeof(content) - 1), 0);
+    close(fd);
 }
 
 void test_CreatePID_failure_fopen(void **state)
 {
-    (void) state;
-    int ret;
+    // No var/run to create the file in.
+    assert_int_equal(remove("var/run"), 0);
 
-    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
-    expect_string(__wrap_fopen, mode, "a");
-    will_return(__wrap_fopen, NULL);
-
-    ret = CreatePID("test", 2345);
-    assert_int_equal(-1, ret);
+    assert_int_equal(CreatePID("test", 2345), -1);
 }
 
 void test_DeletePID_success(void **state)
@@ -178,6 +235,9 @@ void test_DeletePID_failure(void **state)
     (void) state;
     int ret = 0;
     struct stat stat_delete = { .st_mode = 0 };
+
+    // The mocked unlink() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
 
     expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 1);
@@ -357,6 +417,9 @@ void test_MergeAppendFile_open_fail(void **state) {
     int path_offset = -1;
     int ret;
 
+    // The mocked fopen() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
+
     expect_string(__wrap_fopen, path, file);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
@@ -373,6 +436,9 @@ void test_MergeAppendFile_fseek_fail(void **state) {
     char * file = "test.txt";
     int path_offset = -1;
     int ret;
+
+    // The mocked fseek() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
 
     expect_string(__wrap_fopen, path, file);
     expect_string(__wrap_fopen, mode, "r");
@@ -395,6 +461,9 @@ void test_MergeAppendFile_fseek2_fail(void **state) {
     char * file = "/test/shared/default/test.txt";
     int path_offset = -1;
     int ret;
+
+    // The mocked fseek() does not set errno; make the expected diagnostic deterministic.
+    errno = 0;
 
     expect_string(__wrap_fopen, path, file);
     expect_string(__wrap_fopen, mode, "r");
@@ -1628,6 +1697,154 @@ void test_wopendir_network_path(void **state) {
     assert_int_equal(errno, EACCES);
 }
 
+/* Non-ASCII entries come back from FindFirstFileW as UTF-8, so they match the ignore list. */
+void test_cldir_ex_ignore_win_utf8_names(void **state) {
+    const char *ignore[] = { "caf\xc3\xa9.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", ".", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, "..", FILE_ATTRIBUTE_DIRECTORY, TRUE);
+    expect_find_next_file((HANDLE) 1, "caf\xc3\xa9.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_find_next_file((HANDLE) 1, "\xc3\xbcn\xc3\xaf" "code-\xc3\xb1.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/\xc3\xbcn\xc3\xaf" "code-\xc3\xb1.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+/* A name that is not valid UTF-8 is created through the ANSI code page, so it is compared the same way. */
+void test_cldir_ex_ignore_win_ansi_name(void **state) {
+    const char *ignore[] = { "caf\xe9.txt", NULL };
+    wchar_t wide[16];
+    char on_disk[32];
+
+    MultiByteToWideChar(CP_ACP, 0, ignore[0], -1, wide, 16);
+    WideCharToMultiByte(CP_UTF8, 0, wide, -1, on_disk, sizeof(on_disk), NULL, NULL);
+
+    expect_find_first_file(L"C:\\shared\\*", on_disk, FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_remove_directory(void **state) {
+    const char *ignore[] = { "keep.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", "sub", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/sub\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/sub/keep.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/sub");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_preserve_subdirectory_file(void **state) {
+    const char *ignore[] = { "sub/keep.txt", NULL };
+
+    expect_find_first_file(L"C:\\shared\\*", "sub", FILE_ATTRIBUTE_DIRECTORY, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/sub\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_find_next_file((HANDLE) 2, "stale.txt", FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/sub/stale.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/sub");
+    will_return(__wrap_utf8_RemoveDirectory, FALSE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+/* A junction is removed itself, without cleaning the directory it points to. */
+void test_cldir_ex_ignore_win_reparse_point_not_followed(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "link", FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT,
+                           (HANDLE) 1);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/link");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), 0);
+}
+
+/* Other reparse points hold their own content, so it is removed before the directory. */
+void test_cldir_ex_ignore_win_cloud_placeholder_cleaned(void **state) {
+    expect_find_first_file_tag(L"C:\\shared\\*", "cloud", FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT,
+                               IO_REPARSE_TAG_CLOUD, (HANDLE) 1);
+    expect_find_first_file(L"C:\\shared/cloud\\*", "file.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 2);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/cloud/file.txt");
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 2, NULL, 0, FALSE);
+    expect_string(__wrap_utf8_RemoveDirectory, utf8_path, "C:\\shared/cloud");
+    will_return(__wrap_utf8_RemoveDirectory, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), 0);
+}
+
+/* A name of MAX_PATH - 20 CJK characters takes three UTF-8 bytes each, beyond PATH_MAX. */
+void test_cldir_ex_ignore_win_long_utf8_name(void **state) {
+    char stale[(MAX_PATH - 20) * 3 + 1] = "";
+    char kept[sizeof(stale)] = "";
+    char stale_path[sizeof(stale) + 16];
+    const char *ignore[] = { kept, NULL };
+
+    for (int i = 0; i < MAX_PATH - 20; i++) {
+        strcat(stale, "\xe6\x97\xa5");
+        strcat(kept, "\xe6\x9c\xac");
+    }
+    snprintf(stale_path, sizeof(stale_path), "C:\\shared/%s", stale);
+
+    expect_find_first_file(L"C:\\shared\\*", kept, FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file((HANDLE) 1, stale, FILE_ATTRIBUTE_NORMAL, TRUE);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, stale_path);
+    will_return(__wrap_utf8_DeleteFile, TRUE);
+    expect_find_next_file((HANDLE) 1, NULL, 0, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", ignore), 0);
+}
+
+void test_cldir_ex_ignore_win_delete_failure(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "locked.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_string(__wrap_utf8_DeleteFile, utf8_path, "C:\\shared/locked.txt");
+    will_return(__wrap_utf8_DeleteFile, FALSE);
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
+}
+
+void test_cldir_ex_ignore_win_find_failure(void **state) {
+    expect_string(wrap_FindFirstFile, lpFileName, L"C:\\shared\\*");
+    will_return(wrap_FindFirstFile, NULL);
+    will_return(wrap_FindFirstFile, INVALID_HANDLE_VALUE);
+    will_return(wrap_FindFirstFile, ERROR_PATH_NOT_FOUND);
+    errno = 0;
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", NULL), -1);
+    assert_int_equal(errno, ENOENT);
+}
+
+/* A listing that stops on an error other than its end reports it. */
+void test_cldir_ex_ignore_win_find_next_failure(void **state) {
+    expect_find_first_file(L"C:\\shared\\*", "keep.txt", FILE_ATTRIBUTE_NORMAL, (HANDLE) 1);
+    expect_find_next_file_error((HANDLE) 1, NULL, 0, FALSE, ERROR_ACCESS_DENIED);
+    errno = 0;
+
+    assert_int_equal(cldir_ex_ignore("C:\\shared", (const char *[]){ "keep.txt", NULL }), -1);
+    assert_int_equal(errno, EACCES);
+}
+
+void test_cldir_ex_ignore_win_network_path(void **state) {
+    errno = 0;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(9800): File access denied. Network path usage is not allowed: 'Z:\\shared'.");
+
+    assert_int_equal(cldir_ex_ignore("Z:\\shared", NULL), -1);
+    assert_int_equal(errno, EACCES);
+}
+
 void test_w_stat_local_path(void **state) {
     errno = 0;
     char *path = "C:\\file.txt";
@@ -1724,12 +1941,6 @@ void test_w_win_owner_trusted(void **state) {
 }
 
 // Reaches the one-level reparse-target parser in file_op.c with crafted FSCTL_GET_REPARSE_POINT buffers.
-#ifndef IO_REPARSE_TAG_MOUNT_POINT
-#define IO_REPARSE_TAG_MOUNT_POINT 0xA0000003L
-#endif
-#ifndef IO_REPARSE_TAG_SYMLINK
-#define IO_REPARSE_TAG_SYMLINK 0xA000000CL
-#endif
 #ifndef SYMLINK_FLAG_RELATIVE
 #define SYMLINK_FLAG_RELATIVE 1
 #endif
@@ -1937,7 +2148,7 @@ static int teardown_unmerge(void **state) {
 }
 
 static void write_unmerge_bundle(const char *content) {
-    // Text mode, as the agent receives merged.mg: each LF is stored as CR LF.
+    // Text mode, as a 4.x agent stores merged.mg: each LF is stored as CR LF.
     FILE *fp = fopen("merged.mg", "w");
 
     assert_non_null(fp);
@@ -2007,6 +2218,48 @@ void test_unmerge_windows_text_mode_bundle(void **state) {
     assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
     write_unmerge_bundle("!5 lines.conf\na\nb\n");
     assert_int_equal(TestUnmergeFiles("merged.mg", OS_TEXT), 0);
+}
+
+void test_unmerge_windows_binary_lf_bundle(void **state) {
+    // Raw bytes, as the agent downloads merged.mg: LF only, with entry sizes counting raw bytes, and
+    // an entry holding CR LF and Ctrl-Z, which a text-mode read would fold or stop at.
+    static const char script[] = "first\r\nsecond\x1a\r\nlast";
+    char config[2048];
+    size_t config_size = 0;
+    char line[64];
+    long offset = 0;
+    FILE *fp;
+
+    for (int i = 0; i < 80; i++) {
+        config_size += snprintf(config + config_size, sizeof(config) - config_size, "<!-- line %02d -->\n", i);
+    }
+
+    fp = fopen("merged.mg", "wb");
+    assert_non_null(fp);
+    assert_true(fputs("#0123456789abcdef0123456789abcdef\n", fp) >= 0);
+    assert_true(fprintf(fp, "!%u agent.conf\n", (unsigned int)config_size) > 0);
+    assert_int_equal(fwrite(config, 1, config_size, fp), config_size);
+    assert_true(fprintf(fp, "!%u script.txt\n", (unsigned int)(sizeof(script) - 1)) > 0);
+    assert_int_equal(fwrite(script, 1, sizeof(script) - 1, fp), sizeof(script) - 1);
+    assert_int_equal(fclose(fp), 0);
+
+    // TestUnmergeFiles() reads the entries exactly as UnmergeFiles() does.
+    assert_int_equal(TestUnmergeFiles("merged.mg", OS_BINARY), 1);
+
+    // The C runtime's text mode undercounts ftell() by one per buffered LF, so after the first header
+    // there are more LF left in the buffer than bytes read and the offset goes negative. The file is
+    // closed before checking, so teardown can remove it whatever the result.
+    fp = fopen("merged.mg", "r");
+    assert_non_null(fp);
+    if (fgets(line, sizeof(line), fp) && fgets(line, sizeof(line), fp)) {
+        offset = ftell(fp);
+    }
+    assert_int_equal(fclose(fp), 0);
+
+    if (offset >= 0) {
+        print_message("Skipped: this C runtime's text-mode ftell() does not go negative on this bundle.\n");
+        skip();
+    }
 }
 
 #endif
@@ -3246,9 +3499,10 @@ int main(void) {
     const struct CMUnitTest tests[] = {
 #ifndef TEST_WINAGENT
 #ifndef W_VETTED_TEST_NO_O_NOFOLLOW
-        cmocka_unit_test(test_CreatePID_success),
-        cmocka_unit_test(test_CreatePID_failure_chmod),
-        cmocka_unit_test(test_CreatePID_failure_fopen),
+        cmocka_unit_test_setup_teardown(test_CreatePID_success, setup_create_pid, teardown_create_pid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_symlink_not_followed, setup_create_pid, teardown_create_pid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_hardlink_rejected, setup_create_pid, teardown_create_pid),
+        cmocka_unit_test_setup_teardown(test_CreatePID_failure_fopen, setup_create_pid, teardown_create_pid),
         cmocka_unit_test(test_DeletePID_success),
         cmocka_unit_test(test_DeletePID_failure),
         cmocka_unit_test(test_w_is_compressed_gz_file_uncompressed),
@@ -3405,6 +3659,17 @@ int main(void) {
         cmocka_unit_test(test_wCreateProcessW_conversion_failure),
         cmocka_unit_test(test_wopendir_local_path),
         cmocka_unit_test(test_wopendir_network_path),
+        cmocka_unit_test(test_cldir_ex_ignore_win_utf8_names),
+        cmocka_unit_test(test_cldir_ex_ignore_win_ansi_name),
+        cmocka_unit_test(test_cldir_ex_ignore_win_remove_directory),
+        cmocka_unit_test(test_cldir_ex_ignore_win_preserve_subdirectory_file),
+        cmocka_unit_test(test_cldir_ex_ignore_win_reparse_point_not_followed),
+        cmocka_unit_test(test_cldir_ex_ignore_win_cloud_placeholder_cleaned),
+        cmocka_unit_test(test_cldir_ex_ignore_win_long_utf8_name),
+        cmocka_unit_test(test_cldir_ex_ignore_win_delete_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_find_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_find_next_failure),
+        cmocka_unit_test(test_cldir_ex_ignore_win_network_path),
         cmocka_unit_test(test_w_stat_local_path),
         cmocka_unit_test(test_w_stat_network_path),
         cmocka_unit_test(test_w_stat64_local_path),
@@ -3414,6 +3679,7 @@ int main(void) {
         cmocka_unit_test(test_w_win_reparse_tag_is_plain),
         cmocka_unit_test(test_unmerge_normalize_name_windows),
         cmocka_unit_test_setup_teardown(test_unmerge_windows_text_mode_bundle, setup_unmerge, teardown_unmerge),
+        cmocka_unit_test_setup_teardown(test_unmerge_windows_binary_lf_bundle, setup_unmerge, teardown_unmerge),
 
 #endif
     };

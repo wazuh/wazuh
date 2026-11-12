@@ -12,6 +12,7 @@
 #define _HC_FAKE_MANAGER_HPP
 
 #include "digest.hpp"
+#include "fakeDownloadReply.hpp"
 #include "jwt/enrollKeyDerivation.hpp"
 #include "jwt/jwtEnrollTokenVerifier.hpp"
 #include "jwt/jwtKeyDecoder.hpp"
@@ -74,6 +75,25 @@ inline std::string fakeManagerSettingsHash(const std::string& startupBody)
 
     const std::string body = envelope.dump();
     return sha256Hex(body.data(), body.size());
+}
+
+/// /download's error page when DownloadOptions::errorStatus is set. Sent as octet-stream, which
+/// httplib never compresses on its own, so errorPageCoding is the only coding on it.
+inline void answerDownloadError(const DownloadOptions& download, httplib::Response& response)
+{
+    response.status = download.errorStatus;
+
+    if (download.retryAfterSeconds > 0)
+    {
+        response.set_header("Retry-After", std::to_string(download.retryAfterSeconds));
+    }
+
+    if (!download.errorPageCoding.empty())
+    {
+        response.set_header("Content-Encoding", download.errorPageCoding);
+    }
+
+    response.set_content("Service Unavailable", "application/octet-stream");
 }
 
 /**
@@ -159,6 +179,10 @@ class FakeManager final
         /// caBundle: the CA-rotation surface (#39321) -- what notify advertises
         /// and what /cacerts serves. Defaults leave both routes exactly as the
         /// bootstrap suite has always seen them.
+        /// download: how /download answers a config request that offered zstd
+        /// (#38514, fakeDownloadReply.hpp). The default answers plain, as before.
+        /// Every /download records the Accept-Encoding it carried, for
+        /// GET /peek/download-accept-encoding.
         FakeManager(uint16_t port,
                     const std::string& keyHex,
                     bool tls = false,
@@ -172,7 +196,8 @@ class FakeManager final
                     int scanVdRejectFirstNAttempts = 0,
                     std::string enrollPassword = {},
                     int enrollForcedStatus = 0,
-                    CaBundleOptions caBundle = {})
+                    CaBundleOptions caBundle = {},
+                    DownloadOptions download = {})
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
@@ -187,6 +212,7 @@ class FakeManager final
             , m_enrollPassword(std::move(enrollPassword))
             , m_enrollForcedStatus(enrollForcedStatus)
             , m_caBundle(caBundle)
+            , m_download(download)
         {
             // Generated BEFORE fork(), deliberately: the server runs in a child
             // process that shares no memory with the test, so a certificate made
@@ -305,6 +331,7 @@ class FakeManager final
             const uint64_t vdFeedOffset = m_vdFeedOffset;
             const int scanVdRejectFirstNAttempts = m_scanVdRejectFirstNAttempts;
             const CaBundleOptions caBundle = m_caBundle;
+            const DownloadOptions download = m_download;
             const std::string configHash =
                 configBlob.empty() ? std::string {} :
                 sha256Hex(configBlob.data(), configBlob.size());
@@ -458,7 +485,7 @@ class FakeManager final
             // Size of the session as the manager would see it. Agent builds compile the fake
             // against cpp-httplib 0.10.9 (http-request's EXTERNAL_DEPS_VERSION=19 default), which
             // knows nothing about zstd and hands a `Content-Encoding: zstd` body over untouched;
-            // the manager tree's 0.25.0 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
+            // a cpp-httplib >= 0.20 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
             // runs. Inflate here whenever the body is still a zstd frame so the compression test
             // proves the same thing -- wire bytes back to the full session -- under both.
             const auto statefulBytes = [](const httplib::Request & request) -> std::size_t
@@ -517,14 +544,28 @@ class FakeManager final
                                      "application/json");
             });
 
+            // The Accept-Encoding of the last /download, "<absent>" when it carried none, so a test can
+            // check the config fetcher offers zstd and the WPK fetcher doesn't (#38514).
+            auto downloadAcceptEncoding = std::make_shared<std::string>();
+            auto downloadMutex = std::make_shared<std::mutex>();
+
             server.Post(
                 "/download",
-                [verify, refuseAuth, configBlob](const httplib::Request & request, httplib::Response & response)
+                [verify, refuseAuth, configBlob, download, downloadAcceptEncoding,
+                         downloadMutex](const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/download", request))
                 {
                     refuseAuth(response);
                     return;
+                }
+
+                const bool hasAcceptEncoding = request.has_header("Accept-Encoding");
+                const std::string acceptEncoding = request.get_header_value("Accept-Encoding");
+
+                {
+                    std::lock_guard<std::mutex> lock(*downloadMutex);
+                    *downloadAcceptEncoding = hasAcceptEncoding ? acceptEncoding : "<absent>";
                 }
 
                 if (configBlob.empty() || request.body.find("\"resource_type\":\"config\"") == std::string::npos)
@@ -544,28 +585,57 @@ class FakeManager final
                     return;
                 }
 
+                if (download.errorStatus != 0)
+                {
+                    answerDownloadError(download, response);
+                    return;
+                }
+
+                const auto body = std::make_shared<const DownloadBody>(
+                                      shapeDownloadBody(configBlob, download.reply, offersZstd(acceptEncoding)));
+
+                if (!body->contentEncoding.empty())
+                {
+                    response.set_header("Content-Encoding", body->contentEncoding);
+                }
+
                 // Chunked transfer on purpose (#37733 5.2.3): the client's
                 // decode + stream-to-file path is exercised for real.
                 response.status = 200;
                 response.set_chunked_content_provider("application/octet-stream",
-                                                      [configBlob](size_t offset, httplib::DataSink & sink)
+                                                      [body](size_t offset, httplib::DataSink & sink)
                 {
                     constexpr size_t CHUNK = 16 * 1024;
-                    const size_t remaining = configBlob.size() - offset;
+                    const size_t remaining = body->bytes.size() - offset;
                     const size_t count = remaining < CHUNK ? remaining : CHUNK;
 
                     if (count > 0)
                     {
-                        sink.write(configBlob.data() + offset, count);
+                        sink.write(body->bytes.data() + offset, count);
                     }
 
-                    if (offset + count >= configBlob.size())
+                    if (offset + count >= body->bytes.size())
                     {
+                        // A false return drops the connection without the terminating chunk,
+                        // which is how #40900's manager ends a stream whose source failed.
+                        if (!body->terminated)
+                        {
+                            return false;
+                        }
+
                         sink.done();
                     }
 
                     return true;
                 });
+            });
+
+            server.Get("/peek/download-accept-encoding",
+                       [downloadAcceptEncoding, downloadMutex](const httplib::Request&, httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*downloadMutex);
+                response.status = downloadAcceptEncoding->empty() ? 204 : 200;
+                response.set_content(*downloadAcceptEncoding, "text/plain");
             });
 
             // Records every /control request TYPE the fork child actually saw
@@ -1104,6 +1174,7 @@ class FakeManager final
         std::string m_enrollPassword;
         int m_enrollForcedStatus {0};
         CaBundleOptions m_caBundle {};
+        DownloadOptions m_download {};
         /// The certificate GET /cacerts serves, minted before fork() so both
         /// processes hold the same bytes. See the constructor.
         std::string m_cacertsPem;
@@ -1112,5 +1183,15 @@ class FakeManager final
         std::string m_tlsCertPem;
         std::string m_tlsKeyPem;
 };
+
+/// The Accept-Encoding a TLS FakeManager saw on its last /download: "<absent>" for none,
+/// "<peek failed>" when it couldn't be asked.
+inline std::string fakeManagerDownloadAcceptEncoding(uint16_t port)
+{
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    const auto result = peek.Get("/peek/download-accept-encoding");
+    return result ? result->body : std::string {"<peek failed>"};
+}
 
 #endif // _HC_FAKE_MANAGER_HPP

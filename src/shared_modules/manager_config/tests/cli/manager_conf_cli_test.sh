@@ -54,6 +54,25 @@ else
     fail cli_validate_invalid "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
+# Every problem of the file in one run (#40814): one (1244) line each, in the order of the file.
+cat > "$TMP/many-errors.conf" << 'EOF'
+<wazuh_config>
+  <auth><port>1515</port><port>1516</port><use_password>true</use_password></auth>
+  <global><jsonout_output>yes</jsonout_output></global>
+  <alerts><log_alert_level>3</log_alert_level></alerts>
+  <cluster><node_type>master</node_type></cluster>
+  <indexer><hosts><host>https://127.0.0.1:9200</host></hosts></indexer>
+</wazuh_config>
+EOF
+rc=$(run "$CLI" --skip-file-checks validate -f "$TMP/many-errors.conf")
+subjects=$(sed -n "s/^(1244): Invalid configuration at '\([^']*\)'.*/\1/p" "$TMP/err" | tr '\n' ' ')
+if [ "$rc" = 1 ] && [ ! -s "$TMP/out" ] && [ "$(grep -c . "$TMP/err")" = 5 ] \
+    && [ "$subjects" = "/auth/port /auth/use_password /global/jsonout_output /alerts /cluster " ]; then
+    pass cli_validate_reports_every_error
+else
+    fail cli_validate_reports_every_error "exit $rc; err='$(cat "$TMP/err")'"
+fi
+
 rc=$(run "$CLI" validate -f "$INVALID/raw-ampersand.conf")
 if [ "$rc" = 1 ] && grep -q "raw '&'" "$TMP/err" && grep -q 'line' "$TMP/err"; then
     pass cli_validate_raw_ampersand
@@ -74,6 +93,16 @@ if [ "$rc" = 1 ] && [ ! -s "$TMP/out" ] \
     pass cli_validate_missing_file_exact
 else
     fail cli_validate_missing_file_exact "exit $rc; err='$(cat "$TMP/err")'"
+fi
+
+# A path that exists but is not a readable file is not "not found": the reason is named instead.
+mkdir -p "$TMP/a-directory.conf"
+rc=$(run "$CLI" validate -f "$TMP/a-directory.conf")
+if [ "$rc" = 1 ] && [ ! -s "$TMP/out" ] && ! grep -q '(1239)' "$TMP/err" \
+    && [ "$(cat "$TMP/err")" = "(1244): Invalid configuration at '/': configuration file cannot be read: $TMP/a-directory.conf: not a regular file." ]; then
+    pass cli_validate_not_a_file
+else
+    fail cli_validate_not_a_file "exit $rc; err='$(cat "$TMP/err")'"
 fi
 
 # The installer emits absolute /etc/wazuh-manager/certs/... paths, which would make this check depend on
@@ -195,19 +224,29 @@ for tool in /usr/bin/* /bin/*; do
     esac
     [ -e "$NOTOOLS/$(basename "$tool")" ] || ln -s "$tool" "$NOTOOLS/$(basename "$tool")"
 done
-if gen "$TMP/n.conf" "PATH=$NOTOOLS" WAZUH_REMOTE_HTTPS_CERTIFICATE=/opt/certs/server.pem \
-    WAZUH_REMOTE_HTTPS_KEY=/opt/certs/server-key.pem \
+if gen "$TMP/n.conf" "PATH=$NOTOOLS" WAZUH_REMOTE_HTTPS_CERTIFICATE=/etc/wazuh-manager/certs/server.pem \
+    WAZUH_REMOTE_HTTPS_KEY=/etc/wazuh-manager/certs/server-key.pem \
     && ! PATH="$NOTOOLS" command -v sed > /dev/null && ! PATH="$NOTOOLS" command -v awk > /dev/null \
     && [ ! -s "$TMP/gen.err" ] \
     && "$CLI" --skip-file-checks validate -f "$TMP/n.conf" 2> "$TMP/err" \
     && [ "$(sed -n 2p "$TMP/n.conf")" = "  Wazuh - Manager - Default configuration for ubuntu 24.04" ] \
-    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_cert)" = "/opt/certs/server.pem" ] \
-    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_key)" = "/opt/certs/server-key.pem" ] \
+    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_cert)" = "/etc/wazuh-manager/certs/server.pem" ] \
+    && [ "$(effective "$TMP/n.conf" auth.ssl_manager_key)" = "/etc/wazuh-manager/certs/server-key.pem" ] \
     && key=$(effective "$TMP/n.conf" cluster.key) && [ "$(printf '%s' "$key" | tr -d '0-9a-f' | wc -c)" = 0 ] \
     && [ "$(printf '%s' "$key" | wc -c)" = 32 ]; then
     pass gen_without_text_tools
 else
     fail gen_without_text_tools "gen.err='$(cat "$TMP/gen.err" 2> /dev/null)' err='$(cat "$TMP/err" 2> /dev/null)' header='$(sed -n 2p "$TMP/n.conf" 2> /dev/null)' key='${key:-}'"
+fi
+
+# A certificate path outside /etc/wazuh-manager/certs would install and then never start: the
+# generator refuses it, naming the variable.
+if ! gen "$TMP/c.conf" WAZUH_REMOTE_HTTPS_CERTIFICATE=/opt/certs/server.pem \
+    WAZUH_REMOTE_HTTPS_KEY=/etc/wazuh-manager/certs/server-key.pem \
+    && grep -q WAZUH_REMOTE_HTTPS_CERTIFICATE "$TMP/gen.err"; then
+    pass gen_certs_path_rejected
+else
+    fail gen_certs_path_rejected "gen.err='$(cat "$TMP/gen.err" 2> /dev/null)'"
 fi
 
 # An XML metacharacter in a free-text installer variable is rejected by CheckRemoteXmlSafe before any

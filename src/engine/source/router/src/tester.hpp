@@ -93,6 +93,7 @@ public:
      * @copydoc ITester::renameEntry
      */
     base::OptError renameEntry(const std::string& from, const std::string& to) override;
+    base::RespOrError<std::optional<test::Entry>> replaceEntry(const std::string& from, const std::string& to) override;
 
     /**
      * @copydoc ITester::enableEntry

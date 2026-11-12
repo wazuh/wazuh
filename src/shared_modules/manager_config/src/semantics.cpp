@@ -60,9 +60,10 @@ namespace manager_config::detail
 
     } // namespace
 
-    std::optional<Error>
+    std::vector<Error>
     checkSemantics(const rapidjson::Document& doc, const rapidjson::Document& raw, const LoadOptions& options)
     {
+        std::vector<Error> errors;
         // certificate/key pairs must be EXPLICITLY set together (or not at all). Checked on the raw
         // document: both halves carry non-empty schema defaults, so on the effective document they
         // are always "set" and the rule could never fire (a custom certificate silently paired with
@@ -77,7 +78,7 @@ namespace manager_config::detail
             const bool keySet = !str(get(raw, keyPointer)).empty();
             if (certSet != keySet)
             {
-                return Error {certSet ? keyPointer : certPointer, "certificate and key must be set together"};
+                errors.push_back({certSet ? keyPointer : certPointer, "certificate and key must be set together"});
             }
         }
 
@@ -91,7 +92,8 @@ namespace manager_config::detail
                 prefix.substr(start, end == std::string::npos ? std::string::npos : end - start);
             if (segment == "." || segment == "..")
             {
-                return Error {"/remote/https/global_prefix", "'.' and '..' path segments are not allowed"};
+                errors.push_back({"/remote/https/global_prefix", "'.' and '..' path segments are not allowed"});
+                break;
             }
             if (end == std::string::npos)
             {
@@ -127,8 +129,10 @@ namespace manager_config::detail
             {
                 if (ports[i].second == ports[j].second)
                 {
-                    return Error {ports[i].first,
-                                  "port " + std::to_string(ports[i].second) + " is already used by " + ports[j].first};
+                    errors.push_back(
+                        {ports[i].first,
+                         "port " + std::to_string(ports[i].second) + " is already used by " + ports[j].first});
+                    break;
                 }
             }
         }
@@ -150,11 +154,11 @@ namespace manager_config::detail
             {
                 if (auto error = checkFile(str(get(doc, pointer)), pointer, options))
                 {
-                    return error;
+                    errors.push_back(std::move(*error));
                 }
             }
         }
-        return std::nullopt;
+        return errors;
     }
 
 } // namespace manager_config::detail

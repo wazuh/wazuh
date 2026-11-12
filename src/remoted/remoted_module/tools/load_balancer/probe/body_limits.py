@@ -2,7 +2,7 @@
 """
 Does each front end let the manager's own body limits decide?
 
-Section 4.4 of the load-balancer guide says the proxy must allow what remoted allows.
+Section 4.4 of docs/ref/modules/remoted/load-balancers/README.md says the proxy must allow what remoted allows.
 The manager has two caps that must fire in this order:
 
   remoted.auth_max_body_size          -> clean 413, counted in remoted.auth.reject.body_too_large

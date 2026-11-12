@@ -29,7 +29,7 @@ def reset_password(test_metadata):
     """
     Write the password file.
     """
-    DEFAULT_TEST_PASSWORD = 'TopSecret'
+    DEFAULT_TEST_PASSWORD = 'TopSecretEnrollPass'
     set_password = None
     try:
         if test_metadata['use_password'] == 'yes':

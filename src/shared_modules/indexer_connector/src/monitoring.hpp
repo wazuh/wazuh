@@ -39,6 +39,19 @@ constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 auto constexpr MONITOR_NAME {"monitoring"};
 
 /**
+ * @brief Consecutive health checks that must each answer a PERMANENT circuit breaker before the heap
+ * sizing WARNING is logged.
+ *
+ * OpenSearch labels a parent-breaker trip PERMANENT whenever its permanent children (fielddata) outweigh
+ * its transient ones (request, in_flight_requests) -- 20 MB of fielddata against zero transient bytes is
+ * enough, whatever the rest of the heap holds. With the real-memory breaker on G1 it forces a GC before
+ * tripping, but at most once every 5 s, so a single probe can trip on garbage the next collection frees
+ * (seen during a rolling restart: 1.6 GB down to 0.7 GB of a 1.8 GB heap). Only a breaker that survives
+ * several probes, and therefore several forced collections, says the live heap is too small.
+ */
+constexpr auto PERMANENT_BREAKER_WARNING_PROBES = 3u;
+
+/**
  * @brief What the last health check said about a host.
  *
  * A 429 on the probe is an answer: the node is alive but rejecting work it cannot take now (for
@@ -104,7 +117,8 @@ class TMonitoring final
     struct PreviousState
     {
         HostState state;
-        bool permanent;
+        /// Consecutive checks, ending with this one, that answered a PERMANENT circuit breaker.
+        uint32_t permanentStreak;
     };
     /// Touched only by the thread running a round (the constructor's, then the monitor's). Needs no
     /// synchronisation: no reader ever looks at it. A host with no entry counts as available.
@@ -132,7 +146,7 @@ class TMonitoring final
                      const SecureCommunication& authentication)
     {
         const auto previousEntry = m_previousServerState.find(serverAddress);
-        const auto previous = previousEntry == m_previousServerState.end() ? PreviousState {HostState::Available, false}
+        const auto previous = previousEntry == m_previousServerState.end() ? PreviousState {HostState::Available, 0}
                                                                            : previousEntry->second;
         std::string unavailableReason;
         std::string throttleReason;
@@ -326,17 +340,21 @@ class TMonitoring final
             LOGFN_INFO(m_logFn, "Indexer node '%s' is available again.", serverAddress.c_str());
         }
 
-        if (state == HostState::Throttled && permanent &&
-            !(previous.state == HostState::Throttled && previous.permanent))
+        // Any other answer -- green, a TRANSIENT trip, down -- ends the streak. The WARNING fires once,
+        // on the probe that reaches the threshold; a single trip stays at the INFO line above.
+        const auto permanentStreak =
+            state == HostState::Throttled && permanent ? previous.permanentStreak + 1 : uint32_t {0};
+        if (permanentStreak == PERMANENT_BREAKER_WARNING_PROBES)
         {
             LOGFN_WARN(m_logFn,
-                       "Indexer node '%s' reports a PERMANENT circuit breaker (%s): heap usage is above the breaker "
-                       "limit; check the indexer heap sizing.",
+                       "Indexer node '%s' has reported a PERMANENT circuit breaker on %u consecutive health checks "
+                       "(%s): heap usage stays above the breaker limit; check the indexer heap sizing.",
                        serverAddress.c_str(),
+                       PERMANENT_BREAKER_WARNING_PROBES,
                        throttleReason.c_str());
         }
 
-        m_previousServerState[serverAddress] = {state, state == HostState::Throttled && permanent};
+        m_previousServerState[serverAddress] = {state, permanentStreak};
     }
 
     /**

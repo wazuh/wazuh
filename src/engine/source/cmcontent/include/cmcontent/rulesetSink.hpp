@@ -26,6 +26,7 @@ struct RulesetDeployment
     bool available {false};      ///< A route serves the space.
     std::string hash;            ///< Hash of the deployed ruleset; "" when no route serves it.
     std::optional<bool> enabled; ///< Whether the remote policy is enabled, as last probed; empty before.
+    bool policyMissing {false};  ///< The last probe found no policy for the space in the indexer.
 };
 
 /**
@@ -139,6 +140,7 @@ private:
     std::string m_routeName;
 
     std::optional<bool> m_policyEnabled;
+    bool m_policyMissing {false};
     std::optional<cm::store::NamespaceId> m_stagingNamespaceId;
     Accumulator m_accumulator;
 };

@@ -65,6 +65,14 @@ once at the end of a run, only when something changed. `FailedTransport` and `Fa
 within the run, up to `analysisd.ioc_indexer_connector_max_retries` attempts,
 `analysisd.ioc_indexer_connector_retry_interval` seconds apart.
 
+### Error text in log lines
+
+An indexer connector error ends with the whole response body; a circuit-breaker `429` is more than a
+kilobyte, its root cause repeated. The `WARNING` of a failed type passes the cycle's detail through
+`summarizeError()` (`src/errorSummary.hpp`): the text before the body (which holds the HTTP status),
+then the body's `error.type` and `error.reason` (the reason cut to 160 characters), the whole error
+part bounded to 400 characters.
+
 ### The record
 
 `iocsync/status/0` is an array with one entry per type (an object holding the array under
@@ -92,10 +100,14 @@ iocsync/
 ├── README.md
 ├── interface/iocsync/iiocsync.hpp    # IIocSync + IocTypeStatus
 ├── include/iocsync/iocsync.hpp       # IocSync
-├── src/iocsync.cpp
+├── src/
+│   ├── iocsync.cpp
+│   └── errorSummary.hpp              # summarizeError(): bounded indexer error text for log lines
 └── test/
     ├── mocks/iocsync/mockIocSync.hpp # MockIocSync
-    └── src/unit/iocsync_test.cpp     # Orchestration, through a scripted topic
+    └── src/unit/
+        ├── iocsync_test.cpp          # Orchestration, through a scripted topic
+        └── errorSummary_test.cpp     # summarizeError()
 ```
 
 ## Public Interface
@@ -146,7 +158,8 @@ public:
 `iocsync_utest`: one topic per supported type, each starting from its persisted hash, both state
 document shapes, an unreadable state rejected, the forced reload of a missing database, a committed
 hash reported and persisted, nothing written when nothing changed, the status table above, retries,
-and shutdown. The download and the swap are covered by `cmcontent_utest` and `content_manager_utest`.
+and shutdown; `summarizeError()` over a circuit-breaker body, a plain message and a truncated body.
+The download and the swap are covered by `cmcontent_utest` and `content_manager_utest`.
 
 ## Consumers
 

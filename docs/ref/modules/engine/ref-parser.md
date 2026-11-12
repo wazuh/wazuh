@@ -10,6 +10,9 @@
 >   (`<event.start/RFC3339>`). A temporary field uses `text` unless its first argument names another parser
 >   (`<_tmp/long>`); the remaining arguments go to that parser.
 > - A parser expression must consume the whole input: anything left after the last token makes the parse fail.
+> - The examples are illustrative: `_output_field`, `_status_code` and the like are temporary variables that show what
+>   a parser produces. A decoder cannot create fields outside the schema, so these snippets are not policy-ready
+>   as written; store into a schema field of the matching type for a real asset.
 
 # Schema parser reference
 

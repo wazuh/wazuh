@@ -17,13 +17,22 @@ seeded from `framework/wazuh/rbac/default/*.yaml`, and is managed through the `/
 | User | An API account. Authenticates with `POST /security/user/authenticate` |
 | Role | A named set of policies, linked to users directly or through rules |
 | Policy | A list of `actions`, a list of `resources` and an `effect` (`allow` or `deny`) |
-| Rule | A condition on an authorization context. A user with `allow_run_as` that logs in with `POST /security/user/authenticate/run_as` receives the roles of every rule its context matches — this is how the Wazuh dashboard maps its logged-in user to Wazuh roles (a "role mapping") |
+| Rule | A condition on an authorization context. A user with `allow_run_as` that logs in with `POST /security/user/authenticate/run_as` receives the roles of every rule its context matches, and only those: the roles linked to the account itself are not added, and a context that matches no rule yields a token with no role. This is how the Wazuh dashboard maps its logged-in user to Wazuh roles (a "role mapping") |
 
 `rbac_mode` in the [security configuration](../server-api/configuration.md#rbac_mode) sets what an
 action no policy mentions gets: `white` (the default) denies it, `black` allows it. A user's policies
 are applied in order (its roles, then each role's policies, by the `position` they were linked at), and
 a later policy overrides an earlier one on the same resource: a `deny` applied after an `allow` removes
-that resource.
+that resource. "The same resource" means the same agents, groups or nodes once each policy's resources are
+expanded, not the same resource string: `agent:group:<name>` stands for the agents in that group, so an
+`agent:id:*` allow applied after an `agent:group:web` deny gives back every agent of `web`, and an
+`agent:group:web` deny applied after an `agent:id:*` allow removes them. Put a deny after the allows it
+must narrow.
+
+A change to what a token was issued with revokes the affected tokens, which then get `401` and must log in
+again: linking or unlinking a user's roles or a role's policies, updating or deleting a role, policy or
+rule, and updating a user (its password or `allow_run_as`) or deleting it revoke the tokens of the users
+concerned; linking or unlinking a role's rules revokes every `run_as` token.
 
 ### Resources
 
@@ -42,6 +51,20 @@ A policy resource is `<type>:<field>:<value>`, with `*` as a wildcard value (`ag
 `GET /security/actions` and `GET /security/resources` return this catalog from the running API
 (both need `security:read_config`).
 
+### What a create or update accepts
+
+`POST /security/policies` and `PUT /security/policies/{policy_id}` refuse with error `4006` a policy whose
+`effect` is not `allow` or `deny` (case-insensitive), or with an action or a resource type (`<type>:<field>`)
+missing from the catalog above; an empty `actions` or `resources` list is `400`.
+
+`POST /security/rules` and `PUT /security/rules/{rule_id}` refuse with error `4003` a rule that is not a
+non-empty object of operators: `AND`, `OR` and `NOT` hold one rule or a non-empty list of rules, `MATCH`,
+`MATCH$`, `FIND` and `FIND$` hold a non-empty object. Any other key, `{}` and `{"OR": []}` are refused.
+
+Linking a role a user already has, or a policy a role already has, fails with `4017` or `4011` whether
+or not `position` is given: a link is never moved by linking it again. To reorder, unlink it and link it
+at the new `position`.
+
 ---
 
 ## Actions reference
@@ -53,7 +76,7 @@ The 34 actions of `x-rbac-catalog` in `api/api/spec/spec.yaml`, with the endpoin
 | Action | Resources | Endpoints |
 |--------|-----------|-----------|
 | `agent:create` | `*:*` | `POST /agents`, `POST /agents/insert`, `POST /agents/insert/quick` |
-| `agent:read` | `agent:id`, `agent:group` | `GET /agents`, `/agents/no_group`, `/agents/outdated`, `/agents/stats/distinct`, `/agents/summary`, `/agents/summary/os`, `/agents/summary/status`, `/groups/{group_id}/agents`, `/overview/agents` |
+| `agent:read` | `agent:id`, `agent:group` | `GET /agents`, `/agents/no_group`, `/agents/outdated`, `/agents/stats/distinct`, `/agents/summary`, `/agents/summary/os`, `/agents/summary/status`, `/groups/{group_id}/agents`, `/overview/agents`; also needed by `PUT /agents/group/{group_id}/restart`, `/agents/group/{group_id}/reload` |
 | `agent:read_secrets` | `agent:id`, `agent:group` | `GET /agents/{agent_id}/key` |
 | `agent:delete` | `agent:id`, `agent:group` | `DELETE /agents` |
 | `agent:modify_group` | `agent:id`, `agent:group` | `PUT`/`DELETE /agents/{agent_id}/group/{group_id}`, `DELETE /agents/{agent_id}/group`, `PUT`/`DELETE /agents/group` |
@@ -71,27 +94,33 @@ The 34 actions of `x-rbac-catalog` in `api/api/spec/spec.yaml`, with the endpoin
 | Action | Resources | Endpoints |
 |--------|-----------|-----------|
 | `group:create` | `*:*` | `POST /groups` |
-| `group:read` | `group:id` | `GET /groups`, `/groups/{group_id}/agents`, `/groups/{group_id}/configuration`, `/groups/{group_id}/files`, `/groups/{group_id}/files/{file_name}`, `/overview/agents` |
+| `group:read` | `group:id` | `GET /groups`, `/groups/{group_id}/agents`, `/groups/{group_id}/configuration`, `/groups/{group_id}/files`, `/groups/{group_id}/files/{file_name}`, `/overview/agents`; also needed by `PUT /agents/group/{group_id}/restart`, `/agents/group/{group_id}/reload` |
 | `group:update_config` | `group:id` | `PUT /groups/{group_id}/configuration` |
 | `group:delete` | `group:id` | `DELETE /groups` |
 | `group:modify_assignments` | `group:id` | The same five group-assignment endpoints as `agent:modify_group` |
 
 Changing an agent's group needs **both** `agent:modify_group` over the agent and
-`group:modify_assignments` over the group.
+`group:modify_assignments` over the group. The group-assignment calls that name the group and the agent
+answer `403` without either. `DELETE /agents/{agent_id}/group`, which names no group, instead filters the
+group set by `group:modify_assignments`: with only `agent:modify_group` it answers `200` ("Specified agent
+was not removed from any group") and removes nothing. Reading calls filter the same way: a user with no
+role gets `200` with empty results from the list endpoints (`/agents`, `/groups`, `/security/users`,
+`/cluster/nodes`, `/overview/agents`), and `403` (`4000`) only from single-resource and mutating calls.
 
 ### Cluster
 
 | Action | Resources | Endpoints |
 |--------|-----------|-----------|
 | `cluster:status` | `*:*` | `GET /cluster/status` |
-| `cluster:read` | `node:id` | `GET /cluster/nodes`, `/cluster/healthcheck`, `/cluster/local/info`, `/cluster/local/config`, `/cluster/configuration/validation`, `/cluster/{node_id}/status`, `/cluster/{node_id}/info`, `/cluster/{node_id}/configuration`, `/cluster/{node_id}/configuration/{component}/{configuration}`, `/cluster/{node_id}/daemons/stats`, `/cluster/{node_id}/daemons/remoted/tls`, `/cluster/{node_id}/logs`, `/cluster/{node_id}/logs/summary`; `PUT /cluster/restart`, `/cluster/reload` |
+| `cluster:read` | `node:id` | `GET /cluster/nodes`, `/cluster/healthcheck`, `/cluster/local/info`, `/cluster/local/config`, `/cluster/configuration/validation`, `/cluster/{node_id}/status`, `/cluster/{node_id}/info`, `/cluster/{node_id}/configuration`, `/cluster/{node_id}/configuration/{component}/{configuration}`, `/cluster/{node_id}/daemons/stats`, `/cluster/{node_id}/daemons/remoted/tls`, `/cluster/{node_id}/logs`, `/cluster/{node_id}/logs/summary`; `PUT /cluster/restart`, `/cluster/reload`, `/cluster/{node_id}/configuration` |
 | `cluster:read_secrets` | `node:id` | Unmasks the enrollment password, the cluster key and the credential-named fields in `GET /cluster/local/config`, `/cluster/{node_id}/configuration` and `/cluster/{node_id}/configuration/{component}/{configuration}`; needed to change the cluster key or the `indexer` section with `PUT /cluster/{node_id}/configuration` |
 | `cluster:update_config` | `node:id` | `PUT /cluster/{node_id}/configuration` |
 | `cluster:read_api_config` | `*:*` | `GET /cluster/api/config` |
 | `cluster:restart` | `node:id` | `PUT /cluster/restart`, `/cluster/reload` |
 
 See [Sensitive configuration values](../server-api/authentication.md#sensitive-configuration-values)
-for how `cluster:read_secrets` is checked.
+for how `cluster:read_secrets` is checked. It returns the cluster key in clear, which lets any host
+join the cluster: keep it out of custom roles and policies.
 
 ### Security
 
@@ -141,6 +170,18 @@ naming the caller and the agents, never a key.
 `agent:restart` and `agent:reload` are dispatched as task manager tasks that the agent fetches; an
 agent older than v5.0.0 is refused with error `1761`.
 
+The group variants, `PUT /agents/group/{group_id}/restart` and `/reload`, first list the group's agents
+and then act on that list, so they need three actions: `group:read` over the group, `agent:read` over
+its agents and `agent:restart` (or `agent:reload`) over them. Without `group:read` they answer `403`
+(`Resource type: group:id`), whatever the other two grant. The list keeps only the agents the caller
+can read, so with `group:read` but no `agent:read` the request answers `200` with error `0` and no
+affected items ("Restart command was not sent to any agent", or "Reload …"): nothing was sent, though
+the answer is not an error.
+
+`PUT /cluster/{node_id}/configuration` likewise needs `cluster:read` over the node besides
+`cluster:update_config`: the node is resolved through the readable node list, as for every
+`/cluster/{node_id}/…` request, and without it the answer is `403` on `node:id`.
+
 ---
 
 ## Default roles and policies
@@ -160,14 +201,21 @@ re-seeded with new defaults unless `CURRENT_ORM_VERSION` in `framework/wazuh/rba
 | `cluster_readonly` | `cluster_read` | — |
 | `cluster_admin` | `cluster_all` | — |
 
-| Policy | Allows |
-|--------|--------|
+Each name in the table below is a group of stored policies: the database holds one policy per
+sub-block of `default/policies.yaml`, named `<group>_<block>` (`agents_all_resourceless`,
+`agents_all_agents`, `agents_all_groups`, `security_all_security`, `users_all_users`,
+`cluster_all_nodes`, `secrets_read_nodes`, `secrets_read_agents`, `mitre_read_mitre`,
+`users_modify_run_as_flag`, and so on). A role links every policy of its groups, and
+`GET /security/policies` lists the stored names.
+
+| Policy group | Allows |
+|--------------|--------|
 | `agents_all` | `agent:create`, `group:create`, `agent:uninstall`, `enrollment_token:create`/`read`/`delete` on `*:*:*`; `agent:read`, `delete`, `modify_group`, `restart`, `reload`, `upgrade`, `scan_vulnerability` on every agent; `group:read`, `delete`, `update_config`, `modify_assignments` on every group |
 | `agents_read` | `enrollment_token:read`; `agent:read` on every agent; `group:read` on every group |
 | `security_all` | `security:create`, `create_user`, `read_config`, `update_config`, `revoke`, `edit_run_as`; `security:read`, `update`, `delete` on every role, policy, user and rule |
 | `security_read` | `security:read_config`; `security:read` on every role, policy, user and rule |
 | `users_all` | `security:create_user`, `revoke`, `edit_run_as`; `security:read`, `update`, `delete` on every user |
-| `users_modify_run_as` | `security:edit_run_as` (linked to no default role) |
+| `users_modify_run_as` (stored as `users_modify_run_as_flag`) | `security:edit_run_as` (linked to no default role) |
 | `cluster_all` | `cluster:status`, `update_config`, `restart` on `*:*:*`; `cluster:read_api_config`, `read`, `restart`, `update_config` on every node |
 | `cluster_read` | `cluster:status`, `read`, `read_api_config` on `*:*:*`; `cluster:read_api_config`, `read` on every node |
 | `secrets_read` | `cluster:read_secrets` on every node; `agent:read_secrets` on every agent (`agent:id:*`) |
@@ -175,6 +223,12 @@ re-seeded with new defaults unless `CURRENT_ORM_VERSION` in `framework/wazuh/rba
 
 The default users `wazuh` and `wazuh-internal-client` both hold `administrator`; see
 [Default Users](../server-api/authentication.md#default-users).
+
+`users_admin` is not held to the role check a password reset or enabling run_as applies (see
+[Default Users](../server-api/authentication.md#default-users)) when it deletes: `security:delete` on `user:id:*` lets it delete
+any user but the reserved ones (IDs 1 and 2) and itself, including one linked to `administrator` or with run_as
+enabled, and `DELETE /security/users?user_ids=all` deletes all of them at once. Deleting grants the caller nothing, so it is
+not an escalation, but grant `users_admin` only to whom you would trust with removing administrators.
 
 ### Default rules
 

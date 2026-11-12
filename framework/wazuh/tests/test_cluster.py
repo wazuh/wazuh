@@ -155,6 +155,25 @@ async def test_get_health_nodes(mock_unix_connection):
 
 
 @pytest.mark.asyncio
+async def test_get_health_nodes_unknown_node():
+    """A node that is not part of the cluster is a failed item, as in GET /cluster/nodes, not an empty answer."""
+    sent_filters = []
+
+    async def health(lc=None, filter_node=None):
+        sent_filters.append(filter_node)
+        return {'nodes': {'master': {'info': {'name': 'master'}}}}
+
+    common.cluster_nodes.set(['master', 'worker1'])
+    with patch('wazuh.cluster.get_health', side_effect=health):
+        result = await cluster.get_health_nodes(lc=LocalClient(), filter_node=['master', 'noexists'])
+
+    assert sent_filters == [['master']]
+    assert result.affected_items == [{'info': {'name': 'master'}}]
+    assert result.failed_items[WazuhResourceNotFound(1730)] == {'noexists'}
+    assert result.total_failed_items == 1
+
+
+@pytest.mark.asyncio
 async def test_get_nodes_info():
     """Verify that get_nodes_info returns the information of all nodes."""
 
