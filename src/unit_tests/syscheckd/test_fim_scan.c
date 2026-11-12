@@ -3523,6 +3523,58 @@ static void test_fim_directory_non_ascii_name(void **state) {
     ret = fim_directory("test", &evt_data, NULL, NULL, NULL);
     assert_int_equal(ret, 0);
 }
+
+static void test_fim_directory_long_non_ascii_name(void **state) {
+    (void) state;
+    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+    char name[130 * 2 + 5];
+    char dir[131];
+    char msg[OS_SIZE_2048];
+    char *p = name;
+
+    // 130 x "ş" + ".txt": 134 characters, 264 UTF-8 bytes.
+    for (int i = 0; i < 130; i++) {
+        *p++ = '\xc5';
+        *p++ = '\x9f';
+    }
+    strcpy(p, ".txt");
+    memset(dir, 'd', sizeof(dir) - 1);
+    dir[sizeof(dir) - 1] = '\0';
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    // Within MAX_PATH characters: scanned even though it exceeds 260 bytes.
+    expect_any(wrap_FindFirstFile, lpFileName);
+    will_return(wrap_FindFirstFile, name);
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+
+    snprintf(msg, sizeof(msg), "(6319): No configuration found for (file):'test\\%s'", name);
+    expect_string(__wrap__mdebug2, formatted_msg, msg);
+
+    assert_int_equal(fim_directory("test", &evt_data, NULL, NULL, NULL), 0);
+
+    // Under a 130-character directory the path exceeds MAX_PATH characters.
+    expect_any(wrap_FindFirstFile, lpFileName);
+    will_return(wrap_FindFirstFile, name);
+    will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
+    will_return(wrap_FindFirstFile, (HANDLE)1);
+    expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
+    will_return(wrap_FindNextFile, NULL);
+    will_return(wrap_FindNextFile, (BOOL)0);
+
+    snprintf(msg, sizeof(msg), "(6720): The path '%s\\%s' is too long. The maximum length is 260 characters.", dir, name);
+    expect_string(__wrap__mwarn, formatted_msg, msg);
+
+    assert_int_equal(fim_directory(dir, &evt_data, NULL, NULL, NULL), 0);
+}
 #endif
 
 static void test_fim_directory_ignore(void **state) {
@@ -4912,6 +4964,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),
 #ifdef TEST_WINAGENT
         cmocka_unit_test(test_fim_directory_non_ascii_name),
+        cmocka_unit_test(test_fim_directory_long_non_ascii_name),
 #endif
         cmocka_unit_test_setup_teardown(test_fim_directory_ignore, setup_struct_dirent, teardown_struct_dirent),
         cmocka_unit_test(test_fim_directory_nodir),
