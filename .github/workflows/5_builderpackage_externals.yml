@@ -107,8 +107,8 @@ jobs:
         include:
           - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: agent }
           - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: agent }
-          - { system: macos,   architecture: intel64, runner: macos-14-large, leg: macos-intel64, target: agent }
-          - { system: macos,   architecture: arm64,   runner: macos-14,       leg: macos-arm64,   target: agent }
+          - { system: macos,   architecture: intel64, runner: macos-15-large, leg: macos-intel64, target: agent }
+          - { system: macos,   architecture: arm64,   runner: macos-15,       leg: macos-arm64,   target: agent }
           - { system: windows, architecture: i686,    runner: wz-linux-amd64, leg: windows-i686,  target: agent }
           - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: manager }
           - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: manager }
@@ -463,8 +463,8 @@ jobs:
           - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64,   platform: linux/aarch64 }
           - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64, platform: linux/aarch64 }
           - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent,         platform: windows }
-          - { architecture: macos-intel64, runner: macos-14-large, target: agent, system: macos, platform: darwin/amd64 }
-          - { architecture: macos-arm64,   runner: macos-14,       target: agent, system: macos, platform: darwin/aarch64 }
+          - { architecture: macos-intel64, runner: macos-15-large, target: agent, system: macos, platform: darwin/amd64 }
+          - { architecture: macos-arm64,   runner: macos-15,       target: agent, system: macos, platform: darwin/aarch64 }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})
