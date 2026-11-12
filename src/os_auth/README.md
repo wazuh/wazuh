@@ -45,7 +45,7 @@ it would erase why.
 | RF-11 | Answer the indexer purge synchronously so the caller learns whether the documents are gone | **superseded by D3** — authd's ownership ends at the durable row; the purge's own outcome is the task's status, not this daemon's business |
 | RF-12 | Survive a restart without losing work the system has no other record of | partially met — the deletion journal ([the journal](#the-journal), including `last_id`/`last_seq`) and identity journal (RNF-9) are replayed at startup; the identity recovery gaps are listed in [Enrollment](#enrollment) |
 | RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
-| RF-14 | Refuse to auto-assign an id past `INT_MAX`, the largest value `client.keys` and the database can store, reject a caller-supplied id above 9999999 (seven digits, so an insertion can never push the counter out of the eight digits agents accept), and store a caller-supplied one in its canonical spelling (`0042` → `042`) | kept (`OS_IsValidAgentInsertID`, `OS_CanonicalAgentInsertID`, `OS_ADDAGENT_LIMIT_REACHED`) — D9 |
+| RF-14 | Refuse to auto-assign an id past `INT_MAX`, the largest value `client.keys` and the database can store, reject a caller-supplied id above 9999999 (seven digits, so an insertion can never push the counter out of the eight digits agents accept), and store a caller-supplied one in its canonical spelling (`0042` → `042`) | kept (`OS_IsValidAgentInsertID`, `OS_CanonicalAgentInsertID`, `OS_ADDAGENT_ID_EXHAUSTED`) — D9 |
 | RF-15 | Mint and revoke enrollment tokens on the master, mint only for an address the listener certificate names, and consume one use when an agent enrolls with one; list tokens on either node role | kept ([enrollment](#enrollment); `token_cli.c`, `enrollment_token_mint.c`, `enrollment_token_store.c`) — D11 |
 | RF-16 | Return a re-enrollment secret with local-socket enrollments and let those agents rotate their keys under the same id without a deletion | kept (`local_reenroll`, `add_rotate`, `global set-agent-credentials`) — D12; port 1515 does not deliver this secret to the agent |
 
@@ -59,7 +59,7 @@ it would erase why.
 | RNF-4 | An id is never handed out twice, across restarts and across a rebuilt counter | `last_id` in the state file + in-memory reservation; invariant 4 |
 | RNF-5 | Fail towards "cleaned up later", never towards "deleted something alive" | every ordering decision in the removal path; invariant 5 |
 | RNF-6 | Deterministic shutdown: no thread can park the daemon on a network budget | there is no network call left in this daemon's deletion path; the writer's wazuh-db calls are bounded by `authd.wdb_timeout` |
-| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_check_replace_agent()`; the `9001`–`9031` table |
+| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_check_replace_agent()`; the `9001`–`9032` table |
 | RNF-8 | Unit-testable orchestration without a live indexer or manager | seams + the suites in [Tests](#tests) |
 | RNF-9 | Record local-socket credentials before returning them, and retry pending database persistence | the identity journal (`identity_journal.c`) records the transition before the answer and the writer replays it until `global commit`; a line that cannot be written refuses the operation (`9031`) — invariant 7, D13, `test_identity_journal.c`; recovery gaps are listed below |
 
@@ -105,7 +105,7 @@ it, inventory-sync applies it — and all three depend on these:
 | Path | Contents |
 |---|---|
 | `src/main-server.c` | `main()`, the thread bodies (remote server, writer), the deletion's phase 3/4 and startup reconciliation |
-| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, the four `token_*` verbs, and their error table (`9001`–`9031`) |
+| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, the four `token_*` verbs, and their error table (`9001`–`9032`) |
 | `src/authcom.c` | the plain-text side of the same socket: `getconfig auth`, answered outside the JSON protocol |
 | `src/auth.c` | shared state (`keys`, `config`, the queues), the port-1515 request parser (`w_auth_parse_data()`), enrollment validation, force-replacement, the enrollment password (load, generate, read), the deletion journal and the reusable-id guard |
 | `src/identity_journal.c` | `queue/authd/pending-identities`: the credential written down before it is handed out. Append on the request path, compaction during writer/startup/failed-rotation cleanup, and startup reconciliation that judges each line against `client.keys` (D13) |
@@ -533,14 +533,16 @@ what explains a jump in the ids handed out.
 The counter is a signed 32-bit int, the same width `client.keys` and the database store the id in,
 so a manager that is long-lived or churns through enough agents can drive it to `INT_MAX` on its own
 — no out-of-range input anywhere. `OS_AddNewAgent()` refuses to increment past that point rather than
-wrapping to a negative id, reusing the same `OS_ADDAGENT_LIMIT_REACHED` sentinel an ordinary
-`max_agents` refusal returns: the enrollment fails with `9013 Maximum number of agents reached` (the
-local socket) or the plain-text `ERROR: Agent limit (N) reached` (anonymous enrollment on 1515), and
-nothing is written to either store. This is unreachable from remoted's `/enroll` route today only in
-the sense that a fleet has to be large or long-lived enough to exhaust ~2.1 billion ids first; there is
-no format check that could rule it out the way an out-of-range explicit id can be rejected up front.
-An inserted id cannot get it there: insertion is capped at 9999999 (below), so it can never raise
-the counter past that.
+wrapping to a negative id, and returns `OS_ADDAGENT_ID_EXHAUSTED`, not the `max_agents` sentinel:
+the enrollment fails with `9032 Agent ID space exhausted` (the local socket; `1778` through the server
+API) or the plain-text `ERROR: Agent ID space exhausted` (anonymous enrollment on 1515), authd logs
+`The agent id counter is exhausted`, and nothing is written to either store. Removing agents does not
+clear it, since ids are not reused; an insertion with an explicit, unused id still succeeds. A fleet has
+to be large or long-lived enough to exhaust ~2.1 billion ids first; there is no format check that could
+rule it out the way an out-of-range explicit id can be rejected up front. An inserted id cannot get it
+there any more: insertion is capped at 9999999 (below), so it can never raise the counter past that.
+A counter raised by an insertion of 2147483647 before 5.0.1, or by that id in a copied `client.keys`,
+can already be there.
 
 `queue/` survives an upgrade and a plain package removal. A full purge of the package, or an install
 into a clean tree, takes the file with it: the counter starts over while the indexer still holds the

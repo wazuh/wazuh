@@ -159,9 +159,10 @@ Checked before the keystore is mutated:
 | version | port 1515 only: rejected if newer than the manager's, unless `<agents><allow_higher_versions>` is `yes`. The local socket carries no version; remoted applies the same rule to `/enroll` before calling authd |
 
 The agent limit is not on that list because it is not a separate check: `OS_AddNewAgent()` enforces
-`max_agents` itself and returns `OS_ADDAGENT_LIMIT_REACHED`, which becomes `9013`. The same sentinel
-covers the id-assignment counter (`id_counter`) reaching `INT_MAX`: both are "no capacity left"
-conditions and neither leaves a corrupted record behind.
+`max_agents` itself and returns `OS_ADDAGENT_LIMIT_REACHED`, which becomes `9013`. The id-assignment
+counter (`id_counter`) reaching `INT_MAX` returns `OS_ADDAGENT_ID_EXHAUSTED` instead, which becomes
+`9032`: removing agents clears the first and never the second, since ids are not reused. Neither
+leaves a corrupted record behind.
 
 **The name is checked by two different validators, and the difference is intentional.** The TLS
 port 1515 path applies `OS_IsValidName()` — 2–128 characters, no leading `.`, a restricted charset.
@@ -370,7 +371,7 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9003 / 9004 / 9005 / 9006 / 9014 / 9017 | no such function/argument/name/IP, invalid groups, invalid agent name | `400` |
 | 9007 / 9008 / 9012 | duplicate IP, name or id | `409` |
 | 9010 / 9011 | no such agent id / agent id not found | — |
-| 9013 | `max_agents` reached, or the id-assignment counter (`id_counter`) exhausted at `INT_MAX` | `503` — the latter is reachable from ordinary self-enrollment, since it never sends an id of its own |
+| 9013 | `max_agents` reached (`1777` through the server API) | `503` |
 | 9015 / 9016 | request not valid on a worker / cannot reach the master | `503` |
 | 9018 | the id still has a pending deletion | — |
 | 9019 / 9020 | invalid caller-supplied key / id (id outside `[1, 9999999]`, or `0`) | `400` — unreachable from here in practice: self-enrollment never sends a key or an id, mapped for completeness |
@@ -381,6 +382,7 @@ The local socket answers a numeric code that the server API maps onto its own, a
 | 9029 | *Enrollment token store write failed* — `token_revoke` could not persist. The token stops being honoured here immediately and the id is retried on the next verb, but the caller is told the write failed rather than given a success or the `9022` of an unknown id | No `/enroll` path; server API `1771` → `500` |
 | 9030 | *Re-enrollment already in progress* — another rotation holds that agent's reservation. A wait, not a credential problem | `409`, counter `remoted.enroll.reenroll.rejected_in_progress` |
 | 9031 | *Identity transition could not be recorded* — the [identity journal](#the-identity-journal) could not take the line, so no credential is handed out at all | `503` (the server API's `1772`) |
+| 9032 | *Agent ID space exhausted* — the id-assignment counter (`id_counter`) is at `INT_MAX`, so no id is left to assign (`1778` through the server API) | `503` — reachable from ordinary self-enrollment, since it never sends an id of its own |
 
 ## Agent removal
 
@@ -562,7 +564,8 @@ The re-enrollment secret is retained in `agent.reenroll_secret` in `global.db` a
 | `Refusing the deletion: ...` | phase 0 said no (`9021`); the agent is untouched and the request can be repeated. A force replacement refused by the same bound reports `Agent 'N' can't be replaced: too many deletions are in progress` |
 | `Shutting down with N agent deletion(s) still being recorded` | they stay in the journal and are reconciled on the next start |
 | `Agent ID 'N' still has a pending deletion, rejecting the insertion.` | the `9018` path of an explicit-id insertion |
-| `Unable to add agent: NAME. Agent limit (N) reached.` | `9013`; also fires when the id counter reached `INT_MAX`, so the enrollment is refused instead of wrapping to a negative id |
+| `Unable to add agent: NAME. Agent limit (N) reached.` | `9013`: the keystore holds `max_agents` agents |
+| `Unable to add agent: NAME. The agent id counter is exhausted (N).` | `9032`: the id counter reached `INT_MAX`, so the enrollment is refused instead of wrapping to a negative id |
 | `Refusing the identity transition of agent 'N': …` / `Refusing the operation: N identity transitions are still waiting…` | the identity journal is at its 5000-entry admission bound; the request was answered `9031` |
 | `Could not record the identity transition of agent 'N' in '…'` | the append itself failed (for example an unwritable `queue/authd/`); `9031` |
 | `Recovered N identity transition(s) that the previous run did not finish writing to the database.` | startup found credentials still owed; the writer applies them on its own clock |

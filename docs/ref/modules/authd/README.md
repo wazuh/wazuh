@@ -507,7 +507,8 @@ A successful `add` responds with:
 `get` answers the `add` shape without `reenroll_secret`, a successful `remove` responds with
 `{"error": 0, "data": "Agent deleted successfully."}`, and any failure responds with
 `{"error": <code>, "message": "<description>"}` (for example `9007` "Duplicate IP", `9013` "Maximum
-number of agents reached", or `9022`–`9031` for the token, re-enrollment and identity-journal paths — see the
+number of agents reached", `9032` "Agent ID space exhausted", or `9022`–`9031` for the token, re-enrollment and
+identity-journal paths — see the
 [error code table](architecture.md#error-codes)).
 
 **Per-request force override:** the `force` object on an `add` request, when present, completely

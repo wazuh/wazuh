@@ -295,6 +295,15 @@ class WazuhException(Exception):
                'remediation': 'The agent has not reported its operative system yet. Please, use `GET /agents?select='
                               'id,name,status` to check whether it has ever connected'
                },
+        1777: {'message': 'The maximum number of agents has been reached',
+               'remediation': 'Remove agents that are no longer needed, or raise `authd.max_agents` in the '
+                              'internal options'
+               },
+        1778: {'message': 'No agent ID is left to assign: the agent ID counter has reached its maximum',
+               'remediation': 'Agent IDs are never reused, so removing agents does not free any. An agent can '
+                              'still be added with an unused ID no greater than 9999999 through '
+                              '`POST /agents/insert`'
+               },
 
         # Manager:
         1901: {'message': 'Control socket has not been created'

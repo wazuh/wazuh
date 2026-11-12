@@ -1134,6 +1134,10 @@ class Agent:
                 raise WazuhError(1706, extra_message=ip)
             elif e.code == 9012:
                 raise WazuhError(1708, extra_message=id)
+            elif e.code == 9013:
+                raise WazuhError(1777)
+            elif e.code == 9032:
+                raise WazuhError(1778)
             elif e.code == 9018:
                 # The ID is free but its previous owner's documents are still queued for deletion in
                 # the indexer. Reusing it now would let that purge delete the new agent's documents,

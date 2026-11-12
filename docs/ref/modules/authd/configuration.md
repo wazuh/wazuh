@@ -316,8 +316,8 @@ prefix, not `authd.`.
 ### authd.max_agents
 
 The largest number of agents the keystore may hold. An enrollment past it is refused: `9013 Maximum
-number of agents reached` on the local socket (`503` at `POST /enroll`), `ERROR: Agent limit (N)
-reached` on port 1515. A re-enrollment is not counted as a new agent.
+number of agents reached` on the local socket (`503` at `POST /enroll`, `400` with error `1777` through the
+server API), `ERROR: Agent limit (N) reached` on port 1515. A re-enrollment is not counted as a new agent.
 
 - **Default value:** `0` (unlimited)
 - **Allowed values:** `0` to `2147483647`

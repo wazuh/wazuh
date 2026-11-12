@@ -1318,8 +1318,9 @@ paths:
               schema: { $ref: "#/components/schemas/EnrollErrorResponse" }
         "503":
           description: |
-            `authd` reached `max_agents` (9013), a worker rejected the request (9015) or its forward
-            to the master failed (9016), `authd` could not record the identity transition (9031 --
+            `authd` reached `max_agents` (9013) or has no agent id left to assign (9032), a worker
+            rejected the request (9015) or its forward to the master failed (9016), `authd` could
+            not record the identity transition (9031 --
             nothing handed out), the request never reached `authd` (code -1), or it reached
             `authd` but no well-formed answer came back in time (code -2) -- `authd` may have
             processed it anyway.
