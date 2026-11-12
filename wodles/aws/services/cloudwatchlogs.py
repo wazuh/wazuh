@@ -72,16 +72,18 @@ class AWSCloudWatchLogs(aws_service.AWSService):
 
         self.sql_cloudwatch_create_table = """
             CREATE TABLE {table_name} (
+                    aws_account_id 'text' NOT NULL,
                     aws_region 'text' NOT NULL,
                     aws_log_group 'text' NOT NULL,
                     aws_log_stream 'text' NOT NULL,
                     next_token 'text',
                     start_time 'integer',
                     end_time 'integer',
-                    PRIMARY KEY (aws_region, aws_log_group, aws_log_stream));"""
+                    PRIMARY KEY (aws_account_id, aws_region, aws_log_group, aws_log_stream));"""
 
         self.sql_cloudwatch_insert = """
             INSERT INTO {table_name} (
+                aws_account_id,
                 aws_region,
                 aws_log_group,
                 aws_log_stream,
@@ -89,7 +91,8 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 start_time,
                 end_time)
             VALUES
-                (:aws_region,
+                (:aws_account_id,
+                :aws_region,
                 :aws_log_group,
                 :aws_log_stream,
                 :next_token,
@@ -104,6 +107,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 start_time=:start_time,
                 end_time=:end_time
             WHERE
+                aws_account_id=:aws_account_id AND
                 aws_region=:aws_region AND
                 aws_log_group=:aws_log_group AND
                 aws_log_stream=:aws_log_stream;"""
@@ -116,6 +120,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             FROM
                 {table_name}
             WHERE
+                aws_account_id=:aws_account_id AND
                 aws_region=:aws_region AND
                 aws_log_group=:aws_log_group AND
                 aws_log_stream=:aws_log_stream"""
@@ -125,6 +130,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             FROM
                 {table_name}
             WHERE
+                aws_account_id=:aws_account_id AND
                 aws_region=:aws_region AND
                 aws_log_group=:aws_log_group
             ORDER BY
@@ -132,6 +138,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         self.sql_cloudwatch_purge = """
             DELETE FROM {table_name}
             WHERE
+                aws_account_id=:aws_account_id AND
                 aws_region=:aws_region AND
                 aws_log_group=:aws_log_group AND
                 aws_log_stream=:aws_log_stream;"""
@@ -142,12 +149,45 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                                         account_alias=account_alias, region=region, discard_field=discard_field,
                                         discard_regex=discard_regex, iam_role_duration=iam_role_duration,
                                         sts_endpoint=sts_endpoint, service_endpoint=service_endpoint)
+        # AWSService resolves the base identity. A successfully assumed explicit role
+        # reads logs in the role's account, which may differ from the base identity.
+        if iam_role_arn:
+            self.account_id = iam_role_arn.split(':')[4]
+
         self.log_group_list = [group for group in aws_log_groups.split(",") if group != ""] if aws_log_groups else []
         self.remove_log_streams = remove_log_streams
         self.only_logs_after_millis = int(datetime.strptime(only_logs_after, '%Y%m%d').replace(
             tzinfo=timezone.utc).timestamp() * 1000) if only_logs_after else None
         self.default_date_millis = int(self.default_date.timestamp() * 1000)
         aws_tools.debug("only logs: {}".format(self.only_logs_after_millis), 1)
+
+    def init_db(self, sql_create_table):
+        """Preserve unscoped legacy state without assigning it to an arbitrary account.
+
+        Older checkpoints do not identify their account. Reusing them could skip
+        another account's events. Keep the original table for recovery, and start
+        account-scoped collection using the configured lower time bound instead.
+        The rename and creation are atomic, including on an interrupted upgrade.
+        """
+        self.db_cursor.execute('SAVEPOINT cloudwatch_account_migration')
+        migrated = False
+        try:
+            super().init_db(sql_create_table)
+            columns = {row[1] for row in self.db_cursor.execute(f'PRAGMA table_info({self.db_table_name})')}
+            if 'aws_account_id' not in columns:
+                self.db_cursor.execute(f'ALTER TABLE {self.db_table_name} RENAME TO cloudwatch_logs_legacy')
+                self.db_cursor.execute(sql_create_table)
+                migrated = True
+            self.db_cursor.execute('RELEASE SAVEPOINT cloudwatch_account_migration')
+        except BaseException:
+            self.db_cursor.execute('ROLLBACK TO SAVEPOINT cloudwatch_account_migration')
+            self.db_cursor.execute('RELEASE SAVEPOINT cloudwatch_account_migration')
+            raise
+        if migrated:
+            aws_tools.debug(
+                'WARNING: CloudWatch Logs checkpoints had no AWS account ID. The original rows are preserved in '
+                'cloudwatch_logs_legacy. Each account will collect again from only_logs_after, or from the '
+                'current UTC day if it is not configured. Previously collected events may be sent again once.', 0)
 
     def get_alerts(self):
         """Iterate over all the log streams for each log group provided by the user in the given region to get their
@@ -361,6 +401,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         A dict containing the token, start_time and end_time of the log stream. None if no data were found in the DB.
         """
         self.db_cursor.execute(self.sql_cloudwatch_select.format(table_name=self.db_table_name), {
+            'aws_account_id': self.account_id,
             'aws_region': self.region,
             'aws_log_group': log_group,
             'aws_log_stream': log_stream})
@@ -443,6 +484,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         aws_tools.debug('The saved values are "{}"'.format(values), 2)
         try:
             self.db_cursor.execute(self.sql_cloudwatch_insert.format(table_name=self.db_table_name), {
+                'aws_account_id': self.account_id,
                 'aws_region': self.region,
                 'aws_log_group': log_group,
                 'aws_log_stream': log_stream,
@@ -452,6 +494,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         except sqlite3.IntegrityError:
             aws_tools.debug("Some data already exists on DB for that key. Updating their values...", 2)
             self.db_cursor.execute(self.sql_cloudwatch_update.format(table_name=self.db_table_name), {
+                'aws_account_id': self.account_id,
                 'aws_region': self.region,
                 'aws_log_group': log_group,
                 'aws_log_stream': log_stream,
@@ -515,6 +558,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         aws_tools.debug('Purging the BD', 1)
         # Get the list of log streams from DB
         self.db_cursor.execute(self.sql_cloudwatch_select_logstreams.format(table_name=self.db_table_name), {
+            'aws_account_id': self.account_id,
             'aws_region': self.region,
             'aws_log_group': log_group})
         query_result = self.db_cursor.fetchall()
@@ -533,6 +577,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                                                                                           log_streams_to_purge), 2)
         for log_stream in log_streams_to_purge:
             self.db_cursor.execute(self.sql_cloudwatch_purge.format(table_name=self.db_table_name), {
+                'aws_account_id': self.account_id,
                 'aws_region': self.region,
                 'aws_log_group': log_group,
                 'aws_log_stream': log_stream})

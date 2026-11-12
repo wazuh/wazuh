@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed the CloudWatch Logs collector sharing checkpoints across AWS accounts, which allowed one account's cleanup to delete another account's progress and identical stream names to reuse the wrong token and time bounds. Checkpoints are now scoped to the effective account. On upgrade, unowned legacy checkpoints are preserved separately and each account collects again from `only_logs_after`, or the current UTC day when not configured, so previously collected events in that range may be sent again once. ([#41320](https://github.com/wazuh/wazuh/issues/41320))
 - Fixed the removal and purge of the `wazuh-manager` DEB package failing when the installation is incomplete. ([#33339](https://github.com/wazuh/wazuh/issues/33339))
 - Fixed the validation of `group_id` when reading and writing group configuration files, rejecting values that are not a valid group name. ([#40363](https://github.com/wazuh/wazuh/pull/40363))
 - Fixed the group configuration readers and upload accepting a group directory that resolves outside the shared directory, and the multigroup reader accepting a file name that resolves outside the multigroup directory. ([#36834](https://github.com/wazuh/wazuh/issues/36834))
