@@ -143,12 +143,12 @@ static void test_id_counter_at_int_max_fails_instead_of_wrapping(void **state) {
 
 /* --- OS_IsValidAgentInsertID --------------------------------------------------------------------- */
 
-static void test_valid_agent_insert_id_accepts_the_full_int32_range(void **state) {
+static void test_valid_agent_insert_id_accepts_up_to_seven_digits(void **state) {
     (void) state;
     assert_true(OS_IsValidAgentInsertID("1"));
     assert_true(OS_IsValidAgentInsertID("003"));
-    assert_true(OS_IsValidAgentInsertID("99999999")); /* past OS_IsValidID()'s unrelated 8-char cap */
-    assert_true(OS_IsValidAgentInsertID("2147483647")); /* INT32_MAX */
+    assert_true(OS_IsValidAgentInsertID("9999999"));
+    assert_true(OS_IsValidAgentInsertID("09999999"));
 }
 
 static void test_valid_agent_insert_id_rejects_out_of_range_or_reserved(void **state) {
@@ -160,12 +160,35 @@ static void test_valid_agent_insert_id_rejects_out_of_range_or_reserved(void **s
     assert_false(OS_IsValidAgentInsertID("1.5"));
     assert_false(OS_IsValidAgentInsertID("0")); /* reserved for the manager */
     assert_false(OS_IsValidAgentInsertID("000"));
+    assert_false(OS_IsValidAgentInsertID("10000000")); /* AGENT_INSERT_ID_MAX + 1 */
+    assert_false(OS_IsValidAgentInsertID("99999999"));
+    assert_false(OS_IsValidAgentInsertID("2147483647"));
     assert_false(OS_IsValidAgentInsertID("2147483648")); /* INT32_MAX + 1 */
     assert_false(OS_IsValidAgentInsertID("4294967296")); /* 2^32: wraps to 0 pre-fix */
     assert_false(OS_IsValidAgentInsertID("10000000000"));
     assert_false(OS_IsValidAgentInsertID("1000000000000000000"));
     /* Long enough to overflow even strtol()'s 64-bit long: must not be misread as in range. */
     assert_false(OS_IsValidAgentInsertID("999999999999999999999999999999999999999999"));
+}
+
+/* The id counter takes the highest inserted id and never goes back: the id it assigns next still has
+ * to fit the eight digits agents accept (OS_IsValidID()). */
+static void test_the_id_after_an_inserted_cap_is_one_agents_accept(void **state) {
+    (void) state;
+    const char *key = "0030557a9fc4e90e33587da2c7ec11365b80a5caef14395e83a8cdf2173c61ff";
+    char cap[12];
+
+    snprintf(cap, sizeof(cap), "%d", AGENT_INSERT_ID_MAX);
+    assert_true(OS_IsValidAgentInsertID(cap));
+
+    expect_add_key_ip_check();
+    expect_add_key_ip_check();
+    int capped = OS_AddNewAgent(&keys, cap, "capped", "any", key, 0);
+    will_return(__wrap_RAND_bytes, 1);
+    int next = OS_AddNewAgent(&keys, NULL, "next", "any", NULL, 0);
+    assert_true(capped >= 0 && next >= 0);
+    assert_true(OS_IsValidID(keys.keyentries[next]->id));
+    assert_true(99999999 - AGENT_INSERT_ID_MAX >= 90000000);
 }
 
 /* --- OS_CanonicalAgentInsertID ------------------------------------------------------------------ */
@@ -182,8 +205,8 @@ static void test_canonical_agent_insert_id_is_one_spelling_per_number(void **sta
     assert_string_equal(out, "001");
     assert_int_equal(OS_CanonicalAgentInsertID("01000", out, sizeof(out)), 0);
     assert_string_equal(out, "1000");
-    assert_int_equal(OS_CanonicalAgentInsertID("2147483647", out, sizeof(out)), 0);
-    assert_string_equal(out, "2147483647");
+    assert_int_equal(OS_CanonicalAgentInsertID("09999999", out, sizeof(out)), 0);
+    assert_string_equal(out, "9999999");
 }
 
 static void test_canonical_agent_insert_id_rejects_what_insert_rejects(void **state) {
@@ -193,10 +216,10 @@ static void test_canonical_agent_insert_id_rejects_what_insert_rejects(void **st
     assert_int_equal(OS_CanonicalAgentInsertID(NULL, out, sizeof(out)), -1);
     assert_int_equal(OS_CanonicalAgentInsertID("0", out, sizeof(out)), -1);
     assert_int_equal(OS_CanonicalAgentInsertID("0001x", out, sizeof(out)), -1);
-    assert_int_equal(OS_CanonicalAgentInsertID("2147483648", out, sizeof(out)), -1);
+    assert_int_equal(OS_CanonicalAgentInsertID("10000000", out, sizeof(out)), -1);
     assert_int_equal(OS_CanonicalAgentInsertID("4294967297", out, sizeof(out)), -1);
     assert_int_equal(OS_CanonicalAgentInsertID("1", NULL, sizeof(out)), -1);
-    assert_int_equal(OS_CanonicalAgentInsertID("2147483647", out, 4), -1); /* does not fit */
+    assert_int_equal(OS_CanonicalAgentInsertID("9999999", out, 4), -1); /* does not fit */
 }
 
 /* --- OS_IsValidAgentKey ------------------------------------------------------------------------ */
@@ -476,8 +499,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_explicit_key_is_stored_verbatim, setup_keys, teardown_keys),
         cmocka_unit_test_setup_teardown(test_agent_limit_is_checked_before_generating, setup_keys, teardown_keys),
         cmocka_unit_test_setup_teardown(test_id_counter_at_int_max_fails_instead_of_wrapping, setup_keys, teardown_keys),
-        cmocka_unit_test(test_valid_agent_insert_id_accepts_the_full_int32_range),
+        cmocka_unit_test(test_valid_agent_insert_id_accepts_up_to_seven_digits),
         cmocka_unit_test(test_valid_agent_insert_id_rejects_out_of_range_or_reserved),
+        cmocka_unit_test_setup_teardown(test_the_id_after_an_inserted_cap_is_one_agents_accept, setup_keys,
+                                        teardown_keys),
         cmocka_unit_test(test_canonical_agent_insert_id_is_one_spelling_per_number),
         cmocka_unit_test(test_canonical_agent_insert_id_rejects_what_insert_rejects),
         cmocka_unit_test(test_valid_agent_key_accepts_exactly_64_lowercase_hex),

@@ -202,7 +202,7 @@ int OS_IsValidAgentInsertID(const char *id)
 
     errno = 0;
     value = strtol(id, &endptr, 10);
-    return errno == 0 && '\0' == *endptr && value > 0 && value <= INT32_MAX;
+    return errno == 0 && '\0' == *endptr && value > 0 && value <= AGENT_INSERT_ID_MAX;
 }
 
 int OS_CanonicalAgentInsertID(const char *id, char *out, size_t size)

@@ -55,10 +55,13 @@ int OS_NewReenrollSecret(char* out, size_t out_size);
 // True iff `secret` has exactly the shape OS_NewReenrollSecret() produces: 64 lowercase hex chars.
 int OS_IsValidReenrollSecret(const char* secret);
 int OS_IsValidID(const char* id);
-// True iff `id` is a plain positive integer in [1, INT32_MAX], the full range the manager can
-// store it in (see OS_AddNewAgent()'s id_counter and wdb_insert_agent()'s atoi(cur->id)). Unlike
-// OS_IsValidID(), not capped at 8 characters: a caller-supplied id has no format-based ceiling of
-// its own, only this numeric one.
+// Highest id a caller may insert. An inserted id above the id counter raises it, the counter never
+// goes back, and every id it hands out afterwards must fit the eight digits agents accept
+// (OS_IsValidID()). Seven digits mean an insertion alone can never leave fewer than 90,000,000
+// automatic ids. Mirrored by _AGENT_INSERT_ID_MAX in api/api/validator.py and AGENT_INSERT_ID_MAX
+// in tools/migration/wazuh-migrate-identity.py.
+#define AGENT_INSERT_ID_MAX 9999999
+// True iff `id` is a plain positive integer in [1, AGENT_INSERT_ID_MAX].
 int OS_IsValidAgentInsertID(const char* id);
 // Writes the canonical spelling of a valid insert id into `out`: the integer zero-padded to at least
 // three digits ("0001" and "1" -> "001", "01000" -> "1000"), the form self-enrollment assigns and the
