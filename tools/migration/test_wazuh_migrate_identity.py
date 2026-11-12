@@ -18,6 +18,7 @@ rather than about files it no longer writes.
 
 import http.server
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -27,6 +28,8 @@ import subprocess
 import tempfile
 import threading
 import unittest
+from contextlib import redirect_stderr
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -105,6 +108,17 @@ def build_source(root):
             "INSERT INTO users VALUES (1, 'wazuh'), (100, 'soc-analyst');"
             "PRAGMA user_version = 1;")
     return root
+
+
+def add_agent_above_cap(source, name, groups, agent_id=10000000):
+    """Adds an agent, by default with id 10000000 (above the insert cap), to a 4.x installation."""
+    with open(os.path.join(source, "etc", "client.keys"), "a") as handle:
+        handle.write("%d %s any %064x\n" % (agent_id, name, agent_id))
+    with sqlite3.connect(os.path.join(source, "queue", "db", "global.db")) as connection:
+        ids = {row[1]: row[0] for row in connection.execute("SELECT id, name FROM `group`")}
+        for priority, group in enumerate(groups):
+            connection.execute("INSERT INTO belongs VALUES (?, ?, ?)",
+                               (agent_id, ids[group], priority))
 
 
 def build_target(root):
@@ -535,6 +549,77 @@ class MigrationToolTest(unittest.TestCase):
         self.assertEqual(0, self.do_import())
         FakeManager.agents[1]["groups"] = []
         self.assertEqual(1, self.check())
+
+    # -- agents above the insert cap
+
+    def stderr_of(self, command, *extra):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = command(*extra)
+        return code, err.getvalue()
+
+    def assert_cap_warning(self, text):
+        self.assertIn("above the insert cap", text)
+        self.assertIn("10000000", text)
+        self.assertIn("capped-host", text)
+        self.assertRegex(text, r"\b9999999\b")
+        self.assertIn("5.0.1 or later", text)
+
+    def test_export_warns_about_ids_above_the_insert_cap(self):
+        add_agent_above_cap(self.source, "capped-host", ["linux-servers"])
+        code, text = self.stderr_of(self.export, "--dry-run")
+        self.assertEqual(0, code)
+        self.assert_cap_warning(text)
+        self.assertFalse(os.path.exists(self.bundle))
+
+    def test_import_dry_run_warns_about_ids_above_the_insert_cap(self):
+        add_agent_above_cap(self.source, "capped-host", ["linux-servers"])
+        self.assertEqual(0, self.export())
+        code, text = self.stderr_of(self.do_import, "--dry-run")
+        self.assertEqual(0, code)
+        self.assert_cap_warning(text)
+        writes = [c for c in FakeManager.calls if c[0] in ("POST", "PUT")
+                  and "authenticate" not in c[1]]
+        self.assertEqual([], writes)
+
+    def test_no_warning_without_ids_above_the_insert_cap(self):
+        add_agent_above_cap(self.source, "at-the-cap", ["linux-servers"], agent_id=9999999)
+        self.assertEqual(0, self.export())
+        code, text = self.stderr_of(self.do_import, "--dry-run")
+        self.assertEqual(0, code)
+        self.assertNotIn("above the insert cap", text)
+
+    def import_with_capped_agent(self, groups):
+        """Imports a bundle holding an agent above the cap, which the manager refuses."""
+        add_agent_above_cap(self.source, "capped-host", groups)
+        self.assertEqual(0, self.export())
+        FakeManager.reject_agents = {10000000}
+        writes_at_warning = []
+        real_warn = tool.warn
+
+        def noting_warn(message):
+            if "above the insert cap" in message:
+                writes_at_warning.append(len([c for c in FakeManager.calls
+                                              if c[0] in ("POST", "PUT")
+                                              and "authenticate" not in c[1]]))
+            real_warn(message)
+
+        with mock.patch.object(tool, "warn", noting_warn), redirect_stderr(io.StringIO()):
+            self.assertEqual(1, self.do_import())
+        self.assertEqual([0], writes_at_warning, "the warning comes before any write")
+
+    def test_check_accepts_an_agent_above_the_insert_cap_as_absent(self):
+        self.import_with_capped_agent(["linux-servers"])
+        self.assertEqual(0, self.check())
+
+    def test_check_accepts_a_re_enrolled_agent_above_the_insert_cap(self):
+        self.import_with_capped_agent(["linux-servers", "pci-scope"])
+        FakeManager.agents[9] = {"name": "capped-host", "ip": None, "key": "x", "groups": []}
+        self.assertEqual(1, self.check(), "the groups of the original agent are missing")
+        FakeManager.agents[9]["groups"] = ["linux-servers", "pci-scope"]
+        self.assertEqual(0, self.check())
+        FakeManager.agents[9]["name"] = "another-host"
+        self.assertEqual(1, self.check(), "an unrelated name is still an unknown agent")
 
     # -- verifying the API it sends the password and the agent keys to
 
