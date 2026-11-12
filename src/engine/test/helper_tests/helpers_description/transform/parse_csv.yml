@@ -1,0 +1,115 @@
+# Name of the helper function
+name: parse_csv
+
+metadata:
+  description: |
+    Splits the comma-separated input string into the named output fields of the target object.
+
+    Behavior:
+    - Same as `parse_dsv` with `,` as delimiter and `"` as both quote and escape character.
+    - The whole input is split on `,`; the text between double quotes is one value even when it contains a
+      comma, and `""` inside a quoted value is a literal double quote. Unbalanced quotes fail.
+    - The number of values must be exactly the number of output names; otherwise nothing is stored.
+    - Every value is stored as a string, without type inference; an empty value becomes null.
+    - Each output name is a path relative to the target: a name with `.` or `/` creates nested objects.
+    - The resulting object replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - Fewer than 2 output names, or an output name that is not a literal string.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - `split` produces an array without quoting rules; `parse_kv` reads key-value pairs.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The number of values differs from the number of output names.
+    - The quoting is not balanced.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+  out1:
+    type: string
+    generate: string
+    source: value
+  out2:
+    type: string
+    generate: string
+    source: value
+
+skipped:
+  - success_cases # string generation is random
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      input: value1,value2,value3
+      out1: out1
+      out2: out2
+      out2_1: out3
+    target_field: any_value
+    should_pass: true
+    expected:
+      out1: value1
+      out2: value2
+      out3: value3
+    description: Each value is stored as a string under its output name
+  - arguments:
+      input: value1,value2,value3
+      out1: out1.key
+      out2: out2/key
+      out2_1: out3.key/subkey
+    target_field: any_value
+    should_pass: true
+    expected:
+      out1:
+        key: value1
+      out2:
+        key: value2
+      out3:
+        key:
+          subkey: value3
+    description: Output names with dots or slashes create nested objects
+  - arguments:
+      input: '"a,b",c'
+      out1: out1
+      out2: out2
+    target_field: any_value
+    should_pass: true
+    expected:
+      out1: "a,b"
+      out2: c
+    description: A quoted value may contain the comma
+  - arguments:
+      input: a,,c
+      out1: out1
+      out2: out2
+      out2_1: out3
+    target_field: any_value
+    should_pass: true
+    expected:
+      out1: a
+      out2: null
+      out3: c
+    description: An empty value is stored as null
+  - arguments:
+      input: valu1=1 value2=2
+      out1: out1
+      out2: out2
+      out2_1: out3
+    target_field: any_value
+    should_pass: false
+    description: Fails because the input holds fewer values than output names

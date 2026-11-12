@@ -13,38 +13,6 @@ OpArg makeStringOnlyValue(std::string value)
     return std::make_shared<Value>(std::move(value));
 }
 
-auto customRefExpected()
-{
-    return [](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*mocks.ctx, validator());
-        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
-        return None {};
-    };
-}
-
-auto customRefExpected(base::Event value)
-{
-    return [value](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*mocks.ctx, validator());
-        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
-        return value;
-    };
-}
-
-auto jTypeRefExpected(json::Json::Type jType)
-{
-    return [jType](const BuildersMocks& mocks)
-    {
-        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, getJsonType(DotPath("ref"))).WillOnce(testing::Return(jType));
-
-        return None {};
-    };
-}
-
 auto customTargetExpected(bool hasField = true, schemf::Type type = schemf::Type::KEYWORD)
 {
     return [hasField, type](const BuildersMocks& mocks)
@@ -94,46 +62,6 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     TransformBuilderTest,
     testing::Values(
-        /*** Append Split ***/
-        TransformT({}, opBuilderHelperAppendSplitString, FAILURE()),
-        TransformT({makeRef("ref")}, opBuilderHelperAppendSplitString, FAILURE()),
-        TransformT({makeValue(R"("a")")}, opBuilderHelperAppendSplitString, FAILURE()),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   SUCCESS(customRefExpected())),
-        TransformT({makeRef("ref"), makeValue(R"("aa")")}, opBuilderHelperAppendSplitString, FAILURE()),
-        TransformT({makeValue(R"("a")"), makeRef("ref")}, opBuilderHelperAppendSplitString, FAILURE()),
-        TransformT({makeRef("ref"), makeValue(R"("a")"), makeValue(R"("b")")},
-                   opBuilderHelperAppendSplitString,
-                   FAILURE()),
-        TransformT({makeRef("ref"), makeValue(R"(1)")}, opBuilderHelperAppendSplitString, FAILURE()),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   SUCCESS(jTypeRefExpected(json::Json::Type::String))),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   FAILURE(jTypeRefExpected(json::Json::Type::Number))),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   FAILURE(jTypeRefExpected(json::Json::Type::Object))),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   FAILURE(jTypeRefExpected(json::Json::Type::Array))),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   FAILURE(jTypeRefExpected(json::Json::Type::Null))),
-        TransformT({makeRef("ref"), makeValue(R"("a")")},
-                   opBuilderHelperAppendSplitString,
-                   FAILURE(
-                       [](const auto& mocks)
-                       {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
-                               .WillOnce(testing::Return(false));
-                           return None {};
-                       })),
         /*** Append ***/
         TransformT({}, optransform::getArrayAppendBuilder(), FAILURE()),
         TransformT({makeRef("ref")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
@@ -229,302 +157,245 @@ INSTANTIATE_TEST_SUITE_P(
 
 namespace transformoperatestest
 {
-INSTANTIATE_TEST_SUITE_P(
-    Builders,
-    TransformOperationTest,
-    testing::Values(
-        /*** Append Split ***/
-        TransformT(R"({"ref": "a b c"})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   SUCCESS(customRefExpected(makeEvent(R"({"ref": "a b c", "target": ["a", "b", "c"]})")))),
-        TransformT(R"({"ref": "a b c"})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"("-")")},
-                   SUCCESS(customRefExpected(makeEvent(R"({"ref": "a b c", "target": ["a b c"]})")))),
-        TransformT(R"({"ref": " b "})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   SUCCESS(customRefExpected(makeEvent(R"({"ref": " b ", "target": ["b"]})")))),
-        TransformT(R"({"notRef": "a b c"})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   FAILURE(customRefExpected())),
-        TransformT(R"({"ref": 1})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   FAILURE(customRefExpected())),
-        TransformT(R"({"ref": 1.1})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   FAILURE(customRefExpected())),
-        TransformT(R"({"ref": true})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   FAILURE(customRefExpected())),
-        TransformT(R"({"ref": null})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   FAILURE(customRefExpected())),
-        TransformT(R"({"ref": []})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   FAILURE(customRefExpected())),
-        TransformT(R"({"ref": {}})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   FAILURE(customRefExpected())),
-        TransformT(R"({"ref": ""})",
-                   opBuilderHelperAppendSplitString,
-                   "target",
-                   {makeRef("ref"), makeValue(R"(" ")")},
-                   SUCCESS(customRefExpected(makeEvent(R"({"ref": ""})")))),
-        /*** Append ***/
-        TransformT(R"({"ref": "a"})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected(false)(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
-                       })),
-        TransformT(R"({"ref": "a", "targetField": ["b"]})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
-                       })),
-        TransformT(R"({"ref": "a", "targetField": []})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
-                       })),
-        TransformT(R"({"targetField": []})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeStringOnlyValue("a")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a"]})");
-                       })),
-        TransformT(R"({"targetField": []})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   FAILURE(customTargetExpected())),
-        TransformT(R"({"targetField": []})",
-                   optransform::getArrayAppendBuilder(false, true),
-                   "targetField",
-                   {makeRef("ref")},
-                   FAILURE(customTargetExpected())),
-        TransformT(R"({"targetField": [1]})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeStringOnlyValue("a")},
-                   FAILURE(customTargetExpected(false))),
-        TransformT(R"({"ref": "a"})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
-                       })),
-        TransformT(R"({"ref": "a", "targetField": ["b"]})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
-                       })),
-        TransformT(R"({"ref": "a", "targetField": "not array"})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   FAILURE(customTargetExpected())),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeRef("ref")},
-                   FAILURE(customTargetExpected())),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(false, true),
-                   "targetField",
-                   {makeRef("ref"), makeValue(R"("a")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("a")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a", "a"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("b")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a", "b"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("a")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a", "a"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("b")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a", "b"]})");
-                       })),
-        /*** Append Unique ***/
-        TransformT(R"({"ref": "a"})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
-                       })),
-        TransformT(R"({"ref": "a", "targetField": ["b"]})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
-                       })),
-        TransformT(R"({"ref": "a"})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
-                       })),
-        TransformT(R"({"ref": "a", "targetField": ["b"]})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeRef("ref")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
-                       })),
-        TransformT(R"({"ref": "a", "targetField": "not array"})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeRef("ref")},
-                   FAILURE(customTargetExpected())),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeRef("ref")},
-                   FAILURE(customTargetExpected())),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(true, true),
-                   "targetField",
-                   {makeRef("ref"), makeValue(R"("a")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("a")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("b")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           customTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a", "b"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("a")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a"]})");
-                       })),
-        TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(true),
-                   "targetField",
-                   {makeValue(R"("a")"), makeValue(R"("b")")},
-                   SUCCESS(
-                       [](const auto& mocks)
-                       {
-                           arrayTargetExpected()(mocks);
-                           return makeEvent(R"({"targetField": ["a", "b"]})");
-                       }))),
-    testNameFormatter<TransformOperationTest>("ArrayAppend"));
+INSTANTIATE_TEST_SUITE_P(Builders,
+                         TransformOperationTest,
+                         testing::Values(
+                             /*** Append ***/
+                             TransformT(R"({"ref": "a"})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected(false)(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a", "targetField": ["b"]})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a", "targetField": []})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({"targetField": []})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeStringOnlyValue("a")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({"targetField": []})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        FAILURE(customTargetExpected())),
+                             TransformT(R"({"targetField": []})",
+                                        optransform::getArrayAppendBuilder(false, true),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        FAILURE(customTargetExpected())),
+                             TransformT(R"({"targetField": [1]})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeStringOnlyValue("a")},
+                                        FAILURE(customTargetExpected(false))),
+                             TransformT(R"({"ref": "a"})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a", "targetField": ["b"]})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a", "targetField": "not array"})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        FAILURE(customTargetExpected())),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        FAILURE(customTargetExpected())),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(false, true),
+                                        "targetField",
+                                        {makeRef("ref"), makeValue(R"("a")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("a")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a", "a"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("b")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a", "b"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("a")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a", "a"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("b")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a", "b"]})");
+                                            })),
+                             /*** Append Unique ***/
+                             TransformT(R"({"ref": "a"})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a", "targetField": ["b"]})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a"})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a", "targetField": ["b"]})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
+                                            })),
+                             TransformT(R"({"ref": "a", "targetField": "not array"})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        FAILURE(customTargetExpected())),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeRef("ref")},
+                                        FAILURE(customTargetExpected())),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(true, true),
+                                        "targetField",
+                                        {makeRef("ref"), makeValue(R"("a")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("a")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("b")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                customTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a", "b"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("a")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a"]})");
+                                            })),
+                             TransformT(R"({})",
+                                        optransform::getArrayAppendBuilder(true),
+                                        "targetField",
+                                        {makeValue(R"("a")"), makeValue(R"("b")")},
+                                        SUCCESS(
+                                            [](const auto& mocks)
+                                            {
+                                                arrayTargetExpected()(mocks);
+                                                return makeEvent(R"({"targetField": ["a", "b"]})");
+                                            }))),
+                         testNameFormatter<TransformOperationTest>("ArrayAppend"));
 } // namespace transformoperatestest

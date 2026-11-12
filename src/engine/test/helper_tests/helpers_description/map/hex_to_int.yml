@@ -1,0 +1,65 @@
+# Name of the helper function
+name: hex_to_int
+
+metadata:
+  description: |
+    Reads a string of hexadecimal digits as a signed 64-bit integer and maps it to the target field.
+
+    Behavior:
+    - The digits can be in either case and a `0x` prefix is optional: `0xBC763516` gives `3161863446`
+      and `48656C` gives `4744556`.
+    - The whole string must be consumed: trailing characters, whitespace included, fail.
+
+    Build errors:
+    - `hex` is a literal.
+    - `hex` is a schema field whose type is not a string.
+
+    Notes:
+    - The result is an integer: a `float` or `double` target rejects it at runtime.
+    - `decode_hex` decodes hexadecimal digits to text instead.
+  group: number
+  fails_when:
+    - "`hex` is missing or is not a string"
+    - "`hex` is not a hexadecimal number that fits in a signed 64-bit integer"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  hex:
+    type: string
+    generate: hexadecimal
+    source: reference
+
+skipped:
+  - success_cases
+
+output:
+  type: number
+  subset: integer
+
+test:
+  - arguments:
+      hex: 2A
+    should_pass: true
+    expected: 42
+    description: Convert hexadecimal digits without a prefix
+  - arguments:
+      hex: '0xBC763516'
+    should_pass: true
+    expected: 3161863446
+    description: Convert a number with the 0x prefix that does not fit in 32 bits
+  - arguments:
+      hex: ff
+    should_pass: true
+    expected: 255
+    description: Convert lower-case digits
+  - arguments:
+      hex: GG
+    should_pass: false
+    description: Fail on a character that is not a hexadecimal digit
+  - arguments:
+      hex: "2A "
+    should_pass: false
+    description: Fail on trailing whitespace, as the whole string must be consumed

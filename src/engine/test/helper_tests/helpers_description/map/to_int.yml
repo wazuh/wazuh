@@ -3,38 +3,54 @@ name: to_int
 
 metadata:
   description: |
-    Transforms a number to an integer by truncating the fractional part or rounding to the nearest integer based on the fractional value (e.g., 9.6 → 10, -4.7 → -5);
-    values with a fractional part ≥ 0.5 or ≤ -0.5 round away from zero, while others round toward zero.
-    `operation_mode` is optional; when omitted the number is truncated.
-    The result of the to_int operation is mapped to “target_field”. In case of errors “target_field” will not be modified.
-    This helper function is typically used in the map stage
-  keywords:
-    - double
-    - float
-    - integer
+    Converts a number, or a string holding a number, to a 64-bit integer and maps it to the target
+    field.
+
+    Behavior:
+    - An integer is kept as it is.
+    - A floating-point number is converted according to `mode`: `truncate` (the default) drops the
+      fractional part toward zero (`-4.7` gives `-4`); `round` rounds half away from zero (`-4.7`
+      gives `-5` and `1.5` gives `2`).
+    - A string is read as a number first and converted the same way: `"42"` gives `42` and `"4.6"`
+      gives `4` with `truncate`.
+    - A number outside the 64-bit integer range, as a number or as a string, is not converted: the helper
+      fails instead of rounding or wrapping.
+    - A string with more than one sign (`"+-5"`) is not a number.
+
+    Build errors:
+    - `value` is a literal, or `mode` is given and is neither `truncate` nor `round`.
+    - `value` is a schema field whose type is neither a number nor a string.
+
+    Notes:
+    - The result is an integer: a `float` or `double` target rejects it at runtime.
+    - `parse_long` and `parse_integer` parse decimal strings as transform helpers.
+  group: number
+  fails_when:
+    - "`value` is missing, or is neither a number nor a string holding a number"
+    - "`value` is a number outside the 64-bit integer range, as a number or as a string holding one"
 
 helper_type: map
 
-# Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 
-# Arguments expected by the helper function
 arguments:
-  number_to_transform:
-    type: number
-    generate:
-      - float
-      - double
-      - integer
+  value:
+    type: number # a string holding a number is accepted too; one declared type keeps the generator happy
+    accepted_values: Any number, or a string holding a decimal number
+    generate: integer
     source: reference
-  operation_mode:
-    type: string  # Accept only string
-    source: value # includes only values
-    optional: true # defaults to truncate when omitted
+  mode:
+    type: string
+    source: value
+    optional: true
     restrictions:
       allowed:
         - truncate
         - round
+
+# The generated strings do not hold numbers
+skipped:
+  - success_cases
 
 output:
   type: number
@@ -42,62 +58,89 @@ output:
 
 test:
   - arguments:
-      number_to_transform: -4.176666736602783
-      operation_mode: truncate
+      value: -4.176666736602783
+      mode: truncate
     should_pass: true
     expected: -4
-    description: Truncates a negative float, ignoring the fractional part.
+    description: Truncate a negative float, dropping the fractional part
   - arguments:
-      number_to_transform: -4.716666736602783
-      operation_mode: round
+      value: -4.716666736602783
+      mode: round
     should_pass: true
     expected: -5
-    description: Round a negative float.
+    description: Round a negative float away from zero
   - arguments:
-      number_to_transform: -4.176666736602783
-      operation_mode: round
+      value: -4.176666736602783
+      mode: round
     should_pass: true
     expected: -4
-    description: Rounds a negative float to the nearest integer.
+    description: Round a negative float to the nearest integer
   - arguments:
-      number_to_transform: 0.7124601006507874
-      operation_mode: truncate
+      value: 0.7124601006507874
+      mode: truncate
     should_pass: true
     expected: 0
-    description: Truncates a positive float less than 1 to 0.
+    description: Truncate a positive float below 1 to 0
   - arguments:
-      number_to_transform: 0.7124601006507874
-      operation_mode: round
+      value: 0.7124601006507874
+      mode: round
     should_pass: true
     expected: 1
-    description: Rounds a positive float greater than 0.5 to 1.
+    description: Round a positive float above 0.5 to 1
   - arguments:
-      number_to_transform: 1.50
-      operation_mode: truncate
+      value: 1.50
+      mode: truncate
     should_pass: true
     expected: 1
-    description: Truncates a positive float with a fractional part of 0.5.
+    description: Truncate a positive float with a fractional part of 0.5
   - arguments:
-      number_to_transform: 1.49999999
-      operation_mode: truncate
+      value: 1.49999999
+      mode: truncate
     should_pass: true
     expected: 1
-    description: Truncates a positive float just below 1.5 to 1.
+    description: Truncate a positive float just below 1.5 to 1
   - arguments:
-      number_to_transform: 1.51
-      operation_mode: round
+      value: 1.51
+      mode: round
     should_pass: true
     expected: 2
-    description: Rounds a positive float just below 1.5 to 2.
+    description: Round 1.51 to 2
   - arguments:
-      number_to_transform: 1.48888888
-      operation_mode: round
+      value: 1.48888888
+      mode: round
     should_pass: true
     expected: 1
-    description: Rounds a positive float below 1.5 but closer to 1 to 1.
+    description: Round a positive float below 1.5 to 1
   - arguments:
-      number_to_transform: 1000
-      operation_mode: round
+      value: 1000
+      mode: round
     should_pass: true
     expected: 1000
-    description: Rounds a positive integer
+    description: Keep an integer unchanged
+  - arguments:
+      value: "42"
+    should_pass: true
+    expected: 42
+    description: Convert a string holding an integer, with the default mode
+  - arguments:
+      value: "4.6"
+      mode: truncate
+    should_pass: true
+    expected: 4
+    description: Convert a string holding a float and truncate it
+  - arguments:
+      value: "abc"
+    should_pass: false
+    description: Fail on a string that does not hold a number
+  - arguments:
+      value: 18446744073709551615
+    should_pass: false
+    description: An integer above the 64-bit signed range is not converted
+  - arguments:
+      value: "99999999999999999999"
+    should_pass: false
+    description: A string holding an integer above the 64-bit range is not converted
+  - arguments:
+      value: "+-5"
+    should_pass: false
+    description: A string with two signs is not a number

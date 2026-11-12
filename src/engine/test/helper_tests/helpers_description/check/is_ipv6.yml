@@ -1,0 +1,55 @@
+# Name of the helper function
+name: is_ipv6
+
+metadata:
+  description: |
+    Checks whether the target string is a valid IPv6 address.
+
+    Behavior:
+    - The target must be a string; it is parsed with `inet_pton(AF_INET6)`: compressed forms such as `::1` and
+      IPv4-mapped addresses such as `::ffff:1.2.3.4` are accepted, while zone identifiers (`%eth0`), brackets
+      and prefix lengths are rejected.
+    - Every syntactically valid address passes, loopback, link-local and unique-local ranges included.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is a schema field whose type is neither `ip` nor an IP-compatible string type (keyword, text,
+      wildcard and the like); date, binary, numeric and object fields are rejected.
+    - Any argument is given.
+
+    Notes:
+    - `is_public_ip` excludes the loopback, link-local and unique-local ranges.
+  group: network
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The string is not a valid IPv6 address (an IPv4 address included).
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - target_field: 127.0.0.1
+    should_pass: false
+    description: An IPv4 address is not an IPv6 address.
+  - target_field: ::1
+    should_pass: true
+    description: The compressed loopback address is a valid IPv6 address.
+  - target_field: fd00:abcd::1234
+    should_pass: true
+    description: A unique-local address is a valid IPv6 address.
+  - target_field: a03:2880:f10c:83:face:b00c::25de
+    should_pass: true
+    description: A public address is a valid IPv6 address.
+  - target_field: "fe80::1%eth0"
+    should_pass: false
+    description: A zone identifier is not accepted.
+  - target_field: 42
+    should_pass: false
+    description: The target field is a number, not a string.

@@ -1,0 +1,55 @@
+# Name of the helper function
+name: asn
+
+metadata:
+  description: |
+    Looks up the autonomous system of an IP address in the GeoLite2-ASN database (MaxMind) and maps
+    the result object to the target field.
+
+    Behavior:
+    - `ip` is a reference to a string holding an IPv4 or IPv6 address.
+    - The result is `{"number": <autonomous_system_number>, "organization": {"name":
+      <autonomous_system_organization>}}`; each key is present only when the database entry has that
+      field.
+    - On success the whole target value is replaced by the object.
+
+    Build errors:
+    - The number of arguments is not exactly 1, or `ip` is not a reference.
+    - `ip` is a schema field whose type is not `ip` (for example `keyword` or `text`).
+    - The ASN database is not available.
+
+    Notes:
+    - `geoip` queries the City database instead.
+    - The `geo` enrichment maps the same two fields automatically for the IP fields of the schema; it
+      writes them leaf by leaf, while `asn` replaces the target object.
+  group: network
+  fails_when:
+    - "`ip` is missing or is not a string (an array is rejected too)"
+    - "the database has no entry for the address, or the string is not a valid IP"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  ip:
+    type: string
+    generate: ip
+    source: reference
+
+# The test database has no entry for the generated addresses
+skipped:
+  - success_cases
+
+output:
+  type: object
+
+test:
+  - arguments:
+      ip: 1.2.3.4
+    should_pass: true
+    expected:
+      number: 1234
+      organization:
+        name: " Wazuh Organization"
+    description: Look up the autonomous system of a public IP present in the test database

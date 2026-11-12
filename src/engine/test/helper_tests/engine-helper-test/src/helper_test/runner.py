@@ -183,7 +183,7 @@ class Evaluator:
         self.field_mapping = ""
         self.should_pass = False
         self.skipped = False
-        self.expected = ""
+        self.expected = None
         self.input = []
 
     def set_id(self, id: int):
@@ -274,7 +274,7 @@ class Evaluator:
         """
         Validate a map helper test case that expects a specific field mapping.
         """
-        if self.expected:
+        if self.expected is not None:
             if self.should_pass:
                 if output[field_mapping] == self.expected:
                     self.create_success_test()
@@ -292,7 +292,7 @@ class Evaluator:
         """
         Validate a transform helper test case that expects a specific field mapping.
         """
-        if self.expected:
+        if self.expected is not None:
             if output[field_mapping] == self.expected:
                 self.create_success_test()
             else:
@@ -760,9 +760,9 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
 
         if result_evaluator.helper_type == "map":
             result_evaluator.tester_run_map(api_client, "_helper")
-        elif result_evaluator.helper_type == "filter":
+        elif result_evaluator.helper_type == "check":
             result_evaluator.tester_run_filter(api_client, "_verification_field")
-        elif result_evaluator.helper_type == "transformation":
+        elif result_evaluator.helper_type == "transform":
             result_evaluator.tester_run_transform(api_client, "_target_field")
         else:
             raise Exception(
@@ -792,9 +792,9 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
 
         if result_evaluator.helper_type == "map":
             result_evaluator.tester_run_map(api_client, "_helper")
-        elif result_evaluator.helper_type == "filter":
+        elif result_evaluator.helper_type == "check":
             result_evaluator.tester_run_filter(api_client, "_verification_field")
-        elif result_evaluator.helper_type == "transformation":
+        elif result_evaluator.helper_type == "transform":
             result_evaluator.tester_run_transform(api_client, "_target_field")
         else:
             raise Exception(

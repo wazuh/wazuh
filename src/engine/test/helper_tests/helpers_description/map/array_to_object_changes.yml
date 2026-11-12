@@ -1,0 +1,207 @@
+# Name of the helper function
+name: array_to_object_changes
+
+metadata:
+  description: |
+    Builds an object of changes from an array of objects, taking from every element a key, a new value
+    and an old value at the given dot paths, and maps it to the target field.
+
+    Behavior:
+    - `key_path`, `new_value_path` and `old_value_path` are dot paths relative to each element (for
+      example `Name`, `NewValue` and `OldValue`); `.` selects the whole element.
+    - Every element that is an object and holds a non-empty string at `key_path` and any value at
+      `new_value_path` produces one member of the result; the old value is optional. Other elements
+      are skipped.
+    - Each member is an object with the new value stored under the same relative path as
+      `new_value_path` and the old value under the one of `old_value_path` (`changes.new` nests it as
+      `changes` then `new`): with `Name`, `NewValue` and `OldValue`,
+      `[{"Name": "Included Updated Properties", "NewValue": "X", "OldValue": "Y"}]` gives
+      `{"included_updated_properties": {"NewValue": "X", "OldValue": "Y"}}`.
+    - An old value that is an empty string or made of spaces only is dropped.
+    - Unless `mode` is `raw_keys`, each key is normalized as `array_to_object` does (lowercase, with
+      `_` for separators and other punctuation dropped). A key whose normalized form is empty is
+      skipped. A later element with the same key overwrites the members it provides: one without an
+      old value leaves the previous old value in place.
+    - On success the whole target value is replaced by the new object.
+
+    Build errors:
+    - Fewer than 4 or more than 5 arguments.
+    - `source_array` is not a reference, or it is a schema field whose elements are not objects.
+    - `key_path`, `new_value_path` or `old_value_path` is not a string literal, is empty, or starts with `/`
+      (JSON pointers are not accepted).
+    - `mode` is given and is not the literal `raw_keys`.
+
+    Notes:
+    - The target can be a schema object field or a temporary (`_`) field.
+    - `array_to_object` maps one value per key, without the nested object and the blank filtering.
+  group: array
+  fails_when:
+    - "`source_array` is missing or is not an array"
+    - "no element produces a member, so the result would be empty"
+
+helper_type: map
+
+is_variadic: false
+
+arguments:
+  source_array:
+    type: array
+    generate: object
+    source: reference
+  key_path:
+    type: string
+    generate: string
+    source: value
+  new_value_path:
+    type: string
+    generate: string
+    source: value
+  old_value_path:
+    type: string
+    generate: string
+    source: value
+  mode:
+    type: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - raw_keys
+
+skipped:
+  - success_cases
+
+output:
+  type: object
+
+test:
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: RequiredResourceAccess
+            NewValue: new-data
+            OldValue: old-data
+          - Name: Included Updated Properties
+            NewValue: RequiredResourceAccess
+            OldValue: ""
+      key_path:
+        source: value
+        value: Name
+      new_value_path:
+        source: value
+        value: NewValue
+      old_value_path:
+        source: value
+        value: OldValue
+    should_pass: true
+    expected:
+      requiredresourceaccess:
+        NewValue: new-data
+        OldValue: old-data
+      included_updated_properties:
+        NewValue: RequiredResourceAccess
+    description: Build one object per normalized key with its new and old values, dropping an empty old value
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: RequiredResourceAccess
+            NewValue: new-data
+            OldValue: old-data
+          - Name: Included Updated Properties
+            NewValue: RequiredResourceAccess
+            OldValue: ""
+      key_path:
+        source: value
+        value: Name
+      new_value_path:
+        source: value
+        value: NewValue
+      old_value_path:
+        source: value
+        value: OldValue
+      mode:
+        source: value
+        value: raw_keys
+    should_pass: true
+    expected:
+      RequiredResourceAccess:
+        NewValue: new-data
+        OldValue: old-data
+      Included Updated Properties:
+        NewValue: RequiredResourceAccess
+    description: Keep the keys verbatim with the mode raw_keys
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: AzurePolicyChange
+            NewValue: Enabled
+      key_path:
+        source: value
+        value: Name
+      new_value_path:
+        source: value
+        value: NewValue
+      old_value_path:
+        source: value
+        value: OldValue
+    should_pass: true
+    expected:
+      azurepolicychange:
+        NewValue: Enabled
+    description: Keep an element that only provides a new value
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: AlertThreshold
+            NewValue: 10
+            OldValue: "  "
+      key_path:
+        source: value
+        value: Name
+      new_value_path:
+        source: value
+        value: NewValue
+      old_value_path:
+        source: value
+        value: OldValue
+    should_pass: true
+    expected:
+      alertthreshold:
+        NewValue: 10
+    description: Drop an old value made of spaces only
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: RequiredResourceAccess
+            OldValue: old-data
+      key_path:
+        source: value
+        value: Name
+      new_value_path:
+        source: value
+        value: NewValue
+      old_value_path:
+        source: value
+        value: OldValue
+    should_pass: false
+    description: Fail when the only element has no new value, so the result would be empty
+  - arguments:
+      source_array:
+        source: reference
+        value: null
+      key_path:
+        source: value
+        value: Name
+      new_value_path:
+        source: value
+        value: NewValue
+      old_value_path:
+        source: value
+        value: OldValue
+    should_pass: false
+    description: Fail when the source array reference is missing

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <limits>
+
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opfilter/opBuilderHelperFilter.hpp"
@@ -43,6 +45,8 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeValue(R"("1")")}, opfilter::opBuilderHelperNumberEqual, FAILURE()),
         FilterT({makeValue(R"(1.1)")}, opfilter::opBuilderHelperNumberEqual, SUCCESS()),
         FilterT({makeValue(R"(1.0)")}, opfilter::opBuilderHelperNumberEqual, SUCCESS()),
+        FilterT({makeValue("18446744073709551615")}, opfilter::opBuilderHelperNumberEqual, SUCCESS()),
+        FilterT({makeValue("-9223372036854775808")}, opfilter::opBuilderHelperNumberEqual, SUCCESS()),
         FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperNumberEqual, FAILURE()),
         FilterT({makeValue(R"(false)")}, opfilter::opBuilderHelperNumberEqual, FAILURE()),
         FilterT({makeValue(R"([])")}, opfilter::opBuilderHelperNumberEqual, FAILURE()),
@@ -526,6 +530,162 @@ INSTANTIATE_TEST_SUITE_P(
                 opfilter::opBuilderHelperNumberNotEqual,
                 "target",
                 {makeRef("ref")},
-                FAILURE(customRefExpected()))),
+                FAILURE(customRefExpected())),
+        /*** Exact integer comparison ***/
+        // Two integers are compared exactly, beyond the precision of a double
+        FilterT(R"({"target": 9007199254740993})",
+                opfilter::opBuilderHelperNumberEqual,
+                "target",
+                {makeValue("9007199254740992")},
+                FAILURE()),
+        FilterT(R"({"target": 9007199254740993})",
+                opfilter::opBuilderHelperNumberEqual,
+                "target",
+                {makeValue("9007199254740993")},
+                SUCCESS()),
+        FilterT(R"({"target": 9007199254740993})",
+                opfilter::opBuilderHelperNumberNotEqual,
+                "target",
+                {makeValue("9007199254740992")},
+                SUCCESS()),
+        FilterT(R"({"target": 9007199254740993})",
+                opfilter::opBuilderHelperNumberGreaterThan,
+                "target",
+                {makeValue("9007199254740992")},
+                SUCCESS()),
+        FilterT(R"({"target": 9007199254740992})",
+                opfilter::opBuilderHelperNumberGreaterThanEqual,
+                "target",
+                {makeValue("9007199254740993")},
+                FAILURE()),
+        FilterT(R"({"target": 9007199254740992})",
+                opfilter::opBuilderHelperNumberLessThan,
+                "target",
+                {makeValue("9007199254740993")},
+                SUCCESS()),
+        FilterT(R"({"target": 9007199254740993})",
+                opfilter::opBuilderHelperNumberLessThanEqual,
+                "target",
+                {makeValue("9007199254740992")},
+                FAILURE()),
+        FilterT(R"({"target": 9007199254740993, "ref": 9007199254740992})",
+                opfilter::opBuilderHelperNumberEqual,
+                "target",
+                {makeRef("ref")},
+                FAILURE(customRefExpected())),
+        FilterT(R"({"target": 9007199254740993, "ref": 9007199254740992})",
+                opfilter::opBuilderHelperNumberGreaterThan,
+                "target",
+                {makeRef("ref")},
+                SUCCESS(customRefExpected())),
+        // Unsigned 64-bit integers above INT64_MAX
+        FilterT(R"({"target": 18446744073709551615})",
+                opfilter::opBuilderHelperNumberEqual,
+                "target",
+                {makeValue("18446744073709551615")},
+                SUCCESS()),
+        FilterT(R"({"target": 18446744073709551615})",
+                opfilter::opBuilderHelperNumberNotEqual,
+                "target",
+                {makeValue("18446744073709551614")},
+                SUCCESS()),
+        FilterT(R"({"target": 18446744073709551615})",
+                opfilter::opBuilderHelperNumberGreaterThan,
+                "target",
+                {makeValue("9223372036854775807")},
+                SUCCESS()),
+        FilterT(R"({"target": 9223372036854775807})",
+                opfilter::opBuilderHelperNumberLessThan,
+                "target",
+                {makeValue("18446744073709551615")},
+                SUCCESS()),
+        FilterT(R"({"target": -1})",
+                opfilter::opBuilderHelperNumberLessThan,
+                "target",
+                {makeValue("18446744073709551615")},
+                SUCCESS()),
+        FilterT(R"({"target": 18446744073709551615})",
+                opfilter::opBuilderHelperNumberGreaterThanEqual,
+                "target",
+                {makeValue("-1")},
+                SUCCESS()),
+        FilterT(R"({"target": 18446744073709551615, "ref": -1})",
+                opfilter::opBuilderHelperNumberGreaterThan,
+                "target",
+                {makeRef("ref")},
+                SUCCESS(customRefExpected())),
+        FilterT(R"({"target": 18446744073709551615, "ref": 18446744073709551615})",
+                opfilter::opBuilderHelperNumberLessThanEqual,
+                "target",
+                {makeRef("ref")},
+                SUCCESS(customRefExpected())),
+        // A floating-point operand switches the comparison to double
+        FilterT(R"({"target": 2})", opfilter::opBuilderHelperNumberEqual, "target", {makeValue("2.0")}, SUCCESS()),
+        FilterT(R"({"target": 3})", opfilter::opBuilderHelperNumberEqual, "target", {makeValue("2.9")}, FAILURE()),
+        FilterT(
+            R"({"target": 3})", opfilter::opBuilderHelperNumberGreaterThan, "target", {makeValue("2.9")}, SUCCESS()),
+        FilterT(
+            R"({"target": 2.5})", opfilter::opBuilderHelperNumberGreaterThan, "target", {makeValue("2")}, SUCCESS()),
+        FilterT(
+            R"({"target": 2})", opfilter::opBuilderHelperNumberGreaterThan, "target", {makeValue("2.5")}, FAILURE()),
+        FilterT(R"({"target": 2.9})", opfilter::opBuilderHelperNumberLessThan, "target", {makeValue("3")}, SUCCESS()),
+        FilterT(R"({"target": 2})", opfilter::opBuilderHelperNumberNotEqual, "target", {makeValue("2.0")}, FAILURE()),
+        FilterT(R"({"target": 18446744073709551615})",
+                opfilter::opBuilderHelperNumberGreaterThan,
+                "target",
+                {makeValue("1.5")},
+                SUCCESS()),
+        FilterT(R"({"target": -1.5})",
+                opfilter::opBuilderHelperNumberLessThan,
+                "target",
+                {makeValue("18446744073709551615")},
+                SUCCESS()),
+        // An integer and a double are exact only up to 2^53
+        FilterT(R"({"target": 9007199254740993})",
+                opfilter::opBuilderHelperNumberEqual,
+                "target",
+                {makeValue("9007199254740992.0")},
+                SUCCESS())),
     testNameFormatter<FilterOperationTest>("NumberCmp"));
 } // namespace filteroperatestest
+
+namespace
+{
+// No JSON text carries a NaN, so these events are built by hand
+class NumberCmpNanTest : public BaseBuilderTest
+{
+};
+
+TEST_F(NumberCmpNanTest, NanTargetIsUnordered)
+{
+    auto event = std::make_shared<json::Json>();
+    event->setDouble(std::numeric_limits<double>::quiet_NaN(), "/target");
+    expectBuildSuccess();
+    const Reference target {std::string {"target"}};
+    const std::vector<OpArg> args {makeValue("1")};
+
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberEqual(target, args, mocks->ctx)(event));
+    EXPECT_TRUE(opfilter::opBuilderHelperNumberNotEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberGreaterThan(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberGreaterThanEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberLessThan(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberLessThanEqual(target, args, mocks->ctx)(event));
+}
+
+TEST_F(NumberCmpNanTest, NanReferenceIsUnordered)
+{
+    auto event = std::make_shared<json::Json>();
+    event->setInt64(1, "/target");
+    event->setDouble(std::numeric_limits<double>::quiet_NaN(), "/ref");
+    expectBuildSuccess();
+    EXPECT_CALL(*mocks->ctx, validator()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->validator, hasField(DotPath("ref"))).WillRepeatedly(testing::Return(false));
+    const Reference target {std::string {"target"}};
+    const std::vector<OpArg> args {makeRef("ref")};
+
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberEqual(target, args, mocks->ctx)(event));
+    EXPECT_TRUE(opfilter::opBuilderHelperNumberNotEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberGreaterThanEqual(target, args, mocks->ctx)(event));
+    EXPECT_FALSE(opfilter::opBuilderHelperNumberLessThanEqual(target, args, mocks->ctx)(event));
+}
+} // namespace

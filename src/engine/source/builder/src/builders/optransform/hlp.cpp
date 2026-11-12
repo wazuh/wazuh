@@ -36,7 +36,6 @@ enum class HLPParserType
     DATE,
     IP,
     URI,
-    USERAGENT,
     FQDN,
     FILE,
     JSON,
@@ -68,7 +67,6 @@ auto parserGetter(HLPParserType parserType)
         case HLPParserType::DATE: return hlp::parsers::getDateParser;
         case HLPParserType::IP: return hlp::parsers::getIPParser;
         case HLPParserType::URI: return hlp::parsers::getUriParser;
-        case HLPParserType::USERAGENT: return hlp::parsers::getUAParser;
         case HLPParserType::FQDN: return hlp::parsers::getFQDNParser;
         case HLPParserType::FILE: return hlp::parsers::getFilePathParser;
         case HLPParserType::JSON: return hlp::parsers::getJSONParser;
@@ -261,14 +259,6 @@ TransformOp uriParseBuilder(const Reference& targetField,
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::URI));
 }
 
-// +parse_useragent/[$ref|value]
-TransformOp userAgentParseBuilder(const Reference& targetField,
-                                  const std::vector<OpArg>& opArgs,
-                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::USERAGENT));
-}
-
 // +parse_fqdn/[$ref|value]
 TransformOp fqdnParseBuilder(const Reference& targetField,
                              const std::vector<OpArg>& opArgs,
@@ -317,7 +307,7 @@ TransformOp dsvParseBuilder(const Reference& targetField,
     return detail::specificHLPBuilder(targetField, opArgs, buildCtx, parserGetter(HLPParserType::DSV));
 }
 
-// +parse_key_value/[$ref|value]
+// +parse_kv/[$ref|value]
 TransformOp keyValueParseBuilder(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
