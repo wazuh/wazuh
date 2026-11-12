@@ -449,8 +449,9 @@ manager and on every agent or deployment script that still enrolls with it befor
 
 **This step is conditional.** Carry the password only if 4.x agents will still have to enroll
 against the 5.0 manager during the migration window — a rebuilt host, an agent whose `client.keys`
-was lost, a 4.x agent installed after the cutover. If every agent keeps its key, as the rest of this
-guide arranges, nothing enrolls and the file buys you nothing.
+was lost, a 4.x agent installed after the cutover, an agent with an id above `9999999` when you use
+the migration tool. If every agent keeps its key, as the rest of this guide arranges, nothing enrolls
+and the file buys you nothing.
 
 The asymmetry is the reason to think about it rather than copy it by reflex:
 
