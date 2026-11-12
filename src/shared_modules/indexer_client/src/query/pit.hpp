@@ -69,12 +69,14 @@
 // gives {id, keepAlive, lastUse} to PitRegistry::release() without blocking, on any thread; a PitState whose registry
 // is gone (runtime shut down) does nothing (keep_alive frees it). The registry sends DELETE /_search/point_in_time with
 // {"pit_id": id} through the transport (choose() for the node, callback on the pool) and classifies with
-// classifyRequest(r, 1): 2xx or 404 ⇒ confirmed; Throttled ⇒ wait max(Retry-After, backoff); Failover/Retry ⇒
-// backoffDelay(DELETE_RETRY: 1 s, 15 s); no usable node ⇒ min(backoff, probeInterval) without counting a retry;
-// any other final answer (another 4xx, a response too large) ⇒ given up at once (deletesExpired + 1): keep_alive
-// frees the PIT. Until lastUse + keepAlive (saturated); past it ⇒ expired (deletesExpired + 1). Each DELETE's timeout
-// is min(requestTimeout, lastUse + keepAlive − now). Confirmed or expired frees the slot. Retries run on a loop-0
-// timer; release() is idempotent per id.
+// classifyRequest(r, 1): a 2xx whose `pits` entry for the id (or, when none names it, any entry) says
+// `successful: false` ⇒ retried like a Failover (the context may still be open: not a confirmed delete); any other 2xx
+// (a body without a readable `pits` included) or 404 ⇒ confirmed; Throttled ⇒ wait max(Retry-After, backoff);
+// Failover/Retry ⇒ backoffDelay(DELETE_RETRY: 1 s, 15 s); no usable node ⇒ min(backoff, probeInterval) without counting
+// a retry; any other final answer (another 4xx, a response too large) ⇒ given up at once (deletesExpired + 1):
+// keep_alive frees the PIT. Until lastUse + keepAlive (saturated); past it ⇒ expired (deletesExpired + 1). Each
+// DELETE's timeout is min(requestTimeout, lastUse + keepAlive − now). Confirmed or expired frees the slot. Retries run
+// on a loop-0 timer; release() is idempotent per id.
 //
 // SHUTDOWN (G-plan obj. 3). RuntimeState::stopAndJoin calls drain(shutdownDeadline − min(DRAIN_STOP_MARGIN,
 // (shutdownDeadline − now) / 2)) before transport->stop() (a short deadline still leaves half of it to the deletes):
