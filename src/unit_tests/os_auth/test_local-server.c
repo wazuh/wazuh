@@ -301,12 +301,15 @@ static void test_local_add_rejects_a_malformed_explicit_key(void **state) {
     cJSON_Delete(response);
 }
 
-/* A caller-supplied id outside [1, INT32_MAX], or equal to 0, is
- * refused up front with 9020, before any keystore lookup */
+/* A caller-supplied id above AGENT_INSERT_ID_MAX, or equal to 0, is refused up front with 9020,
+ * before any keystore lookup: the seven-digit cap keeps the automatic ids that follow an insertion
+ * within the eight digits agents accept */
 static void test_local_add_rejects_an_out_of_range_or_reserved_id(void **state) {
     (void) state;
     cJSON *response;
-    const char *invalid_ids[] = {"2147483648", "4294967296", "0", "000", "abc"};
+    const char *invalid_ids[] = {"10000000", "99999999", "2147483647", "2147483648", "4294967296", "0", "000", "abc"};
+    unsigned int keysize = keys.keysize;
+    int id_counter = keys.id_counter;
     size_t i;
 
     expect_any_always(__wrap__mdebug2, formatted_msg);
@@ -318,6 +321,8 @@ static void test_local_add_rejects_an_out_of_range_or_reserved_id(void **state) 
         assert_string_equal(cJSON_GetObjectItem(response, "message")->valuestring, "Invalid agent ID");
         cJSON_Delete(response);
     }
+    assert_int_equal(keys.keysize, keysize);
+    assert_int_equal(keys.id_counter, id_counter);
 }
 
 static void test_storable_agent_name_accepts_ordinary_names(void **state) {
@@ -1456,6 +1461,28 @@ static void test_local_add_stores_a_caller_supplied_id_in_its_canonical_spelling
     cJSON_Delete(response);
 }
 
+/* The highest insertable id is stored as given. It raises the group's shared id counter, so the case
+ * runs last and puts the counter back. */
+static void test_local_add_accepts_the_highest_insertable_id(void **state) {
+    (void)state;
+    int id_counter = keys.id_counter;
+    EXPECT_LOG_INFO();
+    EXPECT_LOG_DEBUG2();
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+    expect_string(__wrap_manager_task_agent_status, agent_id, "9999999");
+    will_return(__wrap_manager_task_agent_status, MANAGER_TASK_STATUS_NONE);
+
+    cJSON *response = dispatch("{\"function\":\"add\",\"arguments\":{\"name\":\"cap-agent\",\"ip\":\"any\",\"id\":\"9999999\"}}");
+    assert_int_equal(response_error(response), 0);
+    assert_string_equal(data_string(response, "id"), "9999999");
+    cJSON_Delete(response);
+    assert_true(OS_IsAllowedID(&keys, "9999999") >= 0);
+
+    keys.id_counter = id_counter;
+}
+
 static void test_local_add_returns_and_queues_a_reenroll_secret(void **state) {
     (void)state;
     EXPECT_LOG_INFO();
@@ -2393,6 +2420,7 @@ int main(void) {
         cmocka_unit_test(test_reenroll_malformed_or_with_token_id_9027),
         cmocka_unit_test(test_reenroll_on_worker_forwards_kid_and_bearer),
         cmocka_unit_test(test_local_dispatch_unknown_function_is_9003),
+        cmocka_unit_test(test_local_add_accepts_the_highest_insertable_id),
     };
     int failed = cmocka_run_group_tests(tests, NULL, NULL);
     failed += cmocka_run_group_tests(token_tests, setup_token_env, teardown_token_env);

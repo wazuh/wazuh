@@ -94,8 +94,8 @@ static const struct {
     // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
     // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
     { 9019, "Invalid agent key" },
-    // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
-    // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
+    // A caller-supplied id outside [1, AGENT_INSERT_ID_MAX], or "0", which is reserved for the
+    // manager itself. See OS_IsValidAgentInsertID().
     { 9020, "Invalid agent ID" },
     // Too many deletions are already waiting to reach the indexer. Distinct from 9018, which is
     // about ONE id being unusable: this one refuses the DELETION rather than an insertion, and the
@@ -921,19 +921,17 @@ STATIC cJSON* local_add_ex(const char *id,
     keyentry *name_holder = NULL;
     char _ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
-    char canonical_id[12] = {0}; /* INT32_MAX has 10 digits */
+    char canonical_id[12] = {0}; /* fits any int, AGENT_INSERT_ID_MAX included */
     long long journal_seq = 0;
     bool warn = false;
 
     mdebug2("add(%s)", name);
 
     /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
-     * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
-     * Reaching purge_is_pending() with it would spend a wazuh-db round trip -- on the request
-     * thread -- to ask whether an id that cannot exist owes a deletion.
-     *
-     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
-     * not the id space /agents/insert accepts.
+     * [1, AGENT_INSERT_ID_MAX], and rejecting one outside it costs nothing. Reaching
+     * purge_is_pending() with it would spend a wazuh-db round trip -- on the request thread -- to
+     * ask whether an id that cannot be inserted owes a deletion. The cap keeps an inserted id from
+     * pushing the id counter, which never goes back, past the eight-digit ids agents accept.
      *
      * Returns rather than `goto fail`, like the purge check: fail: unlocks mutex_keys, which is not
      * held yet. */
