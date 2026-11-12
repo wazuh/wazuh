@@ -338,6 +338,126 @@ TEST(ValidatePayloadIdentity, NonObjectIdentityContainerIsRejected)
     EXPECT_EQ(stateless::validatePayloadIdentity(*arrayRoot.req), AuthError::PayloadAgentMismatch);
 }
 
+// --- Dotted member names -----------------------------------------------------------------------
+//
+// The manager keeps a dotted name as a literal sibling of the nested identity, but the indexer
+// expands it into a field path. Every rejected header below carries the authenticated agent's own
+// nested id -- so the identity comparison alone accepts it -- plus a dotted spelling that the indexer
+// would store as a second value of a wazuh.* field. Dotted names that cannot reach wazuh.* pass.
+
+TEST(ValidatePayloadIdentity, DottedAgentIdAtTheRootIsRejected)
+{
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"}},"wazuh.agent.id":"2"})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, DottedAgentIdInsideWazuhIsRejected)
+{
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"},"agent.id":"2"}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, DottedAgentContainerIsRejected)
+{
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"}},"wazuh.agent":{"id":"2"}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, DottedClusterNameIsRejected)
+{
+    // Not the agent id, but the same mechanism: the engine overwrites the nested cluster name, and
+    // the dotted spelling would survive next to it.
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"}},"wazuh.cluster.name":"other"})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, DottedNameDeepInsideTheHeaderIsRejected)
+{
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1","host":{"os":{"x.y":"z"}}}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, DottedNameInsideAnArrayElementIsRejected)
+{
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1","groups":[{"a.b":1}]}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, EscapedDotInAMemberNameIsRejected)
+{
+    // "." decodes to '.': the check runs on decoded names, so the escape does not hide it.
+    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1\"}},\"wazuh\\u002eagent\\u002eid\":\"2\"}"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, DotAfterAnEmbeddedNulIsRejected)
+{
+    // Names are searched by length: a C-string search would stop at the NUL and miss the dot.
+    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1\"},\"x\\u0000.y\":1}}"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch);
+}
+
+TEST(ValidatePayloadIdentity, RootNameWithWazuhAsFirstSegmentIsRejected)
+{
+    // "wazuh." and "wazuh.x" both expand under wazuh.*, whatever follows the first dot.
+    for (const auto* name : {"wazuh.", "wazuh.x", "wazuh.agent.host.hostname"})
+    {
+        const auto fixture = makeAuthReq(
+            std::string {R"(H {"wazuh":{"agent":{"id":"1"}},")"} + name + R"(":"v"})" + "\nE some event\n", "1");
+        EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::PayloadAgentMismatch) << name;
+    }
+}
+
+TEST(ValidatePayloadIdentity, DottedNamesThatCannotReachWazuhAreAccepted)
+{
+    // A dotted name expands only below the object that holds it: a root "x.y", a root name whose
+    // first segment merely starts with "wazuh", or a dotted name nested outside `wazuh` can never
+    // land on wazuh.*, so they are left alone.
+    // "wazuh\u0000x" is a 7-character root name, not `wazuh`: compared by length, it is not walked.
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1"}},"x.y":1,"wazuhx.agent.id":"2",)"
+                                     R"("labels":{"a.b":"c"},"wazuh\u0000x":{"c.d":1}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
+TEST(ValidatePayloadIdentity, DotsInValuesAreAccepted)
+{
+    // Only member NAMES are expanded by the indexer; dots in string values (versions, hostnames)
+    // are ordinary data.
+    const auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1","version":"v5.0.0",)"
+                                     R"("host":{"hostname":"web.example.com","os":{"version":"22.04"}}}}})"
+                                     "\nE some event\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
+TEST(ValidatePayloadIdentity, DottedNamesInEventLinesAreNotInspected)
+{
+    // Only the H line is checked. Event lines legitimately carry dotted names inside their log text
+    // (the agent's own events use "event.module", for example).
+    const auto fixture = makeAuthReq("H {\"wazuh\":{\"agent\":{\"id\":\"1\"}}}\n"
+                                     "E 1:wazuh-agent:{\"event.module\":\"agent\",\"event.action\":\"start\"}\n",
+                                     "1");
+    EXPECT_EQ(stateless::validatePayloadIdentity(*fixture.req), AuthError::None);
+}
+
 TEST(ValidatePayloadIdentity, KeyContainingASlashIsAcceptedAndLeftToTheEngine)
 {
     // "wazuh/agent" is ONE literal member name, not a path. It used to be an injection vector,
@@ -365,8 +485,8 @@ TEST(ValidatePayloadIdentity, RepeatedMemberOutsideTheIdentityPathIsAccepted)
 TEST(ValidatePayloadIdentity, DeeplyNestedMetadataOffTheIdentityPathIsAccepted)
 {
     // ~3000 nested arrays hung off a member that is not on the identity path, under the 8 KiB
-    // kMaxHeaderLineJsonSize cap. The identity lookup visits three objects and never descends this,
-    // so depth costs nothing; the parse survives it because of kParseIterativeFlag.
+    // kMaxHeaderLineJsonSize cap. The parse survives it because of kParseIterativeFlag, and the
+    // dotted-name walk descends it with an explicit stack, so depth costs no C stack there either.
     constexpr int kDepth = 3000;
     const std::string body = "H {\"wazuh\":{\"agent\":{\"id\":\"7\"}},\"x\":" + std::string(kDepth, '[') +
                              std::string(kDepth, ']') + "}\nE some event\n";
@@ -510,6 +630,31 @@ TEST(StatelessMakeHandler, RepeatedIdentityShortCircuitsBeforeForward)
 
     auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
     auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1001"}},"wazuh":{"agent":{"id":"1002"}}})"
+                               "\nE some event\n",
+                               "1001");
+    auto responder = std::make_shared<CapturingResponder>();
+    auto fut = responder->future();
+
+    handler(fixture.req, responder);
+
+    ASSERT_EQ(fut.wait_for(std::chrono::seconds {2}), std::future_status::ready);
+    const auto response = fut.get();
+    EXPECT_EQ(response.status, 400);
+    EXPECT_EQ(response.body, R"({"error":"Invalid event batch","code":400})");
+    EXPECT_FALSE(client->called());
+}
+
+TEST(StatelessMakeHandler, DottedIdentityShortCircuitsBeforeForward)
+{
+    // The header names the authenticated agent in the nested identity and another agent through a
+    // dotted member name. It must be refused before the forwarder: once in the engine, the dotted
+    // member reaches the indexer as a second agent id.
+    auto client = std::make_shared<FakeDownstreamClient>();
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    auto handler = stateless::makeHandler(forwarder, "queue/sockets/engine-ingest-http.sock");
+    auto fixture = makeAuthReq(R"(H {"wazuh":{"agent":{"id":"1001"}},"wazuh.agent.id":"1002"})"
                                "\nE some event\n",
                                "1001");
     auto responder = std::make_shared<CapturingResponder>();

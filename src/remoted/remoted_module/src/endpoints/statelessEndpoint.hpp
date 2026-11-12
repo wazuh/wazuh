@@ -51,7 +51,8 @@ namespace remoted::endpoints::stateless
      * integer. Pure function, no side effects -- unit-tested directly, no sockets, no forwarding.
      *
      * Any of the following collapses to the same AuthError::PayloadAgentMismatch: the body doesn't
-     * start with "H ", the JSON after it doesn't parse, `wazuh` or `wazuh.agent` is missing,
+     * start with "H ", the JSON after it doesn't parse, a dotted member name would expand into
+     * `wazuh.*`, `wazuh` or `wazuh.agent` is missing,
      * repeated or not an object, `/wazuh/agent/id` is missing, repeated or not a string, it is not
      * shaped like a non-negative integer, or it differs from @p req.agentId by so much as a leading
      * zero. There is no partial-validation bypass: a missing/malformed header is rejected exactly
@@ -72,11 +73,18 @@ namespace remoted::endpoints::stateless
      * Names are compared decoded and by length, so "\u0077azuh" is recognised as
      * `wazuh` and "wazuh\u0000x" is not confused with it.
      *
-     * The check is deliberately limited to that path. A repetition elsewhere in the header cannot
-     * move the identity: the engine escapes member names when building the JSON Pointer it recurses
-     * with (`base/src/json.cpp`), so a member called `wazuh/agent` stays a literal sibling instead
-     * of landing on the real one. Keeping this check narrow keeps the per-request cost proportional
-     * to the identity path rather than to the whole header.
+     * The repetition check is deliberately limited to that path. A repetition elsewhere in the header
+     * cannot move the identity: the engine escapes member names when building the JSON Pointer it
+     * recurses with (`base/src/json.cpp`), so a member called `wazuh/agent` stays a literal sibling
+     * instead of landing on the real one.
+     *
+     * Dotted member names that would expand into `wazuh.*` are refused: a root member whose first
+     * segment is `wazuh` (`"wazuh.agent.id"`) and any dotted name inside the root `wazuh` object
+     * (`"agent.id"`). The manager keeps such a name as a literal sibling, but the indexer expands it
+     * into a field path, so it would be indexed as a second value of `wazuh.agent.id` next to the
+     * validated one. A dotted name only expands below the object holding it, so dotted names
+     * elsewhere cannot reach `wazuh.*` and are left alone. The agent builds its header from nested
+     * members only. The walk covers the `wazuh` subtree and is bounded by the 8 KiB header cap.
      *
      * @param req Verified request; payload.bytes() must still be valid (call before any release()).
      * @return AuthError::None on match, AuthError::PayloadAgentMismatch otherwise.

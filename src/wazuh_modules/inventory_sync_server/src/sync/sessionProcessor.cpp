@@ -10,6 +10,7 @@
 
 #include "sync/sessionProcessor.hpp"
 
+#include "common/jsonMemberNames.hpp"
 #include "common/jsonNestingDepth.hpp"
 #include "sync/stateIndexAllowlist.hpp"
 #include "sync/syncQueryBuilder.hpp"
@@ -158,10 +159,12 @@ namespace invsync::sync
 
         // Manager-controlled metadata, built once and merged over every upsert. Any field the agent
         // tries to set under these keys gets clobbered, so the agent cannot impersonate another agent
-        // or another cluster (legacy facade:1244-1258). merge_patch() replaces whatever non-object
-        // value the agent put on the path (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`), where operator[]
-        // would throw out of this function and fail every co-batched session with it (D29). Its
-        // strings are the Start's, which validation proved serializable.
+        // or another cluster (legacy facade:1244-1258). That holds for the nested spelling only,
+        // which is why documents whose dotted member names reach `wazuh.*` are skipped before the
+        // merge. merge_patch() replaces whatever non-object value the agent put on the path
+        // (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`), where operator[] would throw out of this
+        // function and fail every co-batched session with it (D29). Its strings are the Start's,
+        // which validation proved serializable.
         nlohmann::json overlay;
         overlay["wazuh"]["agent"]["id"] = session.agentId;
         overlay["wazuh"]["agent"]["name"] = session.agentName;
@@ -275,6 +278,21 @@ namespace invsync::sync
                 {
                     LOGFN_WARN(logFn(),
                                "Skipping bulk entry for agent %s: DataValue body is not a JSON object.",
+                               session.agentId.c_str());
+                    ++skipped;
+                    continue;
+                }
+
+                // The overlay below rewrites the nested identity only. A dotted member name
+                // ("wazuh.agent.id", "agent.id" inside "wazuh", ...) is a different key to nlohmann,
+                // survives the merge, and is expanded by the indexer into a second value of the
+                // field the overlay just bound. Dotted names that cannot reach `wazuh.*` stay in
+                // their own subtree and are left alone.
+                if (common::dottedNameReachesWazuh(document))
+                {
+                    LOGFN_WARN(logFn(),
+                               "Skipping bulk entry for agent %s: DataValue body has a dotted member name that "
+                               "would expand into the wazuh.* fields.",
                                session.agentId.c_str());
                     ++skipped;
                     continue;
