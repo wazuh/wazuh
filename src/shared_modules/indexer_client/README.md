@@ -413,8 +413,14 @@ The runtime knows at every moment which indexer nodes it can use. Each node is i
 until the first probe round says otherwise. The state lives in an internal `NodeSet` (`src/health/nodeSet.{hpp,cpp}`) fed by the
 `Prober` (`src/health/prober.{hpp,cpp}`) and, later, by the data path.
 
-**The probe.** The `Prober` sends one `GET {host}/_cluster/health?local=true` per configured node through the
-[Transport](#transport-internal-e2a-1-and-e2a-2), with `request.timeout` = `probe_timeout_ms`. It works in **rounds**:
+**The probe.** The `Prober` sends one `GET {host}/_cluster/health/wazuh-*,.wazuh-*` per configured node through the
+[Transport](#transport-internal-e2a-1-and-e2a-2), with `request.timeout` = `probe_timeout_ms`. The index expression
+(`MANAGER_INDEX_PATTERN` in `src/health/prober.hpp`, not configurable) limits the answer to the indices the manager reads
+(`.wazuh-*`) and writes (`wazuh-*`; a wildcard resolves a data stream to its backing indices): a red index the manager does
+not use (an alerting or ISM index, a user's own) no longer marks every node `Down`, while a manager index that loses its
+primary still does. It is not configurable because a pattern matching nothing answers `green` for an empty index list.
+There is no `local=true`: the answer comes from the elected cluster manager, so a node cut off from the cluster fails its
+probe instead of answering from its stale copy of the cluster state. It works in **rounds**:
 
 - the first round is armed when the runtime starts (no wait for the interval), then one round every `probe_interval_ms`;
 - a round is complete when every node has produced exactly one result; the `NodeSet` applies the whole round at once, under
@@ -429,7 +435,7 @@ until the first probe round says otherwise. The state lives in an internal `Node
 | Result | State | Reason / effect |
 |---|---|---|
 | 2xx, body JSON with string `status` `green` or `yellow` | Available | |
-| 2xx, `status` `red` | Down, **every** node | The round is red: `clusterRed` is set, every node's reason is `cluster health is red (reported by '<host>')` (a node already Down by its own result keeps its own reason) and no node returns to Available while a round holds `red` |
+| 2xx, `status` `red` (some manager index lost a primary) | Down, **every** node | The round is red: `clusterRed` is set, every node's reason is `cluster health is red (reported by '<host>')` (a node already Down by its own result keeps its own reason) and no node returns to Available while a round holds `red` |
 | 2xx, `status` missing, not a string, any other value, or body not JSON | Down | `invalid _cluster/health body` |
 | 429 | Throttled | `error.durability` or `error.root_cause[0].durability` equal to `PERMANENT` marks the throttle as permanent; anything else, or an unreadable body, is transient |
 | 401, 403 | Down | `HTTP <status>: check indexer credentials / permissions` |

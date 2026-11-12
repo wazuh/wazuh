@@ -45,7 +45,7 @@ using namespace std::chrono_literals;
 
 namespace
 {
-    constexpr const char* PROBE {"/_cluster/health?local=true"};
+    constexpr const char* PROBE {"/_cluster/health/wazuh-*,.wazuh-*"};
 
     class FakeHealthTest : public ::testing::Test
     {
@@ -216,19 +216,20 @@ namespace
         EXPECT_FALSE(lastProbeQuery(m_fake).has_value());
 
         get(PROBE);
-        get("/_cluster/health");
+        get(std::string(PROBE) + "?pretty");  // the query is not part of the path
+        get("/_cluster/health");              // the whole cluster: not the probe
         get("/_cluster/health/wazuh-states"); // another path
         get("/_bulk");
         {
             auto c = client();
-            c.Post("/_cluster/health", "{}", "application/json"); // another method
+            c.Post(PROBE, "{}", "application/json"); // another method
         }
         EXPECT_EQ(probeCount(m_fake), 2U);
-        EXPECT_EQ(lastProbeQuery(m_fake), std::string {});
+        EXPECT_EQ(lastProbeQuery(m_fake), std::string("pretty"));
 
         get(PROBE);
         EXPECT_EQ(probeCount(m_fake), 3U);
-        EXPECT_EQ(lastProbeQuery(m_fake), std::string("local=true"));
+        EXPECT_EQ(lastProbeQuery(m_fake), std::string {});
         EXPECT_TRUE(waitForProbes(m_fake, 3, 1s));
         EXPECT_FALSE(waitForProbes(m_fake, 4, 20ms));
     }
@@ -239,6 +240,7 @@ namespace
         EXPECT_EQ(rule.method, "GET");
         m_fake.addRule(rule);
         EXPECT_EQ(get("/_cluster/health/x").body, "{}"); // fallback 200 {}
+        EXPECT_EQ(get("/_cluster/health").body, "{}");   // the whole cluster is not the probe
         EXPECT_EQ(nlohmann::json::parse(get().body).at("status"), "green");
     }
 } // namespace

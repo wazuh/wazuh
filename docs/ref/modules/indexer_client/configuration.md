@@ -283,7 +283,7 @@ curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
      --cert   /etc/wazuh-manager/certs/indexer-connector.pem \
      --key    /etc/wazuh-manager/certs/indexer-connector-key.pem \
      -u "wazuh-manager:$(/var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password -g)" \
-     "https://127.0.0.1:9200/_cluster/health?local=true"
+     'https://127.0.0.1:9200/_cluster/health/wazuh-*,.wazuh-*'
 ```
 
 The runtime treats a node as available when its health is `green` or `yellow`, and probes exactly this URL.

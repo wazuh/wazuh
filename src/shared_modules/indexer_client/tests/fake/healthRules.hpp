@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_FAKE_HEALTH_RULES_HPP
 #define _INDEXER_CLIENT_TESTS_FAKE_HEALTH_RULES_HPP
 
-// Scripted answers of the fake indexer to the health probe (plan 18, I57): `GET /_cluster/health?local=true` with
+// Scripted answers of the fake indexer to the health probe (plan 18, I57): `GET /_cluster/health/wazuh-*,.wazuh-*` with
 // OpenSearch's real bodies, the 429 shapes of a circuit breaker and the probe counters. Every helper returns a plain
 // Rule, so a test can still tune it (times, latency, retryAfter) before FakeIndexer::addRule().
 
@@ -29,8 +29,12 @@
 
 namespace indexer_client::testing
 {
-    /// Path of the health probe (the query string is not part of Rule::pathRegex matching).
-    inline constexpr std::string_view HEALTH_PATH {"/_cluster/health"};
+    /// Exact path of the health probe: the health of the manager's indices only (the query string, if any, is not
+    /// part of Rule::pathRegex matching). Spelled out, not built from the library's constant, so that a change of
+    /// the probe's URL breaks the fake's rules instead of following them.
+    inline constexpr std::string_view HEALTH_PATH {"/_cluster/health/wazuh-*,.wazuh-*"};
+    /// HEALTH_PATH as an ECMAScript regex for Rule::pathRegex (its `*` and `.` escaped): it matches only that path.
+    inline constexpr std::string_view HEALTH_PATH_REGEX {R"(/_cluster/health/wazuh-\*,\.wazuh-\*)"};
 
     /// `durability` of an OpenSearch 429 (the value is serialized upper-case, as OpenSearch does).
     enum class Durability
@@ -85,7 +89,7 @@ namespace indexer_client::testing
         {
             Rule rule;
             rule.method = "GET";
-            rule.pathRegex = std::string(HEALTH_PATH);
+            rule.pathRegex = std::string(HEALTH_PATH_REGEX);
             rule.status = 200;
             rule.body = std::move(body);
             return rule;
@@ -235,7 +239,7 @@ namespace indexer_client::testing
     }
 
     /**
-     * @brief Query string (without '?') of the last health probe received, e.g. "local=true".
+     * @brief Query string (without '?') of the last health probe received (the probe sends none).
      *
      * @return Empty string if that probe had no query; nothing if no probe arrived.
      */
