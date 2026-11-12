@@ -933,6 +933,8 @@ def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key, force):
     (WazuhError(9018, cmd_error=True), ".* 1763 .*"),
     (WazuhError(9020, cmd_error=True), ".* 1765 .*"),
     (WazuhError(9021, cmd_error=True), ".* 1766 .*"),
+    (WazuhError(9013, cmd_error=True), ".* 1777 .*"),
+    (WazuhError(9032, cmd_error=True), ".* 1778 .*"),
     (WazuhError(9000, cmd_error=True), ".* None")
 ])
 @patch('wazuh.core.agent.WazuhSocketJSON')
@@ -947,6 +949,16 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
         mock_wazuh_socket.return_value.receive.side_effect = mocked_exception
         with pytest.raises(WazuhError, match=expected_exception):
             agent._add_authd('test_add', '192.168.0.1')
+
+
+def test_insert_id_error_names_the_seven_digit_cap():
+    """Tests that the remediation of error 1765 states the seven-digit insert id cap"""
+    from api.validator import _AGENT_INSERT_ID_MAX
+
+    remediation = WazuhError(1765).remediation
+    assert re.search(r'\b9999999\b', remediation)
+    assert re.search(rf'\b{_AGENT_INSERT_ID_MAX}\b', remediation)
+    assert '2147483647' not in remediation
 
 
 @patch('wazuh.core.agent.WazuhSocketJSON')

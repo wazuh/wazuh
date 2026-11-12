@@ -158,11 +158,11 @@ replacement going ahead with a purge that cannot be recorded.
 **Replacement never reuses the id.** The replacing agent is a new registration and receives a new
 id; the replaced id is not handed out again. The one case where a caller can name an id is
 `POST /agents/insert`, and there authd refuses rather than replacing: an id outside
-`[1, 2147483647]`, or `0` (reserved for the manager), answers `9020 Invalid agent ID` (the server API
-reports it as `1765`) before any keystore lookup even runs; an id that belongs to an existing agent
-answers `9012 Duplicate ID`, and one whose purge is still pending answers
-`9018 Agent ID has a pending deletion` (the server API reports it as `1763`). Delete the agent, let
-its purge finish, and then the id can be reused.
+`[1, 9999999]`, or `0` (reserved for the manager), answers `9020 Invalid agent ID` on the local socket
+before any keystore lookup even runs, and the server API rejects it itself with a 400 before it
+reaches authd; an id that belongs to an existing agent answers `9012 Duplicate ID`, and one whose
+purge is still pending answers `9018 Agent ID has a pending deletion` (the server API reports it as
+`1763`). Delete the agent, let its purge finish, and then the id can be reused.
 
 **A named id is stored in its canonical spelling.** An agent id is a string, so `0042`, `42` and `042`
 would otherwise be three identities for one number — remoted resolves all of them to the same agent,
@@ -379,12 +379,13 @@ or network before. Refusals: `9026`
 
 **Agent ids of up to eight digits.** The `kid` is validated with `OS_IsValidID()`, which accepts at most
 eight characters, and the agent applies the same rule to the answer, so an agent whose id has **nine or
-ten digits cannot re-enroll**: its bearer is refused as malformed. Administrative insertion is
-deliberately *not* restricted to match — `POST /agents/insert` still accepts ids up to
-2147483647 — because restricting it would not remove the mismatch: the automatic id counter follows the
-highest id present in `client.keys`, so the next self-enrollment would hand out a long id again, and the
-agent would reject that too. Eight digits is what re-enrollment supports; widening the range is a change
-to the agent, the id assigner and the deletion recovery together.
+ten digits cannot re-enroll**: its bearer is refused as malformed. `POST /agents/insert` accepts ids in
+`[1, 9999999]` (seven digits). An inserted id above the id counter raises it; the counter never goes back,
+and every id the counter hands out afterwards has to fit the eight digits agents accept
+(`OS_IsValidID()`). An inserted id can therefore never raise the counter past 9999999, so insertion
+alone always leaves 90,000,000 automatic ids. An automatic id above 99999999 (a manager that handed out
+that many, or one that holds a larger id, inserted before 5.0.1 or carried in a migrated `client.keys`)
+still cannot enroll or re-enroll.
 
 ### Changing the master node
 
@@ -457,9 +458,8 @@ A request is a single-line JSON object:
     leading `!`, a non-contiguous dotted mask and anything that is not an address answer
     `9006 No such IP`.
   - `id` (optional) — request a specific agent ID instead of letting authd assign the next one; must
-    be a positive integer no greater than `2147483647` (the width `client.keys` and the database
-    store it in) and other than `0` (reserved for the manager), or the request fails with
-    `9020 Invalid agent ID`
+    be a positive integer no greater than `9999999` and other than `0` (reserved for the manager), or
+    the request fails with `9020 Invalid agent ID`
   - `groups` (optional) — comma-separated centralized group(s) to assign; repeated names are
     dropped, and a list naming no group (`""`, `","`) is the same as no `groups` argument (the
     agent joins `default`; a re-enrolling agent keeps its groups)
@@ -507,7 +507,8 @@ A successful `add` responds with:
 `get` answers the `add` shape without `reenroll_secret`, a successful `remove` responds with
 `{"error": 0, "data": "Agent deleted successfully."}`, and any failure responds with
 `{"error": <code>, "message": "<description>"}` (for example `9007` "Duplicate IP", `9013` "Maximum
-number of agents reached", or `9022`–`9031` for the token, re-enrollment and identity-journal paths — see the
+number of agents reached", `9032` "Agent ID space exhausted", or `9022`–`9031` for the token, re-enrollment and
+identity-journal paths — see the
 [error code table](architecture.md#error-codes)).
 
 **Per-request force override:** the `force` object on an `add` request, when present, completely

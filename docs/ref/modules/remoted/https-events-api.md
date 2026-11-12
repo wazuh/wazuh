@@ -1335,6 +1335,7 @@ master node's `authd` predates it.
 | `authd` refused a caller-supplied key or id (9019/9020) | `400` | unreachable from `/enroll` (self-enrollment never sends a key or an id); mapped for completeness |
 | Any other `authd` error code | `500` | Passed through with `authd`'s own code and message. |
 | `authd` `max_agents` reached (9013) | `503` | Server-wide capacity condition, not a rate limit — that one is the `429` row below. |
+| `authd` agent ID space exhausted (9032) | `503` | The id counter is at its maximum; ids are never reused, so removing agents does not clear it. |
 | Endpoint rate limit exceeded | `429` | Decided by remoted after the request passed its own checks (credential, body, version) and before `authd` is contacted, from the bucket of what the request proved: a verified password or enrollment token, or not (a re-enrollment, or no credential). Carries `Retry-After` in whole seconds. Each ceiling is node-wide, so during a mass enrollment many agents can see this at once; each retries with its own backoff. See [`https.enroll_rate_limit`](configuration.md#httpsenroll_rate_limit). |
 | Re-enrollment already in progress (9030) | `409` | Retry after the pending rotation is committed; no second rotation is performed. |
 | Identity transition could not be recorded (9031) | `503` | No credential is handed out. See [journal admission and recovery limitations](../authd/architecture.md#the-identity-journal). |

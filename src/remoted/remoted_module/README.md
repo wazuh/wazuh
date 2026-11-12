@@ -1744,6 +1744,7 @@ re-enrollment the `id` is the one the bearer named and `key`/`reenroll_secret` a
 | 9003 / 9004 / 9005 / 9006 / 9014 / 9017 (new) / 9019 / 9020 | bad function/args/name/ip/groups, invalid caller-supplied key/id (the last two unreachable from `/enroll`, which never sends either) | 400 |
 | 9007 / 9008 / 9012 / 9030 | duplicate ip/name/id; a re-enrollment rotation for that agent already accepted and not yet persisted | 409 |
 | 9013 | `max_agents` reached | 503 |
+| 9032 | authd's id counter is exhausted, so no id is left to assign | 503 |
 | 9015 | worker rejection (`remove`/`get`, or an `add` that supplied a caller-chosen `id`/`key` -- see below) | 503 |
 | 9016 (new) | clustered forward to master failed (transport leg of `w_request_agent_add_clustered`) | 503 |
 | 9031 | authd could not journal the credential it was about to hand out, so it handed out none | 503 |

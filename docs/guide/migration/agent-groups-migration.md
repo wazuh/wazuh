@@ -7,7 +7,7 @@ Starting with Wazuh 5.0, the manager installation path changed from `/var/ossec/
 > There is no automatic migration tooling for agent groups. You must manually transfer your group configuration files to the new manager before reconnecting any agents.
 
 > [!IMPORTANT]
-> This guide covers the case where agents **re-enroll** against the 5.0 manager and therefore get new ids and only the groups their own `ossec.conf` declares. If you can carry `client.keys` and `global.db` from the 4.x manager, follow [Manager migration from 4.x to 5.0](manager-4x-to-5x.md) instead: agents keep their ids and every group assignment, including those made from the manager side, and nothing in this guide is needed.
+> This guide covers the case where agents **re-enroll** against the 5.0 manager and therefore get new ids and only the groups their own `ossec.conf` declares. If you can carry `client.keys` and `global.db` from the 4.x manager, follow [Manager migration from 4.x to 5.0](manager-4x-to-5x.md) instead: agents keep their ids and every group assignment, including those made from the manager side, and nothing in this guide is needed, except for agents with an id above `9999999` migrated with the tool.
 
 ## How group assignment works
 

@@ -136,7 +136,7 @@ int OS_AddNewAgent(keystore *keys,
 
     if (!id) {
         if (keys->id_counter >= INT_MAX) {
-            return OS_ADDAGENT_LIMIT_REACHED;
+            return OS_ADDAGENT_ID_EXHAUSTED;
         }
         snprintf(_id,sizeof(_id), "%03d", ++keys->id_counter);
         id = _id;
@@ -202,7 +202,7 @@ int OS_IsValidAgentInsertID(const char *id)
 
     errno = 0;
     value = strtol(id, &endptr, 10);
-    return errno == 0 && '\0' == *endptr && value > 0 && value <= INT32_MAX;
+    return errno == 0 && '\0' == *endptr && value > 0 && value <= AGENT_INSERT_ID_MAX;
 }
 
 int OS_CanonicalAgentInsertID(const char *id, char *out, size_t size)

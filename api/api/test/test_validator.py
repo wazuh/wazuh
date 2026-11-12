@@ -166,6 +166,12 @@ def test_format_agent_id_rejects_non_string(value):
     assert format_agent_id(value) is False
 
 
+@pytest.mark.parametrize("value, expected", [("1" * 5000, False), ("0" * 5000 + "1", True)])
+def test_format_agent_id_bounds_long_digit_strings(value, expected):
+    """format_agent_id() answers a digit string past Python's int conversion limit instead of raising."""
+    assert format_agent_id(value) is expected
+
+
 @pytest.mark.parametrize(
     "value, format",
     [
@@ -180,7 +186,8 @@ def test_format_agent_id_rejects_non_string(value):
         ("file_test-33.xml", "names"),
         ("651403650840", "numbers"),
         ("001", "agent_id"),
-        ("2147483647", "agent_id"),
+        ("9999999", "agent_id"),
+        ("09999999", "agent_id"),
         ("/var/wazuh/test", "path"),
         ("test,.", "search"),
         ("+field", "sort"),
@@ -218,7 +225,10 @@ def test_validation_json_ok(value, format):
         ("a651403650840", "numbers"),
         ("0", "agent_id"),
         ("000", "agent_id"),
-        # Above INT32_MAX, the value OS_AddNewAgent()/wdb_global_insert_agent() store it as would wrap
+        # Above the 7-digit bound: an insert up to 99999999 could leave no automatic id the agent accepts
+        ("10000000", "agent_id"),
+        ("99999999", "agent_id"),
+        ("2147483647", "agent_id"),
         ("2147483648", "agent_id"),
         ("4294967296", "agent_id"),
         ("!/var/wazuh/test", "path"),

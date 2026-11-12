@@ -66,6 +66,13 @@ CREDENTIALS_KEY = "WAZUH_MANAGER_API_PASSWORD"
 # revisions whose agent table this reader has been checked against are accepted.
 SOURCE_DB_VERSIONS_CHECKED = (7, 8, 9, 10, 11, 12)
 
+# A 5.0.1+ manager rejects a larger id on POST /agents/insert: its counter never goes down and the ids
+# that follow must fit the 8 digits the agent accepts. Mirrors AGENT_INSERT_ID_MAX in
+# src/shared/include/agent_validate_op.h and _AGENT_INSERT_ID_MAX in api/api/validator.py.
+AGENT_INSERT_ID_MAX = 9999999
+REENROLL_GUIDE = ("https://github.com/wazuh/wazuh/blob/5.0.1/docs/guide/migration/"
+                  "manager-4x-to-5x.md#if-you-re-enroll-instead")
+
 # Group folders the target ships itself: recreating them would replace 5.0 content.
 RESERVED_GROUPS = ("default",)
 
@@ -382,6 +389,17 @@ def read_groups(shared_dir, known_names):
     return groups
 
 
+def warn_above_insert_cap(agents):
+    """Warns once about the agents whose id a 5.0.1+ manager refuses on POST /agents/insert."""
+    capped = [a for a in agents if a["id"] > AGENT_INSERT_ID_MAX]
+    if capped:
+        warn("agent(s) %s have ids above the insert cap of %d: a 5.0.1 or later manager refuses"
+             " them on POST /agents/insert, so import skips them. Re-enroll those agents after the"
+             " migration; they get new ids. See %s"
+             % (", ".join("%d %s" % (a["id"], a["name"]) for a in capped),
+                AGENT_INSERT_ID_MAX, REENROLL_GUIDE))
+
+
 # --------------------------------------------------------------------------------------
 # export
 # --------------------------------------------------------------------------------------
@@ -455,6 +473,7 @@ def command_export(args):
         "secrets": [name for name, _ in secrets],
     }
 
+    warn_above_insert_cap(payload)
     if args.dry_run:
         log("")
         log("DRY RUN: nothing was written.")
@@ -610,6 +629,11 @@ def import_agents(api, manifest, dry_run):
     """Returns (ids the manager now holds, failures). Membership follows only for the former."""
     inserted, failed = set(), []
     for agent in manifest["agents"]:
+        if agent["id"] > AGENT_INSERT_ID_MAX:
+            # Refused by 5.0.1 and later; a 5.0.0 target would accept it and raise its id counter.
+            log("  agent    %-20s id %03d skipped: above the insert cap, re-enroll it"
+                % (agent["name"], agent["id"]))
+            continue
         body = {"id": "%03d" % agent["id"], "name": agent["name"], "key": agent["key"]}
         if agent.get("ip"):
             body["ip"] = agent["ip"]
@@ -717,6 +741,7 @@ def command_import(args):
         log("DRY RUN: nothing is written.")
     log("")
 
+    warn_above_insert_cap(manifest["agents"])
     already_present = api_preflight(api, manifest, args.force)
 
     import_groups(api, manifest, already_present, args.dry_run)
@@ -793,9 +818,21 @@ def command_check(args):
             continue  # the manager's own entry
         installed[int(item["id"])] = item
     expected = {agent["id"]: agent for agent in manifest["agents"]}
+    capped = {i: agent for i, agent in expected.items() if i > AGENT_INSERT_ID_MAX}
+    capped_absent = {agent["name"]: agent for i, agent in capped.items() if i not in installed}
+    installed_names = {item["name"] for item in installed.values()}
 
     log("agents    %d of %d present" % (len(set(expected) & set(installed)), len(expected)))
     for agent_id in sorted(set(expected) - set(installed)):
+        if agent_id in capped:
+            name = expected[agent_id]["name"]
+            if name in installed_names:
+                log("          agent %03d (%s) re-enrolled under a new id, as a 5.0.1 or later manager"
+                    " refuses ids above %d" % (agent_id, name, AGENT_INSERT_ID_MAX))
+                continue
+            problems.append("agent %03d (%s) is missing: a 5.0.1 or later manager refuses ids above %d;"
+                            " re-enroll it, see %s" % (agent_id, name, AGENT_INSERT_ID_MAX, REENROLL_GUIDE))
+            continue
         problems.append("agent %03d (%s) is missing." % (agent_id, expected[agent_id]["name"]))
     for agent_id in sorted(set(expected) & set(installed)):
         if installed[agent_id]["name"] != expected[agent_id]["name"]:
@@ -809,6 +846,17 @@ def command_check(args):
     # An id the bundle never carried is either a new agent or -- the case worth catching -- one
     # that reached the manager while the registry was still empty and enrolled again.
     for agent_id in sorted(set(installed) - set(expected)):
+        original = capped_absent.get(installed[agent_id]["name"])
+        if original:
+            # Re-enrolled under a new id because the manager refused the original: only its
+            # groups are left to verify.
+            want = {g for g in original.get("groups", []) if g not in RESERVED_GROUPS}
+            lost = want - set(installed[agent_id].get("group", []))
+            if lost:
+                problems.append("agent %03d (%s) re-enrolled in place of %03d and is not in %s."
+                                % (agent_id, installed[agent_id]["name"], original["id"],
+                                   ", ".join(sorted(lost))))
+            continue
         problems.append(
             "agent %03d (%s) was not in the bundle. If it appeared during the migration it is an"
             " agent that re-enrolled against the empty registry and lost its original id."

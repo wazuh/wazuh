@@ -63,7 +63,8 @@ typedef enum auth_local_err {
     EREENROLLSTALE,
     ETOKENSTOREFAILED,
     EREENROLLINPROGRESS,
-    EIDENTITYUNRECORDED
+    EIDENTITYUNRECORDED,
+    EIDEXHAUSTED
 } auth_local_err;
 
 
@@ -94,8 +95,8 @@ static const struct {
     // A caller-supplied key that is not 64 lowercase hex chars (the 32-byte key remoted's bearer
     // profile requires). Distinct from 9009, which is the manager failing to GENERATE a key.
     { 9019, "Invalid agent key" },
-    // A caller-supplied id outside [1, INT32_MAX] -- the range OS_AddNewAgent()/wdb can actually
-    // store -- or "0", which is reserved for the manager itself. See OS_IsValidAgentInsertID().
+    // A caller-supplied id outside [1, AGENT_INSERT_ID_MAX], or "0", which is reserved for the
+    // manager itself. See OS_IsValidAgentInsertID().
     { 9020, "Invalid agent ID" },
     // Too many deletions are already waiting to reach the indexer. Distinct from 9018, which is
     // about ONE id being unusable: this one refuses the DELETION rather than an insertion, and the
@@ -135,7 +136,10 @@ static const struct {
     // is not wrong and the caller is not at fault: this manager cannot record it right now --
     // no room in queue/authd, or the file is unwritable -- so remoted answers 503 and the agent
     // retries. Performing it anyway is what left agents holding credentials nothing else knew.
-    { 9031, "Identity transition could not be recorded" }
+    { 9031, "Identity transition could not be recorded" },
+    // The id counter is at INT_MAX, so no id is left to assign. Distinct from 9013, which is the
+    // operator's max_agents: ids are never reused, so this one does not clear by removing agents.
+    { 9032, "Agent ID space exhausted" }
 };
 
 // Dispatch local request. STATIC: the unit tests drive the token verbs and `add` through it.
@@ -171,6 +175,7 @@ static void local_log_refusal(auth_local_err ierror) {
         merror("Local request failed with error %d: %s.", code, message);
         break;
     case EAGLIM:
+    case EIDEXHAUSTED:
     case EDELETEBACKLOG:
         mwarn("Local request refused with error %d: %s.", code, message);
         break;
@@ -921,19 +926,17 @@ STATIC cJSON* local_add_ex(const char *id,
     keyentry *name_holder = NULL;
     char _ip[IPSIZE + 1] = {0};
     char reenroll_secret[AGENT_REENROLL_SECRET_HEX_CHARS + 1] = {0};
-    char canonical_id[12] = {0}; /* INT32_MAX has 10 digits */
+    char canonical_id[12] = {0}; /* fits any int, AGENT_INSERT_ID_MAX included */
     long long journal_seq = 0;
     bool warn = false;
 
     mdebug2("add(%s)", name);
 
     /* FIRST, ahead of the purge check below and of mutex_keys: a caller-supplied id must be within
-     * the range the manager can actually store it in, and rejecting a malformed one costs nothing.
-     * Reaching purge_is_pending() with it would spend a wazuh-db round trip -- on the request
-     * thread -- to ask whether an id that cannot exist owes a deletion.
-     *
-     * OS_IsValidID()'s 8-character cap is a different, unrelated convention (self-enrollment ids),
-     * not the id space /agents/insert accepts.
+     * [1, AGENT_INSERT_ID_MAX], and rejecting one outside it costs nothing. Reaching
+     * purge_is_pending() with it would spend a wazuh-db round trip -- on the request thread -- to
+     * ask whether an id that cannot be inserted owes a deletion. The cap keeps an inserted id from
+     * pushing the id counter, which never goes back, past the eight-digit ids agents accept.
      *
      * Returns rather than `goto fail`, like the purge check: fail: unlocks mutex_keys, which is not
      * held yet. */
@@ -1088,6 +1091,11 @@ STATIC cJSON* local_add_ex(const char *id,
     if (index == OS_ADDAGENT_LIMIT_REACHED) {
         merror("Unable to add agent: %s. Agent limit (%u) reached.", name, config.max_agents);
         ierror = EAGLIM;
+        goto fail;
+    }
+    if (index == OS_ADDAGENT_ID_EXHAUSTED) {
+        merror("Unable to add agent: %s. The agent id counter is exhausted (%d).", name, keys.id_counter);
+        ierror = EIDEXHAUSTED;
         goto fail;
     }
     if (index < 0) {

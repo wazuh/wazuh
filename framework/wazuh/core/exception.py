@@ -240,7 +240,7 @@ class WazuhException(Exception):
         1764: {'message': 'Vulnerability scanning requires agent version 5.0 or higher.'
                },
         1765: {'message': 'The agent ID is not valid',
-               'remediation': 'The agent ID must be a positive integer no greater than 2147483647, '
+               'remediation': 'The agent ID must be a positive integer no greater than 9999999 (seven digits), '
                               'and other than 0, which is reserved for the manager'
                },
         1766: {'message': 'The agent was not deleted: too many deletions are still pending',
@@ -294,6 +294,15 @@ class WazuhException(Exception):
         1776: {'message': 'The operative system of the agent is unknown',
                'remediation': 'The agent has not reported its operative system yet. Please, use `GET /agents?select='
                               'id,name,status` to check whether it has ever connected'
+               },
+        1777: {'message': 'The maximum number of agents has been reached',
+               'remediation': 'Remove agents that are no longer needed, or raise `authd.max_agents` in the '
+                              'internal options'
+               },
+        1778: {'message': 'No agent ID is left to assign: the agent ID counter has reached its maximum',
+               'remediation': 'Agent IDs are never reused, so removing agents does not free any. An agent can '
+                              'still be added with an unused ID no greater than 9999999 through '
+                              '`POST /agents/insert`'
                },
 
         # Manager:

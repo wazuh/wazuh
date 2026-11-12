@@ -13,8 +13,8 @@ indexer.
 
 | Data | Outcome | How |
 |---|---|---|
-| Agent identities: ids, names, keys (`client.keys`) | Kept. Agents reconnect without re-enrolling. | Step 3 |
-| Agent registry: registration date, last known version and OS, group membership (`global.db`) | Kept, including assignments made from the manager or the API that never reached the agent's `ossec.conf`. | Step 3 |
+| Agent identities: ids, names, keys (`client.keys`) | Kept. Agents reconnect without re-enrolling, except, when you use the migration tool, those with an id above `9999999` ([re-enroll them](#if-you-re-enroll-instead)). | Step 3 |
+| Agent registry: registration date, last known version and OS, group membership (`global.db`) | Kept, including assignments made from the manager or the API that never reached the agent's `ossec.conf`, except for agents with an id above `9999999` when you use the migration tool. | Step 3 |
 | Group folders (`/etc/wazuh-manager/shared/<group>/`) | Kept. `agent.conf` files must be valid for 5.0. | Step 3 |
 | Enrollment password (`authd.pass`) | Kept on the manager only if 4.x agents still have to enroll. 5.0 agents enroll with a token; the 5.0 package upgrade deletes the endpoint's default copy, and an agent uses a password only from a file placed there by hand. | [Step 3](#enrollment-password) |
 | API users, roles and policies (`rbac.db`) | Kept, including passwords, which then replace the ones the 5.0 install generated. | [Step 3](#api-users-roles-and-policies) |
@@ -58,10 +58,12 @@ indexer.
 ## 1. Back up the 4.x manager
 
 Steps 1, 3 and 5 are what
-[`tools/migration/wazuh-migrate-identity.py`](https://github.com/wazuh/wazuh/blob/5.0.0/tools/migration/wazuh-migrate-identity.py)
+[`tools/migration/wazuh-migrate-identity.py`](https://github.com/wazuh/wazuh/blob/5.0.1/tools/migration/wazuh-migrate-identity.py)
 automates. It reads the same data out of the 4.x files, and recreates it on the 5.0 manager through
 the manager's own API rather than by writing its files, so the manager validates every agent and
-group and writes `client.keys` and the registry itself. One difference from the manual procedure
+group and writes `client.keys` and the registry itself. It warns, before writing anything, about the
+agents with an id above `9999999` and skips them, since a 5.0.1 or later manager refuses to insert them (see
+[If you re-enroll instead](#if-you-re-enroll-instead)). One difference from the manual procedure
 follows from that: the tool needs the 5.0 manager **running**, where the steps below need it
 stopped. Installing it out of the fleet's reach, as [Step 2](#2-install-the-50-manager) describes,
 gives you both at once — the API answers on loopback while no agent can reach the manager.
@@ -286,7 +288,9 @@ registry.
 
 **On a first migration this is harmless.** Every agent is still 4.x at that point, and a 4.x agent
 whose key the manager does not recognise does not re-register: it logs `(1216): Unable to connect`
-and retries until the registry is restored. Its identity is never at risk.
+and retries until the registry is restored. Its identity is never at risk, except for an agent with an
+id above `9999999`, which the migration tool skips (see
+[If you re-enroll instead](#if-you-re-enroll-instead)).
 
 It stops being harmless the second time. This procedure is also what a restore comes down to, and a
 manager rebuilt after the fleet has been upgraded meets **5.0 agents**. A 5.0 agent told its key is
@@ -366,6 +370,10 @@ install -m 660 -o wazuh-manager -g wazuh-manager /root/wazuh-4x-backup/client.ke
 The file format is unchanged and the 4.x key is exactly the key the 5.0 protocol uses, so no agent
 has to re-enroll (see [Agent-manager protocol](agent-manager-protocol.md#authentication)).
 
+This copy also keeps agents with an id above `9999999`, which `POST /agents/insert` refuses: authd
+loads `client.keys` without checking the range, and its id counter continues after the highest id.
+Once that counter passes `99999999`, the next automatic id has nine digits and the agent rejects it.
+
 ### Agent registry
 
 The 4.x `global.db` cannot be copied over: 5.0 tracks the schema with `PRAGMA user_version` and
@@ -441,8 +449,9 @@ manager and on every agent or deployment script that still enrolls with it befor
 
 **This step is conditional.** Carry the password only if 4.x agents will still have to enroll
 against the 5.0 manager during the migration window — a rebuilt host, an agent whose `client.keys`
-was lost, a 4.x agent installed after the cutover. If every agent keeps its key, as the rest of this
-guide arranges, nothing enrolls and the file buys you nothing.
+was lost, a 4.x agent installed after the cutover, an agent with an id above `9999999` when you use
+the migration tool. If every agent keeps its key, as the rest of this guide arranges, nothing enrolls
+and the file buys you nothing.
 
 The asymmetry is the reason to think about it rather than copy it by reflex:
 
@@ -594,12 +603,15 @@ curl -sk "https://localhost:55000/agents?select=id,name,version,status,group,dat
 curl -sk "https://localhost:55000/groups" -H "Authorization: Bearer $TOKEN"
 ```
 
-Every agent appears with its 4.x id, name, version, groups and registration date, as
-`disconnected` until it reconnects. If you used the migration tool instead of the SQL in Step 3, two of
-those differ: `dateAdd` is the moment the tool inserted the agent (`POST /agents/insert` accepts no
-registration date), and version and OS stay empty until the agent's first keepalive. Its `check`
-command compares the manager against the bundle and names any agent missing, renamed, outside its
-groups, or present without having been in the bundle.
+Every agent appears with its 4.x id, name, version, groups and registration date, as `disconnected`
+until it reconnects. The exception is an agent with an id above `9999999` when you used the
+migration tool: the tool skips it, since a 5.0.1 or later manager refuses to insert it. If you used the migration tool instead of the SQL
+in Step 3, two of the fields above differ: `dateAdd` is the moment the tool inserted the agent
+(`POST /agents/insert` accepts no registration date), and version and OS stay empty until the
+agent's first keepalive. Its `check` command compares the manager against the bundle and names any
+agent missing, renamed, outside its groups, or present without having been in the bundle. An agent
+with an id above `9999999` counts as missing until it re-enrolls under the same name; from then on
+`check` only verifies that it is in the groups the bundle lists for it.
 
 ## 6. Reconnect the 4.x agents
 
@@ -607,6 +619,10 @@ If the manager kept its address, there is nothing to do: each agent reconnects o
 retry, authenticates with its existing key and is marked `active`. Otherwise edit
 `<client><server><address>` in each agent's `ossec.conf` and restart it. Do not remove
 `client.keys` on the agents.
+
+The exception is an agent with an id above `9999999`, which the migration tool skips: its
+key is unknown to the manager, so it keeps logging `(1216)` and retrying until you re-enroll it (see
+[If you re-enroll instead](#if-you-re-enroll-instead)).
 
 A 4.x agent on the legacy channel keeps:
 
@@ -776,11 +792,12 @@ described in
 
 ## After the migration: enrolling new agents
 
-Migrated agents keep their 4.x identity and never enroll again. An agent installed from scratch
-against the 5.0 manager does, and 5.0 enrolls it with an **enrollment token**: one value carrying
-the manager address, a pin of `root-ca.pem` and the enrollment credential, so the agent verifies the
-manager on its first connection instead of trusting it. Mint one on the master, with an address
-covered by the listener certificate's SAN:
+Migrated agents keep their 4.x identity and never enroll again, except agents with an id above
+`9999999` migrated with the tool. An agent installed from scratch against the 5.0 manager does, and
+5.0 enrolls it with an **enrollment token**: one value carrying the manager address, a pin of
+`root-ca.pem` and the enrollment credential, so the agent verifies the manager on its first
+connection instead of trusting it. Mint one on the master, with an address covered by the listener
+certificate's SAN:
 
 ```bash
 sudo /var/wazuh-manager/bin/wazuh-manager-authd --create-enrollment-token --address mgr.example.com --ttl 30d
@@ -815,13 +832,15 @@ was renamed to `WAZUH_SSL_VERIFICATION` with no alias, and the old spelling is r
   generations sit side by side under one pattern: 4.x appends its cluster name to the index, 5.0
   does not. 5.0 populates its own indices from each agent once that agent runs 5.0, and never reads
   or updates the 4.x ones. Check the suffix before concluding an index is current.
-- **Agent ids.** Because ids are preserved, historical documents in the 4.x indices and new
-  documents in the 5.0 ones refer to the same agent by the same id. Re-enrolling agents instead
-  of carrying `client.keys` breaks that: ids are reassigned in enrollment order.
+- **Agent ids.** Because ids are preserved (except for agents above `9999999` migrated with the
+  tool), historical documents in the 4.x indices and new documents in the 5.0 ones refer to the same
+  agent by the same id. Re-enrolling agents instead of carrying `client.keys` breaks that: ids are
+  reassigned in enrollment order.
 
 ## If you re-enroll instead
 
 If you cannot carry `client.keys` and `global.db`, agents get new ids and only the groups they
-declare in `<enrollment><groups>` on their own `ossec.conf`; every assignment made from the
-manager side is lost and has to be redone. [Agent groups migration](agent-groups-migration.md)
-covers that path.
+declare in `<enrollment><groups>` on their own `ossec.conf`; every assignment made from the manager
+side is lost and has to be redone. Agents with an id above `9999999` need this path when you use the
+migration tool: the manager refuses to insert them, and they get a new id on enrollment. [Agent
+groups migration](agent-groups-migration.md) covers that path.

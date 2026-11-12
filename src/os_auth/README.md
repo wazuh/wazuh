@@ -41,11 +41,11 @@ it would erase why.
 | RF-7 | Remove an agent from the keystore, `client.keys`, wazuh-db, its rids counter and its timestamp | kept ([agent removal](#agent-removal)) |
 | RF-8 | Delete a removed agent's documents from the indexer, retriably | kept — **recorded, not relayed** (D3): authd creates a durable Task Manager row and the dispatcher executes it against inventory-sync's `POST /_internal/agents/delete` |
 | RF-9 | Forward enrollment to the master on a worker node; the master decides | kept (`local_add_clustered`, `w_request_agent_add_clustered`) |
-| RF-10 | Accept an insertion that names an explicit id (`POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`), owes a purge (`9018`), or is outside the storable range (`9020`) — D6, D9 |
+| RF-10 | Accept an insertion that names an explicit id (`POST /agents/insert`) | kept, but **refuses rather than reassigns** when the id is taken (`9012`), owes a purge (`9018`), or is outside `[1, 9999999]` (`9020`) — D6, D9 |
 | RF-11 | Answer the indexer purge synchronously so the caller learns whether the documents are gone | **superseded by D3** — authd's ownership ends at the durable row; the purge's own outcome is the task's status, not this daemon's business |
 | RF-12 | Survive a restart without losing work the system has no other record of | partially met — the deletion journal ([the journal](#the-journal), including `last_id`/`last_seq`) and identity journal (RNF-9) are replayed at startup; the identity recovery gaps are listed in [Enrollment](#enrollment) |
 | RF-13 | Expose the enrollment password to workers as the cluster syncs it down | kept (the authpass watcher; fails closed until the file arrives) |
-| RF-14 | Reject an id, whether caller-supplied or auto-assigned, that would not fit the width `client.keys` and the database store it in, and store a caller-supplied one in its canonical spelling (`0042` → `042`) | kept (`OS_IsValidAgentInsertID`, `OS_CanonicalAgentInsertID`, `OS_ADDAGENT_LIMIT_REACHED`) — D9 |
+| RF-14 | Refuse to auto-assign an id past `INT_MAX`, the largest value `client.keys` and the database can store, reject a caller-supplied id above 9999999 (seven digits, so an insertion can never push the counter out of the eight digits agents accept), and store a caller-supplied one in its canonical spelling (`0042` → `042`) | kept (`OS_IsValidAgentInsertID`, `OS_CanonicalAgentInsertID`, `OS_ADDAGENT_ID_EXHAUSTED`) — D9 |
 | RF-15 | Mint and revoke enrollment tokens on the master, mint only for an address the listener certificate names, and consume one use when an agent enrolls with one; list tokens on either node role | kept ([enrollment](#enrollment); `token_cli.c`, `enrollment_token_mint.c`, `enrollment_token_store.c`) — D11 |
 | RF-16 | Return a re-enrollment secret with local-socket enrollments and let those agents rotate their keys under the same id without a deletion | kept (`local_reenroll`, `add_rotate`, `global set-agent-credentials`) — D12; port 1515 does not deliver this secret to the agent |
 
@@ -59,7 +59,7 @@ it would erase why.
 | RNF-4 | An id is never handed out twice, across restarts and across a rebuilt counter | `last_id` in the state file + in-memory reservation; invariant 4 |
 | RNF-5 | Fail towards "cleaned up later", never towards "deleted something alive" | every ordering decision in the removal path; invariant 5 |
 | RNF-6 | Deterministic shutdown: no thread can park the daemon on a network budget | there is no network call left in this daemon's deletion path; the writer's wazuh-db calls are bounded by `authd.wdb_timeout` |
-| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_check_replace_agent()`; the `9001`–`9031` table |
+| RNF-7 | Every refusal is observable and attributable to one guard | one message per guard in `w_auth_check_replace_agent()`; the `9001`–`9032` table |
 | RNF-8 | Unit-testable orchestration without a live indexer or manager | seams + the suites in [Tests](#tests) |
 | RNF-9 | Record local-socket credentials before returning them, and retry pending database persistence | the identity journal (`identity_journal.c`) records the transition before the answer and the writer replays it until `global commit`; a line that cannot be written refuses the operation (`9031`) — invariant 7, D13, `test_identity_journal.c`; recovery gaps are listed below |
 
@@ -90,7 +90,7 @@ it, inventory-sync applies it — and all three depend on these:
 | D6 | **An id whose purge is pending is refused, not reassigned** (`9018`) | The purge matches by agent id and nothing in a state document distinguishes one owner from the next; cancelling a recorded purge is never the answer |
 | D7 | **A replacement is a deletion, and never reuses the id** | It goes through the same `add_remove()` + `OS_DeleteKey()` path, so it inherits every guarantee above instead of needing its own |
 | D8 | **The `<force>` guards are all-or-nothing and each logs its own refusal** | An operator debugging a rejected enrollment needs to know *which* guard refused; a single generic "rejected" is unactionable |
-| D9 | **An id, caller-supplied or auto-assigned, is range-checked before it can reach either store** — never after | Both `client.keys` and the database keep the id in a signed 32-bit int; an unchecked value above `INT32_MAX` wraps silently at write time, and the two stores wrapped independently, leaving one agent with two disjoint identities and no supported way to query or delete the result |
+| D9 | **An id, caller-supplied or auto-assigned, is range-checked before it can reach either store** — never after | Both `client.keys` and the database keep the id in a signed 32-bit int; an unchecked value above `INT32_MAX` wraps silently at write time, and the two stores wrapped independently, leaving one agent with two disjoint identities and no supported way to query or delete the result. A caller-supplied id is held to the narrower `[1, 9999999]` (`AGENT_INSERT_ID_MAX`): the counter follows the highest id and never goes back, and every id it hands out afterwards has to fit the eight digits agents accept (`OS_IsValidID()`) |
 | D10 | **A deletion is refused at the REQUEST when the backlog is full** (`9021`), not discovered later | One line past that point the agent has left the keystore and the caller has been told it succeeded, so there is nothing left to refuse and nobody to tell. The old code found the overflow in the writer and could only choose between dropping the purge silently and orphaning the documents |
 | D11 | **The token store has one writer — the master — and a use is reserved before the agent exists** | Workers receive `/etc/wazuh-manager/enrollment_tokens.json` from the cluster sync and only read it, so there is nothing to reconcile; consuming after `OS_AddNewAgent()` would leave an agent to roll back when the token turns out exhausted, while reserving first costs only an `etoken_store_release()` on refusal. The reservation is held for the whole add (the store mutex is not), and a `dead` purge skips a token that holds one: it may still get its use back, and an entry taken away in the meantime could not receive it. `--all` takes it anyway — emptying the store is an order, not a cleanup |
 | D12 | **Re-enrollment rotates the entry in place; `global.db` holds the authoritative secret** | A delete + add under one lock keeps the id and its documents (no `add_remove()`, no purge). `client.keys` is copied to every worker and read by remoted; the secret is verified on the master and is also retained in its local identity journal while persistence is pending |
@@ -105,7 +105,7 @@ it, inventory-sync applies it — and all three depend on these:
 | Path | Contents |
 |---|---|
 | `src/main-server.c` | `main()`, the thread bodies (remote server, writer), the deletion's phase 3/4 and startup reconciliation |
-| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, the four `token_*` verbs, and their error table (`9001`–`9031`) |
+| `src/local-server.c` | the local Unix-socket protocol: `add`, `remove`, `get`, the four `token_*` verbs, and their error table (`9001`–`9032`) |
 | `src/authcom.c` | the plain-text side of the same socket: `getconfig auth`, answered outside the JSON protocol |
 | `src/auth.c` | shared state (`keys`, `config`, the queues), the port-1515 request parser (`w_auth_parse_data()`), enrollment validation, force-replacement, the enrollment password (load, generate, read), the deletion journal and the reusable-id guard |
 | `src/identity_journal.c` | `queue/authd/pending-identities`: the credential written down before it is handed out. Append on the request path, compaction during writer/startup/failed-rotation cleanup, and startup reconciliation that judges each line against `client.keys` (D13) |
@@ -533,12 +533,16 @@ what explains a jump in the ids handed out.
 The counter is a signed 32-bit int, the same width `client.keys` and the database store the id in,
 so a manager that is long-lived or churns through enough agents can drive it to `INT_MAX` on its own
 — no out-of-range input anywhere. `OS_AddNewAgent()` refuses to increment past that point rather than
-wrapping to a negative id, reusing the same `OS_ADDAGENT_LIMIT_REACHED` sentinel an ordinary
-`max_agents` refusal returns: the enrollment fails with `9013 Maximum number of agents reached` (the
-local socket) or the plain-text `ERROR: Agent limit (N) reached` (anonymous enrollment on 1515), and
-nothing is written to either store. This is unreachable from remoted's `/enroll` route today only in
-the sense that a fleet has to be large or long-lived enough to exhaust ~2.1 billion ids first; there is
-no format check that could rule it out the way an out-of-range explicit id can be rejected up front.
+wrapping to a negative id, and returns `OS_ADDAGENT_ID_EXHAUSTED`, not the `max_agents` sentinel:
+the enrollment fails with `9032 Agent ID space exhausted` (the local socket; `1778` through the server
+API) or the plain-text `ERROR: Agent ID space exhausted` (anonymous enrollment on 1515), authd logs
+`The agent id counter is exhausted`, and nothing is written to either store. Removing agents does not
+clear it, since ids are not reused; an insertion with an explicit, unused id still succeeds. A fleet has
+to be large or long-lived enough to exhaust ~2.1 billion ids first; there is no format check that could
+rule it out the way an out-of-range explicit id can be rejected up front. An inserted id cannot get it
+there any more: insertion is capped at 9999999 (below), so it can never raise the counter past that.
+A counter raised by an insertion of 2147483647 before 5.0.1, or by that id in a copied `client.keys`,
+can already be there.
 
 `queue/` survives an upgrade and a plain package removal. A full purge of the package, or an install
 into a clean tree, takes the file with it: the counter starts over while the indexer still holds the
@@ -551,7 +555,7 @@ served when the id is not valid, or not free to reuse:
 
 | Situation | Error |
 |---|---|
-| the id is outside `[1, 2147483647]`, or `0` (reserved for the manager) | `9020 Invalid agent ID` — checked first, before any keystore lookup |
+| the id is outside `[1, 9999999]` (`AGENT_INSERT_ID_MAX`), or `0` (reserved for the manager) | `9020 Invalid agent ID` — checked first, before any keystore lookup |
 | the id still owes a purge | `9018 Agent ID has a pending deletion` (`1763` through the server API) |
 | the id belongs to an existing agent | `9012 Duplicate ID` |
 | the database cannot say whether the id owes one | `9018` as well — the guard fails closed |
@@ -643,7 +647,7 @@ store and re-enrollment — are catalogued, with their meaning, in the operator 
 | `unit_tests/os_auth/test_authd-getconfig.c` | `authd_read_config()`/`getAuthdConfig()` over the configuration document (`w_mconf_*` wrapped), including the `remoted.jwt_*` reads |
 | `tests/integration/test_authd/test_enrollment_token/` | the lifecycle on a running manager — master: mint over the socket and the CLI, the listing hides the secret, `--show-token`, consume then revoke, refusals, the IP warning; worker: `9015` on mint, `token_id` forwarded, the synced store readable |
 | `tests/integration/test_authd/` (the other suites) | on a running manager: `test_api_registration`, `test_cluster`, `test_common`, `test_drop_privileges`, `test_force_options`, `test_remote_enrollment`, `test_ssl`, `test_use_password`, `test_use_source_ip` |
-| `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation and `INT_MAX` counter guard, `OS_IsValidAgentInsertID()`'s range check |
+| `unit_tests/shared/test_agent_validate_op.c` | outside `os_auth`, but pins the id-assignment logic this module depends on: `OS_AddNewAgent()`'s key generation and `INT_MAX` counter guard, `OS_IsValidAgentInsertID()`'s range check against the `9999999` cap |
 
 Two things to know before writing a case here. The log functions are wrapped, so **every** line the
 code under test emits has to be declared — and an undeclared one aborts cmocka from inside whatever
@@ -690,6 +694,10 @@ would make "the row is outstanding" and "the query failed" the same case.
   — that database is recreated, not migrated.
 - **Re-enrollment supports agent ids of up to eight digits.** `OS_IsValidID()` caps the `kid` there
   and the agent applies the same rule to the answer, so an agent holding a nine- or ten-digit id
-  cannot rotate its credentials. Administrative insertion still accepts the full range on purpose:
-  restricting it would not close the gap, because the id counter follows the highest id in
-  `client.keys` and would hand out a long id again on the next self-enrollment.
+  cannot rotate its credentials. `POST /agents/insert` accepts ids in `[1, 9999999]` (seven digits).
+  An inserted id above the counter raises it; the counter never goes back, and every id the
+  counter hands out afterwards has to fit the eight digits agents accept (`OS_IsValidID()`). An
+  inserted id can therefore never raise the counter past 9999999, so insertion alone always leaves
+  90,000,000 automatic ids. An automatic id above 99999999 (a manager that handed out that many, or
+  one that holds a larger id, inserted before 5.0.1 or carried in a migrated `client.keys`) still
+  cannot enroll or re-enroll.
