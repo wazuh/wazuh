@@ -103,7 +103,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     extra_data[0] = '\0';
     logs[OS_MAXSTR] = '\0';
 
-    while (al_data->log[i]) {
+    while (al_data->log && al_data->log[i]) {
         log_size = strlen(al_data->log[i]) + 4;
 
         /* If size left is small than the size of the log, stop it */
