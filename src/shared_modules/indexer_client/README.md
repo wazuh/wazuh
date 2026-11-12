@@ -1056,12 +1056,20 @@ earlier operation of the same key has a final outcome (from the indexer or a loc
 - **One bulk in flight.** While any operation of the bucket is delivered to the sink the bucket is not eligible and `nextDue` is empty;
   the completion wakes the scheduler (`sinkReady`). So an ordered bucket never has two `_bulk` requests in flight (the node window of
   the sender still applies across buckets).
-- **A key at most once per bulk.** `slice` takes the due retry lane first and then scans the pending queue in order, at most
-  `bulk.maxDocs` operations: a pending operation whose key is already blocked (a key in the lane, one already taken into the batch or one
-  of an operation skipped earlier in the scan) is skipped and keeps its place; the scan **stops** at the first takeable operation that does
-  not fit (`maxBytes`, `maxDocs`, `batchCap`, the sink's `batchLimit()`; the DRR credit never bounds a batch, I118). Skipped operations leave in a later bulk, and one that is alone leaves by `maxAge`.
+- **A key at most once per bulk.** `slice` takes the due retry lane first and then scans the pending queue in order: a pending operation
+  whose key is already blocked (a key in the lane, one already taken into the batch or one of an operation skipped earlier in the scan) is
+  skipped and keeps its place. The scan is bounded by what it **takes**, not by what it visits: it **stops** once the batch holds
+  `bulk.maxDocs` operations, at the first takeable operation that does not fit (`maxBytes`, `batchCap`, the sink's `batchLimit()`; the DRR
+  credit never bounds a batch, I118), or at the end of the queue. Skipped operations leave in a later bulk, and one that is alone leaves by `maxAge`.
 - **Only the key is blocked (I75).** An operation in the retry lane (item `Retry`, a 409 under a `Retry` policy, backoff) blocks its own
   key and nothing else: operations of other keys keep flowing in the following bulks, and the successors of the key wait until it resolves.
+  This holds whatever the number of blocked operations ahead: the eligibility check looks for the first takeable operation in the
+  **whole** pending queue (a window of `bulk.maxDocs` entries would hide a key behind that many blocked operations until the blocked keys'
+  retries ended, never under unlimited retries; `OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys`).
+- **Scan cost.** The bucket remembers how many operations at the head of the pending queue were found blocked by a lane key, and the
+  eligibility checks and `slice` resume after them, so a scheduler pass that changes nothing costs O(1). A lane key leaving the lane, or any
+  change inside that prefix (an eviction, a cancel, the close), resets it; the rescan is O(pending operations), bounded by the bucket's
+  quota, once per such event (in practice once per bulk round trip, since an ordered bucket has one bulk in flight).
 - **No idle spin.** With nothing takeable `nextDue` is the `notBefore` of the lane head (not `now`), so loop 0 does not run in empty
   (`OrderedNoIdleSpin`).
 
@@ -2020,7 +2028,7 @@ test above).
 
 | File | Cases |
 |---|---|
-| `bulkOrdered_test.cpp` | `OrderedOneBulkInFlight`, `OrderedKeyOncePerBulk`, `OrderedItemRetryBlocksOnlyItsKey`, `OrderedTimeoutAfterApplyKeepsOrder`, `OrderedAmbiguousFailoverAfterWindow`, `OrderedFailureBeforeSendFailsOverAtOnce`, `OrderedNoIdleSpin`, `UnorderedUnchanged` |
+| `bulkOrdered_test.cpp` | `OrderedOneBulkInFlight`, `OrderedKeyOncePerBulk`, `OrderedItemRetryBlocksOnlyItsKey`, `OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys`, `OrderedTimeoutAfterApplyKeepsOrder`, `OrderedAmbiguousFailoverAfterWindow`, `OrderedFailureBeforeSendFailsOverAtOnce`, `OrderedNoIdleSpin`, `UnorderedUnchanged` |
 | `writeCancel_test.cpp` | `CancelPendingAndInFlight503`, `CancelInFlightOkStaysOk`, `CancelSlicedBeforeSubmitNotSent`, `CancelOtherTagsUntouched`, `CancelCommittedGroupOps`, `CancelIgnoresBuildingGroup`, `CancelTicketWaitsInFlightOnly`, `CancelFromCallbackReentrancy`, `TagValidation`, `CancelTwiceSameTag`, `CancelAfterTagReenqueued`, `CancelWakesOrderedBucket` |
 | `bulkFairness_test.cpp` | `ItemRejectionsDoNotStarveOtherBucket` (CA-3; about 21 s, about three times that under TSAN) |
 

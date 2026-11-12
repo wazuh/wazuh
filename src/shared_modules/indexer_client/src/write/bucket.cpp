@@ -456,6 +456,7 @@ namespace indexer_client::detail::write
                     catch (...)
                     {
                         m_pending.pop_back();
+                        m_blockedPrefix = std::min(m_blockedPrefix, m_pending.size());
                         throw;
                     }
                     if (reservation.cause == Cause::None && !reservation.dropNewest)
@@ -467,6 +468,7 @@ namespace indexer_client::detail::write
                     else
                     {
                         m_pending.pop_back();
+                        m_blockedPrefix = std::min(m_blockedPrefix, m_pending.size());
                         if (reservation.dropNewest)
                         {
                             // A DropNewest drop (accepted, droppedNewest): counted as post counts it, nothing charged.
@@ -827,6 +829,10 @@ namespace indexer_client::detail::write
 
         const auto before = m_charge;
         reservation.evicted.reserve(count);
+        if (count != 0)
+        {
+            m_blockedPrefix = 0; // The pending queue's head moves.
+        }
         for (std::size_t i = 0; i < count; ++i)
         {
             auto op = std::move(m_pending.front());
@@ -1194,6 +1200,7 @@ namespace indexer_client::detail::write
             if (const auto it = m_laneKeys.find(op.keyHash); it != m_laneKeys.end() && --it->second == 0)
             {
                 m_laneKeys.erase(it);
+                m_blockedPrefix = 0; // A pending op of that key is takeable again.
             }
         }
         if (op.pinNode && m_lanePinned != 0)
@@ -1242,14 +1249,19 @@ namespace indexer_client::detail::write
             return m_pending.empty() ? std::nullopt : std::optional<std::size_t> {0};
         }
         // Skipped ops are blocked by a lane key, so they add no key of their own: the lane's keys are the whole set.
-        const std::size_t limit = std::min<std::size_t>(m_pending.size(), m_spec.bulk.maxDocs);
-        for (std::size_t i = 0; i < limit; ++i)
+        // The whole queue, not a window of it: a window of bulk.maxDocs entries stalled every key behind that many
+        // blocked ops until the blocked keys' retries ended (never, with unlimited retries). The scan resumes after
+        // the prefix found blocked last time, so a pass that changes nothing costs O(1).
+        std::size_t index = std::min(m_blockedPrefix, m_pending.size());
+        for (; index < m_pending.size(); ++index)
         {
-            if (!laneBlocksLocked(*m_pending[i]))
+            if (!laneBlocksLocked(*m_pending[index]))
             {
-                return i;
+                m_blockedPrefix = index;
+                return index;
             }
         }
+        m_blockedPrefix = index;
         return std::nullopt;
     }
 
@@ -1487,12 +1499,15 @@ namespace indexer_client::detail::write
                     }
                     take(std::move(op));
                 }
-                // The pending queue in order, at most bulk.maxDocs ops visited: blocked ones are skipped and keep
-                // their place; the scan stops at the first takeable op that does not fit.
+                // The pending queue in order: blocked ones are skipped and keep their place. The scan is bounded by
+                // what it emits, not by what it visits (a window of bulk.maxDocs entries stalled every key behind that
+                // many blocked ops): it stops once the batch holds bulk.maxDocs ops, at the first takeable op that
+                // does not fit, or at the end of the queue. The prefix found blocked by a lane key (m_blockedPrefix,
+                // still valid: the lane above only drops keys, which resets it) is not visited nor moved.
+                const std::size_t from = std::min(m_blockedPrefix, m_pending.size());
                 std::vector<std::shared_ptr<OpState>> skipped;
-                std::size_t visited = 0;
-                const std::size_t limit = full ? 0 : std::min<std::size_t>(m_pending.size(), maxDocs);
-                for (; visited < limit; ++visited)
+                std::size_t visited = from;
+                for (; !full && visited < m_pending.size() && batch.ops.size() < maxDocs; ++visited)
                 {
                     auto& op = m_pending[visited];
                     if (blocked(*op))
@@ -1511,10 +1526,13 @@ namespace indexer_client::detail::write
                     }
                     take(std::move(op));
                 }
-                m_pending.erase(m_pending.begin(), m_pending.begin() + static_cast<std::ptrdiff_t>(visited));
-                m_pending.insert(m_pending.begin(),
+                const auto at = m_pending.begin() + static_cast<std::ptrdiff_t>(from);
+                m_pending.erase(at, m_pending.begin() + static_cast<std::ptrdiff_t>(visited));
+                m_pending.insert(m_pending.begin() + static_cast<std::ptrdiff_t>(from),
                                  std::make_move_iterator(skipped.begin()),
                                  std::make_move_iterator(skipped.end()));
+                // [0, from) is untouched and still blocked by the lane; what follows changed.
+                m_blockedPrefix = from;
             }
             if (!batch.ops.empty())
             {
@@ -1543,6 +1561,7 @@ namespace indexer_client::detail::write
             }
             auto op = std::move(m_pending.front());
             m_pending.pop_front();
+            m_blockedPrefix = 0;
             m_pendingBytes -= op->wire();
             take(std::move(op));
         }
@@ -1773,6 +1792,7 @@ namespace indexer_client::detail::write
         m_lane.clear();
         m_laneKeys.clear();
         m_lanePinned = 0;
+        m_blockedPrefix = 0;
         for (auto& op : m_pending)
         {
             pending.push_back(std::move(op));
@@ -1983,6 +2003,7 @@ namespace indexer_client::detail::write
         };
         drain(m_lane, true);
         drain(m_pending, false);
+        m_blockedPrefix = 0; // Both queues may have lost ops anywhere.
 
         std::uint64_t remaining = 0;
         for (const auto& entry : m_delivered)
