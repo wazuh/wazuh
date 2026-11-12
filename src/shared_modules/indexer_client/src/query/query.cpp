@@ -361,12 +361,33 @@ namespace indexer_client::detail::query
                                                " attempts, last cause: " + last.text,
                                            last.status);
             };
+            // retry.maxDuration bounds the series from its first attempt: no attempt starts at or past this end, and no
+            // backoff is slept that would end there (the 5.0 connector checked `now + nextDelay` against its budget
+            // before sleeping, too); the wait is useless, so the call ends RetryExhausted at once instead.
+            const auto seriesEnd = [&]() -> std::optional<TimePoint>
+            {
+                if (!retry.maxDuration || !series.start)
+                {
+                    return std::nullopt;
+                }
+                return addSaturated(*series.start, *retry.maxDuration);
+            };
+            const auto backoffPastBudget = [&](TimePoint at, Duration wait)
+            {
+                const auto end = seriesEnd();
+                return end && addSaturated(at, wait) >= *end;
+            };
 
             for (;;)
             {
                 if (const auto cause = closing(*client, gate))
                 {
                     return closedOutcome(*cause);
+                }
+                // Before every send, also after a wait for a usable node (and before preAttempt takes a PIT slot).
+                if (const auto end = seriesEnd(); end && now() >= *end)
+                {
+                    return retriesExhausted();
                 }
                 if (hooks.preAttempt)
                 {
@@ -405,6 +426,10 @@ namespace indexer_client::detail::query
                     if (parked)
                     {
                         until = std::min(until, *parked);
+                    }
+                    if (const auto end = seriesEnd())
+                    {
+                        until = std::min(until, *end); // Wakes for the RetryExhausted at the loop's top.
                     }
                     sleepOnGate(*client, gate, until);
                     continue;
@@ -579,14 +604,12 @@ namespace indexer_client::detail::query
                                      response.reason.empty() ? std::string("timed_out") : response.reason);
                             ++series.attempts;
                             const auto at = now();
-                            if (exhausted(retry, series, at))
+                            const auto wait = backoffDelay(retry, series.attempts, jitterDraw());
+                            if (exhausted(retry, series, at) || backoffPastBudget(at, wait))
                             {
                                 return retriesExhausted();
                             }
-                            sleepOnGate(
-                                *client,
-                                gate,
-                                std::min(addSaturated(at, backoffDelay(retry, series.attempts, jitterDraw())), limit));
+                            sleepOnGate(*client, gate, std::min(addSaturated(at, wait), limit));
                             continue;
                         }
                     }
@@ -614,12 +637,12 @@ namespace indexer_client::detail::query
                         last.set(verdict.cause, verdict.httpStatus, verdict.reason);
                         ++series.throttles;
                         const auto at = now();
-                        if (exhausted(retry, series, at))
+                        const Duration wait = std::max(verdict.retryAfter.value_or(Duration::zero()),
+                                                       backoffDelay(retry, series.throttles, jitterDraw()));
+                        if (exhausted(retry, series, at) || backoffPastBudget(at, wait))
                         {
                             return retriesExhausted();
                         }
-                        const Duration wait = std::max(verdict.retryAfter.value_or(Duration::zero()),
-                                                       backoffDelay(retry, series.throttles, jitterDraw()));
                         sleepOnGate(*client, gate, std::min(addSaturated(at, wait), limit));
                         continue;
                     }
@@ -636,14 +659,12 @@ namespace indexer_client::detail::query
                                  verdict.reason);
                         ++series.attempts;
                         const auto at = now();
-                        if (exhausted(retry, series, at))
+                        const auto wait = backoffDelay(retry, series.attempts, jitterDraw());
+                        if (exhausted(retry, series, at) || backoffPastBudget(at, wait))
                         {
                             return retriesExhausted();
                         }
-                        sleepOnGate(
-                            *client,
-                            gate,
-                            std::min(addSaturated(at, backoffDelay(retry, series.attempts, jitterDraw())), limit));
+                        sleepOnGate(*client, gate, std::min(addSaturated(at, wait), limit));
                         continue;
                     }
                     case write::RequestVerdict::Items: // A 2xx is settled above.

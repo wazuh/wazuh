@@ -1316,8 +1316,8 @@ mutex and condition variable shared by the runtime and all its clients; the tran
 [Node health](#node-health-e2b)) and classified by `classifyRequest(result, 1)` and then by the operation's classifier.
 
 With **no node to choose**, the engine waits `max(50 ms, min(retry.base, probeInterval))` and chooses again, without spending an
-attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node health](#node-health-e2b)), the wait ends at the first `notBefore` if that is sooner, so the read waits for that node within its deadline instead of `Unavailable`. It ends by `Deadline` (once the page has made its first attempt, also by the page deadline or `retry.maxDuration`), never by
-a busy wait.
+attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node health](#node-health-e2b)), the wait ends at the first `notBefore` if that is sooner, so the read waits for that node within its deadline instead of `Unavailable`. It ends by `Deadline` (once the page has made its first attempt, also by the page deadline, or by `retry.maxDuration` with
+`RetryExhausted`), never by a busy wait.
 
 ### Retry (I82)
 
@@ -1326,7 +1326,7 @@ a busy wait.
 | Failover | Another attempt at once; counted only when the request may have been sent |
 | Throttled (429) | Waits `max(Retry-After, backoffDelay(retry, ++throttles))` without an attempt; `throttles` grows the exponent, so a storm of 429 without `Retry-After` backs off |
 | Retry (408, 5xx, 401, 403, TLS configuration, local error, `timed_out`) | An attempt, then `backoffDelay(retry, attempts)` (`src/runtime/backoff.hpp`) |
-| `maxAttempts` or `maxDuration` (from the page's first attempt) exhausted | `Failed(RetryExhausted)`, the last cause in `reason` |
+| `maxAttempts` or `maxDuration` (from the page's first attempt) exhausted | `Failed(RetryExhausted)`, the last cause in `reason`. `maxDuration` is checked **before** every wait and every send: a backoff (Retry or Throttled) that would end at or past `first attempt + maxDuration` is not slept, the call ends `RetryExhausted` at once (as the 5.0 connector did), and no attempt starts past that point, also after a wait for a usable node |
 | Fail | Its own cause (see [Causes](#causes-of-a-query)) |
 | Conflict (DBQ/UBQ) | Its own budget, below |
 
