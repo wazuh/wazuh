@@ -100,6 +100,10 @@ sync `_bulk` flush, each drawing on the budget below:
   [Delete-by-query](#delete-by-query); its own version-conflict allowance is separate from this budget.
 - 500 stays out of the retried set for the same reason as on `_bulk`: it may be deterministic, and
   retrying it would only spend the budget.
+- A search answered with a 2xx whose body is not JSON (a proxy's HTML page, a truncated body) is not a
+  transport failure either, and is not retried: it throws at once (see the error contract below). The
+  HTTP layer forwards an exception thrown while handling a response to `onError` with status `-1`, so
+  the search parses inside its success callback and raises the failure itself.
 - Retried attempts are logged at debug level 2 and never warn. When the budget is spent the operation
   throws `Search query retry budget exhausted` / `Update by query retry budget exhausted`
   (`Category::RetryExhausted`, `statusCode() == 0`).
@@ -191,7 +195,9 @@ achieve leaves documents nothing will ever overwrite:
   connector logs no warning for it (every attempt was logged at debug level 2). A consumer that classifies
   by text must treat it as a failed read and must not look for a status in it. `executeUpdateByQuery` also
   throws `Update by query version conflict` on a request-level `409`, which is a warning and is not
-  retried.
+  retried. `executeSearchQuery` throws `Search query returned an invalid response: <parse error> -
+  <response body truncated to 256 bytes>` (`Category::Other`, `statusCode() == 0`, logged as a warning,
+  not retried) when a 2xx body is not valid JSON.
 - **`executeUpdateByQuery` keeps the conflict retry** and also fails closed: a `200` whose body
   tallies `failures`, cannot be parsed, or lacks the `updated`/`total` counters fails the call
   instead of confirming it. Two callers share this path — the sync server's metadata/group

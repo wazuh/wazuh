@@ -1541,11 +1541,29 @@ public:
 
         nlohmann::json resultJson;
         bool needToRetry = false;
+        std::optional<std::string> invalidResponse;
 
-        const auto onSuccess = [this, &resultJson](const std::string& response)
+        // The parse failure must be caught here, not left to propagate: HTTPRequest::post() runs
+        // onSuccess inside its own try and forwards any exception to onError with status -1, which
+        // the transport-failure branch below would retry until the budget ran out, losing the
+        // parse error. A 2xx with a body that is not JSON is deterministic, so it fails at once.
+        const auto onSuccess = [this, &resultJson, &invalidResponse](const std::string& response)
         {
             LOGFN_DEBUG2(m_logFn, "Search query response: %s", response.c_str());
-            resultJson = nlohmann::json::parse(response);
+            try
+            {
+                resultJson = nlohmann::json::parse(response);
+            }
+            catch (const nlohmann::json::exception& e)
+            {
+                std::string detail = e.what();
+                if (!response.empty())
+                {
+                    detail += " - ";
+                    detail += response.substr(0, MAX_FAILURE_BODY_LENGTH);
+                }
+                invalidResponse = std::move(detail);
+            }
         };
 
         const auto onError =
@@ -1622,6 +1640,13 @@ public:
                                                    .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {.timeout = m_requestTimeoutMs});
+
+            if (invalidResponse)
+            {
+                LOGFN_WARN(m_logFn, "Search query returned an invalid response: %s", invalidResponse->c_str());
+                throw IndexerConnectorException("Search query returned an invalid response: " + *invalidResponse,
+                                                IndexerConnectorException::Category::Other);
+            }
 
             if (needToRetry)
             {

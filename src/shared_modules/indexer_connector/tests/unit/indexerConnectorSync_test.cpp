@@ -2994,6 +2994,56 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryDoesNotRetryA500)
     EXPECT_EQ(calls, 1) << "a 500 must fail on the first attempt";
 }
 
+// A 2xx whose body is not JSON (e.g. a proxy's HTML page) is deterministic: it fails on the first
+// attempt with the parse error, instead of being retried as a transport failure. The mock reproduces
+// HTTPRequest::post()'s real contract -- onSuccess runs inside its try, and any exception it throws is
+// forwarded to onError with status -1 -- which a mock that only calls onSuccess would bypass.
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryInvalidResponseIsNotRetried)
+{
+    ScopedLogCapture logs;
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    constexpr auto HTML_BODY = "<html><body>proxy page</body></html>";
+    int calls = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [&calls](auto, auto postParams, auto)
+            {
+                ++calls;
+                auto& params = std::get<TPostRequestParameters<const std::string&>>(postParams);
+                try
+                {
+                    params.onSuccess(HTML_BODY);
+                }
+                catch (const std::exception& ex)
+                {
+                    params.onError(ex.what(), -1, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
+    try
+    {
+        connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+        FAIL() << "executeSearchQuery should have thrown";
+    }
+    catch (const IndexerConnectorException& e)
+    {
+        EXPECT_THAT(e.what(), HasSubstr("Search query returned an invalid response: "));
+        EXPECT_THAT(e.what(), HasSubstr("parse_error"));
+        EXPECT_THAT(e.what(), HasSubstr(HTML_BODY));
+        EXPECT_EQ(e.category(), IndexerConnectorException::Category::Other);
+    }
+
+    EXPECT_EQ(calls, 1) << "an unparseable 2xx body must fail on the first attempt, not be retried";
+    EXPECT_TRUE(logs.containsAtLevel(Log::LOGLEVEL_WARNING, "Search query returned an invalid response"));
+    EXPECT_FALSE(logs.containsAtLevel(Log::LOGLEVEL_DEBUG_VERBOSE, "Transport-level failure"));
+}
+
 // The update path gains the same 502/503/504 retry the transport failure already had.
 TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryRetriesARetryableServerError)
 {
