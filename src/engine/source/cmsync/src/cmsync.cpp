@@ -922,13 +922,13 @@ bool CMSync::synchronize()
 
 void CMSync::requestShutdown()
 {
-    m_shutdownRequested.store(true, std::memory_order_release);
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
     LOG_INFO("[{}] Shutdown requested", LOG_MODULE_NAME);
 }
 
 bool CMSync::isShutdownRequested() const
 {
-    return m_shutdownRequested.load(std::memory_order_acquire);
+    return m_shutdownRequested.load(std::memory_order_relaxed);
 }
 
 void CMSync::updateSpacesStatusSnapshot()
