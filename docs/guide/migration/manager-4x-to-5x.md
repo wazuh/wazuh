@@ -705,17 +705,17 @@ curl -sk "https://localhost:55000/groups" -H "Authorization: Bearer $TOKEN"
 Every agent appears with its 4.x id, name, version, groups and registration date, as
 `disconnected` until it reconnects. The exception is an agent with an id above `9999999` when you
 used the migration tool: the manager refuses to insert it. If you used the migration tool instead of
-the SQL in Step 3, three of those differ: `dateAdd` is the moment the tool inserted the agent (`POST /agents/insert` accepts no
-registration date), version and OS stay empty until the agent's first keepalive, and the status until
+the SQL in Step 3, three of those differ: `dateAdd` is the moment the tool inserted the agent
+(`POST /agents/insert` accepts no registration date), version and OS stay empty until the agent's first keepalive, and the status until
 then is `never_connected`. After an `import --with-rbac` the API answers to the 4.x passwords as soon as
 the import ends, so `check` is refused with the published one: run the two `rbac_control` commands of
 [Step 3](#api-users-roles-and-policies) first, or give it the 4.x password with `--api-password-file`. Its `check`
 command compares the manager against the bundle and names any agent missing, renamed, present
 without having been in the bundle, or whose groups differ from the 4.x ones (a group missing, an
 extra one such as `default`, or a different order). It also checks that the `default` group holds
-the 4.x settings the bundle carried and that every carried SCA policy is in its group folder. It does
-not count an agent with an id above `9999999` as missing, nor its re-enrollment under the same name
-if it is in the groups the bundle lists for it.
+the 4.x settings the bundle carried and that every carried SCA policy is in its group folder. An agent
+with an id above `9999999` counts as missing until it re-enrolls under the same name; from then on
+`check` only verifies that it is in the groups the bundle lists for it.
 
 ## 6. Reconnect the 4.x agents
 
