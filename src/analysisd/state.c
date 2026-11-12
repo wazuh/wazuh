@@ -26,6 +26,7 @@
 #endif
 
 analysisd_state_t analysisd_state = {0};
+STATIC eps_history_t eps_history = {0};
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -1444,9 +1445,140 @@ void w_set_available_credits_prev(unsigned int credits) {
     w_mutex_unlock(&state_mutex);
 }
 
+void w_eps_sample_second(time_t now, unsigned int admitted) {
+    eps_episode_t closed = {0};
+    bool episode_closed = false;
+
+    w_mutex_lock(&state_mutex);
+
+    uint64_t dropped = analysisd_state.eps_state_breakdown.events_dropped + analysisd_state.eps_state_breakdown.events_dropped_not_eps;
+    eps_sample_t *sample = &eps_history.samples[eps_history.next];
+
+    sample->timestamp = now;
+    sample->received = analysisd_state.events_received - eps_history.last_received;
+    sample->admitted = admitted;
+    sample->dropped = dropped - eps_history.last_dropped;
+
+    eps_history.last_received = analysisd_state.events_received;
+    eps_history.last_dropped = dropped;
+    eps_history.next = (eps_history.next + 1) % EPS_HISTORY_SECONDS;
+    if (eps_history.count < EPS_HISTORY_SECONDS) {
+        eps_history.count++;
+    }
+
+    if (sample->dropped > 0) {
+        analysisd_state.eps_state_breakdown.seconds_with_drops++;
+        eps_history.seconds_without_drops = 0;
+
+        if (!eps_history.episode_open) {
+            eps_history.episode_open = true;
+            memset(&eps_history.current, 0, sizeof(eps_episode_t));
+            eps_history.current.start = now;
+        }
+
+        eps_history.current.end = now;
+        eps_history.current.dropped += sample->dropped;
+    } else if (eps_history.episode_open && ++eps_history.seconds_without_drops >= EPS_EPISODE_CLOSE_SECONDS) {
+        closed = eps_history.current;
+        episode_closed = true;
+        eps_history.episode_open = false;
+        eps_history.episodes[eps_history.episodes_next] = closed;
+        eps_history.episodes_next = (eps_history.episodes_next + 1) % EPS_EPISODES_MAX;
+        if (eps_history.episodes_count < EPS_EPISODES_MAX) {
+            eps_history.episodes_count++;
+        }
+    }
+
+    if (eps_history.episode_open && sample->received > eps_history.current.peak_received) {
+        eps_history.current.peak_received = sample->received;
+    }
+
+    w_mutex_unlock(&state_mutex);
+
+    if (episode_closed) {
+        char start[OS_SIZE_32];
+        char end[OS_SIZE_32];
+        struct tm tm_utc;
+
+        strftime(start, sizeof(start), "%Y-%m-%dT%H:%M:%SZ", gmtime_r(&closed.start, &tm_utc));
+        strftime(end, sizeof(end), "%Y-%m-%dT%H:%M:%SZ", gmtime_r(&closed.end, &tm_utc));
+
+        mwarn("EPS drop episode: %" PRIu64 " events dropped from %s to %s (%ld s), peak %u EPS received, maximum %u EPS (timeframe %u s).",
+              closed.dropped, start, end, (long)(closed.end - closed.start + 1), closed.peak_received,
+              Config.eps.maximum, Config.eps.timeframe);
+    }
+}
+
+STATIC cJSON* w_eps_history_json(time_t now) {
+    static const struct {
+        const char *name;
+        time_t seconds;
+    } windows[] = { {"1m", 60}, {"5m", 300}, {"1h", 3600} };
+    static const char *counters[] = { "admitted", "dropped", "received" };
+    struct {
+        unsigned int value;
+        time_t timestamp;
+    } peaks[3][3] = {0};
+
+    cJSON *_history = cJSON_CreateObject();
+    cJSON *_episodes = cJSON_CreateArray();
+    cJSON *_peaks = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(_history, "episodes", _episodes);
+    cJSON_AddItemToObject(_history, "peaks", _peaks);
+
+    for (unsigned int i = 0; i < eps_history.episodes_count; i++) {
+        unsigned int index = (eps_history.episodes_next + EPS_EPISODES_MAX - eps_history.episodes_count + i) % EPS_EPISODES_MAX;
+        eps_episode_t *episode = &eps_history.episodes[index];
+        cJSON *_episode = cJSON_CreateObject();
+
+        cJSON_AddNumberToObject(_episode, "dropped", episode->dropped);
+        cJSON_AddNumberToObject(_episode, "end", episode->end);
+        cJSON_AddNumberToObject(_episode, "peak_received", episode->peak_received);
+        cJSON_AddNumberToObject(_episode, "seconds", episode->end - episode->start + 1);
+        cJSON_AddNumberToObject(_episode, "start", episode->start);
+        cJSON_AddItemToArray(_episodes, _episode);
+    }
+
+    for (unsigned int i = 0; i < eps_history.count; i++) {
+        unsigned int index = (eps_history.next + EPS_HISTORY_SECONDS - eps_history.count + i) % EPS_HISTORY_SECONDS;
+        eps_sample_t *sample = &eps_history.samples[index];
+        unsigned int values[3] = { sample->admitted, sample->dropped, sample->received };
+
+        for (unsigned int w = 0; w < 3; w++) {
+            if (now - sample->timestamp >= windows[w].seconds) {
+                continue;
+            }
+
+            for (unsigned int c = 0; c < 3; c++) {
+                if (values[c] > peaks[w][c].value) {
+                    peaks[w][c].value = values[c];
+                    peaks[w][c].timestamp = sample->timestamp;
+                }
+            }
+        }
+    }
+
+    for (unsigned int w = 0; w < 3; w++) {
+        cJSON *_window = cJSON_CreateObject();
+        cJSON_AddItemToObject(_peaks, windows[w].name, _window);
+
+        for (unsigned int c = 0; c < 3; c++) {
+            cJSON *_peak = cJSON_CreateObject();
+            cJSON_AddItemToObject(_window, counters[c], _peak);
+            cJSON_AddNumberToObject(_peak, "timestamp", peaks[w][c].timestamp);
+            cJSON_AddNumberToObject(_peak, "value", peaks[w][c].value);
+        }
+    }
+
+    return _history;
+}
+
 cJSON* asys_create_state_json() {
     analysisd_state_t state_cpy;
     queue_status_t queue_cpy;
+    cJSON *eps_history_json = NULL;
+    time_t now = time(NULL);
 
     w_mutex_lock(&queue_mutex);
     w_get_queues_size();
@@ -1455,12 +1587,15 @@ cJSON* asys_create_state_json() {
 
     w_mutex_lock(&state_mutex);
     memcpy(&state_cpy, &analysisd_state, sizeof(analysisd_state_t));
+    if (Config.eps.maximum > 0 && Config.eps.timeframe > 0) {
+        eps_history_json = w_eps_history_json(now);
+    }
     w_mutex_unlock(&state_mutex);
 
     cJSON *asys_state_json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(asys_state_json, "uptime", state_cpy.uptime);
-    cJSON_AddNumberToObject(asys_state_json, "timestamp", time(NULL));
+    cJSON_AddNumberToObject(asys_state_json, "timestamp", now);
     cJSON_AddStringToObject(asys_state_json, "name", ARGV0);
 
     cJSON *_metrics = cJSON_CreateObject();
@@ -1483,9 +1618,16 @@ cJSON* asys_create_state_json() {
 
         cJSON_AddNumberToObject(_eps, "available_credits", available_credits);
         cJSON_AddNumberToObject(_eps, "available_credits_prev", state_cpy.eps_state_breakdown.available_credits_prev);
+        cJSON_AddItemToObject(_eps, "episodes", cJSON_DetachItemFromObject(eps_history_json, "episodes"));
         cJSON_AddNumberToObject(_eps, "events_dropped", state_cpy.eps_state_breakdown.events_dropped);
         cJSON_AddNumberToObject(_eps, "events_dropped_not_eps", state_cpy.eps_state_breakdown.events_dropped_not_eps);
+        cJSON_AddNumberToObject(_eps, "maximum", Config.eps.maximum);
+        cJSON_AddItemToObject(_eps, "peaks", cJSON_DetachItemFromObject(eps_history_json, "peaks"));
         cJSON_AddNumberToObject(_eps, "seconds_over_limit", state_cpy.eps_state_breakdown.seconds_over_limit);
+        cJSON_AddNumberToObject(_eps, "seconds_with_drops", state_cpy.eps_state_breakdown.seconds_with_drops);
+        cJSON_AddNumberToObject(_eps, "timeframe", Config.eps.timeframe);
+
+        cJSON_Delete(eps_history_json);
     }
 
     cJSON *_events = cJSON_CreateObject();

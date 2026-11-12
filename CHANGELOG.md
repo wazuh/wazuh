@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Added
+
+- Added the per-second peak of received, admitted and dropped events over the last minute, 5 minutes and hour, the configured EPS maximum and timeframe, and the last drop episodes to the `wazuh-analysisd` EPS statistics, and an `ossec.log` line for each drop episode. ([#6877](https://github.com/wazuh/external-devel-requests/issues/6877))
+
 #### Fixed
 
 - Fixed the removal and purge of the `wazuh-manager` DEB package failing when the installation is incomplete. ([#33339](https://github.com/wazuh/wazuh/issues/33339))
