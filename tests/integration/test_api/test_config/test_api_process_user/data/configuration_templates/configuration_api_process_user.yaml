@@ -1,4 +1,0 @@
-# The API fixtures (add_configuration, wait_for_api_start) need a configuration block: this one writes the default
-# port, so the API runs with its default configuration.
-- blocks:
-    port: PORT

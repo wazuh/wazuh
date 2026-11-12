@@ -1,8 +1,0 @@
-- name: Command config wazuh manager for invalid port connection
-  description: Command config wazuh manager for invalid port connection
-  configuration_parameters:
-    PORT: '99999'
-    PROTOCOL: 'TCP'
-  metadata:
-    invalid: ".*ERROR: \\(1244\\): Invalid configuration at '/remote/legacy/port'.*"
-    port_number: '99999'

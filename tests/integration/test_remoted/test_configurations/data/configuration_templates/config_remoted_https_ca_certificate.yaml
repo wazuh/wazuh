@@ -1,7 +1,0 @@
-- sections:
-    - section: remote
-      elements:
-        - https:
-            elements:
-              - ca_certificate:
-                  value: 'CA_CERTIFICATE'

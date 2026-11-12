@@ -1,7 +1,0 @@
-- sections:
-  - section: auth
-    elements:
-    - disabled:
-        value: 'no'
-    - purge:
-        value: 'no'
