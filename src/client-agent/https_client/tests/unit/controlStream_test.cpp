@@ -678,10 +678,9 @@ TEST_F(ControlStreamTest, ConfigMismatchDownloadsVerifiesAndDelivers)
 
 TEST_F(ControlStreamTest, UsesConfigTokenVerbatimAsTheDownloadResourceId)
 {
-    // The manager names the configuration resource; the agent must NOT derive it. The token
-    // here deliberately bears no relation to the reported groups, which is the whole point:
-    // whatever the manager decides to address a config with (a group selector today, anything
-    // else later), an agent that only passes it through keeps working with no change.
+    // A manager that publishes config_token may require it back (every 5.0.x one does), so
+    // the agent relays it. The token here deliberately bears no relation to the reported
+    // groups: the agent passes it through and never derives a selector of its own.
     const std::string notify = R"({"status":"ok","agent":{"groups":["default","test"],)"
                                R"("config_token":"opaque-token-42","config_hash":"multi-hash"}})";
 
@@ -706,8 +705,8 @@ TEST_F(ControlStreamTest, MultiGroupTokenIsSentUnchanged)
 {
     // The 5.0 manager's token IS the group selector: every group, comma-joined, in the
     // manager's own order (controlHandler.cpp's makeConfigToken over toGroupsCsv). The agent
-    // must relay it byte-for-byte -- re-sorting or truncating it to the first group would
-    // resolve a different merged.mg that can never match the reported hash, looping forever.
+    // must relay it byte-for-byte -- re-sorting or truncating it would name a selector that is
+    // not the agent's own, and the manager refuses it.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":["default","test"],)"
         R"("config_token":"default,test","config_hash":"multi-hash"}})";
@@ -729,11 +728,33 @@ TEST_F(ControlStreamTest, MultiGroupTokenIsSentUnchanged)
     EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
 }
 
-TEST_F(ControlStreamTest, MissingConfigTokenFallsBackToTheGroupsCsv)
+TEST_F(ControlStreamTest, ConfigTokenIsJsonEscapedInTheDownloadBody)
 {
-    // A manager that reports no config_token must behave exactly as it did before the field
-    // existed: the agent rebuilds the selector from agent.groups itself, comma-joined in the
-    // reported order.
+    // The token is the manager's, so it is serialized rather than spliced into the body.
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_token":"a\"b","config_hash":"h"}})";
+
+    std::string downloadBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))    // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify))) // Notify.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        downloadBody = bodyOf(spec);
+        return response(TransportStatus::Ok, 404);
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download attempt.
+
+    EXPECT_EQ(R"({"resource_type":"config","resource_id":"a\"b"})", downloadBody);
+}
+
+TEST_F(ControlStreamTest, MissingConfigTokenSendsNoResourceId)
+{
+    // A manager that reports no config_token derives the selector itself, so the request
+    // names no resource: the agent never rebuilds one from agent.groups.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":["default","test"],"config_hash":"multi-hash"}})";
 
@@ -751,14 +772,12 @@ TEST_F(ControlStreamTest, MissingConfigTokenFallsBackToTheGroupsCsv)
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify -> download attempt.
 
-    EXPECT_EQ(R"({"resource_type":"config","resource_id":"default,test"})", downloadBody);
+    EXPECT_EQ(R"({"resource_type":"config"})", downloadBody);
 }
 
-TEST_F(ControlStreamTest, MissingConfigTokenAndNoGroupsFallsBackToDefault)
+TEST_F(ControlStreamTest, MissingConfigTokenAndNoGroupsSendsNoResourceId)
 {
-    // The other half of the pre-config_token behaviour: with no token AND no groups there is
-    // still something to ask for, since every agent is implicitly in "default". A 5.0 manager
-    // never gets here -- it always reports a non-empty token.
+    // With no token and no groups nothing is substituted either: no "default" selector.
     const std::string notify =
         R"({"status":"ok","agent":{"groups":[],"config_hash":"some-hash"}})";
 
@@ -776,7 +795,7 @@ TEST_F(ControlStreamTest, MissingConfigTokenAndNoGroupsFallsBackToDefault)
     m_stream.step(m_waiter); // Startup.
     m_stream.step(m_waiter); // Notify -> download attempt.
 
-    EXPECT_EQ(R"({"resource_type":"config","resource_id":"default"})", downloadBody);
+    EXPECT_EQ(R"({"resource_type":"config"})", downloadBody);
 }
 
 TEST_F(ControlStreamTest, AgentGroupsReportedOnFirstNotifyThenOnlyOnChange)
@@ -856,11 +875,10 @@ TEST_F(ControlStreamTest, AgentGroupsReReportedAfterARefreshStartupEvenWhenUncha
 
 TEST_F(ControlStreamTest, AgentGroupsReportsEmptyRatherThanDefaultFallback)
 {
-    // This is group IDENTITY, not the download selector (which the manager now names on its
-    // own, in config_token). An empty group set must stay empty here: agcom.c treats it as a
-    // distinct, meaningful value ("Empty agent_groups is allowed - fallback to merge.mg will
-    // be used"), not a synonym for being in "default" -- so no fallback is substituted, even
-    // though the download path's own legacy selector does substitute one.
+    // This is group IDENTITY, not the download selector (config_token, relayed as is). An
+    // empty group set must stay empty here: agcom.c treats it as a distinct, meaningful value
+    // ("Empty agent_groups is allowed - fallback to merge.mg will be used"), not a synonym
+    // for being in "default" -- so no fallback is substituted.
     const std::string notifyNoGroups = R"({"agent":{"groups":[]}})";
 
     EXPECT_CALL(m_sink, onAgentGroups(std::string {}));
@@ -996,6 +1014,47 @@ TEST_F(ControlStreamTest, FailedDownloadRetriesOnTheNextNotify)
 
     EXPECT_EQ(4, downloads); // 2 notifies x DOWNLOAD_MAX_ATTEMPTS(2).
     EXPECT_EQ("abc", m_configHash.get());
+}
+
+TEST_F(ControlStreamTest, PermanentDownloadRejectionIsNotRetriedWithinANotify)
+{
+    // A 400 is Permanent: the same request would get the same answer, so the fetcher gives up
+    // after one attempt instead of spending DOWNLOAD_MAX_ATTEMPTS, and the next notify (same hash,
+    // nothing delivered) tries again. The WARN it raises once per advertised hash goes to the
+    // library's own log sink, which this executable cannot observe.
+    std::string notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"ffff"}})";
+
+    int downloads = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/download")
+        {
+            downloads++;
+            return response(TransportStatus::Ok, 400, R"({"error":"Invalid request format","code":400})");
+        }
+
+        if (bodyOf(spec).find("startup") != std::string::npos)
+        {
+            return response(TransportStatus::Ok, 200, "{}");
+        }
+
+        return response(TransportStatus::Ok, 200, notify);
+    }));
+    EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> 400, one attempt.
+    EXPECT_EQ(1, downloads);
+
+    m_stream.step(m_waiter); // Notify, same hash -> tried again, still rejected.
+    EXPECT_EQ(2, downloads);
+
+    notify = R"({"status":"ok","agent":{"groups":["default"],"config_hash":"eeee"}})";
+    m_stream.step(m_waiter); // Notify, new hash -> tried again.
+    EXPECT_EQ(3, downloads);
+    EXPECT_EQ("abc", m_configHash.get()); // Never updated.
 }
 
 TEST_F(ControlStreamTest, DrainStepSendsBareShutdown)

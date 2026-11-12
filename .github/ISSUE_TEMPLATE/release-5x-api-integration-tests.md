@@ -1,25 +1,34 @@
 ---
-name: Release Candidate - Python integration tests
-about: Report the results after running Python integration tests.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - Python integration tests'
+name: Release - 5.x - API integration tests
+about: Report the results after running API integration tests for a release stage.
+title: 'Release {{VERSION}} - {{STAGE}} - API integration tests'
 labels: 'level/task, type/test'
 assignees: ''
-
 ---
 
-The following issue aims to run all `python integration tests` for the current release candidate, report the results, and open new issues for any encountered errors.
+The following issue aims to run all [API integration tests](https://github.com/wazuh/wazuh/tree/main/api/test/integration) for the current release candidate, report the results, and open new issues for any encountered errors.
 
-## Python integration tests information
-|                                      |                                            |
-|--------------------------------------|--------------------------------------------|
-| **Main release candidate issue**     |                                            |
-| **Version**                          |                                            |
-| **Release candidate #**              |                                            |
-| **Tag**                              |                                            |
-| **Previous python integration tests issue** |                                            |
+## API integration tests information
+|  |  |
+|--|--|
+| **Main release stage issue** | {{STAGE_ISSUE}} |
+| **Version** | {{VERSION}} |
+| **Stage** | {{STAGE}} |
+| **Tag** | [{{TAG}}](https://github.com/wazuh/wazuh/tree/{{TAG}}) |
+| **Previous API integration tests issue** | {{PREVIOUS_ISSUE}} |
+
+## Workflows
+```yaml
+workflows:
+  - name: "API integration endpoints"
+    type: "github"
+    repository: "wazuh/wazuh"
+    workflow: "5_testintegration_api-endpoints.yml"
+    ref: "{{TAG}}"
+    inputs: {}
+```
 
 ## Test report procedure
-
 All individual test checks must be marked as:
 |                                  |                                            |
 |---------------------------------|--------------------------------------------|
@@ -28,8 +37,7 @@ All individual test checks must be marked as:
 | Skip | The test was not run. It must be properly justified and reported in an issue.  |
 | Fail | The test failed. A new issue must be opened to evaluate and address the problem. |
 
-All test results must have one the following statuses:
-
+All test results must have one the following statuses: 
 |                                  |                                            |
 |---------------------------------|--------------------------------------------|
 | :green_circle:  | All checks passed. |
@@ -42,23 +50,17 @@ Any expected fail or skipped test must have an issue justifying the reason. All 
 
 An extended report of the test results must be attached as a zip or txt. This report can be used by the auditors to dig deeper into any possible failures and details.
 
+## Conclusion
+List every new or known issue that appeared while testing this task, with its link, before closing this issue.
 
-## Conclusions
+| Status | Test | Failure type | New or known issues (with link) | Notes |
+|---|---|---|---|---|
+|  | API integration endpoints |  |  |  |
 
-<!--
-
-All tests have been executed, and the results can be found below.
-
-| **Status**     | **Test**    | **Failure type**    | **Notes**      |
-|----------------|-------------|---------------------|----------------|
-|   |API tier 0 and 1| |
-|   |API tier 2 |||
-|   |RBAC tier 0 and 1|||
--->
-
-## Auditors validation
+## Auditors' validation
 The definition of done for this one is the validation of the conclusions and the test results from all auditors.
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ]
+- [ ] @wazuh/devel-xdrsiem-server-div1
+- [ ] @wazuh/devel-xdrsiem-qa-release

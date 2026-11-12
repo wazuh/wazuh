@@ -125,7 +125,12 @@ void test_fim_initialize(void **state)
     will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
+    // Distinct values so a swapped or repeated argument fails
+    syscheck.sync_wal_autocheckpoint_pages = 1000;
+    syscheck.sync_cache_size_kib = 256;
     expect_string(__wrap_asp_create, module, "fim");
+    expect_value(__wrap_asp_create, wal_autocheckpoint_pages, 1000);
+    expect_value(__wrap_asp_create, cache_size_kib, 256);
 
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
@@ -148,6 +153,7 @@ void test_read_internal(void **state)
     read_internal(0);
 
     assert_int_equal(syscheck.sync_wal_autocheckpoint_pages, 1);
+    assert_int_equal(syscheck.sync_cache_size_kib, 1);
 }
 
 void test_read_internal_debug(void **state)
@@ -226,6 +232,8 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
     expect_string(__wrap_asp_create, module, "fim");
+    expect_any(__wrap_asp_create, wal_autocheckpoint_pages);
+    expect_any(__wrap_asp_create, cache_size_kib);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     // Schema validator initialization
@@ -273,6 +281,8 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     expect_string(__wrap_asp_create, module, "fim");
+    expect_any(__wrap_asp_create, wal_autocheckpoint_pages);
+    expect_any(__wrap_asp_create, cache_size_kib);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
@@ -321,6 +331,8 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     expect_string(__wrap_asp_create, module, "fim");
+    expect_any(__wrap_asp_create, wal_autocheckpoint_pages);
+    expect_any(__wrap_asp_create, cache_size_kib);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
@@ -402,6 +414,8 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
     expect_string(__wrap_asp_create, module, "fim");
+    expect_any(__wrap_asp_create, wal_autocheckpoint_pages);
+    expect_any(__wrap_asp_create, cache_size_kib);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
@@ -464,6 +478,8 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
     expect_string(__wrap_asp_create, module, "fim");
+    expect_any(__wrap_asp_create, wal_autocheckpoint_pages);
+    expect_any(__wrap_asp_create, cache_size_kib);
     will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);

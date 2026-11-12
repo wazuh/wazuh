@@ -124,7 +124,7 @@ class FakeManager final
         /// body (and the settings_hash reported by notify) switches to v2, so
         /// a client detects the change and refreshes its startup data.
         /// configBlob non-empty: /download serves it (chunked octet-stream)
-        /// and every notify reports agent.config_hash = MD5(configBlob), so a
+        /// and every notify reports agent.config_hash = SHA-256(configBlob), so a
         /// client whose local hash differs downloads it. Those notifies also
         /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
         /// serves nothing else, so the client must relay the token verbatim.

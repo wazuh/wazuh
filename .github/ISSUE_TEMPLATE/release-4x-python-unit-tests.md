@@ -1,22 +1,65 @@
 ---
-name: Release Candidate - Python unit tests 
-about: Report the results after running Python unit tests.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - Python unit tests'
-labels: 'API, framework, qa'
+name: Release - 4.x - Python unit tests
+about: Report the results after running Python unit tests for a release stage.
+title: 'Release {{VERSION}} - {{STAGE}} - Python unit tests'
+labels: 'level/task, type/test'
 assignees: ''
-
 ---
 
 The following issue aims to run all `python unit tests` for the current release candidate, report the results, and open new issues for any encountered errors.
 
 ## Python unit tests information
-|                                      |                                            |
-|--------------------------------------|--------------------------------------------|
-| **Main release candidate issue**     |                                            |
-| **Version**                          |                                            |
-| **Release candidate #**              |                                            |
-| **Tag**                              |                                            |
-| **Previous python unit tests issue** |                                            |
+|  |  |
+|--|--|
+| **Main release stage issue** | {{STAGE_ISSUE}} |
+| **Version** | {{VERSION}} |
+| **Stage** | {{STAGE}} |
+| **Tag** | [{{TAG}}](https://github.com/wazuh/wazuh/tree/{{TAG}}) |
+| **Previous python unit tests issue** | {{PREVIOUS_ISSUE}} |
+
+## Workflows
+```yaml
+workflows:
+  - name: "API unit tests"
+    type: "github"
+    repository: "wazuh/wazuh"
+    workflow: "4_testunit_api.yml"
+    ref: "{{TAG}}"
+    inputs:
+      generate_report: "true"
+      qa_branch: "{{TAG}}"
+  - name: "Framework unit tests"
+    type: "github"
+    repository: "wazuh/wazuh"
+    workflow: "4_testunit_framework.yml"
+    ref: "{{TAG}}"
+    inputs:
+      generate_report: "true"
+      qa_branch: "{{TAG}}"
+  - name: "Wodles unit tests"
+    type: "github"
+    repository: "wazuh/wazuh"
+    workflow: "4_testunit_wodles.yml"
+    ref: "{{TAG}}"
+    inputs:
+      generate_report: "true"
+      qa_branch: "{{TAG}}"
+  - name: "External integrations unit tests"
+    type: "github"
+    repository: "wazuh/wazuh"
+    workflow: "4_testunit_external-integrations.yml"
+    ref: "{{TAG}}"
+    inputs:
+      generate_report: "true"
+      qa_branch: "{{TAG}}"
+  - name: "Python coverage"
+    type: "github"
+    repository: "wazuh/wazuh"
+    workflow: "4_testunit_python-coverage.yml"
+    ref: "{{TAG}}"
+    inputs:
+      base_branch: "{{TAG}}"
+```
 
 ## Test report procedure
 All individual test checks must be marked as:
@@ -50,28 +93,24 @@ All test coverage results must have one of the following statuses:
 | :orange_square: | >= 25% |
 | :red_square:    | < 25%  |
 
+## Conclusion
+List every new or known issue that appeared while testing this task, with its link, before closing this issue.
 
-## Conclusions
+| Status | Test | Failure type | New or known issues (with link) | Notes |
+|---|---|---|---|---|
+|  | API |  |  |  |
+|  | Framework |  |  |  |
+|  | External integrations |  |  |  |
+|  | Wodles |  |  |  |
 
-<!--
-All tests have been executed and the results can be found [here]().
+|  | Coverage | Status |
+|---|---|---|
+| Overall python unit tests coverage |  |  |
 
-|                |             |                     |                |
-|----------------|-------------|---------------------|----------------|
-| **Status**     | **Test**    | **Failure type**    | **Notes**      |
-|                |             |                     |                |
-
-All tests have passed and the fails have been reported or justified. I therefore conclude that this issue is finished and OK for this release candidate.
-
-|                                        |              |            |
-|----------------------------------------|--------------|------------|
-|                                        | **Coverage** | **Status** |
-| **Overall python unit tests coverage** |              |            |
--->
-
-## Auditors validation
+## Auditors' validation
 The definition of done for this one is the validation of the conclusions and the test results from all auditors.
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ] @wazuh/devel-xdrsiem-server
+- [ ] @wazuh/devel-xdrsiem-qa-release

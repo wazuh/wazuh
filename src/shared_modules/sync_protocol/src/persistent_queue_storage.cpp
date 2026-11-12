@@ -31,7 +31,8 @@ namespace
 } // namespace
 
 PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper,
-                                               std::optional<int32_t> walAutocheckpointPages)
+                                               std::optional<int32_t> walAutocheckpointPages,
+                                               std::optional<int32_t> cacheSizeKiB)
     : m_connection(createOrOpenDatabase(dbPath)),
       m_dbPath(dbPath),
       m_logger(std::move(logger)),
@@ -51,6 +52,12 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
         if (walAutocheckpointPages.has_value())
         {
             m_connection.execute("PRAGMA wal_autocheckpoint = " + std::to_string(walAutocheckpointPages.value()) + ";");
+        }
+
+        if (cacheSizeKiB.has_value() && cacheSizeKiB.value() > 0)
+        {
+            // A negative cache_size is a size in KiB rather than a page count
+            m_connection.execute("PRAGMA cache_size = -" + std::to_string(cacheSizeKiB.value()) + ";");
         }
     }
     // LCOV_EXCL_START
@@ -630,4 +637,16 @@ int32_t PersistentQueueStorage::getWalAutocheckpoint() const
     }
 
     return -1;
+}
+
+std::optional<int32_t> PersistentQueueStorage::getCacheSize() const
+{
+    SQLite3Wrapper::Statement stmt(m_connection, "PRAGMA cache_size;");
+
+    if (stmt.step() == SQLITE_ROW)
+    {
+        return stmt.value<int32_t>(0);
+    }
+
+    return std::nullopt;
 }

@@ -155,6 +155,9 @@ that answers**. Nodes can disagree on those groups for a short while:
 * Right after an agent enrolls into a group other than `default`, a worker can hold the agent's row
   before its groups and read it as `default` until the next round.
 
+A node that has not applied the change and still reports a group that was deleted answers `404`
+instead, counted in `remoted.download.not_found`.
+
 **Confirm it is this and not something else:**
 
 * It affects only configuration downloads. WPK downloads are not gated this way.
@@ -162,7 +165,7 @@ that answers**. Nodes can disagree on those groups for a short while:
 
   ```bash
   curl -s --unix-socket /var/wazuh-manager/queue/sockets/remote-admin-http.sock \
-    http://localhost/metrics | grep -E 'remoted\.download\.(denied|no_row|unavailable)'
+    http://localhost/metrics | grep -E 'remoted\.download\.(denied|not_found|no_row|unavailable)'
   ```
 
 * It stops within a round or two of the change.

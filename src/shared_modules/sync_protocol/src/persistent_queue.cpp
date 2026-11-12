@@ -17,10 +17,11 @@ PersistentQueue::PersistentQueue(const std::string& dbPath,
                                  std::shared_ptr<IPersistentQueueStorage> storage,
                                  std::optional<std::size_t> flushBatchSize,
                                  std::optional<std::chrono::milliseconds> flushInterval,
-                                 std::optional<int32_t> walAutocheckpointPages)
+                                 std::optional<int32_t> walAutocheckpointPages,
+                                 std::optional<int32_t> cacheSizeKiB)
     : FLUSH_BATCH_SIZE(flushBatchSize.value_or(DEFAULT_FLUSH_BATCH_SIZE)),
       FLUSH_INTERVAL(flushInterval.value_or(DEFAULT_FLUSH_INTERVAL)),
-      m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger, nullptr, walAutocheckpointPages)),
+      m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger, nullptr, walAutocheckpointPages, cacheSizeKiB)),
       m_logger(std::move(logger))
 {
     if (!m_logger)

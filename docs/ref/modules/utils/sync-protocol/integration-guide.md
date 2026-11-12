@@ -75,7 +75,8 @@ AgentSyncProtocolHandle* handle = asp_create(
     module_logger,
     0,  // flush_batch_size: use the built-in default
     0,  // flush_interval_ms: use the built-in default
-    0   // wal_autocheckpoint_pages: keep SQLite's own default
+    0,  // wal_autocheckpoint_pages: keep SQLite's own default
+    0   // cache_size_kib: keep SQLite's own default
 );
 
 if (!handle) {

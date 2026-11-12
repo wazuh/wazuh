@@ -21,7 +21,8 @@ AgentSyncProtocolHandle* asp_create(const char* module,
                                    asp_logger_t logger,
                                    uint64_t flush_batch_size,
                                    uint64_t flush_interval_ms,
-                                   uint64_t wal_autocheckpoint_pages);
+                                   uint64_t wal_autocheckpoint_pages,
+                                   uint64_t cache_size_kib);
 ```
 
 **Parameters:**
@@ -31,6 +32,7 @@ AgentSyncProtocolHandle* asp_create(const char* module,
 - `flush_batch_size`: Persistent queue flush batch size (`syscheck.sync_flush_batch_size`), or `0` to use the built-in default
 - `flush_interval_ms`: Persistent queue flush interval in milliseconds (`syscheck.sync_flush_interval_ms`), or `0` to use the built-in default
 - `wal_autocheckpoint_pages`: WAL auto-checkpoint threshold in pages (`syscheck.sync_wal_autocheckpoint_pages`), or `0` to keep SQLite's own default (1000 pages)
+- `cache_size_kib`: Page cache size of the database connection in KiB (`syscheck.sync_cache_size_kib`), or `0` to keep SQLite's own default (2000 KiB)
 
 **Usage Example:**
 ```c
@@ -38,7 +40,8 @@ AgentSyncProtocolHandle* asp_create(const char* module,
 syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction,
                                   (uint64_t)syscheck.sync_flush_batch_size,
                                   (uint64_t)syscheck.sync_flush_interval_ms,
-                                  (uint64_t)syscheck.sync_wal_autocheckpoint_pages);
+                                  (uint64_t)syscheck.sync_wal_autocheckpoint_pages,
+                                  (uint64_t)syscheck.sync_cache_size_kib);
 ```
 
 #### `asp_persist_diff()`

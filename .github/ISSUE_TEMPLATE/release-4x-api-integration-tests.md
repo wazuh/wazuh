@@ -1,23 +1,36 @@
 ---
-name: Release Candidate - API integration tests 
-about: Report the results after running API integration tests.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - API integration tests'
-labels: 'API, qa'
+name: Release - 4.x - API integration tests
+about: Report the results after running API integration tests for a release stage.
+title: 'Release {{VERSION}} - {{STAGE}} - API integration tests'
+labels: 'level/task, type/test'
 assignees: ''
-
 ---
 
 The following issue aims to run all [API integration tests](https://github.com/wazuh/wazuh/tree/main/api/test/integration) for the current release candidate, report the results, and open new issues for any encountered errors.
 
 ## API integration tests information
-|                                          |                                            |
-|------------------------------------------|--------------------------------------------|
-| **Main release candidate issue**         |                                            |
-| **Version**                              |                                            |
-| **Release candidate #**                  |                                            |
-| **Tag**                                  |                                            |
-| **Previous API integration tests issue** |                                            |
+|  |  |
+|--|--|
+| **Main release stage issue** | {{STAGE_ISSUE}} |
+| **Version** | {{VERSION}} |
+| **Stage** | {{STAGE}} |
+| **Tag** | [{{TAG}}](https://github.com/wazuh/wazuh/tree/{{TAG}}) |
+| **Previous API integration tests issue** | {{PREVIOUS_ISSUE}} |
 
+## Workflows
+```yaml
+workflows:
+  - name: "API integration endpoints"
+    type: "jenkins"
+    instance: "jenkins-staging.qa.wazuh.info"
+    job: "{{VERSION}}/Test_integration_endpoints"
+    inputs:
+      SOURCE_REFERENCE: "{{TAG}}"
+      QA_AUTOMATION_REFERENCE: "{{TAG}}"
+      PYTEST_ARGS: "-v --tb=short"
+      TEST_LIST: "*"
+      MAX_PARALLEL_JOBS: "35"
+```
 
 ## Test report procedure
 All individual test checks must be marked as:
@@ -41,22 +54,17 @@ Any expected fail or skipped test must have an issue justifying the reason. All 
 
 An extended report of the test results must be attached as a zip or txt. This report can be used by the auditors to dig deeper into any possible failures and details.
 
-## Conclusions
+## Conclusion
+List every new or known issue that appeared while testing this task, with its link, before closing this issue.
 
-<!--
-All tests have been executed and the results can be found [here]().
+| Status | Test | Failure type | New or known issues (with link) | Notes |
+|---|---|---|---|---|
+|  | API integration endpoints |  |  |  |
 
-|                |             |                     |                |
-|----------------|-------------|---------------------|----------------|
-| **Status**     | **Test**    | **Failure type**    | **Notes**      |
-|                |             |                     |                |
-
-All tests have passed and the fails have been reported or justified. I therefore conclude that this issue is finished and OK for this release candidate.
--->
-
-## Auditors validation
+## Auditors' validation
 The definition of done for this one is the validation of the conclusions and the test results from all auditors.
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ] @wazuh/devel-xdrsiem-server
+- [ ] @wazuh/devel-xdrsiem-qa-release

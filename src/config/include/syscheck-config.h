@@ -423,6 +423,7 @@ typedef struct _config {
     int sync_flush_batch_size;                         /* Persistent sync queue: max buffered events before an immediate flush */
     int sync_flush_interval_ms;                        /* Persistent sync queue: max time to wait before flushing a non-full buffer (ms) */
     int sync_wal_autocheckpoint_pages;                 /* Persistent sync queue: WAL auto-checkpoint threshold (SQLite pages) */
+    int sync_cache_size_kib;                           /* Persistent sync queue: SQLite page cache size (KiB) */
     uint32_t integrity_interval;                       /* Integrity check interval */
     int max_eps;                                       /* Maximum events per second. */
     unsigned int notify_first_scan;                    /* Notify the first scan */

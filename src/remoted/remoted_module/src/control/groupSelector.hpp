@@ -34,16 +34,36 @@ namespace remoted::control
         return out;
     }
 
-    /// The /download resource_id the agent must use for its shared configuration.
+    /// Inverse of toGroupsCsv(): "" is no groups; anything else splits on every comma and keeps
+    /// every empty entry (leading, trailing or doubled) so group-name validation can reject it.
+    inline std::vector<std::string> fromGroupsCsv(const std::string& csv)
+    {
+        std::vector<std::string> groups;
+        if (csv.empty())
+        {
+            return groups;
+        }
+
+        size_t start = 0;
+        for (size_t comma = csv.find(','); comma != std::string::npos; comma = csv.find(',', start))
+        {
+            groups.push_back(csv.substr(start, comma - start));
+            start = comma + 1;
+        }
+        groups.push_back(csv.substr(start));
+        return groups;
+    }
+
+    /// The config_token /control publishes: the group selector, the same CSV config_hash was
+    /// computed over, so the two provably name the same merged.mg.
     ///
-    /// Opaque to the agent by contract: it passes this through verbatim and never parses it,
-    /// which is exactly what lets this value change without shipping a new agent. Today it IS
-    /// the group selector -- the same CSV config_hash was computed over, so the two provably
-    /// name the same merged.mg.
+    /// Opaque to the agent by contract: it relays this verbatim as /download's resource_id and
+    /// never parses it. /download derives the same selector from the agent's groups and only
+    /// compares the resource_id with it, so this can stop being published without a new agent.
     ///
-    /// Never empty: /download needs some resource to name, and an agent with no groups is
-    /// implicitly in "default". The substitution is defensive only, since every site that
-    /// writes AgentEntry::groups goes through membershipGroups() below.
+    /// Never empty: an agent with no groups is implicitly in "default". The substitution is
+    /// defensive only, since every site that writes AgentEntry::groups goes through
+    /// membershipGroups() below.
     inline std::string makeConfigToken(const std::string& groupsCsv)
     {
         return groupsCsv.empty() ? std::string {"default"} : groupsCsv;

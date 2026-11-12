@@ -47,13 +47,16 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param flushInterval Optional override for the persistent queue's flush interval (see PersistentQueue).
         /// @param walAutocheckpointPages Optional override for the persistent queue's default storage backend's
         ///                               WAL auto-checkpoint threshold, in pages (see PersistentQueue).
+        /// @param cacheSizeKiB Optional override for the persistent queue's default storage backend's
+        ///                     page cache size, in KiB (see PersistentQueue).
         explicit AgentSyncProtocol(const std::string& moduleName, std::optional<std::string> dbPath, LoggerFunc logger,
                                    std::shared_ptr<IPersistentQueue> queue = nullptr,
                                    std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
                                    bool isFeedBased = false,
                                    std::optional<std::size_t> flushBatchSize = std::nullopt,
                                    std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
-                                   std::optional<int32_t> walAutocheckpointPages = std::nullopt);
+                                   std::optional<int32_t> walAutocheckpointPages = std::nullopt,
+                                   std::optional<int32_t> cacheSizeKiB = std::nullopt);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
