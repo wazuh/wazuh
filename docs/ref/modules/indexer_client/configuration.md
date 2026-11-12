@@ -42,7 +42,7 @@ The installer writes this section:
 List of Indexer node URLs, one per `<host>` child element.
 
 - **Default value:** None (required)
-- **Allowed values:** URLs starting with `http://` or `https://` (e.g. `https://10.0.0.1:9200`); at least one, no duplicates
+- **Allowed values:** URLs starting with `http://` or `https://` that name a host (a host name, an IPv4 address, or an IPv6 address in brackets), then an optional `:port` and path (e.g. `https://10.0.0.1:9200`, `https://[fd00::1]:9200`); at least one, no duplicates. `https://` alone is refused
 - **Note:** The runtime probes every host and load-balances requests round-robin across the ones that are available, skipping the ones that are down (see [Node health](README.md#node-health)). An unreachable host does not stop the manager from starting.
 
 ### ssl
@@ -102,6 +102,8 @@ The runtime always authenticates with HTTP basic authentication, also over plain
 
 The credential resolver fills them in at installation and before every start: `username` defaults to `wazuh-manager` when it is not set, and `password` is taken from `WAZUH_INDEXER_MANAGER_PASSWORD` in the environment, in `/etc/wazuh-manager/local.env`, or in the indexer's `/etc/wazuh-indexer/export/credentials.env` when the indexer runs on the same host. There is no default password: when the keystore holds no password and none of them supplies one, the start is refused with `MISSING WAZUH_INDEXER_MANAGER_PASSWORD`. See [Credentials](../../getting-started/credentials.md).
 
+A password already in the keystore is never replaced from the environment or `local.env`, so changing `local.env` afterwards changes nothing. It is replaced only when it comes from a co-located indexer's `/etc/wazuh-indexer/export/credentials.env` and differs from the stored one (the indexer was reinstalled, or published a new password): every start, installation and upgrade then writes the new one to the keystore. See [Credentials](../../getting-started/credentials.md).
+
 To change them by hand (as root):
 
 ```bash
@@ -109,7 +111,7 @@ printf '%s' 'wazuh-manager' | /var/wazuh-manager/bin/wazuh-manager-keystore -f i
 printf '%s' '<password>' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 ```
 
-modulesd reads the credentials once, when it starts the runtime (an empty user or password stops the runtime: `indexer credentials missing: user` or `password`). Restart the manager after changing them. The password never appears in a log line or a metric.
+modulesd reads the credentials once, when it starts the runtime (an empty user or password stops the runtime: `indexer credentials missing: user` or `password`), and the engine once when it starts. Restart the manager after changing them. The Python framework (API, cluster) reads them again for every Indexer client it builds and needs no restart. The password never appears in a log line or a metric.
 
 ---
 
@@ -264,10 +266,12 @@ Certificate and host name are not checked and a WARN is logged at every start. D
 ```xml
 <indexer>
   <hosts>
-    <host>http://127.0.0.1:9200</host>
+    <host>http://INDEXER_HOST:9200</host>
   </hosts>
 </indexer>
 ```
+
+`INDEXER_HOST` is a placeholder for the indexer's address. Without `<ssl>` no CA file or client pair is required or imported, but the indexer password is still required in the keystore.
 
 ### Giving the runtime more memory and threads on a busy manager
 
@@ -289,7 +293,7 @@ Validate the configuration:
 /var/wazuh-manager/bin/wazuh-manager-modulesd -t
 ```
 
-Check that the Indexer accepts the manager's certificate and credentials, using the same files and account the runtime uses:
+Check that the Indexer accepts the manager's certificate and credentials, using the same files and account the runtime uses. The command sends the indexer password, so send it only to a host this manager is configured for: the example assumes a co-located indexer (`127.0.0.1`); otherwise replace the address with one from the output of `/var/wazuh-manager/bin/wazuh-manager-conf get indexer.hosts` rather than typing it.
 
 ```bash
 curl --cacert /etc/wazuh-manager/certs/indexer-ca.pem \
