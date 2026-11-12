@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed `wazuh-analysisd` sending active responses for Windows events whose `win.eventdata.ipAddress` or `win.eventdata.destinationIp` is in the `white_list`, which let the agent block that address. As with `srcip`, no active response is sent for these events, whatever its command. The `::ffff:` prefix of an IPv4-mapped address is now removed regardless of case before checking the lists. ([#41261](https://github.com/wazuh/wazuh/pull/41261))
 - Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41176](https://github.com/wazuh/wazuh/pull/41176))
 - Fixed `wazuh-maild` stopping when an alert's text contained lines that start with `** Alert`, which `wazuh-analysisd` wrote to `alerts.log` as the start of new alerts. ([#41237](https://github.com/wazuh/wazuh/pull/41237))
 - Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41265](https://github.com/wazuh/wazuh/pull/41265))
