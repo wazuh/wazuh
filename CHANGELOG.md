@@ -30,6 +30,7 @@
 | [#39590](https://github.com/wazuh/wazuh/issues/39590) | Rejected dotted aliases of the agent identity in enriched-event metadata before enqueueing, including escaped member names. |
 | [#38916](https://github.com/wazuh/wazuh/issues/38916) | The initial vulnerability-feed download resumes from the last durable cursor after a failed request or a manager restart instead of starting again from the first document, and logs the reason of every failed attempt. |
 | [#40192](https://github.com/wazuh/wazuh/issues/40192) | Fixed the UndefinedBehaviorSanitizer `vptr` reports of the engine. The binary linked two fmt versions (`external/fmt` 8.1.1 and the 10.2.1 bundled in spdlog) that share include guards, so the first one included silently voided the other; since `namespace spdlog` is unversioned and the engine uses spdlog header-only, the same spdlog classes were defined over different fmt types under identical mangled names. `SPDLOG_FMT_EXTERNAL` is now defined on the imported spdlog target so every engine translation unit uses the same fmt. `bk::taskf::Controller` and `bk::rx::Controller` no longer downcast the tracer to `TracerImpl`, an empty subclass that was never instantiated. |
+| [#41103](https://github.com/wazuh/wazuh/issues/41103) | Fixed `POST /agents/insert` accepting agent ids up to 2147483647, which could raise the agent id counter past the eight-digit ids agents accept and block every later enrollment. Inserted ids are now capped at 9999999, and the 4.x migration tool warns about agents above the cap. |
 
 ### Agent
 
