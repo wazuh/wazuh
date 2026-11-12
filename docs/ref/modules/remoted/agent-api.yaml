@@ -1104,7 +1104,7 @@ paths:
                   summary: Also vd_error, or VD's own code for any other VD answer
                   value: { error: "vd_unreachable" }
                 vdNotInitialized:
-                  summary: The scanner never initialized on this node
+                  summary: The scanner failed to start on this node
                   value: { error: "vd_not_initialized" }
 
   /enroll:

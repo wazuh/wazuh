@@ -74,10 +74,9 @@ LIVE_VD_URL = (
 VIEWS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "views.json")
 
 
-def probe(status="ready", enabled=True, available=True, offset=991021, lsu=1789793031):
+def probe(status="ready", available=True, offset=991021, lsu=1789793031):
     return {
         "available": available,
-        "enabled": enabled,
         "status": status,
         "offset": offset,
         "last_successful_update": lsu,
@@ -2096,12 +2095,6 @@ class VdVerdict(unittest.TestCase):
         self.assertIsNone(cl.probe_blocks(probe()))
         self.assertIsNone(cl.probe_blocks(probe(status="updating")))
         self.assertEqual("FAIL", cl.probe_blocks(None)[0])
-        self.assertEqual("SKIP", cl.probe_blocks(probe(enabled=False))[0])
-
-    def test_disabled(self):
-        status, reason = cl.vd_verdict(probe(enabled=False, status="updating"), {"002": 9}, "002")
-        self.assertEqual("SKIP", status)
-        self.assertEqual("vulnerability-detector disabled in config", reason)
 
     def test_not_available_is_not_ready(self):
         status, reason = cl.vd_verdict(probe(available=False), {"002": 5}, "002")

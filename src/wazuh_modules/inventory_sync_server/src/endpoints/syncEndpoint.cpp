@@ -174,19 +174,35 @@ namespace invsync::endpoints::sync
                     return;
                 }
 
-                // D17: while the CVE feed is downloading, or the scanner is enabled here but
-                // still starting up, VD sessions are rejected WITHOUT processing -- the re-POST
-                // applies scan and ingest together, and nobody blocks waiting for either (the
-                // lane re-checks at dispatch too).
+                // D17: while the scanner cannot scan -- its CVE feed is downloading, it is still
+                // starting up, or its start failed -- VD sessions are rejected WITHOUT processing:
+                // the re-POST applies scan and ingest together, and nobody blocks waiting for
+                // either (the lane re-checks at dispatch too).
                 if (!scanner->feedReady())
                 {
                     if (const auto decision = vdThrottle.record())
                     {
-                        LOGFN_DEBUG1(logFn(),
-                                     "Answered 503 + Retry-After to %llu vulnerability-detection session(s) %s: "
-                                     "the CVE feed is not ready, or the scanner is still starting up.",
-                                     static_cast<unsigned long long>(decision.total),
-                                     decision.period().c_str());
+                        // A scanner that is starting or loading its feed gets there on its own. One
+                        // that failed to start does not: these sessions, and the inventory they
+                        // carry, stay deferred until the manager is restarted.
+                        if (scanner->startFailed())
+                        {
+                            LOGFN_WARN(logFn(),
+                                       "Answered 503 + Retry-After to %llu vulnerability-detection session(s) %s: "
+                                       "the vulnerability scanner failed to start. Their inventory is not indexed "
+                                       "until the manager is restarted with a scanner that starts.",
+                                       static_cast<unsigned long long>(decision.total),
+                                       decision.period().c_str());
+                        }
+                        else
+                        {
+                            LOGFN_DEBUG1(logFn(),
+                                         "Answered 503 + Retry-After to %llu vulnerability-detection session(s) %s: "
+                                         "the vulnerability scanner is not ready (starting, or loading the CVE "
+                                         "feed).",
+                                         static_cast<unsigned long long>(decision.total),
+                                         decision.period().c_str());
+                        }
                     }
                     auto response = errorResponse(503, "vulnerability feed not ready");
                     response.headers.emplace_back("Retry-After", std::to_string(deps.vdRetryAfterSeconds));

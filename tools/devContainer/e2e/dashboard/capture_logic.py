@@ -1077,7 +1077,7 @@ def probe_state(probe):
 def probe_blocks(probe):
     """(status, reason) when the probe alone settles check 9, else None.
 
-    capture.py asks this BEFORE querying the indexer: a feed that is unreachable, disabled or
+    capture.py asks this BEFORE querying the indexer: a feed that is unreachable or
     failed is the verdict, and counting findings first would both waste the query and let a
     findings error mask the real cause.
     """
@@ -1085,8 +1085,6 @@ def probe_blocks(probe):
         return ("FAIL", "probe unreachable")
     if probe.get("error"):
         return ("FAIL", "probe unreachable: {0}".format(probe["error"]))
-    if probe.get("enabled") is False:
-        return ("SKIP", "vulnerability-detector disabled in config")
     if probe.get("status") == "failed":
         return ("FAIL", "feed status=failed, {0}".format(probe_state(probe)))
     return None
@@ -1096,7 +1094,7 @@ def vd_verdict(probe, findings, agent_id_5x=""):
     """Verdict of check 9 from the probe and the per-agent findings.
 
     probe: the JSON of GET /vulnerability-detector/status
-           {available, enabled, status: ready|updating|failed, offset, last_successful_update},
+           {available, status: ready|updating|failed, offset, last_successful_update},
            None/{} when the socket could not be reached, or {"error": "..."}.
            capture.py only calls this once it has stopped polling, so a probe still in
            'updating' means the --vd-deadline was exhausted.
@@ -1104,7 +1102,7 @@ def vd_verdict(probe, findings, agent_id_5x=""):
            agent. Only the count of THIS run's 5.x agent decides: a sum lets another agent's
            documents pass for the one the view is filtered by.
 
-    Returns (status, reason) with status in PASS|FAIL|SKIP.
+    Returns (status, reason) with status in PASS|FAIL.
     """
     blocked = probe_blocks(probe)
     if blocked:

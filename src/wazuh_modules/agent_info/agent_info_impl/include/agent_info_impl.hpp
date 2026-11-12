@@ -47,7 +47,7 @@ class AgentInfoImpl
 
         /// @brief Durable VD feed offset + pending-rescan state, backed by the `vd_feed_state`
         /// table in agent_info.db. `hasOffset` distinguishes "never observed" from "observed 0"
-        /// (a manager legitimately reporting offset 0 -- e.g. VD not enabled -- must not be
+        /// (a manager legitimately reporting offset 0 -- e.g. no feed yet -- must not be
         /// treated as unset).
         struct VdFeedState
         {

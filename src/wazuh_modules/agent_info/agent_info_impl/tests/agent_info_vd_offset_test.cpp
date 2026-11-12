@@ -307,7 +307,7 @@ TEST_F(AgentInfoVdOffsetTest, ObserveEqualOffsetIsNoOp)
     EXPECT_TRUE(m_queryModuleCalls.empty());
 }
 
-// R10: a legitimate offset of 0 (e.g. VD disabled on the node that answered) must not
+// R10: a legitimate offset of 0 (e.g. no feed yet on the node that answered) must not
 // thrash -- observing 0 again is a no-op, not a spurious "advance".
 TEST_F(AgentInfoVdOffsetTest, ObserveZeroTwiceIsIdempotent)
 {

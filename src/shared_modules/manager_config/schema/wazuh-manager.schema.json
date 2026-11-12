@@ -559,11 +559,6 @@
       "additionalProperties": false,
       "description": "Vulnerability scanner module (modulesd).",
       "properties": {
-        "enabled": {
-          "description": "Whether the vulnerability scanner module runs.",
-          "type": "boolean",
-          "default": true
-        },
         "feed-update-interval": {
           "allOf": [
             {

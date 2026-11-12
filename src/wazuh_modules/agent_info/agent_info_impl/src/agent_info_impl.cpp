@@ -130,7 +130,7 @@ const char* TASKS_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS tasks ("
 // Durable VD feed offset + pending-rescan state (see AgentInfoImpl::observeVdFeedOffset/
 // clearVdRescanPending/getVdFeedState). Single-row table (id=1), same shape as db_metadata.
 // has_offset distinguishes "never observed" from "observed 0" (a manager may legitimately
-// report offset 0, e.g. when VD is not enabled on that node).
+// report offset 0, e.g. while that node has no feed yet).
 const char* VD_FEED_STATE_SQL_STATEMENT = "CREATE TABLE IF NOT EXISTS vd_feed_state ("
                                           "id              INTEGER PRIMARY KEY CHECK (id = 1),"
                                           "has_offset      INTEGER NOT NULL DEFAULT 0,"

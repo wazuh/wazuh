@@ -128,7 +128,6 @@ Vulnerability scanner module (modulesd).
 
 | Option | Type | Default | Constraints | Description |
 |---|---|---|---|---|
-| `enabled` | boolean | `true` |  | Whether the vulnerability scanner module runs. |
 | `feed-update-interval` | integer or string | `60m` | 1-999999999; `^0*([1-9][0-9]{0,8}s?\|[1-9][0-9]{0,6}m\|[1-9][0-9]{0,4}h\|[1-9][0-9]{0,3}d)$` | Time between CTI feed updates (minimum 1 second; 0 is rejected). |
 | `pageSize` | integer | `100` | 1-10000 | Indexer page size used by the scanner. |
 | `numSlices` | integer | `2` | 1-32 | Parallel indexer slices. |

@@ -1683,16 +1683,15 @@ def vd_poll(args, rep):
     while True:
         probe = vd_probe(args)
         rep.note(
-            "vd probe: available={0} enabled={1} status={2} offset={3} last_successful_update={4}{5}".format(
+            "vd probe: available={0} status={1} offset={2} last_successful_update={3}{4}".format(
                 probe.get("available"),
-                probe.get("enabled"),
                 probe.get("status"),
                 probe.get("offset"),
                 probe.get("last_successful_update"),
                 " error={0}".format(probe["error"]) if probe.get("error") else "",
             )
         )
-        if probe.get("error") or probe.get("enabled") is False:
+        if probe.get("error"):
             return probe
         if probe.get("status") in ("ready", "failed"):
             return probe

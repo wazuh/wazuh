@@ -62,7 +62,7 @@ def _modulesd_status(running: bool) -> dict:
     """Build the status entry for modulesd from the `/vulnerability-detector/status` endpoint.
 
     Queries the modulesd Unix socket. The node is ready when the vulnerability-detector feed is
-    fully loaded (available=True, status='ready'). A disabled VD is not a readiness blocker.
+    fully loaded (available=True, status='ready').
     """
     if not running:
         return {'ready': False}
@@ -90,8 +90,7 @@ def _modulesd_status(running: bool) -> dict:
         if client is not None:
             client.close()
 
-    enabled = vd.get('enabled', True)
-    ready = (not enabled) or (bool(vd.get('available', False)) and vd.get('status') == 'ready')
+    ready = bool(vd.get('available', False)) and vd.get('status') == 'ready'
 
     return {
         'ready': ready,

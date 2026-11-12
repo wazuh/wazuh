@@ -1451,9 +1451,7 @@ TEST_F(AgentSyncProtocolTest, ConcurrentCallReportsThatItRanNoSession)
 
 // A VD sync is never held back for want of a feed offset: the agent reports whatever it last
 // heard (0 until the manager tells it otherwise) and the manager decides what that session is
-// worth -- 503 while its feed loads, accepted and indexed unscanned when its scanner is not
-// running. Gating here instead left agents on a manager with vulnerability detection disabled
-// with their packages never indexed at all (#38599).
+// worth -- 503 while its scanner is not ready, 409 when the offset is not the node's.
 TEST_F(AgentSyncProtocolTest, VdSyncWithoutAFeedOffsetIsStillSent)
 {
     agent_metadata_t metadata = {};

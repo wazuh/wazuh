@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS vd_feed_state (
 | Column           | Data Type | Description                                                                                                          |
 | ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------|
 | `id`             | INTEGER   | Primary key, always `1`.                                                                                             |
-| `has_offset`     | INTEGER   | A boolean flag (`0` or `1`) distinguishing "an offset has never been observed" from "an offset of `0` was observed" (a manager may legitimately report offset `0` when VD is not enabled on that node). |
+| `has_offset`     | INTEGER   | A boolean flag (`0` or `1`) distinguishing "an offset has never been observed" from "an offset of `0` was observed" (a manager may legitimately report offset `0` while that node has no feed yet). |
 | `last_offset`    | INTEGER   | The last VD feed offset observed.                                                                                    |
 | `pending`        | INTEGER   | A boolean flag (`0` or `1`) indicating whether a rescan is pending.                                                  |
 | `pending_offset` | INTEGER   | The VD feed offset associated with the pending rescan.                                                               |

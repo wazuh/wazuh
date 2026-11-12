@@ -13,11 +13,12 @@ from the indexer.
 - The server under test is the real module pair booted by
   `inventory_sync_server_testtool --serve --no-vd --config config.json` in a
   temp directory; the suite talks to `queue/sockets/inventory-sync-http.sock` there.
-  `--no-vd` keeps the vulnerability scanner facade down, which makes VD-flagged
-  sessions take the scan lane and resolve as D22's *legitimate skip* (index +
-  200) — deterministic, no CVE feed required. The scan-gating rows (failed
-  scan → 500) are unit-suite territory; the real-scanner path belongs to the
-  vulnerability-detection integration workflow.
+  `--no-vd` keeps the vulnerability scanner facade down, so no CVE feed is
+  required. With no scanner behind it the server defers VD-flagged data
+  sessions and on-demand scans (503 + `Retry-After`, nothing indexed), which is
+  what the suite pins. The scan-gating rows (failed scan → 500) are unit-suite
+  territory; the real-scanner path belongs to the vulnerability-detection
+  integration workflow.
 - OpenSearch: an already-running one at `INDEXER_URL` (default
   `http://127.0.0.1:9200`) is used as-is; otherwise a single-node container
   (`opensearch-test`, OpenSearch 2.19, security disabled) is started via
@@ -62,7 +63,7 @@ Environment overrides: `INVSYNC_TESTTOOL` (harness binary), `FLATC`,
 | `test_metadata_groups.py` | MetadataDelta/GroupDelta across declared indices, the `global_version` stale-writer guard, MetadataCheck repair-if-needed, forbidden-indices noop |
 | `test_agent_reports_metadata.py` | The root `agent` object of `POST /stats` and `POST /config`: groups and host copied into `wazuh.agent.groups`/`wazuh.agent.host` (the agent's `name` is not), a report without it indexed with neither, and a bad value left empty rather than turning the report into a 400 |
 | `test_delete_agent.py` | `POST /_internal/agents/delete`: agent-scoped wipe across the whole deletion scope — `wazuh-states-*` by query, **plus** `wazuh-agent-config` and `wazuh-agent-stats` by document id on the asynchronous connector that writes them — 404-as-success retries, body validation (including both JSON spellings of the agent id), FIFO vs the agent's own sessions, and a `/config`/`/stats` report still in that connector's queue when the deletion runs (queued behind it, so it cannot land afterwards). The tests refresh the indices before deleting, because the server does not. The route answers at COMPLETION, so these cases deliberately do **not** poll for the by-query half — the documents are already gone when the response arrives, and the absence of a `wait_for_docs()` IS the assertion. Carries one **skipped** test recording the remaining known limitation: a `wazuh-states-*` document written inside the index refresh interval survives the deletion |
-| `test_vd_lane.py` | VD-flagged sessions under `--no-vd`: the legitimate-skip row indexes + 200, VD Cleans take the normal pipeline, and `GET /metrics` reflects the lane traffic. Also `POST /_internal/vd/scan`, the on-demand rescan the Task Manager drives: answered at COMPLETION, agent id read from the body with no agent header, body rejections, and nothing indexed (it carries no inventory). Under `--no-vd` its outcome is `503 {"error":"no vulnerability scanner on this node"}` — deliberately not a `200`, which the dispatcher records as `completed` and therefore as a scan that ran; retrying is bounded by `vd_scan`'s attempt budget, so the row dead-letters instead of looping. The Ok path needs a real scanner and runs in the vulnerability-detection integration workflow |
+| `test_vd_lane.py` | VD-flagged sessions under `--no-vd`, where no scanner runs: a VD data session is deferred (`503` + `Retry-After`, nothing indexed), VD Cleans take the normal pipeline, and `GET /metrics` counts the deferral and no scan. Also `POST /_internal/vd/scan`, the on-demand rescan the Task Manager drives: agent id read from the body with no agent header, body rejections, and nothing indexed (it carries no inventory). Under `--no-vd` its outcome is the same deferral — deliberately not a `200`, which the dispatcher records as `completed` and therefore as a scan that ran; retrying is bounded by `vd_scan`'s attempt budget, so the row dead-letters instead of looping. The Ok path needs a real scanner and runs in the vulnerability-detection integration workflow |
 | `test_concurrent_group_update.py` | A sync session and a group or metadata session of one agent applied at once by two server instances (two manager nodes on one indexer): no `200` for a session whose data is missing, plus a one-instance control. Starts a second server instance. Timing dependent: the default is 20 rounds of 3000 documents in each of four cases, tune with `QA_RACE_ROUNDS` and `QA_RACE_DOCS` |
 
 Deliberately NOT here: capacity/budget rejections (413/503) and scan-failure

@@ -225,40 +225,21 @@ TEST_F(StatefulEndpointE2ETest, GarbageIs400AndAForeignIdentityIs403)
     EXPECT_TRUE(m_events->syncOps().empty()) << "rejections must never reach the indexer";
 }
 
-TEST_F(StatefulEndpointE2ETest, AVDSessionWithTheScannerDisabledIndexesAndAnswers200)
+TEST_F(StatefulEndpointE2ETest, AVDSessionWithoutARunningScannerIsDeferredAndIndexesNothing)
 {
     // The PRODUCTION scanner adapter against an uninitialized vulnerability scanner (this test
-    // process never starts it): the D22 legitimate-skip row -- the scan is skipped, the inventory
-    // still lands, the agent gets its 200.
+    // process never starts it). Every node runs the scanner, so a session it cannot scan yet is
+    // deferred: answering 200 would have the agent record as delivered an inventory that no
+    // scanner has seen.
     SessionSpec spec;
     spec.option = invsync::test::fb::Option_VDSync;
     const auto body = invsync::test::buildSyncDataSession(spec, {invsync::test::ValueSpec {}});
     const auto response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body));
 
-    EXPECT_EQ(200, response.status) << response.body;
-    const auto ops = m_events->syncOps();
-    ASSERT_EQ(1U, ops.size());
-    EXPECT_EQ("bulkIndex", std::get<0>(ops[0]));
-    EXPECT_EQ(1, m_events->m_syncFlushes.load());
-}
-
-TEST_F(StatefulEndpointE2ETest, VdConfiguredEnabledFromConfigReachesTheScannerFactory)
-{
-    // Pins the chain a silent regression could otherwise revert while every other test stays
-    // green: inventory_sync_server_config_t::vd_configured_enabled -> the facade's Phase-A
-    // snapshot -> scannerFactory(vdConfiguredEnabled) -> VdScannerAdapter::m_configuredEnabled.
-    inventory_sync_server_stop();
-    LogRecorder::clear();
-
-    invsync::test::installFakeVdScanner(m_events);
-
-    const auto path = uniqueSocketPath("vdconfigured");
-    auto config = makeConfig(path);
-    config.vd_configured_enabled = true;
-    ASSERT_EQ(0, inventory_sync_server_start(testLogCallback, &config));
-    ASSERT_TRUE(LogRecorder::waitForMessageContaining("listening on"));
-
-    EXPECT_TRUE(m_events->m_vdConfiguredEnabled.load());
+    EXPECT_EQ(503, response.status) << response.body;
+    EXPECT_TRUE(response.hasHeader("Retry-After")) << response.raw;
+    EXPECT_TRUE(m_events->syncOps().empty()) << "a deferred session must index nothing";
+    EXPECT_EQ(0, m_events->m_syncFlushes.load());
 }
 
 TEST_F(StatefulEndpointE2ETest, AVDSessionWhileTheFeedDownloadsIsRefusedWithRetryAfter)

@@ -6903,7 +6903,7 @@ paths:
                         ready: true
                         running: true
                         modules:
-                          vulnerability-detector: { available: true, status: ready, enabled: true, offset: 0, last_successful_update: 1782822942 }
+                          vulnerability-detector: { available: true, status: ready, offset: 0, last_successful_update: 1782822942 }
                           inventory-sync: { available: true }
                           content-manager: { available: true }
                           task-manager: { available: true }

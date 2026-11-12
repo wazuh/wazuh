@@ -10,8 +10,8 @@ re-POSTs".
 The module also hosts two manager-internal routes for the Task Manager's dispatcher — whole-agent
 deletion (`POST /_internal/agents/delete`) and on-demand rescans (`POST /_internal/vd/scan`) — and
 runs vulnerability-detection sessions through a scan lane where the scan **gates** indexing: a `200`
-for a VD session guarantees the scan ran (unless the node runs no scanner, D23) AND the inventory was
-flushed.
+for a VD session guarantees the scan ran (or the session had nothing to scan, D32) AND the inventory
+was flushed.
 
 Three documentation layers cover this module, each with its own job:
 
@@ -135,7 +135,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D20 | The server→VD boundary is FlatBuffers-free: the scanner's neutral C++ view structs — the scanner never includes this schema's header |
 | D21 | Only authd deletes agents: the legacy `wm_database` delete path was removed, not migrated |
 | D22 | VD scans are SYNCHRONOUS and gate the response: scan → ok → index → `200`; scan fails → `500` with nothing indexed; lane full → `503`; legitimate skip (scanner disabled) still indexes and answers `200`. Stronger than the legacy, which indexed even when the scan failed |
-| D23 | A VD session addressed to a node whose scanner is not running (vulnerability detection disabled, or failed to start) skips the `feed_offset` version check and takes D22's legitimate-skip path: the inventory is indexed, nothing is scanned, `200`. Gated on the scanner, NOT on the node's offset reading 0 — a running scanner reports 0 too while the content manager's offset store is not answering yet, and skipping the check there would index packages unscanned on a node whose vulnerability detection IS enabled. A feed that is merely still loading never reaches the gate: D17 answers it `503 + Retry-After`, so packages and vulnerabilities keep going together whenever the module is up |
+| D23 | *Superseded by D32.* A VD session addressed to a node whose scanner is not running (vulnerability detection disabled, or failed to start) skips the `feed_offset` version check and takes D22's legitimate-skip path: the inventory is indexed, nothing is scanned, `200`. Gated on the scanner, NOT on the node's offset reading 0 — a running scanner reports 0 too while the content manager's offset store is not answering yet, and skipping the check there would index packages unscanned on a node whose vulnerability detection IS enabled. A feed that is merely still loading never reaches the gate: D17 answers it `503 + Retry-After`, so packages and vulnerabilities keep going together whenever the module is up |
 | D24 | Agent JSON nested more than 256 levels (`common/jsonNestingDepth.hpp`, the engine's `Json::MAX_DEPTH`) never reaches nlohmann. `/stats` and `/config` answer it with `400`. On `/stateful`, an upsert's `data` string is skipped with a WARN, like any other bad document. The check is a scan of the raw bytes that runs before parsing, not a parser option. nlohmann parses iteratively, but its `dump()` and copy constructor recurse once per level: about 60k levels overflow an 8 MiB stack, and zstd lets that body cross remoted in a few dozen bytes, so no body or byte cap bounds the depth. Checking the bytes keeps any deep DOM from being built, whichever nlohmann version is vendored. The FlatBuffers envelope of `/stateful` needs no cap (the Verifier bounds it), but the JSON strings it carries do. The VD lane reads them with simdjson ondemand, which is iterative and capped at 1024 |
 | D25 | A `/stateful` message may not reach more bytes than it carries. After the Verifier passes, validation charges every string, byte vector, vector slot and table that the message can reach the **minimum** each one takes when encoded on its own. It answers `400` when the total is larger than the decoded body. Strings are charged 4 + length + 1, byte vectors 4 + length, each vector slot 4, and each table 4 plus 4 for each offset field it carries. The walk covers the `Start` strings and its `index`/`groups`, `SyncData.values`/`contexts` and `Cleans.items`. This corrects D24's "the Verifier bounds it": the Verifier bounds depth and the table count (1,000,000), but it never checks that two offsets point at different bytes. N four-byte slots can therefore name one multi-MiB string or table, and every slot was copied (`Start`) or parsed, dumped and staged (`SyncData`) again. A sub-5 MiB body asked for terabytes, and that is a modulesd OOM. A buffer whose objects are not shared always passes, because each one really occupies at least what it is charged. The rule therefore becomes a wire contract: agents must not deduplicate strings or tables in a `FullSession` (`CreateSharedString` and the like), and none in this tree does. Runs before any copy or parse: O(elements), no allocation |
 | D26 | `Start.groups` carries at most 128 entries of at most 255 bytes each, mirroring `MAX_GROUPS_PER_MULTIGROUP`/`MAX_GROUP_NAME` (`defs.h` is not included from C++, so the values are restated in `fullSessionValidator.hpp`). `Start.index` carries at most 64 entries of at most 255 bytes each (the indexer's limit on an index name). Anything over is `400`. D25 already stops aliasing; these caps bound what an honest-shaped message can make every document repeat, because `groups` is copied into each staged document |
@@ -144,6 +144,7 @@ carries the narrative version of the load-bearing ones; this is the complete cat
 | D29 | Nothing an agent sends can make `stageBulk()` throw. A throw there fails the worker's whole open batch, other agents' co-batched sessions included, because the pipeline cannot tell it from a connector failure (the buffer state is unknown after a failed `bulkIndex`). Two inputs did. A non-object value on the overlay's path (`"wazuh":"x"`, `"wazuh":{"agent":[1]}`, …) made `operator[]` throw, so the overlay is now built once per session and applied with `merge_patch()`, which replaces such a value; the agent's other `wazuh.*` fields survive, as before. `Start` strings that are not valid UTF-8 made every document's `dump()` throw (nlohmann checks UTF-8 when serializing, the Verifier never looks inside a string), so validation answers them `400` (step 9, after D25), with nlohmann's own `dump()` as the judge. As a backstop, any other `nlohmann::json::exception` while building a document skips that DOCUMENT with a WARN (D24's family). Only connector errors still leave `stageBulk()`, and those really do poison the batch |
 | D30 | A by-query (metadata, groups, a Cleans deletion, the by-query half of a whole-agent deletion) whose version-conflict allowance runs out is answered `503` with `Retry-After` and the reason body `indexer contention`, counted as `sync.indexer.conflict.exhausted`, not `500`. The connector reports it as `ConflictsExhausted`, apart from a shard failure: nothing was corrupted, every document the query reached is at the version a writer left it, and what kept the conflicts alive through three attempts is a competing writer of the same agent's documents, almost always a duplicate of the same session re-sent by the agent after remoted stopped waiting (D28). A `500` is read as a server failure by the agent, by remoted's counters and by the QA gates; the contention is retryable, so it is told apart and the delay (the connector's own `max_retry_duration_seconds`: the first copy cannot keep conflicting longer than its allowance) keeps the re-send from racing the first copy again. The rewrite the groups query does on every document of the agent stays: the version stamp it sets is the fence the bulk path's `external_gte` deltas are ordered against, so an unstamped document would let a stale delta through |
 | D31 | `ServerScanCoordinator`'s quiesce wait does not count the CALLER's own scan-lane hold. An on-demand rescan (`POST /_internal/vd/scan`) runs `triggerAgentScan()` synchronously on the lane worker that acquired the agent, and the scanner fences that agent from inside the scan; the wait counted the lane's own hold as in flight, so every on-demand scan waited the full 30 s bound for itself before scanning. The registry records the thread of each acquisition and `waitUntilIdle(…, ignoreCallersScanHold)` treats a scan-lane hold of the calling thread as idle. Nothing else is exempt: a pipeline session, or a scan another thread holds, is still waited for. The fence is not simply skipped for on-demand scans because the scanner, behind the neutral boundary, does not know who holds what; the registry does |
+| D32 | Every node runs the vulnerability scanner: `<vulnerability-detection>` has no `enabled` option. A node that acknowledged a VD session without scanning it left the agent with nothing to send again — a first sync recorded as done whose later scan alerted on every existing CVE, and package changes that were never scanned — and which agents were hit depended only on the node the balancer picked. So a session is either scanned or deferred: `feedReady()` is `isInitialized() && isFeedReady()`, false while the scanner starts, while its feed loads and for as long as a scanner that failed to start stays down, and D17 answers `503 + Retry-After` with nothing indexed. The `feed_offset` check applies to every VD session. The only legitimate skip left in D22 is the scanner's own: a first sync with an empty inventory has nothing to scan, is indexed and answers `200`. A scanner that stops between the dispatch re-check and the scan makes `scan()` throw (`500`, nothing indexed), and an on-demand scan with no scanner behind it is `NotReady` (`503`). Supersedes D23, and the "scanner disabled" skip of D22 |
 
 ## Layout
 
@@ -183,7 +184,7 @@ inventory_sync_server/
 │       └── serverScanCoordinator.hpp  #   the per-agent fence feed-update scans put on sessions
 ├── test/unit/                         # one GTest binary: inventory_sync_server_utest
 ├── testtool/                          # inventory_sync_server_testtool (VD integration driver
-│                                      #   + the QA suite's --serve/--no-vd server harness)
+│                                      #   + the --serve harness: --no-vd for QA, --stub-vd for load tests)
 ├── qa/                                # integration QA: pytest over the real socket + OpenSearch
 └── tools/                             # stdlib-only UDS drivers
     ├── send_sync.py                   #   smoke sender: health probe, every transport rejection
@@ -508,23 +509,20 @@ check `Start.feed_offset` against `IVdScanner::currentFeedOffset()` for VD-flagg
 (answering `409 {"error":"version_mismatch","current_version":N}` — the same body shape as
 remoted's `/scan/vd` REST endpoint, so an agent handles either 409 the same way — if the session
 was built against a feed offset this node doesn't currently have; a non-VD session has no
-meaningful `feed_offset` and skips this check entirely, and so does every session when this node
-runs no scanner at all — there is no version to disagree about, and the session goes on to the
-legitimate-skip path that indexes the agent's inventory without scanning it, D23), run the scan
+meaningful `feed_offset` and skips this check entirely), run the scan
 inside a try/catch (a throw
 answers `500` with ZERO indexing), then stage the inventory bulk and `flush()` — one session per
 flush, no group commit in this lane — and answer `200`.
 
-**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `scannerRunning()`
-(whether this node runs a scanner at all — what gates the `feed_offset` check, D23),
-`currentFeedOffset()` (this node's current VD feed offset, backing that check),
+**`IVdScanner`** is the lane's entire view of the scanner: `feedReady()`, `startFailed()` (only
+to log a deferral caused by a scanner that will not come back at warning level),
+`currentFeedOffset()` (this node's current VD feed offset, backing the `feed_offset` check),
 `scan() -> Ok | Skipped` for a session, and `scanAgent()` for an on-demand scan
-([below](#on-demand-scans-endpointsvdscanendpoint)). `feedReady()` is `feedGateOpen()`: a scanner that will never run here
-(disabled — by this node's own config or by the running scanner's — or one that started and
-failed) passes the gate and `scan()` reports `Skipped`, so inventory keeps flowing with VD off
-(the only legitimate skip; it still indexes and answers `200`). A scanner that WILL run here but
-hasn't finished starting keeps the gate closed until `isInitialized() && isFeedReady()`,
-deferring the whole startup window with a retryable `503` instead. The production adapter lives in
+([below](#on-demand-scans-endpointsvdscanendpoint)). `feedReady()` is `isInitialized() && isFeedReady()`
+on the scanner (D32): the gate stays closed while the scanner starts, while its feed loads, and for
+as long as a scanner that failed to start stays down, deferring all of it with a retryable `503`.
+`scan()` reports `Skipped` only when the scanner itself had nothing to scan (a first sync with an
+empty inventory); that session is still indexed and answers `200`. The production adapter lives in
 exactly one translation unit,
 `vdScannerAdapter.cpp`, because the scanner's headers pull include-dir baggage the rest of this
 module must not inherit; the boundary itself is the scanner's neutral view interface
@@ -585,11 +583,10 @@ acquiring immediately after is benign, because it degrades to exactly the parked
 
 `scanAgent()` reports failure **by return value**, unlike `scan()`, which throws. There is no session
 to poison, and every failure is something the caller has to tell apart to decide whether to come
-back: `NotReady` → 503, `NotFound` → 404 (permanent), `Failed` → 500, `Skipped` → 503
-`no vulnerability scanner on this node`. That last one is the interesting choice — a `200` would make
-the dispatcher record `completed` for a scan that never ran, while a retryable `503` lets a scanner
-that returns after a restart still do the work, and `vd_scan`'s attempt budget dead-letters the row if
-it never does.
+back: `NotReady` → 503, `NotFound` → 404 (permanent), `Failed` → 500. `NotReady` covers a scanner
+that is not up at all — a `200` would make the dispatcher record `completed` for a scan that never
+ran, while a retryable `503` lets a scanner that returns after a restart still do the work, and
+`vd_scan`'s attempt budget dead-letters the row if it never does.
 
 ## Agent deletion (`endpoints/deleteAgentEndpoint.*`)
 
@@ -810,7 +807,7 @@ startup gate and teardown order (`indexerGating_test`), schema pinning (`schemaR
 the transport configuration (`udsHttpServerConfig_test`; the transport itself is tested in
 `src/shared_modules/uds_http_server/test/`), the remaining seams one file each
 (`agentInFlightRegistry_test`, `agentSessionLimiter_test`, `serverScanCoordinator_test`,
-`vdScanEndpoint_test`, `vdScannerAdapter_test`, `statsEndpoint_test`, `configEndpoint_test`,
+`vdScanEndpoint_test`, `statsEndpoint_test`, `configEndpoint_test`,
 `reportedAgentMetadata_test`, `metricsEndpoint_test`, `jsonNestingDepth_test`, `clusterIdentity_test`,
 `indexerConnectorConfig_test`, `indexerSyncSeam_test`, `inventorySyncServerModule_test`) — and
 `statefulEndpointE2E_test`, which boots the REAL module through the C ABI and drives the full

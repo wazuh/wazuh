@@ -128,20 +128,24 @@ inventory_sync_server_testtool <input.json>|<directory>
                                [--feed-timeout <secs>]  # how long to retry 503 feed-not-ready (default 300)
                                [--verbose]
 
-inventory_sync_server_testtool --serve [--no-vd] [--config <file>] [--logFile <file>]   # QA harness mode
+inventory_sync_server_testtool --serve [--no-vd|--stub-vd] [--config <file>] [--logFile <file>]   # harness mode
 ```
 
 Behavior worth knowing:
 
-- A `503` with `Retry-After` (the CVE feed still downloading, or the scanner still starting up)
+- A `503` with `Retry-After` (the scanner not ready: starting up or still downloading the CVE feed)
   is retried, honoring the header, until `--feed-timeout` expires — so a test run can start
   before the feed finished seeding.
 - A directory input processes every `*.json` in it, sorted, as one session each.
 - The exit code is non-zero if any session did not answer `200`.
 - `--serve` boots the module pair and keeps the socket open until SIGTERM/SIGINT instead of
-  feeding inputs; `--no-vd` additionally skips the vulnerability scanner facade, which makes
-  VD-flagged sessions resolve as the legitimate-skip row (index + `200`) with no CVE feed
-  involved. This is how the integration QA gets a real server to talk to.
+  feeding inputs; `--no-vd` additionally skips the vulnerability scanner facade, so no CVE feed
+  is involved: with no scanner behind it the server defers VD-flagged data sessions and on-demand
+  scans (`503` + `Retry-After`, nothing indexed). This is how the integration QA gets a real
+  server to talk to. `--stub-vd` skips the facade too, but puts a stub scanner behind the server
+  that is always ready and finds nothing, so VD-flagged sessions ride the scan lane and are
+  indexed: it is for load tests of the server alone (the benchmark's `uds` scenarios) and proves
+  nothing about detection.
 
 ### Input format
 
@@ -211,8 +215,8 @@ STATE in a real OpenSearch (documents, `_id` shape, the `wazuh.*` overlay) rathe
 acks. It covers the validation matrix and identity rejections, ingestion and per-document skips,
 cleans and the composed full resync, checksum verification (including `search_after` pagination),
 metadata/group reconciliation with the `global_version` guard, the agent groups/host that `/stats`
-and `/config` copy from their reports, agent deletion, the on-demand scan route and the VD
-legitimate-skip lane. `qa/README.md` documents how to run it locally; CI runs it in the
+and `/config` copy from their reports, agent deletion, the on-demand scan route and the deferral
+of VD sessions while no scanner is ready. `qa/README.md` documents how to run it locally; CI runs it in the
 `5_testintegration_inventory-sync-server.yml` workflow.
 
 ## Load and performance (`tools/manager_benchmark/`)

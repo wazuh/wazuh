@@ -113,11 +113,9 @@ namespace remoted::scanvd
             }
             else if (vdAnswer.second == "vd_not_initialized")
             {
-                // VD is disabled on this node (or its start failed, which VD logs itself): a
-                // state, not a relay failure, and with VD disabled a permanent one. Since #41101
-                // notify no longer advertises an offset while VD is disabled, so this is a
-                // straggler (a request already in flight when VD went down); warning on it would
-                // tell an operator who disabled VD on purpose that something is wrong.
+                // VD's start failed on this node, which VD logs itself: a state, not a relay
+                // failure, and one that lasts until the manager restarts. Warning on every
+                // request would repeat that error once per agent.
                 incVdError(m_metrics);
                 LOGFN_DEBUG1(logFn(), "VD scan request for agent %u refused: VD not initialized", agentId);
             }

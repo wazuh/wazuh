@@ -150,7 +150,7 @@ a drift fails a test instead of becoming a fleet-wide protocol bug.
 `Option` selects the vulnerability-detection treatment of a `SyncData` session: `Sync` skips the
 scanner; `VDFirst` (an agent's first synchronization) and `VDSync` (subsequent deltas) run the
 scan synchronously before indexing, after checking `Start.feed_offset` against this node's current
-feed offset (skipped when the node runs no scanner).
+feed offset.
 
 ## Validity
 

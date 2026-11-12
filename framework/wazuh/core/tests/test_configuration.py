@@ -83,7 +83,7 @@ def test_read_option():
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
-            {'enabled': 'no', 'feed-update-interval': '60m'}
+            {'feed-update-interval': '60m'}
         )
         for section in data:
             assert configuration._read_option('vulnerability-detection', section) == (section.tag,
