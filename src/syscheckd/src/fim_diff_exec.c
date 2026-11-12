@@ -38,7 +38,7 @@ static unsigned int fim_diff_exec_timeout = FIM_DIFF_CHILD_TIMEOUT;
 static const char *fim_diff_exec_bins[] = { "/usr/bin/diff", "/bin/diff", NULL };
 
 // Signals the daemon handles, blocked across fork() and reset in the child
-static const int fim_diff_exec_fork_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGUSR1, SIGUSR2 };
+static const int fim_diff_exec_fork_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGALRM, SIGUSR1, SIGUSR2 };
 
 #ifdef WAZUH_UNIT_TESTING
 // Coverage builds turn a direct execve() call into a wrapper that first writes the profile files, which the
@@ -99,7 +99,7 @@ static bool fim_diff_exec_out_of_memory(const char *err_file) {
  * Only async-signal-safe calls are made here, since the parent is multithreaded.
  */
 static void fim_diff_exec_child(const char *bin, char * const argv[], char * const envp[], int null_fd, int out_fd, int err_fd) {
-    static const int reset_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGPIPE, SIGUSR1, SIGUSR2, SIGXCPU, SIGXFSZ };
+    static const int reset_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGALRM, SIGPIPE, SIGUSR1, SIGUSR2, SIGXCPU, SIGXFSZ };
     struct sigaction sa;
     sigset_t mask;
     struct rlimit rl;
@@ -151,7 +151,7 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
     int out_fd = -1;
     int err_fd = -1;
     int status = 0;
-    bool timed_out = false;
+    bool killed = false;
     pid_t pid;
     fim_diff_exec_rc rc = FIM_DIFF_EXEC_ERROR;
 
@@ -213,7 +213,8 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
     close(err_fd);
     null_fd = out_fd = err_fd = -1;
 
-    time_t deadline = w_get_monotonic_time() + fim_diff_exec_timeout;
+    // The clock counts whole seconds: one more keeps the limit from falling short of the timeout
+    time_t deadline = w_get_monotonic_time() + fim_diff_exec_timeout + 1;
     unsigned long delay = 1;
 
     while (true) {
@@ -235,8 +236,14 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
 
         if (w_get_monotonic_time() >= deadline) {
             kill(pid, SIGKILL);
-            while (waitpid(pid, &status, 0) < 0 && errno == EINTR);
-            timed_out = true;
+            killed = true;
+
+            while ((ret = waitpid(pid, &status, 0)) < 0 && errno == EINTR);
+
+            if (ret != pid) {
+                rc = FIM_DIFF_EXEC_TIMEOUT;
+                goto end;
+            }
             break;
         }
 
@@ -244,7 +251,8 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
         delay = delay < 50 ? delay * 2 : 50;
     }
 
-    if (timed_out) {
+    // diff may have ended on its own just before the deadline: then its own status is kept
+    if (killed && WIFSIGNALED(status) && WTERMSIG(status) == SIGKILL) {
         rc = FIM_DIFF_EXEC_TIMEOUT;
     } else if (WIFEXITED(status)) {
         switch (WEXITSTATUS(status)) {
@@ -306,6 +314,9 @@ end:
 
 // Only one child is created at a time, so that no other output handle is inheritable meanwhile
 static pthread_mutex_t fim_diff_exec_spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Exit code given to fc when it is stopped at a limit, which fc never returns itself
+#define FIM_DIFF_EXEC_STOP_CODE 0xFD1FU
 
 /**
  * @brief Creates a job object that limits the memory of each process and kills them when it is closed
@@ -413,17 +424,16 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
             continue;
         }
 
-        TerminateProcess(pi.hProcess, 1);
+        TerminateProcess(pi.hProcess, FIM_DIFF_EXEC_STOP_CODE);
         WaitForSingleObject(pi.hProcess, INFINITE);
         break;
     }
 
     GetExitCodeProcess(pi.hProcess, &exit_code);
 
-    if (timed_out) {
-        rc = FIM_DIFF_EXEC_TIMEOUT;
-    } else if (truncated) {
-        rc = FIM_DIFF_EXEC_DIFF;
+    // fc may have ended on its own just before being stopped: then its own exit code is kept
+    if ((timed_out || truncated) && exit_code == FIM_DIFF_EXEC_STOP_CODE) {
+        rc = timed_out ? FIM_DIFF_EXEC_TIMEOUT : FIM_DIFF_EXEC_DIFF;
     } else if (exit_code == 0) {
         rc = FIM_DIFF_EXEC_SAME;
     } else if (exit_code == 1) {
