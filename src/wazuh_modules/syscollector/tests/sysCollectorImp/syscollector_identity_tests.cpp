@@ -218,6 +218,31 @@ class SyscollectorIdentityTest : public ::testing::Test
             };
         }
 
+        /// @brief Recovers the users table with the plain protocol returning @p plainResult and the VD
+        /// protocol @p vdResult, and returns the INFO lines the recovery logged about its outcome.
+        static std::vector<std::string> recoveryOutcomeLogs(MockAgentSyncProtocol* plainProtocol,
+                                                            MockAgentSyncProtocol* vdProtocol,
+                                                            const SyncModuleResult& plainResult,
+                                                            const SyncModuleResult& vdResult)
+        {
+            EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillRepeatedly(Return(okResult()));
+            EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(plainResult));
+            EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(vdResult));
+
+            std::vector<std::string> infos;
+            Syscollector::instance().m_logFunction = [&infos](const modules_log_level_t level, const std::string & msg)
+            {
+                if (level == LOG_INFO && msg.rfind("Recovery of index", 0) == 0)
+                {
+                    infos.push_back(msg);
+                }
+            };
+
+            EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
+                            USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
+            return infos;
+        }
+
         /// @brief Writes any metadata row, for the markers other than synced_agent_id.
         static void seedMetadata(const std::string& key, int64_t value)
         {
@@ -844,6 +869,69 @@ TEST_F(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone)
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
                     USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
+}
+
+// The queue ran dry within the cycle: the recovery is complete.
+TEST_F(SyscollectorIdentityTest, RecoveryLogsCompletedWhenTheQueueRunsDry)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    const auto infos = recoveryOutcomeLogs(plainProtocol, vdProtocol, okResult(), okResult());
+
+    const std::string expected = std::string("Recovery of index ") + SYSCOLLECTOR_SYNC_INDEX_USERS + " completed.";
+    EXPECT_EQ(infos, std::vector<std::string> {expected});
+}
+
+// The cycle stopped at its block limit: the rest is still queued, and the log says so.
+TEST_F(SyscollectorIdentityTest, RecoveryLogsStillQueuedWhenTheCycleReachedItsBlockLimit)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    SyncModuleResult capped = okResult();
+    capped.reachedBlockLimit = true;
+
+    const auto infos = recoveryOutcomeLogs(plainProtocol, vdProtocol, capped, okResult());
+
+    const std::string expected = std::string("Recovery of index ") + SYSCOLLECTOR_SYNC_INDEX_USERS +
+                                 " completed; some entries are still queued and will be sent in the next synchronization.";
+    EXPECT_EQ(infos, std::vector<std::string> {expected});
+}
+
+// Both protocols drain in the same cycle and share the module's limit, so either one stopping at
+// it can leave rows of the recovered index behind.
+TEST_F(SyscollectorIdentityTest, RecoveryLogsStillQueuedWhenTheVDProtocolReachedItsBlockLimit)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    SyncModuleResult capped = okResult();
+    capped.reachedBlockLimit = true;
+
+    const auto infos = recoveryOutcomeLogs(plainProtocol, vdProtocol, okResult(), capped);
+
+    ASSERT_EQ(infos.size(), 1U);
+    EXPECT_NE(infos[0].find("some entries are still queued"), std::string::npos);
+}
+
+// A stop between two blocks reports success, because blocks were already sent, while rows are
+// still queued: the recovery is interrupted, not completed.
+TEST_F(SyscollectorIdentityTest, RecoveryLogsInterruptedWhenTheCycleWasStoppedBetweenBlocks)
+{
+    initModule(true, true);
+    INJECT_MOCK_PROTOCOLS();
+
+    SyncModuleResult stoppedBetweenBlocks = okResult();
+    stoppedBetweenBlocks.sentAnything = true;
+    stoppedBetweenBlocks.stopped = true;
+
+    const auto infos = recoveryOutcomeLogs(plainProtocol, vdProtocol, stoppedBetweenBlocks, okResult());
+
+    const std::string expected = std::string("Recovery of index ") + SYSCOLLECTOR_SYNC_INDEX_USERS +
+                                 " interrupted: module is stopping. The queued entries will be sent by a later "
+                                 "synchronization.";
+    EXPECT_EQ(infos, std::vector<std::string> {expected});
 }
 
 // A deferred recovery is the identity path: checkAgentIdentity() queues every VD table and clears

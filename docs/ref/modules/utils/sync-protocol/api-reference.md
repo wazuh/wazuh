@@ -95,21 +95,7 @@ if (!result.success) {
 }
 ```
 
-A `Mode::DELTA` call sends at most `agent.sync_max_blocks_per_cycle` sessions (50 by default); whatever is left stays queued for the next call.
-
-##### `synchronizeModuleBounded()`
-
-```cpp
-SyncModuleResult synchronizeModuleBounded(Mode mode, size_t maxBlocks)
-```
-
-`synchronizeModule()` with `Option::SYNC` and a tighter block limit for this one call. It is meant for callers that synchronize while holding locks other threads wait on, so the time they hold them stays bounded. Whatever is left stays queued for the next regular cycle. Not part of `IAgentSyncProtocol`; C callers reach it through `asp_sync_module_bounded()`.
-
-**Parameters:**
-- `mode`: Synchronization mode (only `Mode::DELTA` is valid here)
-- `maxBlocks`: Most blocks this call may send. `0`, or a value above the instance's own limit, uses that limit.
-
-**Returns:** `SyncModuleResult`, same as `synchronizeModule()`
+A `Mode::DELTA` call sends at most `agent.sync_max_blocks_per_cycle` sessions (50 by default); whatever is left stays queued for the next call, and the result's `reachedBlockLimit` says so.
 
 ##### `requiresFullSync()`
 
@@ -347,21 +333,6 @@ C wrapper for `synchronizeModule()` with the default `Option_t` (`OPTION_SYNC`).
 
 **Returns:** `SyncModuleResult_t` (fields under Result Type below)
 
-#### `asp_sync_module_bounded()`
-
-```c
-SyncModuleResult_t asp_sync_module_bounded(AgentSyncProtocolHandle* handle, Mode_t mode, uint32_t max_blocks)
-```
-
-C wrapper for `synchronizeModuleBounded()`: `asp_sync_module()` with a tighter block limit for this one call. It is meant for callers that synchronize while holding locks other threads wait on, such as FIM's recovery under its scan mutexes. Whatever is left stays queued for the next regular cycle.
-
-**Parameters:**
-- `handle`: Protocol handle
-- `mode`: Sync mode (only `MODE_DELTA` is valid here)
-- `max_blocks`: Most blocks this call may send. `0`, or a value above the configured per-cycle limit (`agent.sync_max_blocks_per_cycle`), uses that limit.
-
-**Returns:** `SyncModuleResult_t`, same as `asp_sync_module()`
-
 #### `asp_requires_full_sync()`
 
 ```c
@@ -554,6 +525,8 @@ struct SyncModuleResult {
     bool localTransportUnavailable{false};
     bool sessionSkipped{false};
     bool sentAnything{false};
+    bool feedNotReady{false};
+    bool reachedBlockLimit{false};
 };
 ```
 
@@ -567,6 +540,7 @@ typedef struct SyncModuleResult_t {
     bool awaiting_prerequisite;
     bool local_transport_unavailable;
     bool sent_anything;
+    bool reached_block_limit;
 } SyncModuleResult_t;
 ```
 
@@ -579,6 +553,7 @@ typedef struct SyncModuleResult_t {
 - `localTransportUnavailable`/`local_transport_unavailable`: `true` if the local `queue-sync` intake could not be reached (the `wazuh-agentd` HTTPS client is not up yet). Nothing reached the manager, so this is not a manager-side condition. In this case `consecutiveFailures` counts consecutive failures to reach the intake, a streak separate from the sync one.
 - `sessionSkipped` (C++ only): `true` if no session ran because another synchronization was already in flight on the same instance. Reported as a success, since the in-flight sync drains the same queue; do not record it as a completed session.
 - `sentAnything`/`sent_anything`: `true` if the manager accepted at least one block of queued items. `success` with `sentAnything == false` means the queue was empty or (C++ only, `sessionSkipped`) the session was skipped; the C struct cannot tell the two apart. Always `false` for metadata and group synchronizations and for `notifyDataClean()`.
+- `reachedBlockLimit`/`reached_block_limit`: `true` if a `Mode::DELTA` cycle stopped because it sent its per-cycle block limit (`agent.sync_max_blocks_per_cycle`), not because the queue ran dry, so entries may still be queued for the next cycle. Not an exact count: a queue that empties with the last block allowed still sets it. `Option::VDFIRST`/`Option::VDSYNC` send the whole queue in their first block, so they never set it.
 
 #### `IntegrityCheckResult` / `IntegrityCheckResult_t`
 
