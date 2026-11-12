@@ -16,6 +16,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <signal.h>
 
 #include "../../syscheckd/include/syscheck.h"
 #include "../wrappers/common.h"
@@ -162,7 +163,8 @@ void test_fim_diff_exec_timeout(void **state) {
 
     write_file(paths->old_file, "a\n");
     write_file(paths->new_file, "b\n");
-    use_script(paths, "sleep 30");
+    // exec, so that the killed process is the sleeper itself, as diff has no children
+    use_script(paths, "exec sleep 30");
     fim_diff_exec_timeout = 1;
 
     time_t start = time(NULL);
@@ -177,6 +179,8 @@ void test_fim_diff_exec_out_of_memory(void **state) {
     write_file(paths->new_file, "b\n");
     use_script(paths, "echo 'diff: memory exhausted' >&2; exit 2");
 
+    expect_string(__wrap__mdebug2, formatted_msg, "(6381): The diff process ended with exit code 2 and signal 0.");
+
     assert_int_equal(fim_diff_exec(paths->old_file, paths->new_file, paths->out_file), FIM_DIFF_EXEC_MEMORY);
 }
 
@@ -187,6 +191,10 @@ void test_fim_diff_exec_killed_by_memory_signal(void **state) {
     write_file(paths->new_file, "b\n");
     use_script(paths, "kill -SEGV $$");
 
+    char expected[OS_SIZE_128];
+    snprintf(expected, sizeof(expected), "(6381): The diff process ended with exit code -1 and signal %d.", SIGSEGV);
+    expect_string(__wrap__mdebug2, formatted_msg, expected);
+
     assert_int_equal(fim_diff_exec(paths->old_file, paths->new_file, paths->out_file), FIM_DIFF_EXEC_MEMORY);
 }
 
@@ -196,6 +204,35 @@ void test_fim_diff_exec_error(void **state) {
     write_file(paths->old_file, "a\n");
     write_file(paths->new_file, "b\n");
     use_script(paths, "echo 'diff: something else' >&2; exit 2");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6381): The diff process ended with exit code 2 and signal 0.");
+
+    // The child ran, so the caller can still store the new snapshot
+    assert_int_equal(fim_diff_exec(paths->old_file, paths->new_file, paths->out_file), FIM_DIFF_EXEC_FAILED);
+}
+
+void test_fim_diff_exec_killed_by_other_signal(void **state) {
+    exec_paths *paths = *state;
+
+    write_file(paths->old_file, "a\n");
+    write_file(paths->new_file, "b\n");
+    use_script(paths, "kill -USR1 $$");
+
+    char expected[OS_SIZE_128];
+    snprintf(expected, sizeof(expected), "(6381): The diff process ended with exit code -1 and signal %d.", SIGUSR1);
+    expect_string(__wrap__mdebug2, formatted_msg, expected);
+
+    assert_int_equal(fim_diff_exec(paths->old_file, paths->new_file, paths->out_file), FIM_DIFF_EXEC_FAILED);
+}
+
+void test_fim_diff_exec_exec_failed(void **state) {
+    exec_paths *paths = *state;
+
+    write_file(paths->old_file, "a\n");
+    write_file(paths->new_file, "b\n");
+    use_script(paths, "exit 127");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6381): The diff process ended with exit code 127 and signal 0.");
 
     assert_int_equal(fim_diff_exec(paths->old_file, paths->new_file, paths->out_file), FIM_DIFF_EXEC_ERROR);
 }
@@ -278,6 +315,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_diff_exec_out_of_memory, setup, teardown),
         cmocka_unit_test_setup_teardown(test_fim_diff_exec_killed_by_memory_signal, setup, teardown),
         cmocka_unit_test_setup_teardown(test_fim_diff_exec_error, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_fim_diff_exec_killed_by_other_signal, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_fim_diff_exec_exec_failed, setup, teardown),
         cmocka_unit_test_setup_teardown(test_fim_diff_exec_limits_applied, setup, teardown),
         cmocka_unit_test_setup_teardown(test_fim_diff_exec_output_exists, setup, teardown),
         cmocka_unit_test_setup_teardown(test_fim_diff_exec_output_symlink, setup, teardown),

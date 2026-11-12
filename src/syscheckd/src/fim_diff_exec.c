@@ -37,6 +37,9 @@ static unsigned int fim_diff_exec_timeout = FIM_DIFF_CHILD_TIMEOUT;
 // Candidate locations of diff; no PATH lookup
 static const char *fim_diff_exec_bins[] = { "/usr/bin/diff", "/bin/diff", NULL };
 
+// Signals the daemon handles, blocked across fork() and reset in the child
+static const int fim_diff_exec_fork_signals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGUSR1, SIGUSR2 };
+
 #ifdef WAZUH_UNIT_TESTING
 // Coverage builds turn a direct execve() call into a wrapper that first writes the profile files, which the
 // memory and file size limits make fail. A call through a pointer is left as it is.
@@ -54,11 +57,14 @@ static int (* volatile fim_diff_execve)(const char *, char * const [], char * co
  * @return File descriptor, or -1 on error
  */
 static int fim_diff_exec_open(const char *path, int flags) {
-    int fd = open(path, flags, 0600);
+    int fd = open(path, flags | O_CLOEXEC, 0600);
 
+    // O_CLOEXEC is 0 on some platforms (see defs.h)
+#if O_CLOEXEC == 0
     if (fd >= 0) {
         fcntl(fd, F_SETFD, FD_CLOEXEC);
     }
+#endif
 
     return fd;
 }
@@ -179,15 +185,27 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
     char * const argv[] = { (char *)"diff", (char *)old_file, (char *)new_file, NULL };
     char * const envp[] = { (char *)"LC_ALL=C", (char *)"PATH=/usr/bin:/bin", NULL };
 
-    pid = fork();
-
-    if (pid < 0) {
-        merror(FORK_ERROR, errno, strerror(errno));
-        goto end;
+    // The daemon's handlers must not run in the child before it resets them
+    sigset_t blocked;
+    sigset_t previous;
+    sigemptyset(&blocked);
+    for (size_t i = 0; i < sizeof(fim_diff_exec_fork_signals) / sizeof(fim_diff_exec_fork_signals[0]); i++) {
+        sigaddset(&blocked, fim_diff_exec_fork_signals[i]);
     }
+    pthread_sigmask(SIG_BLOCK, &blocked, &previous);
+
+    pid = fork();
 
     if (pid == 0) {
         fim_diff_exec_child(bin, argv, envp, null_fd, out_fd, err_fd); // LCOV_EXCL_LINE
+    }
+
+    int fork_errno = errno;
+    pthread_sigmask(SIG_SETMASK, &previous, NULL);
+
+    if (pid < 0) {
+        merror(FORK_ERROR, fork_errno, strerror(fork_errno));
+        goto end;
     }
 
     close(null_fd);
@@ -195,7 +213,7 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
     close(err_fd);
     null_fd = out_fd = err_fd = -1;
 
-    time_t deadline = time(NULL) + fim_diff_exec_timeout;
+    time_t deadline = w_get_monotonic_time() + fim_diff_exec_timeout;
     unsigned long delay = 1;
 
     while (true) {
@@ -206,12 +224,16 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
         }
 
         if (ret < 0 && errno != EINTR) {
-            merror("waitpid() failed for the diff process: %s (%d)", strerror(errno), errno);
-            kill(pid, SIGKILL);
+            int err = errno;
+            merror("waitpid() failed for the diff process: %s (%d)", strerror(err), err);
+            // With ECHILD the pid is no longer our child and may belong to another process
+            if (err != ECHILD) {
+                kill(pid, SIGKILL);
+            }
             goto end;
         }
 
-        if (time(NULL) >= deadline) {
+        if (w_get_monotonic_time() >= deadline) {
             kill(pid, SIGKILL);
             while (waitpid(pid, &status, 0) < 0 && errno == EINTR);
             timed_out = true;
@@ -232,10 +254,20 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
         case 1:
             rc = FIM_DIFF_EXEC_DIFF;
             break;
+        case 127:
+            // The child could not run diff
+            mdebug2(FIM_DIFF_CHILD_EXIT, 127, 0);
+            rc = FIM_DIFF_EXEC_ERROR;
+            break;
         default:
-            rc = fim_diff_exec_out_of_memory(err_file) ? FIM_DIFF_EXEC_MEMORY : FIM_DIFF_EXEC_ERROR;
+            mdebug2(FIM_DIFF_CHILD_EXIT, WEXITSTATUS(status), 0);
+            rc = fim_diff_exec_out_of_memory(err_file) ? FIM_DIFF_EXEC_MEMORY : FIM_DIFF_EXEC_FAILED;
         }
     } else if (WIFSIGNALED(status)) {
+        if (WTERMSIG(status) != SIGXFSZ) {
+            mdebug2(FIM_DIFF_CHILD_EXIT, -1, WTERMSIG(status));
+        }
+
         switch (WTERMSIG(status)) {
         case SIGXFSZ:
             // The output reached its size limit: what was written is the head of the diff
@@ -251,7 +283,7 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
             rc = FIM_DIFF_EXEC_MEMORY;
             break;
         default:
-            rc = FIM_DIFF_EXEC_ERROR;
+            rc = FIM_DIFF_EXEC_FAILED;
         }
     }
 
@@ -399,7 +431,8 @@ fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const
     } else {
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
 
-        rc = FIM_DIFF_EXEC_ERROR;
+        mdebug2(FIM_DIFF_CHILD_EXIT, (int)exit_code, 0);
+        rc = FIM_DIFF_EXEC_FAILED;
 
         if (job != NULL && QueryInformationJobObject(job, JobObjectExtendedLimitInformation, &info, sizeof(info), NULL) &&
             info.PeakProcessMemoryUsed >= FIM_DIFF_CHILD_MAX_MEMORY / 10 * 9) {

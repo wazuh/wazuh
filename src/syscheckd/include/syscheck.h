@@ -711,7 +711,8 @@ typedef enum fim_diff_exec_rc {
     FIM_DIFF_EXEC_DIFF,     ///< The output file holds the differences, possibly cut at the output limit
     FIM_DIFF_EXEC_TIMEOUT,  ///< The command exceeded its time limit and was killed
     FIM_DIFF_EXEC_MEMORY,   ///< The command exceeded its memory limit
-    FIM_DIFF_EXEC_ERROR     ///< The command could not run or failed
+    FIM_DIFF_EXEC_FAILED,   ///< The command ran and failed
+    FIM_DIFF_EXEC_ERROR     ///< The command could not be run
 } fim_diff_exec_rc;
 
 /**

@@ -193,6 +193,7 @@
 #define FIM_DIFF_TIMEOUT_REACHED            "(6378): The diff of '%s' exceeded its time limit and was discarded."
 #define FIM_DIFF_MEMORY_REACHED             "(6379): The diff of '%s' exceeded its memory limit and was discarded."
 #define FIM_DIFF_NO_JOB                     "(6380): Could not limit the memory of the diff process. Error code: %d"
+#define FIM_DIFF_CHILD_EXIT                 "(6381): The diff process ended with exit code %d and signal %d."
 
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"

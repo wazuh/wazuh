@@ -834,6 +834,12 @@ char *fim_diff_generate(const diff_data *diff, bool is_file) {
         os_strdup("Unable to calculate diff due to the diff process exceeding its memory limit.", diff_str);
         break;
 
+    // Comparing the same pair again would fail the same way
+    case FIM_DIFF_EXEC_FAILED:
+        merror(FIM_DIFF_COMMAND_OUTPUT_ERROR);
+        os_strdup("Unable to calculate diff due to the diff process failing.", diff_str);
+        break;
+
     default:
         merror(FIM_DIFF_COMMAND_OUTPUT_ERROR);
     }

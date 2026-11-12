@@ -1287,6 +1287,28 @@ void test_fim_diff_generate_memory(void **state) {
     free(diff_str);
 }
 
+void test_fim_diff_generate_failed(void **state) {
+    diff_data *diff = *state;
+
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->new_file = strdup("/path/to/file/new");
+    diff->diff_file = strdup("/path/to/diff/file");
+    diff->file_origin = strdup("/path/to/file/origin");
+
+    expect_fim_diff_exec(FIM_DIFF_EXEC_FAILED);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
+#else
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command diff output an error");
+#endif
+
+    char *diff_str = fim_diff_generate(diff, false);
+
+    // A message is returned, so the caller stores the new snapshot and does not diff the same pair again
+    assert_string_equal(diff_str, "Unable to calculate diff due to the diff process failing.");
+    free(diff_str);
+}
+
 #ifndef TEST_WINAGENT
 void test_fim_diff_generate_paths_not_escaped(void **state) {
     diff_data *diff = *state;
@@ -2746,6 +2768,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_ok, setup_gen_diff_str, teardown_free_gen_diff_str),
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_timeout, setup_diff_data, teardown_free_diff_data),
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_memory, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_failed, setup_diff_data, teardown_free_diff_data),
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_paths_not_escaped, setup_diff_data, teardown_free_diff_data),
 #endif
