@@ -59,10 +59,11 @@ SYSTEMD_SETTLE_TIMEOUT="95"
 # Whether pid $1 runs daemon $2. The pid file of an agent that did not stop cleanly (a crash, a power
 # loss) can name a pid that another process took since, for instance after a reboot: it must be
 # neither stopped nor taken for that daemon. Matches the program's name, not its path, so a daemon
-# started through a symlink to the installation still counts.
+# started through a symlink to the installation still counts. -ww: ps cuts the line to an exported
+# COLUMNS even when its output is not a terminal.
 pid_runs_daemon()
 {
-    _prd_args=`ps -p $1 -o args= 2>/dev/null` || return 1
+    _prd_args=`ps -ww -p $1 -o args= 2>/dev/null` || return 1
     case "${_prd_args%% *}" in
         */$2|$2) return 0 ;;
     esac

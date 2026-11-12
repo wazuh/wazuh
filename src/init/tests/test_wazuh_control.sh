@@ -409,6 +409,18 @@ check "stop through a symlink to the installation stops every daemon" "" "$(runn
 rm -f "${WORK}/pid_symlink_link"
 drop_tree pid_symlink
 
+# ps cuts its lines to an exported COLUMNS even into a pipe, which would hide the daemon's name.
+# The pids are taken before the stop: a stop that misses its daemons drops their pid files as stale.
+new_tree pid_columns
+control pid_columns start > /dev/null
+pids=$(cat "${WORK}/pid_columns/var/run/"*.pid)
+(export COLUMNS=20; control pid_columns stop > /dev/null)
+left=""
+for pid in ${pids}; do kill -0 "${pid}" 2>/dev/null && left="${left} ${pid}"; done
+check "stop with a short COLUMNS exported stops every daemon" "" "${left}"
+for pid in ${left}; do kill "${pid}"; done
+drop_tree pid_columns
+
 new_tree restart_fail
 control restart_fail start > /dev/null
 touch "${WORK}/restart_fail/fail-wazuh-agentd"
