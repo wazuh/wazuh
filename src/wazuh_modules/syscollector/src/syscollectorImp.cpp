@@ -12,6 +12,7 @@
 #include "syscollector.hpp"
 #include "json.hpp"
 #include <iostream>
+#include <unordered_set>
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
@@ -154,18 +155,6 @@ static void sanitizeJsonValue(nlohmann::json& input)
         // Collected strings (e.g. process names) may hold invalid UTF-8, which makes every later dump() throw.
         input = nlohmann::json::parse(input.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
     }
-}
-
-static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
-{
-    const auto it
-    {
-        std::find_if (input.begin(), input.end(), [&keyValue](const auto & elem)
-        {
-            return elem.at(keyValue.first) == keyValue.second;
-        })
-    };
-    return it != input.end();
 }
 
 void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
@@ -813,6 +802,8 @@ nlohmann::json Syscollector::getPortsData()
     if (!data.is_null())
     {
         sanitizeJsonValue(data);
+        std::unordered_set<std::string> seenItemIds;
+        seenItemIds.reserve(data.size());
 
         for (auto& item : data)
         {
@@ -825,7 +816,7 @@ nlohmann::json Syscollector::getPortsData()
                 {
                     const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                    if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    if (seenItemIds.insert(itemId).second)
                     {
                         item["checksum"] = getItemChecksum(item);
                         item["item_id"] = itemId;
@@ -841,7 +832,7 @@ nlohmann::json Syscollector::getPortsData()
                     {
                         const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                        if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        if (seenItemIds.insert(itemId).second)
                         {
                             item["checksum"] = getItemChecksum(item);
                             item["item_id"] = itemId;
@@ -854,7 +845,7 @@ nlohmann::json Syscollector::getPortsData()
             {
                 const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                if (seenItemIds.insert(itemId).second)
                 {
                     item["checksum"] = getItemChecksum(item);
                     item["item_id"] = itemId;
