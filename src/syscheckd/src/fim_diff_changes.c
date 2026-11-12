@@ -24,6 +24,7 @@
 
 #ifdef WIN32
 #define unlink(x) _unlink(x)
+#define mkdir(x, y) mkdir(x)
 #define FileSize(x) FileSizeWin(x)
 #define PATH_OFFSET 0
 #else
@@ -31,6 +32,41 @@
 #endif
 
 static const char *STR_MORE_CHANGES = "More changes...";
+
+#define FIM_DIFF_LOCK_SLOTS     64
+#define FIM_DIFF_TMP_ATTEMPTS   16
+
+// Serializes the diffs of the same path; different paths only share a slot by hash.
+static pthread_mutex_t fim_diff_path_locks[FIM_DIFF_LOCK_SLOTS];
+// Protects the disk_quota accounting shared by every diff.
+static pthread_mutex_t fim_diff_quota_mutex = PTHREAD_MUTEX_INITIALIZER;
+// Gives each diff its own scratch folder.
+static atomic_int_t fim_diff_tmp_counter = ATOMIC_INT_INITIALIZER(0);
+
+/**
+ * @brief Maps the SHA1 of a path to its lock slot
+ *
+ * @param encoded_path Hex SHA1 of the path
+ *
+ * @return Slot index in fim_diff_path_locks
+ */
+static unsigned int fim_diff_lock_slot(const char *encoded_path);
+
+/**
+ * @brief Creates a scratch folder that no other diff uses
+ *
+ * @param diff_dir Base diff directory
+ *
+ * @return Path of the new folder, or NULL on error
+ */
+static char *fim_diff_create_tmp_folder(const char *diff_dir);
+
+/**
+ * @brief Adds (or subtracts, if negative) an amount to the diff folder size
+ *
+ * @param size Size in KB
+ */
+static void fim_diff_quota_add(float size);
 
 #ifdef WIN32
 
@@ -221,7 +257,7 @@ char *fim_registry_value_diff(const char *key_name,
     // Generate diff structure
     diff_data *diff = initialize_registry_diff_data(key_name, value_name, configuration);
     if (!diff){
-        goto cleanup;
+        return NULL;
     }
 
     // Create tmp directory and file with de content of the registry
@@ -257,9 +293,9 @@ char *fim_registry_value_diff(const char *key_name,
 
     // If it exists, estimate the new compressed file
     float backup_file_size = (FileSize(diff->compress_file) / 1024.0f);
-    syscheck.diff_folder_size -= backup_file_size;
+    fim_diff_quota_add(-backup_file_size);
     if (ret = fim_diff_create_compress_file(diff), ret != 0) {
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         if (ret == -2){
             os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         }
@@ -268,19 +304,19 @@ char *fim_registry_value_diff(const char *key_name,
 
     if (fim_diff_compare(diff) == -1) {
         mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         os_strdup("No content changes were found for this registry value.", diff_changes);
         goto cleanup;
     }
 
     if (is_registry_nodiff(key_name, value_name, configuration->arch)) {
         os_strdup("Diff truncated due to 'nodiff' configuration detected for this registry value.", diff_changes);
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         goto cleanup;
     }
 
     if (diff_changes = fim_diff_generate(diff, false), !diff_changes){
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         goto cleanup;
     }
 
@@ -322,8 +358,10 @@ diff_data *initialize_registry_diff_data(const char *key_name, const char *value
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    snprintf(buffer, PATH_MAX, "%s/tmp", DIFF_DIR);
-    os_strdup(buffer, diff->tmp_folder);
+    if (diff->tmp_folder = fim_diff_create_tmp_folder(DIFF_DIR), !diff->tmp_folder) {
+        free_diff_data(diff);
+        return NULL;
+    }
 
     if (configuration->arch){
         snprintf(buffer, PATH_MAX, "%s/[x64] %s%s", diff->tmp_folder, encoded_key, encoded_value);
@@ -352,7 +390,6 @@ int fim_diff_registry_tmp(const char *value_data,
     char *aux_data = NULL;
     int ret = 0;
 
-    mkdir_ex(diff->tmp_folder);
     FILE *fp = wfopen(diff->file_origin, "w");
     if (NULL != fp) {
         switch (data_type) {
@@ -419,7 +456,7 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
         return NULL;
     }
 
-    mkdir_ex(diff->tmp_folder);
+    w_mutex_lock(&fim_diff_path_locks[diff->lock_slot]);
 
     // Check for file limit and disk quota
     if (ret = fim_diff_check_limits(diff), ret == 1) {
@@ -446,9 +483,9 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
 
     // If it exists, estimate the new compressed file
     float backup_file_size = (FileSize(diff->compress_file) / 1024.0f);
-    syscheck.diff_folder_size -= backup_file_size;
+    fim_diff_quota_add(-backup_file_size);
     if (ret = fim_diff_create_compress_file(diff), ret != 0) {
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         if (ret == -2){
             os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         } else if (ret == -3) {
@@ -458,13 +495,13 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
     }
 
     if (w_uncompress_gzfile(diff->compress_tmp_file, diff->new_file) != 0) {
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         goto cleanup;
     }
 
     if (fim_diff_compare(diff) == -1) {
         mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         os_strdup("No content changes were found for this file.", diff_changes);
         goto cleanup;
     }
@@ -481,18 +518,20 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
 
     if (nodiff) {
         os_strdup("Diff truncated due to 'nodiff' configuration detected for this file.", diff_changes);
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         goto cleanup;
     }
 
     if (diff_changes = fim_diff_generate(diff, true), !diff_changes){
-        syscheck.diff_folder_size += backup_file_size;
+        fim_diff_quota_add(backup_file_size);
         goto cleanup;
     }
 
     save_compress_file(diff);
 
 cleanup:
+
+    w_mutex_unlock(&fim_diff_path_locks[diff->lock_slot]);
 
     if (rmdir_ex(diff->tmp_folder) < 0) {
         mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
@@ -550,6 +589,7 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
 #endif
 
     OS_SHA1_Str(buffer, -1, encoded_path);
+    diff->lock_slot = fim_diff_lock_slot(encoded_path);
 
     os_snprintf(buffer, PATH_MAX, "%s/file/%s", abs_diff_dir_path, encoded_path);
     os_strdup(buffer, diff->compress_folder);
@@ -557,8 +597,9 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    os_snprintf(buffer, PATH_MAX, "%s/tmp", abs_diff_dir_path);
-    os_strdup(buffer, diff->tmp_folder);
+    if (diff->tmp_folder = fim_diff_create_tmp_folder(abs_diff_dir_path), !diff->tmp_folder) {
+        goto error;
+    }
 
     snprintf(buffer, PATH_MAX, "%s/new-entry", diff->tmp_folder);
     os_strdup(buffer, diff->new_file);
@@ -626,6 +667,7 @@ int fim_diff_delete_compress_folder(const char *folder) {
         mdebug2(RMDIR_ERROR, folder, errno, strerror(errno));
         return -1;
     } else if (dir_size != -1) {
+        w_mutex_lock(&fim_diff_quota_mutex);
         syscheck.diff_folder_size -= dir_size;
         if (!syscheck.disk_quota_full_msg) {
             syscheck.disk_quota_full_msg = true;
@@ -633,6 +675,7 @@ int fim_diff_delete_compress_folder(const char *folder) {
         if (syscheck.diff_folder_size < 0) {
             syscheck.diff_folder_size = 0;
         }
+        w_mutex_unlock(&fim_diff_quota_mutex);
     }
 
     if (remove_empty_folders(folder) == -1) {
@@ -644,8 +687,14 @@ int fim_diff_delete_compress_folder(const char *folder) {
 }
 
 int fim_diff_estimate_compression(float file_size) {
+    int fits;
+
+    w_mutex_lock(&fim_diff_quota_mutex);
     float compressed_estimation = file_size - (syscheck.comp_estimation_perc * file_size);
-    return ((syscheck.diff_folder_size + compressed_estimation) <= syscheck.disk_quota_limit);
+    fits = (syscheck.diff_folder_size + compressed_estimation) <= syscheck.disk_quota_limit;
+    w_mutex_unlock(&fim_diff_quota_mutex);
+
+    return fits;
 }
 
 int fim_diff_create_compress_file(const diff_data *diff) {
@@ -658,13 +707,20 @@ int fim_diff_create_compress_file(const diff_data *diff) {
         return -1;
     } else if (syscheck.disk_quota_enabled) {
         unsigned int zip_size = FileSize(diff->compress_tmp_file) / 1024;
+        int full = 0;
 
+        w_mutex_lock(&fim_diff_quota_mutex);
         if (syscheck.diff_folder_size + zip_size > syscheck.disk_quota_limit) {
+            full = 1;
             if (syscheck.disk_quota_full_msg) {
                 syscheck.disk_quota_full_msg = false;
                 mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "calculate", diff->file_origin);
             }
             fim_diff_modify_compress_estimation(zip_size, diff->file_size);
+        }
+        w_mutex_unlock(&fim_diff_quota_mutex);
+
+        if (full) {
             return -2;
         }
     }
@@ -835,9 +891,63 @@ void save_compress_file(const diff_data *diff){
         return;
     }
     if (syscheck.disk_quota_enabled){
-        syscheck.diff_folder_size += FileSize(diff->compress_file) / 1024.0f;
+        fim_diff_quota_add(FileSize(diff->compress_file) / 1024.0f);
     }
     return;
+}
+
+void fim_diff_init(void) {
+    for (int i = 0; i < FIM_DIFF_LOCK_SLOTS; i++) {
+        w_mutex_init(&fim_diff_path_locks[i], NULL);
+    }
+}
+
+static unsigned int fim_diff_lock_slot(const char *encoded_path) {
+    char prefix[3] = { encoded_path[0], encoded_path[1], '\0' };
+    return (unsigned int)strtoul(prefix, NULL, 16) % FIM_DIFF_LOCK_SLOTS;
+}
+
+static char *fim_diff_create_tmp_folder(const char *diff_dir) {
+    char root[PATH_MAX];
+    char path[PATH_MAX];
+    char *folder = NULL;
+    bool root_created = false;
+
+    snprintf(root, PATH_MAX, "%s/tmp", diff_dir);
+
+    for (int attempt = 0; attempt < FIM_DIFF_TMP_ATTEMPTS; attempt++) {
+        if (snprintf(path, PATH_MAX, "%s/%d-%d", root, (int)getpid(), atomic_int_inc(&fim_diff_tmp_counter)) >= PATH_MAX) {
+            errno = ENAMETOOLONG;
+            break;
+        }
+
+        // An existing name is never reused: the folder must be created by this call
+        if (mkdir(path, 0700) == 0) {
+            os_strdup(path, folder);
+            return folder;
+        }
+
+        if (errno == ENOENT && !root_created) {
+            root_created = true;
+            if (mkdir_ex(root) == 0) {
+                continue;
+            }
+            break;
+        }
+
+        if (errno != EEXIST) {
+            break;
+        }
+    }
+
+    merror(MKDIR_ERROR, path, errno, strerror(errno));
+    return NULL;
+}
+
+static void fim_diff_quota_add(float size) {
+    w_mutex_lock(&fim_diff_quota_mutex);
+    syscheck.diff_folder_size += size;
+    w_mutex_unlock(&fim_diff_quota_mutex);
 }
 
 int is_file_nodiff(const char *filename){
@@ -1029,7 +1139,10 @@ void fim_diff_process_delete_file(const char *filename){
     snprintf(buffer, PATH_MAX, "%s/file/%s", DIFF_DIR, encoded_path);
     os_strdup(buffer, full_path);
 
+    unsigned int lock_slot = fim_diff_lock_slot(encoded_path);
+    w_mutex_lock(&fim_diff_path_locks[lock_slot]);
     ret = fim_diff_delete_compress_folder(full_path);
+    w_mutex_unlock(&fim_diff_path_locks[lock_slot]);
     if(ret == -1){
         merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
     } else if (ret == -2){
