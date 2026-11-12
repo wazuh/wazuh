@@ -301,7 +301,11 @@ paths:
         member. `wazuh.agent.id` is then cross-checked against the authenticated `agent-id` as a
         **string**, compared byte for byte: `"001"`, `"01"` and `"1"` are three different identities
         even though they are one number, and only the exact form the token carries is accepted. Send
-        the id exactly as it appears in the token's `sub`. A repeated step of that path, a
+        the id exactly as it appears in the token's `sub`. Build the `wazuh` fields from nested
+        objects (`{"wazuh":{"agent":{"id":...}}}`): a root member name whose first segment is
+        `wazuh` (`"wazuh.agent.id"`) or a dotted member name anywhere inside `wazuh` (`"agent.id"`)
+        is refused, because the indexer would expand it into a second value of the same field. A
+        repeated step of that path, such a dotted member name, a
         missing/malformed H line, a non-numeric `wazuh.agent.id`, or any difference from the
         authenticated id -- including zero padding -- is rejected with `400 Invalid event batch`
         (`PayloadAgentMismatch`) and the batch is never forwarded.
