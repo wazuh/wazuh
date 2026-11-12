@@ -31,10 +31,10 @@ STATIC void w_token_bootstrap_mark_anchor_committed(int gid);
 STATIC int w_token_bootstrap_open_parent_nofollow(const char *path, char *dir, size_t dir_size,
                                                   const char **filename);
 STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t group);
-STATIC int w_token_bootstrap_open_and_chown_keys(int gid);
+STATIC int w_token_bootstrap_open_and_chown_keys(int uid, int gid);
 STATIC void w_token_bootstrap_repair_anchor_ownership(int uid, int gid);
 #endif
-STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure);
+STATIC void w_token_bootstrap_chown_keys_file(int uid, int gid, bool quiet_on_failure);
 
 /**
  * @brief Reads the one-shot enrollment token file, mirroring
@@ -305,12 +305,12 @@ STATIC int w_token_bootstrap_open_and_chown(const char *path, uid_t owner, gid_t
 }
 
 /**
- * @brief w_token_bootstrap_open_and_chown() for KEYS_FILE, to root:@p gid. Named so the three
+ * @brief w_token_bootstrap_open_and_chown() for KEYS_FILE, to @p uid:@p gid. Named so the three
  *        client.keys call sites read as one operation rather than repeating the owner pair.
  * @return 0 on success, -1 on error (errno set as w_token_bootstrap_open_and_chown()).
  */
-STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
-    return w_token_bootstrap_open_and_chown(KEYS_FILE, 0, (gid_t) gid);
+STATIC int w_token_bootstrap_open_and_chown_keys(int uid, int gid) {
+    return w_token_bootstrap_open_and_chown(KEYS_FILE, (uid_t) uid, (gid_t) gid);
 }
 
 /**
@@ -323,8 +323,8 @@ STATIC int w_token_bootstrap_open_and_chown_keys(int gid) {
  *        The fresh-enrollment call site passes false: that chown runs once per enrollment, not
  *        once per boot, so a failure there stays a one-time, visible error.
  */
-STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
-    if (w_token_bootstrap_open_and_chown_keys(gid) != 0) {
+STATIC void w_token_bootstrap_chown_keys_file(int uid, int gid, bool quiet_on_failure) {
+    if (w_token_bootstrap_open_and_chown_keys(uid, gid) != 0) {
         if (quiet_on_failure) {
             mdebug1("Could not change ownership of '%s' (will retry on a later "
                     "boot): %s (%d).", KEYS_FILE, strerror(errno), errno);
@@ -342,7 +342,8 @@ STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
  * above has no Windows counterpart either -- w_openat_nofollow_vetted() is itself POSIX-only
  * (file_op.h). Kept as a real function rather than a macro so the three call sites below read
  * identically on both platforms. */
-STATIC void w_token_bootstrap_chown_keys_file(int gid, bool quiet_on_failure) {
+STATIC void w_token_bootstrap_chown_keys_file(int uid, int gid, bool quiet_on_failure) {
+    (void)uid;
     (void)gid;
     (void)quiet_on_failure;
 }
@@ -712,7 +713,7 @@ static void token_rollback(const w_token_enroll_opts_t *opts, token_snapshot_t *
 
     if (ours && w_move_file_nofollow(snapshot->keys_backup, KEYS_FILE) == 0) {
         if (opts->gid != -1) {
-            w_token_bootstrap_chown_keys_file(opts->gid, true);
+            w_token_bootstrap_chown_keys_file(opts->uid, opts->gid, true);
         }
 
         if (report != NULL) {
@@ -1492,13 +1493,13 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
 
     /* enrollment.c's TempFile()+rename_ex() replace only sets a fixed 0640 mode on the temp
      * file, never its group, so client.keys inherits this root process's group instead of
-     * root:wazuh -- chown to root:gid (not uid:gid, mirroring the anchor's ownership model)
-     * restores read access without handing the credential to the runtime user. If this fails
+     * root:wazuh -- chown to uid:gid: the runtime user replaces it by rename on re-enrollment, which
+     * the sticky etc/ allows only to its owner. If this fails
      * (e.g. a namespaced container without CAP_CHOWN), the anchor above is already committed, so
      * client.keys stays root:root here -- but the anchor-latch branch above retries this same
      * chown on every later boot, so this is not a one-shot chance to fix it. A no-op on
      * Windows, where there is no second user to restore access for. */
-    w_token_bootstrap_chown_keys_file(opts->gid, false);
+    w_token_bootstrap_chown_keys_file(opts->uid, opts->gid, false);
 
     /* The re-enrollment secret is written here too, as root, by w_enrollment_process_response()
      * on the way through. Unlike the anchor it also has to be WRITABLE by the unprivileged user
@@ -1566,7 +1567,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * Every later boot trips this latch and returns before ever reaching the branch below,
          * so this is the only place left that can retry the fix. */
         if (FileSize(KEYS_FILE) > 0) {
-            w_token_bootstrap_chown_keys_file(gid, true);
+            w_token_bootstrap_chown_keys_file(uid, gid, true);
         }
 
 #ifndef WIN32
@@ -1590,7 +1591,7 @@ w_token_bootstrap_result_t w_agent_token_bootstrap(int uid, int gid) {
          * client.keys's group defensively, since enrollment.c's own replace has the same
          * group-loss gap (see the final chown's own comment); done unconditionally since it's
          * cheap and idempotent. */
-        w_token_bootstrap_chown_keys_file(gid, true);
+        w_token_bootstrap_chown_keys_file(uid, gid, true);
 
         if (IsFile(AGENT_ENROLLMENT_TOKEN_FILE) != 0) {
             return W_TOKEN_BOOTSTRAP_DONE;

@@ -292,6 +292,15 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
       return 0;
     }
 
+#if defined(CLIENT) && !defined(WIN32)
+    struct stat cfg_stat;
+
+    if (!(modules & CAGENT_CONFIG) && stat(cfgfile, &cfg_stat) == 0 && cfg_stat.st_uid != 0) {
+        merror(FILE_NOT_ROOT_OWNED, cfgfile);
+        return (OS_INVALID);
+    }
+#endif
+
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         if (modules & CAGENT_CONFIG) {
 #ifndef CLIENT

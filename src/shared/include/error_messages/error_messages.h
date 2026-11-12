@@ -37,6 +37,7 @@
 #define FILE_ERROR    "(1117): Error handling file '%s'."
 #define FSTAT_ERROR   "(1118): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "(1119): Invalid line on file '%s': %s."
+#define FILE_NOT_ROOT_OWNED "(1120): Ignoring file '%s': it is not owned by root."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
 #define GLOB_NFOUND   "(1122): No file found by pattern: '%s'."
 #define UNLINK_ERROR  "(1123): Unable to delete file: '%s' due to [(%d)-(%s)]."

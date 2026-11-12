@@ -723,7 +723,7 @@ static void test_anchor_already_present_skips_and_discards_the_token(void **stat
      * again -- once the anchor exists, every later boot returns here, never falling through to
      * the "already enrolled" branch below. It must repair client.keys's group every time it
      * fires, not just skip out, or that crash leaves client.keys root:root permanently. */
-    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_uid, getuid());
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
@@ -741,7 +741,7 @@ static void test_already_enrolled_without_a_token_is_noop(void **state) {
      * not just skip out -- a prior boot's enrollment call can replace client.keys (via
      * TempFile()+w_move_file_nofollow() in enrollment.c) and die before the chown below ever runs,
      * leaving it root:root until a later boot passes through here again. */
-    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_uid, getuid());
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
@@ -776,7 +776,7 @@ static void test_already_enrolled_with_a_token_installs_the_anchor_only(void **s
 
     assert_int_equal(g_anchor_chown_uid, getuid());
     assert_int_equal(g_anchor_chown_gid, getgid());
-    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_uid, getuid());
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
@@ -1510,10 +1510,9 @@ static void test_full_happy_path_via_pin(void **state) {
     assert_int_equal(g_dir_chown_uid, 0);
     assert_int_equal(g_dir_chown_gid, getgid());
 
-    /* client.keys is handed to root:gid too -- not uid:gid -- restoring the group that
-     * enrollment.c's own TempFile()+w_move_file_nofollow() replace just dropped, without handing
-     * ownership to the runtime user. */
-    assert_int_equal(g_keys_chown_uid, 0);
+    /* client.keys is handed to uid:gid, restoring the group that enrollment.c's own
+     * TempFile()+w_move_file_nofollow() replace just dropped. */
+    assert_int_equal(g_keys_chown_uid, getuid());
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 
@@ -1749,7 +1748,7 @@ static void test_full_happy_path_via_ca_pem(void **state) {
     assert_true(g_anchor_chown_recorded_before_move);
     assert_true(g_anchor_chmod_via_fd);
     assert_true(g_anchor_chown_via_fd);
-    assert_int_equal(g_keys_chown_uid, 0);
+    assert_int_equal(g_keys_chown_uid, getuid());
     assert_int_equal(g_keys_chown_gid, getgid());
 }
 

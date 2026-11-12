@@ -106,6 +106,16 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     }
     w_file_cloexec(fp);
 
+#if defined(CLIENT) && !defined(WIN32)
+    struct stat fp_stat;
+
+    if (fstat(fileno(fp), &fp_stat) != 0 || fp_stat.st_uid != 0) {
+        merror(FILE_NOT_ROOT_OWNED, defines_file);
+        fclose(fp);
+        return (NULL);
+    }
+#endif
+
     /* Invalid call */
     if (!high_name || !low_name) {
         merror(NULL_ERROR);
