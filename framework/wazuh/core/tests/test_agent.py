@@ -949,6 +949,16 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
             agent._add_authd('test_add', '192.168.0.1')
 
 
+def test_insert_id_error_names_the_seven_digit_cap():
+    """Tests that the remediation of error 1765 states the seven-digit insert id cap"""
+    from api.validator import _AGENT_INSERT_ID_MAX
+
+    remediation = WazuhError(1765).remediation
+    assert re.search(r'\b9999999\b', remediation)
+    assert re.search(rf'\b{_AGENT_INSERT_ID_MAX}\b', remediation)
+    assert '2147483647' not in remediation
+
+
 @patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_add_authd_keeps_the_registered_ip(mock_wazuh_socket):
     """The agent reports the address authd registered, not the spelling the caller sent."""

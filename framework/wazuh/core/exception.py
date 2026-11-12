@@ -240,7 +240,7 @@ class WazuhException(Exception):
         1764: {'message': 'Vulnerability scanning requires agent version 5.0 or higher.'
                },
         1765: {'message': 'The agent ID is not valid',
-               'remediation': 'The agent ID must be a positive integer no greater than 2147483647, '
+               'remediation': 'The agent ID must be a positive integer no greater than 9999999 (seven digits), '
                               'and other than 0, which is reserved for the manager'
                },
         1766: {'message': 'The agent was not deleted: too many deletions are still pending',
