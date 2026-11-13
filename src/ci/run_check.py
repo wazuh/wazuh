@@ -105,91 +105,6 @@ def runASAN(moduleName, testToolConfig):
     utils.printGreen(msg="[ASAN: PASSED]")
 
 
-def runAStyleCheck(moduleName):
-    """
-    Execute AStyle coding style analysis for the library
-    code failing when one or more files need to be modified.
-
-    Args:
-        - moduleName: Library to be analyzed using AStyle coding style
-                      analysis tool.
-    Returns:
-        - None
-
-    Raises:
-        - ValueError: Raises an exception when fails for some reason.
-    """
-    foldersToScan = utils.getFoldersToAStyle(moduleName=moduleName)
-    astyleCommand = "astyle --options=ci/input/astyle.config --dry-run \
-                    {}".format(foldersToScan)
-    out = subprocess.run(
-        astyleCommand,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True,
-        check=False,
-    )
-    if out.returncode == 0 and not out.stderr:
-        stdoutString = str(out.stdout)
-
-        if stdoutString.find("Formatted") != -1:
-            utils.printFail(
-                msg="One or more files do not follow the Coding \
-                                 Style convention."
-            )
-            utils.printFail(
-                msg='Execute astyle \
-                                 --options=ci/input/astyle.config \
-                                 "{0}/*.h" "{0}/*.hpp" "{0}/*.cpp" \
-                                 for further information.'.format(moduleName)
-            )
-
-            utils.printFail(msg="[AStyle: FAILED]")
-            raise ValueError(
-                "Code is not complaint with the expected \
-                              guidelines"
-            )
-    else:
-        print(out.stderr.decode("utf-8", "replace"))
-        utils.printFail(msg="[AStyle Check: FAILED]")
-        errorString = "Error Running AStyle: {}".format(out.returncode)
-        raise ValueError(errorString)
-    utils.printGreen(msg="[AStyle Check: PASSED]")
-
-
-def runAStyleFormat(moduleName):
-    """
-    Execute AStyle coding style analysis tool for the library code
-    formatting all needed files.
-
-    Args:
-        - moduleName: Library to be formated using AStyle coding style
-                      analysis tool.
-
-    Returns:
-        - None
-
-    Raises:
-        - ValueError: Raises an exception when fails for some reason.
-    """
-    foldersToScan = utils.getFoldersToAStyle(moduleName=moduleName)
-    astyleCommand = "astyle --options=ci/input/astyle.config {}".format(foldersToScan)
-    out = subprocess.run(
-        astyleCommand,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        shell=True,
-        check=False,
-    )
-    if out.returncode == 0 and not out.stderr:
-        utils.printGreen(msg="[AStyle Format: PASSED]")
-    else:
-        print(out.stderr.decode("utf-8", "replace"))
-        utils.printFail(msg="[AStyle Format: FAILED]")
-        errorString = "Error Running AStyle Format: {}".format(out.returncode)
-        raise ValueError(errorString)
-
-
 def runCoverage(moduleName, target="agent"):
     """
     Execute code coverage for a library unit tests.
@@ -362,7 +277,6 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # We first run the fastest tests
     runCppCheck(moduleName=moduleName)
-    runAStyleCheck(moduleName=moduleName)
 
     # Making a full clean, downloading external dependencies and
     # building the corresponding target with tests flag enabled

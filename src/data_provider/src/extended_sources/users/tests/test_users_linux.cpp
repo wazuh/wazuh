@@ -72,8 +72,7 @@ static auto serveFgetpwent(const std::shared_ptr<PasswdRows>& state)
             return ENOENT;
         }
 
-        // Fill the caller's buffer and point result at it, the way glibc does. result[0] spells
-        // *result without a leading dereference, which astyle mangles here.
+        // Fill the caller's buffer and point result at it, the way glibc does.
         const auto& row = state->rows[state->index];
         pwd->pw_name = row.pw_name;
         pwd->pw_passwd = row.pw_passwd;
@@ -82,7 +81,7 @@ static auto serveFgetpwent(const std::shared_ptr<PasswdRows>& state)
         pwd->pw_gecos = row.pw_gecos;
         pwd->pw_dir = row.pw_dir;
         pwd->pw_shell = row.pw_shell;
-        result[0] = pwd;
+        *result = pwd;
         ++state->index;
         return 0;
     };
@@ -98,8 +97,7 @@ static auto serveGetpwent(const std::shared_ptr<PasswdRows>& state)
             return ENOENT;
         }
 
-        // Fill the caller's buffer and point result at it, the way glibc does. result[0] spells
-        // *result without a leading dereference, which astyle mangles here.
+        // Fill the caller's buffer and point result at it, the way glibc does.
         const auto& row = state->rows[state->index];
         pwd->pw_name = row.pw_name;
         pwd->pw_passwd = row.pw_passwd;
@@ -108,7 +106,7 @@ static auto serveGetpwent(const std::shared_ptr<PasswdRows>& state)
         pwd->pw_gecos = row.pw_gecos;
         pwd->pw_dir = row.pw_dir;
         pwd->pw_shell = row.pw_shell;
-        result[0] = pwd;
+        *result = pwd;
         ++state->index;
         return 0;
     };
