@@ -33,6 +33,9 @@ list(APPEND os_csyslogd_flags "-Wl,--wrap,jqueue_open -Wl,--wrap,jqueue_next -Wl
                                  -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_ConnectUDP -Wl,--wrap,time -Wl,--wrap,Read_FileMon -Wl,--wrap,Init_FileQueue -Wl,--wrap,sleep \
                                  -Wl,--wrap,popen")
 
+list(APPEND os_csyslogd_names "test_alert")
+list(APPEND os_csyslogd_flags "-Wl,--wrap,OS_SendUDPbySize ${DEBUG_OP_WRAPPERS}")
+
 # Compiling tests
 list(LENGTH os_csyslogd_names count)
 math(EXPR count "${count} - 1")
