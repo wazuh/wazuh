@@ -31,10 +31,12 @@ namespace remoted::downstream
      *
      * For callers that must answer synchronously. The wait is always bounded, so a caller can never
      * outlive the client it waits on:
-     *  - a completion callback the client drops without running it (the client was stopped, or
-     *    destroyed with the request still queued) comes back as Transport at once;
+     *  - a completion callback the client drops without running it (a client destroyed with the
+     *    request still queued) comes back as Transport at once;
      *  - `backstop` caps the wait in any case, also as Transport. Pass the request's own connect +
      *    write + response deadlines plus a margin, so a healthy client always answers first.
+     * A stopped AsioUdsHttpClient keeps the request queued with its callback alive, so a call made after
+     * stop() waits for the whole backstop: stop the client only once nothing can call through it.
      * Never throws: a failure to even hand the request to the client is a Transport error too.
      *
      * @param client Client to send through (must outlive the call).

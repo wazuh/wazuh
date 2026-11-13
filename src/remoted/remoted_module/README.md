@@ -2966,8 +2966,8 @@ a per-request write deadline overriding the configured one,
 **and that caller-supplied headers are actually serialized onto the wire without displacing
 Content-Type/Content-Length** — the assertion that the agent id really reaches modulesd),
 `blockingCall_test.cpp` (`sendBlocking()`: the response or the client's error passed through, and a
-dropped callback, a callback that never comes, a failure to send and a stopped client all returning
-`transport_error` instead of hanging), `payload_test.cpp` (zero-copy `Payload`: view validity,
+dropped callback, a callback that never comes, a failure to send and a stopped client — the last
+two only once the backstop elapses — all returning `transport_error` instead of hanging), `payload_test.cpp` (zero-copy `Payload`: view validity,
 keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success + payload
 view, payload outliving dispatch + release keeping metadata, handler-exception → 500, a zstd body
 decoding past the decoded cap → 413 with the handler untouched, an agent over its request cap → 503
