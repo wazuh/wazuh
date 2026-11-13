@@ -160,6 +160,15 @@ case "$1" in
         rm -rf ${WAZUH_TMP_DIR}/api.yaml
     fi
 
+    # Hand back to wazuh what wazuh-apid created while running as root. These paths are
+    # writable by the wazuh account, so skip symlinks and hard links.
+    if [ -d ${DIR}/logs/api ]; then
+        find ${DIR}/logs/api ! -type l \( -type d -o -links 1 \) -user root -execdir chown -h ${USER}:${GROUP} {} + || true
+    fi
+    if [ -d ${DIR}/api/configuration/security ]; then
+        find ${DIR}/api/configuration/security -maxdepth 1 -name security.yaml -type f -links 1 -user root -execdir chown -h ${USER}:${GROUP} {} + || true
+    fi
+
     # More files
     touch ${DIR}/etc/client.keys
 

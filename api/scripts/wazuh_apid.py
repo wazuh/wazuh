@@ -362,6 +362,12 @@ if __name__ == '__main__':
         logger.warning(
             "'use_only_authd' option was deprecated on v4.3.0. Wazuh Authd will always be used")
 
+    if 'drop_privileges' in api_conf:
+        del api_conf['drop_privileges']
+        logger.warning(
+            "'drop_privileges' option is ignored. "
+            "The API always runs as the wazuh user unless it is started with '-r'")
+
     if 'path' in api_conf['logs']:
         del api_conf['logs']['path']
         logger.warning(
@@ -383,9 +389,9 @@ if __name__ == '__main__':
 
     # Drop privileges to wazuh
     if not args.root:
-        if api_conf['drop_privileges']:
-            os.setgid(common.wazuh_gid())
-            os.setuid(common.wazuh_uid())
+        os.setgroups([])
+        os.setgid(common.wazuh_gid())
+        os.setuid(common.wazuh_uid())
     else:
         logger.info('Starting API as root')
 

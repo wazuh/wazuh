@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.12]
 
+### Manager
+
+#### Changed
+
+- `wazuh-apid` now ignores the `drop_privileges` API configuration option and always runs as the `wazuh` user unless it is started with `-r`, and logs a warning when the option is set in `api.yaml`. Upgrades return to the `wazuh` user the rotated API logs and `security.yaml` that an API run as root created. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
+
+#### Fixed
+
+- Fixed `wazuh-apid` and `wazuh-clusterd` keeping the supplementary groups of the process that started them, such as `root`, after switching to the `wazuh` user. ([#41287](https://github.com/wazuh/wazuh/pull/41287))
+
 ### Agent
 
 #### Fixed

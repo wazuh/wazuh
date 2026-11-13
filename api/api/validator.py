@@ -68,7 +68,7 @@ api_config_schema = {
         "host": {"type": "array", "items": {"type": "string"}},
         "port": {"type": "number"},
         "use_only_authd": {"type": "boolean"},  # Deprecated. To be removed on later versions
-        "drop_privileges": {"type": "boolean"},
+        "drop_privileges": {"type": "boolean"},  # Ignored. Accepted so existing files still validate
         "experimental_features": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
         "auth_context_max_payload_size": {"type": "integer", "minimum": 1024, "maximum": 1048576},
