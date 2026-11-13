@@ -1820,10 +1820,10 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     """Check Expect header uses current api configuration upload size limit."""
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
-    mock_request = MagicMock(scope=ROUTED_SCOPE, headers={
+    mock_request = MagicMock(headers={
         'Expect': '100-continue',
         'Content-Length': '10'
-    }, scope={'path': '/agents'})
+    }, scope={**ROUTED_SCOPE, 'path': '/agents'})
 
     call_next_mock = AsyncMock(return_value=Response("Success"))
 
@@ -1844,7 +1844,7 @@ async def test_check_expect_header_middleware_escapes_the_logged_path():
     middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
 
     mock_request = MagicMock(headers={'Expect': '100-continue', 'Content-Length': '10'},
-                             scope={'path': '/x\n2026/11/06 12:00:01 ERROR: FORGED-LINE'})
+                             scope={**ROUTED_SCOPE, 'path': '/x\n2026/11/06 12:00:01 ERROR: FORGED-LINE'})
 
     with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}), \
             patch('api.middlewares.logger') as mock_logger:
