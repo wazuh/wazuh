@@ -67,3 +67,10 @@ target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main GTest::gtest)
 gtest_discover_tests(hlp_utest PROPERTIES TEST_DISCOVERY_TIMEOUT 3600)
 
 endif(ENGINE_BUILD_TEST)
+
+if(ENGINE_BUILD_BENCHMARK)
+
+add_executable(hlp_benchmark ${CMAKE_CURRENT_LIST_DIR}/benchmark/src/parsers_bench.cpp)
+target_link_libraries(hlp_benchmark PRIVATE hlp benchmark::benchmark benchmark::benchmark_main)
+
+endif(ENGINE_BUILD_BENCHMARK)
