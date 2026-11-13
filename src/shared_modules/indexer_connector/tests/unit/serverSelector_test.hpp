@@ -13,6 +13,7 @@
 #ifndef _SERVER_SELECTOR_TEST_HPP
 #define _SERVER_SELECTOR_TEST_HPP
 
+#include "healthBody.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "serverSelector.hpp"
 #include <algorithm>
@@ -76,13 +77,13 @@ protected:
                     if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                     {
                         const auto& params = std::get<TPostRequestParameters<const std::string&>>(postParams);
-                        statusCode == 200 ? params.onSuccess(R"([{"status":"green"}])")
+                        statusCode == 200 ? params.onSuccess(probe_test::healthBody("green"))
                                           : params.onError("Client error", statusCode, body);
                     }
                     else
                     {
                         const auto& params = std::get<TPostRequestParameters<std::string&&>>(postParams);
-                        statusCode == 200 ? params.onSuccess(std::string {R"([{"status":"green"}])"})
+                        statusCode == 200 ? params.onSuccess(std::string {probe_test::healthBody("green")})
                                           : params.onError("Client error", statusCode, body);
                     }
                 }));
@@ -122,17 +123,17 @@ protected:
                     if (url.find("9209") != std::string::npos)
                     {
                         // Green server
-                        response = R"([{"status":")" + server1Health + R"("}])";
+                        response = probe_test::healthBody(server1Health);
                     }
                     else if (url.find("9210") != std::string::npos)
                     {
                         // Red server
-                        response = R"([{"status":")" + server2Health + R"("}])";
+                        response = probe_test::healthBody(server2Health);
                     }
                     else if (url.find("9211") != std::string::npos)
                     {
                         // Yellow server
-                        response = R"([{"status":")" + server3Health + R"("}])";
+                        response = probe_test::healthBody(server3Health);
                     }
 
                     if (!response.empty())

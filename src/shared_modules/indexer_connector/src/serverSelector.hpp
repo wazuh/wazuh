@@ -40,14 +40,20 @@ public:
      * @param values Servers to be selected.
      * @param timeout Timeout for monitoring.
      * @param authentication Object that provides secure communication.
+     * @param httpRequest Optional HTTP request instance for dependency injection (for testing).
+     * @param indexPattern Index expression the health probe asks about; defaults to the manager's.
      */
     explicit TServerSelector(const std::vector<std::string>& values,
                              const uint32_t timeout = DEFAULT_MONITORING_INTERVAL,
                              const SecureCommunication& authentication = {},
-                             HttpType* httpRequest = nullptr)
+                             HttpType* httpRequest = nullptr,
+                             std::string indexPattern = MANAGER_INDEX_PATTERN)
         : RoundRobinSelector<std::string>(values)
-        , m_monitoring(std::make_shared<TMonitoring<HttpType>>(
-              values, timeout, authentication, httpRequest ? httpRequest : &HttpType::instance()))
+        , m_monitoring(std::make_shared<TMonitoring<HttpType>>(values,
+                                                               timeout,
+                                                               authentication,
+                                                               httpRequest ? httpRequest : &HttpType::instance(),
+                                                               std::move(indexPattern)))
     {
     }
 

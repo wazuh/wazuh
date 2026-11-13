@@ -53,8 +53,8 @@ public:
             throw IndexerConnectorException("monitoring_interval_seconds must be >= 1");
         }
 
-        // The one synchronous round of `GET /_cat/health` (5 s timeout per host) plus the one polling
-        // thread. Every connector sharing this session reuses both.
+        // The one synchronous round of `GET /_cluster/health/<manager indices>` (5 s timeout per host) plus the one
+        // polling thread. Every connector sharing this session reuses both.
         m_data.m_monitoring = std::make_shared<TMonitoring<HTTPRequest>>(
             m_data.m_hosts, static_cast<uint32_t>(monitoringInterval), m_data.m_secureCommunication);
     }
