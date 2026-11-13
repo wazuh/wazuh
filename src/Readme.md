@@ -23,6 +23,7 @@ The tool needs these programs:
   - cppcheck
   - valgrind
   - lcov and gcov (gcov comes with GCC)
+  - clang-format
   - scan-build (`--scanbuild` only)
 
 ## Compile Wazuh
@@ -37,7 +38,7 @@ Run it from `src/`:
 
 ```
 usage: python3 build.py [-h] [-r] [-d] [-m] [-t] [-c] [-v] [--clean] [--cppcheck] [--asan] [--path]
-                        [--scanbuild] [--target] [--deleteLogs] [--cpus]
+                        [--scheck] [--sformat] [--scanbuild] [--target] [--deleteLogs] [--cpus]
 ```
 
 ### Optional arguments:
@@ -55,6 +56,8 @@ usage: python3 build.py [-h] [-r] [-d] [-m] [-t] [-c] [-v] [--clean] [--cppcheck
 | `--clean <module>` | `make clean` in the module's build directory |
 | `--cppcheck <module>` | Run cppcheck on the module |
 | `--asan <module> --path <json>` | Run the [address sanitizer checks](#address-sanitizer-checks). `--path` names the test tool configuration (`ci/input/test_tool_config.json` is the one `-r` uses); without it the help is printed instead |
+| `--scheck <module>` | Run clang-format on the module to check the formatting |
+| `--sformat <module>` | Run clang-format on the module, formatting the files in place |
 | `--scanbuild <agent\|manager\|winagent>` | Run the [scan-build analysis](#scan-build-analysis) on a target |
 | `--deleteLogs <module>` | Delete the output folders the module's checks produced |
 | `--cpus <N>` | Number of parallel jobs for the compilations |
@@ -62,13 +65,14 @@ usage: python3 build.py [-h] [-r] [-d] [-m] [-t] [-c] [-v] [--clean] [--cppcheck
 ### Ready to review checks
 `-r` (and `-d`) runs, in order, stopping at the first failure:
   1. cppcheck on the module.
-  2. `make clean`, `make deps TARGET=<target>` and `make TARGET=<target> TEST=1 DEBUG=1`, plus `FSANITIZE=1` for every target except `winagent`.
-  3. The module's tests (`ctest -L <label>`).
-  4. Coverage, except `data_provider` and `shared_modules/file_helper` on `winagent`.
-  5. Valgrind on the tests, except on `winagent`.
-  6. `make clean-internals` and a build without `TEST`.
-  7. For `syscheckd` on `winagent` only: the test tool under Wine and the check of its output.
-  8. The [address sanitizer checks](#address-sanitizer-checks), except on `winagent` and for `shared_modules/agent_metadata`, `shared_modules/file_helper`, `wazuh_modules/agent_info`, `wazuh_modules/sca` and `client-agent/https_client`.
+  2. clang-format check on the module.
+  3. `make clean`, `make deps TARGET=<target>` and `make TARGET=<target> TEST=1 DEBUG=1`, plus `FSANITIZE=1` for every target except `winagent`.
+  4. The module's tests (`ctest -L <label>`).
+  5. Coverage, except `data_provider` and `shared_modules/file_helper` on `winagent`.
+  6. Valgrind on the tests, except on `winagent`.
+  7. `make clean-internals` and a build without `TEST`.
+  8. For `syscheckd` on `winagent` only: the test tool under Wine and the check of its output.
+  9. The [address sanitizer checks](#address-sanitizer-checks), except on `winagent` and for `shared_modules/agent_metadata`, `shared_modules/file_helper`, `wazuh_modules/agent_info`, `wazuh_modules/sca` and `client-agent/https_client`.
 
 If every check passes it prints `[RTR: PASSED]` and returns 0; otherwise it prints the failure and returns an error.
 
