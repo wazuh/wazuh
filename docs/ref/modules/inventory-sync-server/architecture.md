@@ -179,7 +179,7 @@ the indexer never delays the strand that is deciding whether to admit the next s
 Sessions whose `Start.option` is `VDFirst` or `VDSync` carry data the vulnerability scanner must
 evaluate. They run through a dedicated lane so that the scan can GATE the response: a `200` for a
 VD session guarantees the scan ran (unless this node runs no scanner — see the table below) AND the
-inventory was flushed; a failed scan answers `500` with **nothing indexed**.
+inventory was flushed; a failed scan answers `500` with **nothing indexed** and no vulnerability alerts sent.
 
 ```mermaid
 flowchart LR
@@ -204,7 +204,7 @@ The gates, in order:
 | No healthy indexer host when a lane worker picks the session up | `503` (generic body) | Checked before the scan: a scan whose inventory could never land would waste minutes to answer the same `503`. The feed gate above is also re-checked here, answering `503` + `Retry-After` again if the feed became unready while the session waited. |
 | `Start.feed_offset` differs from this node's current feed offset (only while this node runs a scanner) | `409` `{"error":"version_mismatch","current_version":N}` | Counted as `vd.offset_mismatch.total`; the agent rebuilds the session against `current_version`. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
-| Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
+| Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed and no alerts sent (the scanner sends them only after its findings are stored); the agent retries next cycle and the re-POST redoes both halves. |
 | Scan legitimately skipped (scanner disabled, or enabled but failed to start) | index + `200` | Inventory must keep flowing even with the scanner off or broken. |
 | VD session on a node running no scanner | admitted with no version check, then index + `200` | With no scanner there is no feed version to disagree about, and an agent still carrying an offset from before the module was disabled would otherwise be rejected on every cycle, forever. A scanner that is enabled here but still starting is answered `503` above instead, so packages and vulnerabilities keep going together whenever the module is up. |
 | Shutdown | `503` to everything queued | The lane joins its workers; a scan in flight finishes (there is no cancellation point inside the scanner). |
