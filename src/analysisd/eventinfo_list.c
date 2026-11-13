@@ -45,13 +45,21 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
             merror_exit(MEM_ERROR, errno, strerror(errno));
         }
 
+        /* Initialize before publishing to concurrent history readers. */
+        new_node->event = lf;
+        new_node->count = 0;
+        new_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+        lf->node = new_node;
+
         // Always add after the first node, which must be empty
+        w_mutex_lock(&list->first_node->mutex);
         new_node->next = list->last_added_node;
         new_node->prev = list->first_node;
         list->last_added_node->prev = new_node;
         list->first_node->next = new_node;
 
         list->last_added_node = new_node;
+        w_mutex_unlock(&list->first_node->mutex);
 
         list->_memoryused++;
 
@@ -84,12 +92,17 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
         EventNode *second_node;
 
         os_calloc(1, sizeof(EventNode), second_node);
+        second_node->event = lf;
+        second_node->count = 0;
+        second_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+        lf->node = second_node;
         if (!list->first_node) {
             os_calloc(1, sizeof(EventNode), list->first_node);
             list->first_node->prev = NULL;
             list->first_node->event = NULL;
             list->first_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
         }
+        w_mutex_lock(&list->first_node->mutex);
         list->_memoryused++;
         list->first_node->next = second_node;
 
@@ -98,12 +111,8 @@ void OS_AddEvent(Eventinfo *lf, EventList *list)
 
         list->last_node = second_node;
         list->last_added_node = second_node;
+        w_mutex_unlock(&list->first_node->mutex);
     }
-
-    list->last_added_node->event = lf;
-    lf->node = list->last_added_node;
-    list->last_added_node->count = 0;
-    list->last_added_node->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
 
     w_mutex_unlock(&list->event_mutex);
 

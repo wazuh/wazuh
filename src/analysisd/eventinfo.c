@@ -503,11 +503,11 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo 
 
         if (!(rule->context_opts & FIELD_GFREQUENCY)) {
             if ((!lf->agent_id) || (!my_lf->agent_id)) {
-                continue;
+                goto next_it;
             }
 
             if (strcmp(lf->agent_id, my_lf->agent_id) != 0) {
-                continue;
+                goto next_it;
             }
         }
 
