@@ -344,8 +344,9 @@ is at least one window old (so each agent waits between one and two windows). Th
 (`wazuh-agent-config` and `wazuh-agent-stats` separately, so a missing index does not void the other) with
 the due agent ids as a `terms` filter on `_id`, in chunks of at most 10 000 ids, **without a refresh**
 (for the same privilege reason as above), each with the deletion deadline. The documents a pass deletes
-are the **residual** it counts; a chunk that failed is retried once on the next pass and then dropped
-(counted); nothing is sent when no id is due. Pending ids are dropped (counted) at stop. The sweep is
+are the **residual** it counts. Each request is sent once, without a retry of its own on a `5xx`, a `429` or a
+version conflict; a chunk that failed is retried once on the next pass, without the agents withdrawn by then (below),
+and then dropped (counted); nothing is sent when no id is due. Pending ids are dropped (counted) at stop. The sweep is
 best effort: it makes a leftover very unlikely, not impossible. Counters:
 [`sync.agent_delete.sweep.*`](metrics.md#post-deletion-sweep--syncagent_deletesweep).
 
@@ -359,7 +360,7 @@ is still waiting for its sweep, it withdraws that id: the pending note is remove
 id out of the requests it has not sent yet and does not retry it. The old agent's key is revoked at that point, so the
 write comes from the new agent, and it replaces any late document of the old one (the document id is the agent id).
 Withdrawals are counted in `sync.agent_delete.sweep.forgotten`. Two narrow cases remain: a sweep request already in
-flight with that id can still delete the new agent's first document, and a late write of the old agent applied after
+flight with that id (it is never resent) can still delete the new agent's first document, and a late write of the old agent applied after
 the new agent's first report stays until the new agent's next report replaces it.
 
 ### Effects to know

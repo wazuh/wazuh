@@ -693,8 +693,10 @@ one pass per `window` (= `MetricsSnapshot::requestTimeout + 5 s`: margin for a 1
 the ids whose note is at least one window old (each waits between W and 2W). A pass issues **one delete-by-query per
 index** (a missing index does not void the other) with `terms` on `_id`, `proceedOnConflicts`, ids in chunks of at
 most 10 000, **without `refresh`** (the role may lack `indices:admin/refresh`), each with `deadline` =
-`deleteBudget`. `residual` = the documents deleted. A failed chunk's ids return once to the next pass, then are
-dropped (`dropped`); nothing is sent without due ids (at most `2 * ceil(n / 10 000)` DBQs per pass). `stop()` wakes,
+`deleteBudget`. `residual` = the documents deleted. Each DBQ is **sent once** (`retry.maxAttempts = 1`,
+`retry.maxDuration = 1 ms` so a 429 is not waited out, `conflictAttempts = 1`): the query layer would resend the id
+list built before the request left, even after `forget()` withdrew one of its ids. A failed chunk's ids return once to
+the next pass, which rebuilds the list without the withdrawn ids, then are dropped (`dropped`); nothing is sent without due ids (at most `2 * ceil(n / 10 000)` DBQs per pass). `stop()` wakes,
 joins and drops what is pending (counted). Counters: `sync.agent_delete.sweep.{runs,failures,residual,dropped,forgotten}`
 (`common/metricNames.hpp`). Best effort: zero residue is not guaranteed.
 
@@ -708,7 +710,7 @@ in progress holds it, marks it so the chunks not sent yet leave it out and it is
 new sync session: the swept indices are exactly the documents those two routes write, a session writes neither, and an
 agent may report `/stats` before any session. The old agent's key is revoked by then, so the write is the new agent's,
 and its `index` replaces any late document of the old one (same `_id`). Two residues remain: a delete-by-query already
-in flight with the id cannot be recalled, and a late write of the old agent landing after the new agent's first
+in flight with the id cannot be recalled (it is never resent, though), and a late write of the old agent landing after the new agent's first
 report survives until the new agent's next report replaces it.
 
 **Effects**: a pin freezes the `agent-state` bucket for at most

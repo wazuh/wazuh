@@ -29,6 +29,21 @@ namespace
         static const LogFn instance {SWEEPER_LOGTAG};
         return instance;
     }
+
+    /// Every sweep request is sent once: its id list was built before it left, and the query layer would resend that
+    /// same list after a failure, deleting the documents of an id forget() withdrew meanwhile. The sweeper's own retry
+    /// (once, on the next pass) rebuilds the list without the withdrawn ids. A 5xx, a timeout or a failover after the
+    /// request may have left spends the only attempt; a 429 spends none, so the 1 ms series budget ends the call before
+    /// its backoff; a version conflict is not resent either. A request that never left (refused connection) may still
+    /// go to another node within that millisecond.
+    indexer_client::QueryOptions sweepQueryOptions()
+    {
+        indexer_client::QueryOptions options;
+        options.retry.maxAttempts = 1;
+        options.retry.maxDuration = indexer_client::Duration {1};
+        options.conflictAttempts = 1;
+        return options;
+    }
 } // namespace
 
 namespace invsync::indexer
@@ -223,11 +238,12 @@ namespace invsync::indexer
                     try
                     {
                         // No refresh (the indexer role may lack indices:admin/refresh), conflicts proceed: a
-                        // document deleted meanwhile is not a failure. The default query retry policy applies.
+                        // document deleted meanwhile is not a failure. Sent once (sweepQueryOptions()): a failure is
+                        // retried on the next pass, without the ids withdrawn by then.
                         const auto outcome = m_query->deleteByQuery({std::string {index}},
                                                                     body,
                                                                     indexer_client::DbqOptions {true},
-                                                                    indexer_client::QueryOptions {},
+                                                                    sweepQueryOptions(),
                                                                     Clock::now() + m_deadline);
                         ok = outcome.ok();
                         if (ok)

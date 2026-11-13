@@ -22,8 +22,8 @@
 //   2. Validation, without a request ⇒ InvalidArgument with the field first in `reason`: every index non-empty,
 //      only [A-Za-z0-9_.*-] (v1 isSafeIndexName), not only dots (libcurl collapses "." and "..") and not starting
 //      with '_'; a non-empty index list; retry as validateBucket (base > 0, cap >= base, jitter in [0, 1], maxAttempts
-//      and maxDuration > 0 or unset), pageDeadline > 0; searchAfter: body.sort a non-empty array, body.size an integer
-//      > 0 and `page` callable.
+//      and maxDuration > 0 or unset), pageDeadline > 0, conflictAttempts > 0; searchAfter: body.sort a non-empty array,
+//      body.size an integer > 0 and `page` callable.
 //   3. The client gone (closeRequested) ⇒ ClientClosed; its runtime gone or another epoch ⇒ Shutdown.
 //
 // CLOCKS. `deadline` bounds the whole call; `pageDeadline` bounds each page (one search, one DBQ...) from its first
@@ -49,8 +49,9 @@
 // without Retry-After backs off. Retry (408, 5xx, 401, 403, TlsConfig, LocalError, timed_out) ⇒ an attempt and
 // backoffDelay(retry, attempts) (runtime/backoff.hpp). maxAttempts or maxDuration (from the page's first
 // attempt) exhausted ⇒ Failed(RetryExhausted), the last cause in reason. FailBatch ⇒ its cause. Conflict (DBQ/UBQ,
-// conflict) ⇒ its own budget: CONFLICT_ATTEMPTS attempts, CONFLICT_BASE doubled up to CONFLICT_CAP, exhausted ⇒
-// VersionConflict with the counts in reason; each conflict retry opens a fresh retry series (independent clocks).
+// conflict) ⇒ its own budget: QueryOptions::conflictAttempts attempts (default CONFLICT_ATTEMPTS; 1 never resends),
+// CONFLICT_BASE doubled up to CONFLICT_CAP, exhausted ⇒ VersionConflict with the counts in reason; each conflict retry
+// opens a fresh retry series (independent clocks).
 //
 // WAKE-UP. Every wait (result, backoff, no node) sleeps on the client's QueryGate (runtimeInternal.hpp): one mutex and
 // condition variable shared by the runtime and all its clients. The transport callback, Client::requestClose() and
@@ -101,8 +102,10 @@ namespace indexer_client::detail::query
     /// page 5.74, DBQ 3.5-5.2, UBQ 3.5-5.2 ⇒ ceil(6.19 × 1.25) = 8.
     constexpr std::uint64_t QUERY_DOM_FACTOR = 8;
 
-    /// The v1 conflict budget of DBQ/UBQ (SYNC:430-457).
+    /// The v1 conflict budget of DBQ/UBQ (SYNC:430-457); CONFLICT_ATTEMPTS is the default of
+    /// QueryOptions::conflictAttempts.
     constexpr std::uint32_t CONFLICT_ATTEMPTS = 3;
+    static_assert(QueryOptions {}.conflictAttempts == CONFLICT_ATTEMPTS, "the default conflict budget is the v1 one");
     constexpr Duration CONFLICT_BASE {Duration {3000}};
     constexpr Duration CONFLICT_CAP {Duration {15000}};
 
