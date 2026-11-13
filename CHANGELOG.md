@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.12]
 
+### Manager
+
+#### Fixed
+
+- Fixed `wazuh-remoted` releasing the statistics of inactive agents without synchronizing with the threads that update them. ([#41297](https://github.com/wazuh/wazuh/pull/41297))
+
 ### Agent
 
 #### Fixed
