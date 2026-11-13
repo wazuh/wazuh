@@ -635,9 +635,26 @@ src/endpoints/
   string** as the authenticated `agentId`, compared byte for byte, so `"001"`, `"01"` and `"1"` are
   three different identities even though they are one number. Member names are
   compared **decoded and by length** — `"\u0077azuh"` *is* `wazuh`, while a name with an embedded NUL is
-  a different, longer name. Anything unclean — a repeated step, a missing/malformed header, a
-  non-object container, a non-numeric id, or any difference from the authenticated id — collapses to
-  `AuthError::PayloadAgentMismatch`.
+  a different, longer name. Anything unclean — a repeated step, a dotted member name that would expand
+  into `wazuh.*`, a missing/malformed header, a non-object container, a non-numeric id, or any
+  difference from the authenticated id — collapses to `AuthError::PayloadAgentMismatch`.
+
+  **Why dotted member names reaching `wazuh.*` are refused.** Remoted and the engine treat a
+  member name as an opaque string, so `"wazuh.agent.id"` (or `"agent.id"` inside `wazuh`, or
+  `"wazuh.agent"` holding `id`) is a literal sibling of the nested identity: it passes the identity
+  check, is merged into every event, and survives the engine's stamping (which writes the nested
+  cluster fields, never a dotted sibling). The
+  indexer does not treat it that way: it expands the name into a field path and stores a second value
+  of `wazuh.agent.id` (or `wazuh.cluster.name`) next to the validated one, so the event also matches
+  queries for another agent. A dotted name only expands below the object holding it, so exactly two
+  places can reach `wazuh.*`: a root member whose first segment is `wazuh`, and any member inside the
+  root `wazuh` object. Those are refused; dotted names anywhere else are left alone. The agent builds
+  its header from nested members only, so the rule costs a conforming agent nothing. The walk covers
+  the `wazuh` subtree, bounded by the 8 KiB cap, with an explicit stack so nesting depth costs no C
+  stack. The engine's agent-metadata cache applies the same dotted-name rule as a second line (cache
+  misses only); its other header checks are its own and differ from this endpoint's. Event (`E`) lines
+  are not inspected:
+  their log text legitimately carries dotted names, and decoders map it into the schema.
 
   **Why "exactly once" and not just "present".** JSON permits repeated member
   names, and the two parsers this payload meets disagree about which repetition counts: a lookup
@@ -646,8 +663,8 @@ src/endpoints/
   one agent and ingest another. Refusing the repetition is what keeps "validated" and "ingested"
   the same identity.
 
-  **Why the check stops at the identity path.** A repetition elsewhere in the header cannot move the
-  identity, so paying to scan the whole document on every request would buy nothing. That holds
+  **Why the repetition check stops at the identity path.** A repetition elsewhere in the header cannot
+  move the identity, so rejecting it would buy nothing (dotted names are a different matter, above). That holds
   because of a matching fix on the other side: the engine escapes the member name when it builds the
   JSON Pointer its merge recurses with (`src/engine/source/base/src/json.cpp`, via
   `Json::formatJsonPath(name, skipDot=true)`). Before that fix a member literally called

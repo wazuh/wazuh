@@ -136,6 +136,31 @@ TEST_F(StatefulEndpointE2ETest, AnAllSkippedSessionAnswersNoOp)
     EXPECT_TRUE(m_events->syncOps().empty());
 }
 
+TEST_F(StatefulEndpointE2ETest, ADocumentWithADottedIdentityIsSkippedAndTheRestIsIndexed)
+{
+    // Over the real endpoint: agent 001 sends one honest document and one carrying a dotted
+    // "wazuh.agent.id" that the indexer would store as a second agent id. Only the honest one may
+    // reach the indexer, the request still succeeds, and the skip is logged with the agent's id.
+    ValueSpec honest;
+    honest.id = "doc-honest";
+    ValueSpec forged;
+    forged.id = "doc-forged";
+    forged.data = R"({"package":{"name":"vim"},"wazuh.agent.id":"002"})";
+
+    const auto body = invsync::test::buildSyncDataSession(SessionSpec {}, {honest, forged});
+    const auto response = wazuh::uds_http::test::sendRaw(m_path, statefulRequest(body));
+
+    EXPECT_EQ(200, response.status) << response.body;
+    EXPECT_EQ(R"({"status":"ok"})", response.body);
+
+    const auto ops = m_events->syncOps();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("test-cluster_001_doc-honest", std::get<1>(ops[0]));
+    EXPECT_TRUE(LogRecorder::sawMessageContaining(
+        "Skipping bulk entry for agent 001: DataValue body has a dotted member name that would expand into the "
+        "wazuh.* fields."));
+}
+
 TEST_F(StatefulEndpointE2ETest, CleansReachTheIndexerAsDeleteByQuery)
 {
     const auto body = invsync::test::buildCleansSession(SessionSpec {}, {"wazuh-states-fim-files"});

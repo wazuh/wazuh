@@ -170,6 +170,73 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_ManagerAgentId_Accepted)
     EXPECT_EQ(cache.size(), 1);
 }
 
+// A dotted member name stays a literal sibling of the nested identity through the merge, and the
+// indexer expands it into a second value of the same field. Each header below carries a valid nested
+// id plus such a name.
+TEST_F(AgentMetadataCacheTest, GetOrParse_DottedMemberName_Throws)
+{
+    const std::vector<std::string> headers {
+        R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":"002"})",
+        R"({"wazuh":{"agent":{"id":"001"},"agent.id":"002"}})",
+        R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent":{"id":"002"}})",
+        R"({"wazuh":{"agent":{"id":"001"}},"wazuh.cluster.name":"other"})",
+        R"({"wazuh":{"agent":{"id":"001","host":{"os":{"x.y":"z"}}}}})",
+        R"({"wazuh":{"agent":{"id":"001","groups":[{"a.b":1}]}}})",
+        "{\"wazuh\":{\"agent\":{\"id\":\"001\"}},\"wazuh\\u002eagent\\u002eid\":\"002\"}",
+        "{\"wazuh\":{\"agent\":{\"id\":\"001\"},\"x\\u0000.y\":1}}",
+        R"({"wazuh":{"agent":{"id":"001"}},"wazuh.":"x"})",
+    };
+    for (const auto& header : headers)
+    {
+        EXPECT_THROW(cache.getOrParse(header), std::runtime_error) << header;
+    }
+    EXPECT_EQ(cache.size(), 0);
+}
+
+TEST_F(AgentMetadataCacheTest, GetOrParse_DottedMemberName_Message)
+{
+    try
+    {
+        cache.getOrParse(R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.id":"002"})");
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_STREQ(e.what(), "AgentMetadataCache: dotted header member names must not reach wazuh.*");
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, GetOrParse_DottedNamesOutsideWazuh_Accepted)
+{
+    // A dotted name expands only below the object that holds it, so these cannot land on wazuh.*. The
+    // root name "wazuh\u0000x" is a 7-character name, not `wazuh`: compared by length, its subtree is
+    // not walked. The cached header must keep every one of these members as sent.
+    auto result = cache.getOrParse("{\"wazuh\":{\"agent\":{\"id\":\"001\"}},\"x.y\":1,\"wazuhx.agent.id\":\"002\","
+                                   "\"labels\":{\"a.b\":\"c\"},\"wazuh\\u0000x\":{\"a.b\":1}}");
+
+    ASSERT_NE(result.first, nullptr);
+    EXPECT_EQ(result.second, Op::Inserted);
+    const auto stored = result.first->str();
+    for (const auto* member :
+         {R"("x.y":1)", R"("wazuhx.agent.id":"002")", R"("labels":{"a.b":"c"})", R"("wazuh\u0000x":{"a.b":1})"})
+    {
+        EXPECT_NE(stored.find(member), std::string::npos) << member << " missing from " << stored;
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, GetOrParse_DotsInValues_Accepted)
+{
+    // Only member names are expanded by the indexer; dotted values are ordinary data.
+    auto result = cache.getOrParse(
+        R"({"wazuh":{"agent":{"id":"001","version":"v5.0.0","host":{"hostname":"web.example.com"}}}})");
+
+    ASSERT_NE(result.first, nullptr);
+    std::string_view hostname;
+    ASSERT_EQ(result.first->getString(hostname, "/wazuh/agent/host/hostname"), json::RetGet::Success);
+    EXPECT_EQ(hostname, "web.example.com");
+    EXPECT_EQ(result.second, Op::Inserted);
+}
+
 TEST_F(AgentMetadataCacheTest, GetOrParse_NonNumericAgentId_Message)
 {
     try

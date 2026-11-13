@@ -17,6 +17,7 @@
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace remoted::endpoints::stateless
 {
@@ -116,9 +117,10 @@ namespace remoted::endpoints::stateless
         // last; keep the last and the cache is still keyed on the first. Refusing the ambiguity is
         // the only rule all three agree on, which is also why it must not be relaxed later.
         //
-        // Only that path is checked; a repetition anywhere else cannot move the identity, because
-        // the engine escapes member names when it builds the pointer it recurses with
-        // (base/src/json.cpp).
+        // Only that path is checked for repetition; a repetition anywhere else cannot move the
+        // identity, because the engine escapes member names when it builds the pointer it recurses
+        // with (base/src/json.cpp). Dotted member NAMES do matter, for a different reason: see
+        // dottedNameReachesWazuh().
         //
         // Names are compared decoded and by length: "\u0077azuh" IS "wazuh", while "wazuh\u0000x" (length 7)
         // is a different name and must not be confused with it.
@@ -171,6 +173,88 @@ namespace remoted::endpoints::stateless
 
             return std::string_view {id->GetString(), id->GetStringLength()};
         }
+
+        // Names are searched by length, so an embedded NUL does not end the search early, and
+        // "." is caught because names are compared decoded.
+        bool containsDot(const rapidjson::Value& name)
+        {
+            return std::string_view {name.GetString(), name.GetStringLength()}.find('.') != std::string_view::npos;
+        }
+
+        // True when any member name inside @p subtree, at any depth, contains a '.'.
+        //
+        // Explicit stack, no recursion: the parse is iterative so that nesting depth costs no C
+        // stack, and this walk keeps that property. The header is capped at kMaxHeaderLineJsonSize,
+        // which bounds the walk.
+        bool hasDottedMemberName(const rapidjson::Value& subtree)
+        {
+            std::vector<const rapidjson::Value*> pending {&subtree};
+            while (!pending.empty())
+            {
+                const auto* value = pending.back();
+                pending.pop_back();
+
+                if (value->IsObject())
+                {
+                    for (auto it = value->MemberBegin(); it != value->MemberEnd(); ++it)
+                    {
+                        if (containsDot(it->name))
+                        {
+                            return true;
+                        }
+                        pending.push_back(&it->value);
+                    }
+                }
+                else if (value->IsArray())
+                {
+                    for (const auto& element : value->GetArray())
+                    {
+                        pending.push_back(&element);
+                    }
+                }
+            }
+            return false;
+        }
+
+        // True when a dotted member name would expand into the manager-owned `wazuh.*` fields.
+        //
+        // The manager treats member names as opaque strings, but the indexer does not: it expands
+        // a dotted name into a field path. A header carrying "wazuh.agent.id" (or "agent.id" inside
+        // `wazuh`, or "wazuh.agent" holding `id`) passes the nested identity check above, is merged
+        // into every event as a literal sibling, and is then indexed as a second value of the very
+        // field that check protects.
+        //
+        // A dotted name only expands below the object that holds it, so exactly two places can reach
+        // `wazuh.*`: a root member whose first segment is `wazuh`, and any member inside a root
+        // `wazuh` object. Dotted names anywhere else expand into their own subtree and are left alone.
+        // The agent builds its header from nested members only, so the rule costs it nothing.
+        bool dottedNameReachesWazuh(const rapidjson::Value& root)
+        {
+            if (!root.IsObject())
+            {
+                return false; // Not a header; agentIdFromHeader() refuses it.
+            }
+
+            constexpr std::string_view kWazuh = "wazuh";
+            for (auto it = root.MemberBegin(); it != root.MemberEnd(); ++it)
+            {
+                const std::string_view name {it->name.GetString(), it->name.GetStringLength()};
+                const auto dot = name.find('.');
+                if (dot != std::string_view::npos)
+                {
+                    if (name.substr(0, dot) == kWazuh)
+                    {
+                        return true;
+                    }
+                    continue;
+                }
+                if (name == kWazuh && hasDottedMemberName(it->value))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     } // namespace
 
     remoted::auth::AuthError validatePayloadIdentity(const remoted::auth::AuthenticatedRequest& req)
@@ -193,6 +277,14 @@ namespace remoted::endpoints::stateless
         // lookup below is unaffected.
         doc.Parse<rapidjson::kParseIterativeFlag>(headerJson->data(), headerJson->size());
         if (doc.HasParseError())
+        {
+            return AuthError::PayloadAgentMismatch;
+        }
+
+        // A dotted member name reaching `wazuh.*` is a second, indexer-only spelling of a header
+        // field (see dottedNameReachesWazuh()), so it is refused like any other claim to an identity
+        // the token does not prove.
+        if (dottedNameReachesWazuh(doc))
         {
             return AuthError::PayloadAgentMismatch;
         }
