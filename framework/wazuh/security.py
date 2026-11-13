@@ -936,12 +936,12 @@ def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
     Parameters
     ----------
     rule_ids
-        Listo of rule ids (None for all rules).
+        List of rule ids (None for all rules).
 
     Returns
     -------
     AffectedItemsWazuhResult
-        Result of the operation.
+        Result of the operation. A rule linked to a role the caller lacks 'security:delete' over fails with 4000.
     """
     result = AffectedItemsWazuhResult(none_msg='No security rule was deleted',
                                       some_msg='Some security rules were not deleted',
@@ -949,6 +949,16 @@ def remove_rules(rule_ids: list = None) -> AffectedItemsWazuhResult:
     with RulesManager() as rum:
         for r_id in rule_ids:
             rule = rum.get_rule(int(r_id))
+            # Deleting a rule unlinks it from every role it is on, and the users it matched stop getting
+            # those roles: dropping a deny role widens what they can do. So it asks for what
+            # `remove_role_rule` asks to unlink it: 'security:delete' over each of those roles. Reserved
+            # rules are refused below (4008) whatever the caller holds.
+            if int(r_id) > MAX_ID_RESERVED and isinstance(rule, dict):
+                try:
+                    require_role_action('security:delete', rule['roles'])
+                except WazuhPermissionError as e:
+                    result.add_failed_item(id_=int(r_id), error=e)
+                    continue
             role_delete = rum.delete_rule(int(r_id))
             if role_delete == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4008))

@@ -9385,7 +9385,8 @@ paths:
         - Security
       summary: "Delete security rules"
       description: "Delete a list of security rules or all security rules in the system, roles linked to rules are not
-      going to be deleted"
+      going to be deleted. Deleting a rule linked to roles also requires `security:delete` over each of those
+      roles; otherwise that rule fails with error 4000 and is kept"
       operationId: api.controllers.security_controller.remove_rules
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
@@ -9652,7 +9653,8 @@ paths:
         - Security
       summary: "Delete policies"
       description: "Delete a list of policies or all policies in the system, roles linked to policies are not going to
-      be removed"
+      be removed. Deleting a policy linked to roles also requires `security:delete` over each of those roles;
+      otherwise that policy fails with error 4000 and is kept"
       operationId: api.controllers.security_controller.remove_policies
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/security:delete'
