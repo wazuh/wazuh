@@ -881,9 +881,14 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     hc_enroll_result_t enroll_result;
     token_snapshot_t snapshot = {NULL};
     bool anchor_changed = false;
+    uint32_t enroll_timeout_ms;
 
     assert(opts != NULL);
     assert(opts->token_text != NULL);
+
+    /* Read before anything is fetched or staged: an invalid value ends the process, and must not
+     * leave a staged anchor behind. */
+    enroll_timeout_ms = opts->anchor_only ? 0 : w_enrollment_timeout_ms();
 
     if (report != NULL) {
         memset(report, 0, sizeof(*report));
@@ -1190,7 +1195,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     enroll_config.verify_mode = HC_VERIFY_FULL;
     strncpy(enroll_config.ca_path, anchor_file.name, sizeof(enroll_config.ca_path) - 1);
     token_apply_client_identity(&enroll_config);
-    enroll_config.enroll_timeout_ms = w_enrollment_timeout_ms();
+    enroll_config.enroll_timeout_ms = enroll_timeout_ms;
 
     memset(&enroll_request, 0, sizeof(enroll_request));
     strncpy(enroll_request.body_json, built_request.body_json, sizeof(enroll_request.body_json) - 1);

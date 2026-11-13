@@ -1147,19 +1147,52 @@ static void test_a_lost_answer_for_another_credential_replaces_the_record(void *
     assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
 }
 
-/* Any other answer settles the earlier attempt: a refusal that comes later is not its consequence. */
-static void test_a_definitive_answer_clears_the_lost_answer(void **state) {
+/* A 4xx verdict settles the earlier attempt: a refusal that comes later is not its consequence. */
+static void test_a_verdict_clears_the_lost_answer(void **state) {
     (void)state;
     hc_enroll_result_t other = {0};
     hc_enroll_result_t signature = {0};
 
     note_timed_out_attempt("001");
-    other.http_code = 429;
-    expect_any(__wrap__minfo, formatted_msg);
-    assert_int_equal(w_enrollment_process_response(&other, "001"), W_ENROLL_ERR_SERVER);
+    other.http_code = 400;
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&other, "001"), W_ENROLL_ERR_INVALID_REQUEST);
 
     set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
     expect_string(__wrap__merror, formatted_msg, GENERIC_SIGNATURE_MSG);
+    assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+/* A rate limit, a request timeout or a server error is not a verdict on the lost attempt, so the
+ * explanation holds. */
+static void test_a_rate_limit_timeout_or_server_error_keeps_the_lost_answer(void **state) {
+    (void)state;
+    hc_enroll_result_t rate_limited = {0};
+    hc_enroll_result_t timed_out = {0};
+    hc_enroll_result_t proxy_auth = {0};
+    hc_enroll_result_t failing = {0};
+    hc_enroll_result_t signature = {0};
+
+    note_timed_out_attempt("001");
+
+    rate_limited.http_code = 429;
+    expect_any(__wrap__minfo, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&rate_limited, "001"), W_ENROLL_ERR_SERVER);
+
+    timed_out.http_code = 408;
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&timed_out, "001"), W_ENROLL_ERR_SERVER);
+
+    proxy_auth.http_code = 407;
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&proxy_auth, "001"), W_ENROLL_ERR_SERVER);
+
+    failing.http_code = 500;
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&failing, "001"), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg, LOST_ROTATION_MSG);
     assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
 }
 
@@ -1234,14 +1267,13 @@ static void test_an_invalid_200_then_duplicate_names_the_cause(void **state) {
     assert_int_equal(w_enrollment_process_response(&duplicate, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
 }
 
-/* A proxy that answers 502 or 504 may have forwarded the request before it gave up. */
+/* A proxy that answers 504 may have forwarded the request before it gave up. */
 static void test_a_504_then_invalid_signature_explains_the_rotation(void **state) {
     (void)state;
     hc_enroll_result_t gateway = {0};
     hc_enroll_result_t signature = {0};
 
     gateway.http_code = 504;
-    gateway.request_sent = true;
     expect_any(__wrap__merror, formatted_msg);
     assert_int_equal(w_enrollment_process_response(&gateway, "001"), W_ENROLL_ERR_SERVER);
 
@@ -1250,7 +1282,8 @@ static void test_a_504_then_invalid_signature_explains_the_rotation(void **state
     assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
 }
 
-static void test_a_502_then_duplicate_names_the_cause(void **state) {
+/* A 502 is an intermediary's own failure, not a request it forwarded. */
+static void test_a_502_is_not_a_lost_answer(void **state) {
     (void)state;
     hc_enroll_result_t gateway = {0};
     hc_enroll_result_t duplicate = {0};
@@ -1261,7 +1294,7 @@ static void test_a_502_then_duplicate_names_the_cause(void **state) {
     assert_int_equal(w_enrollment_process_response(&gateway, TEST_TOKEN_KID), W_ENROLL_ERR_SERVER);
 
     set_error_body(&duplicate, 409, "9008", "Duplicate name");
-    expect_string(__wrap__merror, formatted_msg, LOST_REGISTRATION_MSG);
+    expect_string(__wrap__merror, formatted_msg, GENERIC_DUPLICATE_MSG);
     assert_int_equal(w_enrollment_process_response(&duplicate, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
 }
 
@@ -1882,8 +1915,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_an_unusable_200_then_invalid_signature_explains_the_rotation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_an_invalid_200_then_duplicate_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_a_504_then_invalid_signature_explains_the_rotation, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_a_502_then_duplicate_names_the_cause, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_a_definitive_answer_clears_the_lost_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_502_is_not_a_lost_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_verdict_clears_the_lost_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_rate_limit_timeout_or_server_error_keeps_the_lost_answer, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_lost_answer_then_token_use_exhausted_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_token_use_exhausted_without_a_lost_answer_or_for_another_token_is_generic, setup_test, teardown_test),
         cmocka_unit_test(test_is_token_kid_tells_a_token_id_from_a_reenrollment_one),

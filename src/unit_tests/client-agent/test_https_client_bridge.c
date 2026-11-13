@@ -893,7 +893,7 @@ static void test_enroll_reads_its_own_timeout_option(void **state)
     w_https_client_enroll("{}", "", NULL, NULL, &result);
 
     assert_true(g_captured_enroll_valid);
-    assert_int_equal(g_captured_enroll_config.enroll_timeout_ms, 35000);
+    assert_int_equal(g_captured_enroll_config.enroll_timeout_ms, HC_DEFAULT_ENROLL_TIMEOUT_MS);
     assert_non_null(strstr(g_resolved_options, "https_enroll_timeout:1000:600000;"));
     /* The per-request timeout of the other endpoints is not read for /enroll. */
     assert_int_equal(g_captured_enroll_config.request_timeout_ms, 0);

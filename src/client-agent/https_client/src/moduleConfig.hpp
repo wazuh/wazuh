@@ -83,7 +83,7 @@ struct ModuleConfig
         uint32_t requestTimeoutMs {10000};
         /// /enroll outlasts remoted's 30 s request cap, so the agent gets the manager's real answer
         /// instead of abandoning an enrollment authd goes on to apply.
-        uint32_t enrollTimeoutMs {35000};
+        uint32_t enrollTimeoutMs {HC_DEFAULT_ENROLL_TIMEOUT_MS};
         uint32_t statefulTimeoutMs {90000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};

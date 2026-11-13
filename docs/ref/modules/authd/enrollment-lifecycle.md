@@ -466,11 +466,11 @@ the agent receives it.
 The manager applies an enrollment whether or not the agent is still waiting. The agent waits
 `agent.https_enroll_timeout` (35 s by default), longer than remoted's `http_request_timeout`, but a
 manager that stays unresponsive past remoted's own wait can still apply the request after the agent
-has been told `503` (`Enrollment outcome unknown`), a proxy has answered `502` or `504`, the
+has been told `503` (`Enrollment outcome unknown`), a proxy has answered `504`, the
 agent could not use a `200`, or it has heard nothing after its request was sent.
 The agent ties these explanations to the credential of that attempt: every refusal of that
-credential is explained, until a success or any other answer ends it. A failure before the request
-was sent (DNS, connection refused, a refused TLS handshake) never triggers them.
+credential is explained, until a stored key or a `4xx` verdict from authd (not `407`, `408` or `429`) ends it. A failure
+before the request was sent (DNS, connection refused, a refused TLS handshake) never triggers them.
 
 - **Re-enrollment.** The master has rotated the agent's key and re-enrollment secret, and the agent
   holds neither. Every later re-enrollment is refused (`409`/`9030` while the rotation is being

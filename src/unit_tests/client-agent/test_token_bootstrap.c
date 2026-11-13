@@ -48,7 +48,7 @@ static bool g_enroll_request_sent = false;
 static uint32_t g_enroll_timeout_override = 0;
 
 uint32_t __wrap_w_enrollment_timeout_ms(void) {
-    return g_enroll_timeout_override > 0 ? g_enroll_timeout_override : 35000;
+    return g_enroll_timeout_override > 0 ? g_enroll_timeout_override : HC_DEFAULT_ENROLL_TIMEOUT_MS;
 }
 
 bool __wrap_hc_fetch_cacerts(const hc_config_t *config, const hc_cacerts_request_t *request,

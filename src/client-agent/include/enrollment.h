@@ -139,17 +139,18 @@ uint32_t w_enrollment_timeout_ms(void);
 /**
  * @brief Records, against @p enroll_kid, an attempt whose outcome the agent cannot know: the
  *        request was sent and nothing came back, authd answered 503 with code -2, or a proxy
- *        answered 502 or 504. A TLS rejection is never one. A 200 the agent cannot use is
+ *        answered 504. A TLS rejection is never one. A 200 the agent cannot use is
  *        recorded by process_response itself.
  *
  * Refusals of that same credential are then explained by it instead of generically. It ends on a
- * success, on an ambiguous attempt for another credential, and on any other answer.
+ * stored key, on an ambiguous attempt for another credential, and on a 4xx verdict from authd
+ * (not 407, 408 or 429).
  *
  * @return true when the attempt is ambiguous.
  */
 bool w_enrollment_note_outcome_unknown(const hc_enroll_result_t *result, const char *enroll_kid);
 
-/** @brief Forgets that record. Any definitive answer does it on its own. */
+/** @brief Forgets that record. A verdict does it on its own. */
 void w_enrollment_clear_outcome_unknown(void);
 
 /**

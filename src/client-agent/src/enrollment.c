@@ -78,10 +78,10 @@ bool w_enrollment_note_outcome_unknown(const hc_enroll_result_t *result, const c
         w_enrollment_parse_error(result, &error);
         /* authd's code -2: the request reached authd but no answer came back in time. */
         ambiguous = error.has_numeric_code && error.authd_code == -2;
-    } else if (result->http_code == 502 || result->http_code == 504) {
-        /* An intermediary that may have forwarded the request. Remoted itself never answers these
-         * on /enroll. */
-        ambiguous = result->request_sent;
+    } else if (result->http_code == 504) {
+        /* An intermediary that may have forwarded the request before giving up. Remoted itself
+         * never answers 504 on /enroll. */
+        ambiguous = true;
     }
 
     if (ambiguous) {
@@ -346,20 +346,18 @@ bool w_enrollment_tls_rejection(const char *transport_error, char *reason, size_
     return true;
 }
 
-/* remoted's default http_request_timeout: how long the manager may still spend on a request. */
-#define W_ENROLL_MANAGER_WAIT_MS 30000
-
 uint32_t w_enrollment_timeout_ms(void) {
     static bool warned = false;
     static pthread_mutex_t warned_lock = PTHREAD_MUTEX_INITIALIZER;
-    const uint32_t timeout_ms = (uint32_t)getDefine_Int_default("agent", "https_enroll_timeout", 1000, 600000, 35000);
+    const uint32_t timeout_ms = (uint32_t)getDefine_Int_default("agent", "https_enroll_timeout", 1000, 600000,
+                                                                HC_DEFAULT_ENROLL_TIMEOUT_MS);
 
     w_mutex_lock(&warned_lock);
-    if (timeout_ms < W_ENROLL_MANAGER_WAIT_MS && !warned) {
+    if (timeout_ms < HC_MANAGER_REQUEST_TIMEOUT_MS && !warned) {
         warned = true;
         mwarn("agent.https_enroll_timeout (%u ms) is below the manager's default enrollment wait "
-              "(%d ms): the agent may abandon an enrollment the manager still applies.",
-              (unsigned)timeout_ms, W_ENROLL_MANAGER_WAIT_MS);
+              "(%u ms): the agent may abandon an enrollment the manager still applies.",
+              (unsigned)timeout_ms, HC_MANAGER_REQUEST_TIMEOUT_MS);
     }
     w_mutex_unlock(&warned_lock);
 
@@ -682,13 +680,17 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
 
     assert(result != NULL);
 
-    const bool ambiguous = w_enrollment_note_outcome_unknown(result, enroll_kid);
+    w_enrollment_note_outcome_unknown(result, enroll_kid);
 
     status = w_enrollment_handle_answer(result, enroll_kid, &keep_unknown);
 
-    /* An answer other than the refusals it explained settles the earlier attempt, so it must not
-     * explain a refusal that comes later. No answer at all settles nothing. */
-    if (result->http_code != 0 && !ambiguous && !keep_unknown) {
+    /* Only a stored key or a 4xx from authd settles the earlier attempt; 407, 408 and 429 come
+     * from intermediaries or the transport. */
+    const long code = result->http_code;
+    const bool verdict = (code == 200 && status == W_ENROLL_OK) ||
+                         (code >= 400 && code < 500 && code != 407 && code != 408 && code != 429);
+
+    if (verdict && !keep_unknown) {
         w_enrollment_clear_outcome_unknown();
     }
 

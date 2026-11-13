@@ -42,7 +42,7 @@ namespace
         config.serverPort = 1517;
         config.verifyMode = HC_VERIFY_NONE;
         config.requestTimeoutMs = 10000;
-        config.enrollTimeoutMs = 35000;
+        config.enrollTimeoutMs = HC_DEFAULT_ENROLL_TIMEOUT_MS;
         // Explicit, not relying on ModuleConfig's own default (which is a
         // separate, independently-tunable production default that can change
         // -- e.g. it flipped to true after this test was written): tests that
@@ -318,7 +318,7 @@ TEST(EnrollClientTest, UsesTheEnrollTimeoutNotTheRequestTimeout)
     .WillOnce(Invoke(
                   [&](const HttpRequestSpec & spec)
     {
-        EXPECT_EQ(35000u, spec.timeoutMs);
+        EXPECT_EQ(HC_DEFAULT_ENROLL_TIMEOUT_MS, spec.timeoutMs);
         return okResponse();
     }));
 
@@ -340,13 +340,13 @@ TEST(EnrollClientTest, TheUncompressedRetryKeepsTheEnrollTimeout)
     .WillOnce(Invoke(
                   [&](const HttpRequestSpec & spec)
     {
-        EXPECT_EQ(35000u, spec.timeoutMs);
+        EXPECT_EQ(HC_DEFAULT_ENROLL_TIMEOUT_MS, spec.timeoutMs);
         return okResponse(415);
     }))
     .WillOnce(Invoke(
                   [&](const HttpRequestSpec & spec)
     {
-        EXPECT_EQ(35000u, spec.timeoutMs);
+        EXPECT_EQ(HC_DEFAULT_ENROLL_TIMEOUT_MS, spec.timeoutMs);
         return okResponse(200);
     }));
 
