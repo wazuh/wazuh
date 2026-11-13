@@ -50,6 +50,19 @@ private:
 
     std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
 
+    /**
+     * @brief Whether requestShutdown() has been called.
+     *
+     * synchronize() uses it to report a failed space: once the shutdown is requested, the failure is logged at INFO
+     * as an abort, otherwise at its WARNING/ERROR level. The engine stops this service before the router and the
+     * indexer connector, so every failure their shutdown causes is classified as an abort. The policy is deliberate:
+     * a genuine runtime failure that happens after the shutdown request is also logged at INFO, since the engine is
+     * stopping and the space is marked FAILED either way.
+     *
+     * @return true once requestShutdown() has been called.
+     */
+    bool isShutdownRequested() const;
+
     /// Lock-free status snapshot of all spaces. Read via load() (wait-free). Rebuilt and published
     /// via store() by updateSpacesStatusSnapshot() on the single sync thread.
     base::StatusSnapshot<SpaceStatus> m_spacesStatus;
