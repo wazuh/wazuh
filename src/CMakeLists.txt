@@ -361,6 +361,13 @@ if(NOT IS_AGENT)
   add_subdirectory(wazuh_db)
 endif()
 
+# Fuzzing harnesses (opt-in): not part of production builds. OSS-Fuzz and
+# local fuzzing setups enable them with -DWAZUH_BUILD_FUZZERS=ON.
+option(WAZUH_BUILD_FUZZERS "Build the fuzzing harnesses in src/fuzzing" OFF)
+if(WAZUH_BUILD_FUZZERS)
+  add_subdirectory(fuzzing)
+endif()
+
 # Create flatbuffers alias if the real target wasn't created by subdirectories
 if(NOT TARGET flatbuffers)
   add_library(flatbuffers ALIAS ext_flatbuffers)
