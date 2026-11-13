@@ -18,8 +18,63 @@
 
 #include "../headers/shared.h"
 
+#ifdef TEST_WINAGENT
+ULONGLONG w_extend_tick_count(DWORD * last, ULONGLONG * high, DWORD tick);
+#endif
+
 
 /* tests */
+
+#ifdef TEST_WINAGENT
+void test_w_extend_tick_count_no_wrap(void **state)
+{
+    (void) state;
+    DWORD last = 0;
+    ULONGLONG high = 0;
+
+    assert_int_equal(w_extend_tick_count(&last, &high, 1000), 1000);
+    assert_int_equal(w_extend_tick_count(&last, &high, 2000), 2000);
+    assert_int_equal(high, 0);
+}
+
+void test_w_extend_tick_count_same_tick(void **state)
+{
+    (void) state;
+    DWORD last = 0;
+    ULONGLONG high = 0;
+
+    assert_int_equal(w_extend_tick_count(&last, &high, 5000), 5000);
+    assert_int_equal(w_extend_tick_count(&last, &high, 5000), 5000);
+    assert_int_equal(high, 0);
+}
+
+void test_w_extend_tick_count_wrap(void **state)
+{
+    (void) state;
+    DWORD last = 0;
+    ULONGLONG high = 0;
+    ULONGLONG before = w_extend_tick_count(&last, &high, 0xFFFFFC18);
+    ULONGLONG after = w_extend_tick_count(&last, &high, 0x3E8);
+
+    assert_int_equal(after, 0x1000003E8ULL);
+    assert_int_equal(after - before, 2000);
+    assert_int_equal(after / 1000 - before / 1000, 2);
+}
+
+void test_w_extend_tick_count_two_wraps(void **state)
+{
+    (void) state;
+    DWORD last = 0;
+    ULONGLONG high = 0;
+
+    w_extend_tick_count(&last, &high, 0xFFFFFF00);
+    w_extend_tick_count(&last, &high, 0x10);
+    w_extend_tick_count(&last, &high, 0xFFFFFF00);
+
+    assert_int_equal(w_extend_tick_count(&last, &high, 0x20), (2ULL << 32) | 0x20);
+    assert_int_equal(high, 2ULL << 32);
+}
+#endif
 
 void test_w_get_monotonic_time_is_positive(void **state)
 {
@@ -101,6 +156,12 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_get_monotonic_time_is_positive),
         cmocka_unit_test(test_w_get_monotonic_time_is_nondecreasing),
+#ifdef TEST_WINAGENT
+        cmocka_unit_test(test_w_extend_tick_count_no_wrap),
+        cmocka_unit_test(test_w_extend_tick_count_same_tick),
+        cmocka_unit_test(test_w_extend_tick_count_wrap),
+        cmocka_unit_test(test_w_extend_tick_count_two_wraps),
+#endif
         cmocka_unit_test(test_is_leap_year_two),
         cmocka_unit_test(test_is_leap_year_four),
         cmocka_unit_test(test_is_leap_year_one_hundred),
