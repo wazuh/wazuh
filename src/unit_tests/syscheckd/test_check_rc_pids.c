@@ -19,6 +19,7 @@
 
 #include "shared.h"
 #include "rootcheck.h"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 rkconfig rootcheck;
 
@@ -50,6 +51,8 @@ static int ps_empty;                /* ps prints no PIDs */
 static int proc_listings;           /* /proc listings read to the end */
 static int ps_runs;                 /* ps snapshots taken */
 static int listing_pos;
+static pid_t highest_killed;        /* Highest PID probed with kill() */
+static int proc_unreadable;         /* /proc is not mounted */
 static int fake_dir;                /* Its address is the DIR * of every opened directory */
 static struct dirent fake_entry;
 static char ps_buf[OS_SIZE_65536];
@@ -84,6 +87,10 @@ static int present(int when, int done)
 int __wrap_kill(pid_t pid, __attribute__((unused)) int sig)
 {
     const fake_task_t *task = find_task(pid);
+
+    if (pid > highest_killed) {
+        highest_killed = pid;
+    }
 
     if (task && task->kill) {
         return 0;
@@ -166,6 +173,11 @@ static const fake_task_t *reachable_task(const char *path, const char *suffix)
 
 DIR *__wrap_wopendir(const char *name)
 {
+    if (proc_unreadable && strncmp(name, "/proc", 5) == 0) {
+        errno = ENOENT;
+        return NULL;
+    }
+
     if (strcmp(name, "/proc") == 0) {
         listing_pos = 0;
         return (DIR *)&fake_dir;
@@ -273,6 +285,33 @@ int __wrap_notify_rk(int rk_type, const char *msg)
     return mock_type(int);
 }
 
+int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
+{
+    check_expected(high_name);
+    check_expected(low_name);
+    check_expected(min);
+    check_expected(max);
+    check_expected(default_val);
+    return mock_type(int);
+}
+
+/* rootcheck.max_pid as read from the internal options, or the default passed in */
+static void will_read_max_pid(int value)
+{
+    expect_string(__wrap_getDefine_Int_default, high_name, "rootcheck");
+    expect_string(__wrap_getDefine_Int_default, low_name, "max_pid");
+    expect_value(__wrap_getDefine_Int_default, min, 32768);
+    expect_value(__wrap_getDefine_Int_default, max, 4194304);
+    expect_value(__wrap_getDefine_Int_default, default_val, RK_CONF_UNDEFINED);
+    will_return(__wrap_getDefine_Int_default, value);
+}
+
+static void expect_mtinfo(const char *msg)
+{
+    expect_any(__wrap__mtinfo, tag);
+    expect_string(__wrap__mtinfo, formatted_msg, msg);
+}
+
 static void expect_notify_rk(int rk_type, const char *msg)
 {
     expect_value(__wrap_notify_rk, rk_type, rk_type);
@@ -321,12 +360,15 @@ static int setup(void **state)
 {
     (void)state;
     memset(&rootcheck, 0, sizeof(rkconfig));
+    rootcheck.max_pid = 4194303;
     set_fake_tasks(NULL, 0);
     ps_status = 0;
     ps_empty = 0;
     proc_listings = 0;
     ps_runs = 0;
     listing_pos = 0;
+    highest_killed = 0;
+    proc_unreadable = 0;
     expected_msgs_used = 0;
     return 0;
 }
@@ -510,6 +552,186 @@ static void test_scan_covers_full_pid_range(void **state)
     check_rc_pids();
 }
 
+static void test_scan_default_limit(void **state)
+{
+    (void)state;
+    static const fake_task_t tasks[] = { PROC(1), HIDDEN(32768), HIDDEN(32769), PROC(40000) };
+    set_fake_tasks(tasks, sizeof(tasks) / sizeof(tasks[0]));
+    rootcheck.max_pid = RC_MAX_PID_DEFAULT;
+
+    expect_hidden_from_proc(32768);
+
+    check_rc_pids();
+
+    assert_int_equal(highest_killed, 32768);
+}
+
+static void test_scan_configured_limit(void **state)
+{
+    (void)state;
+    static const fake_task_t tasks[] = { PROC(1), HIDDEN(100000), HIDDEN(100001) };
+    set_fake_tasks(tasks, sizeof(tasks) / sizeof(tasks[0]));
+    rootcheck.max_pid = 100000;
+
+    expect_hidden_from_proc(100000);
+
+    check_rc_pids();
+
+    assert_int_equal(highest_killed, 100000);
+}
+
+/* Not set by rootcheck_init(): falls back to the default */
+static void test_scan_unset_limit(void **state)
+{
+    (void)state;
+    static const fake_task_t tasks[] = { PROC(1), PROC(500) };
+    set_fake_tasks(tasks, sizeof(tasks) / sizeof(tasks[0]));
+    rootcheck.max_pid = 0;
+
+    expect_no_hidden(2);
+
+    check_rc_pids();
+
+    assert_int_equal(highest_killed, RC_MAX_PID_DEFAULT);
+}
+
+/* The highest value rc_read_max_pid() stores */
+static void test_scan_full_range_limit(void **state)
+{
+    (void)state;
+    static const fake_task_t tasks[] = { PROC(1) };
+    set_fake_tasks(tasks, sizeof(tasks) / sizeof(tasks[0]));
+    rootcheck.max_pid = 4194303;
+
+    expect_no_hidden(1);
+
+    check_rc_pids();
+
+    assert_int_equal(highest_killed, 4194303);
+}
+
+/* Without /proc the previous loop runs up to MAX_PID, which is reported once */
+static void test_scan_no_proc_reports_limit_once(void **state)
+{
+    (void)state;
+    set_fake_tasks(NULL, 0);
+    proc_unreadable = 1;
+    rootcheck.max_pid = 65536;
+
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "Hidden process check: /proc cannot be read, checking PIDs up to 32768 instead of 65536.");
+    expect_no_hidden(32768);
+    check_rc_pids();
+    assert_int_equal(highest_killed, 32768);
+
+    expect_no_hidden(32768);
+    check_rc_pids();
+}
+
+/* ===================================================================
+ * rootcheck.max_pid: reading and startup log
+ * =================================================================== */
+
+static void test_read_max_pid_not_set(void **state)
+{
+    (void)state;
+    will_read_max_pid(RK_CONF_UNDEFINED);
+
+    assert_int_equal(rc_read_max_pid(), 1);
+    assert_int_equal(rootcheck.max_pid, 32768);
+}
+
+static void test_read_max_pid_set(void **state)
+{
+    (void)state;
+    will_read_max_pid(65536);
+
+    assert_int_equal(rc_read_max_pid(), 0);
+    assert_int_equal(rootcheck.max_pid, 65536);
+}
+
+static void test_read_max_pid_set_to_default(void **state)
+{
+    (void)state;
+    will_read_max_pid(32768);
+
+    assert_int_equal(rc_read_max_pid(), 0);
+    assert_int_equal(rootcheck.max_pid, 32768);
+}
+
+/* 4194304 is a pid_max value: the last PID is 4194303 */
+static void test_read_max_pid_capped(void **state)
+{
+    (void)state;
+    will_read_max_pid(4194304);
+
+    assert_int_equal(rc_read_max_pid(), 0);
+    assert_int_equal(rootcheck.max_pid, 4194303);
+}
+
+/* __wrap_wfopen() opens nothing here */
+static void test_kernel_pid_max_unreadable(void **state)
+{
+    (void)state;
+    assert_int_equal(rc_kernel_pid_max(), 0);
+}
+
+static void test_log_max_pid_default_below_pid_max(void **state)
+{
+    (void)state;
+    rootcheck.max_pid = 32768;
+
+    expect_mtinfo("Hidden process check: checking PIDs up to 32768 (default, 'rootcheck.max_pid' not set).");
+    expect_mtinfo("Hidden process check: PIDs from 32769 to 4194303 are not checked. "
+                  "Raise 'rootcheck.max_pid' up to 4194304 to check them.");
+
+    rc_log_max_pid(1, 4194304);
+}
+
+static void test_log_max_pid_set_below_pid_max(void **state)
+{
+    (void)state;
+    rootcheck.max_pid = 65536;
+
+    expect_mtinfo("Hidden process check: checking PIDs up to 65536 ('rootcheck.max_pid').");
+    expect_mtinfo("Hidden process check: PIDs from 65537 to 99999 are not checked. "
+                  "Raise 'rootcheck.max_pid' up to 100000 to check them.");
+
+    rc_log_max_pid(0, 100000);
+}
+
+static void test_log_max_pid_covers_pid_max(void **state)
+{
+    (void)state;
+    rootcheck.max_pid = 4194303;
+
+    expect_mtinfo("Hidden process check: checking PIDs up to 4194303 ('rootcheck.max_pid').");
+
+    rc_log_max_pid(0, 4194304);
+}
+
+/* A kernel whose pid_max is 32768: every PID it assigns is checked */
+static void test_log_max_pid_small_pid_max(void **state)
+{
+    (void)state;
+    rootcheck.max_pid = 32768;
+
+    expect_mtinfo("Hidden process check: checking PIDs up to 32768 (default, 'rootcheck.max_pid' not set).");
+
+    rc_log_max_pid(1, 32768);
+}
+
+static void test_log_max_pid_unknown_pid_max(void **state)
+{
+    (void)state;
+    rootcheck.max_pid = 32768;
+
+    expect_mtinfo("Hidden process check: checking PIDs up to 32768 (default, 'rootcheck.max_pid' not set).");
+
+    rc_log_max_pid(1, 0);
+}
+
 static void test_scan_hidden_from_ps(void **state)
 {
     (void)state;
@@ -606,6 +828,21 @@ int main(void)
         cmocka_unit_test_setup(test_scan_process_exited_during_sweep, setup),
         cmocka_unit_test_setup(test_scan_hidden_from_kill_not_a_thread, setup),
         cmocka_unit_test_setup(test_scan_covers_full_pid_range, setup),
+        cmocka_unit_test_setup(test_read_max_pid_not_set, setup),
+        cmocka_unit_test_setup(test_read_max_pid_set, setup),
+        cmocka_unit_test_setup(test_read_max_pid_set_to_default, setup),
+        cmocka_unit_test_setup(test_read_max_pid_capped, setup),
+        cmocka_unit_test_setup(test_kernel_pid_max_unreadable, setup),
+        cmocka_unit_test_setup(test_log_max_pid_default_below_pid_max, setup),
+        cmocka_unit_test_setup(test_log_max_pid_set_below_pid_max, setup),
+        cmocka_unit_test_setup(test_log_max_pid_covers_pid_max, setup),
+        cmocka_unit_test_setup(test_log_max_pid_small_pid_max, setup),
+        cmocka_unit_test_setup(test_log_max_pid_unknown_pid_max, setup),
+        cmocka_unit_test_setup(test_scan_default_limit, setup),
+        cmocka_unit_test_setup(test_scan_configured_limit, setup),
+        cmocka_unit_test_setup(test_scan_unset_limit, setup),
+        cmocka_unit_test_setup(test_scan_full_range_limit, setup),
+        cmocka_unit_test_setup(test_scan_no_proc_reports_limit_once, setup),
         cmocka_unit_test_setup(test_scan_hidden_from_ps, setup),
         cmocka_unit_test_setup(test_scan_ps_lists_nothing, setup),
         cmocka_unit_test_setup(test_scan_ps_exit_status_ignored, setup),
