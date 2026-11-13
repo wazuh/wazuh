@@ -1430,11 +1430,36 @@ namespace fim_container_events
             {
                 if (!staging.nextBatch(batch, 500)) continue;
 
-                const auto request = PlanFor(batch);
+                /* The thread boundary, so the containment belongs here rather than
+                 * only in the handler. An exception that leaves this function
+                 * reaches std::thread and terminates syscheckd -- host FIM and all
+                 * -- over one container's failed reconcile. The handler states the
+                 * same rule in its own doc comment and guards its branches, but a
+                 * branch added later that forgets to must not be able to take the
+                 * process down, and PlanFor() allocates before the handler is even
+                 * reached.
+                 *
+                 * Dropping the batch is the right failure: it was already consumed
+                 * from staging, every mode here is idempotent, and the whole-node
+                 * reconciliation floor re-derives whatever this pass did not do. */
+                try
+                {
+                    const auto request = PlanFor(batch);
 
-                if (request.empty() || !handler) continue;
+                    if (request.empty() || !handler) continue;
 
-                handler(request);
+                    handler(request);
+                }
+                catch (const std::exception& err)
+                {
+                    LogError(std::string {"Container eBPF drain: the reconcile consumer dropped a batch: "} +
+                             err.what() + ". The reconciliation floor will re-derive it.");
+                }
+                catch (...)
+                {
+                    LogError("Container eBPF drain: the reconcile consumer dropped a batch for an unknown "
+                             "reason. The reconciliation floor will re-derive it.");
+                }
             }
         }
 

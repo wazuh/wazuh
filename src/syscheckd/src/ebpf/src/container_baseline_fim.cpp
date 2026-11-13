@@ -1353,12 +1353,34 @@ namespace
                      "then its context.",
                      request.container_id.c_str());
 
-            // Idempotent: if the startup baseline's sweep already took this
-            // container, the transaction covers no rows and emits nothing, the
-            // budget release finds no entry, and the context DELETE matches none.
-            // Serialize with whole-node walks so their shared row statuses cannot be swept here.
-            std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
-            SweepOneContainer(request.container_id, CB_FIM_ORIGIN_EVENT);
+            // Its own try/catch, because this branch returns before the one that
+            // wraps the walk modes below, and this function's contract is that
+            // nothing may throw out of the consumer thread -- see the doc comment
+            // above. A transaction that cannot be opened must cost this container
+            // its cleanup, not the agent its syscheckd process.
+            try
+            {
+                // Idempotent: if the startup baseline's sweep already took this
+                // container, the transaction covers no rows and emits nothing, the
+                // budget release finds no entry, and the context DELETE matches none.
+                // Serialize with whole-node walks so their shared row statuses cannot be swept here.
+                std::lock_guard<std::recursive_mutex> lock(container_state_mutex);
+                SweepOneContainer(request.container_id, CB_FIM_ORIGIN_EVENT);
+            }
+            catch (const std::exception& err)
+            {
+                LogError("Container FIM reconcile: could not age out the rows of removed container '%s': %s. "
+                         "They are left for the next whole-node reconciliation.",
+                         request.container_id.c_str(),
+                         err.what());
+            }
+            catch (...)
+            {
+                LogError("Container FIM reconcile: could not age out the rows of removed container '%s'. "
+                         "They are left for the next whole-node reconciliation.",
+                         request.container_id.c_str());
+            }
+
             return;
         }
 
