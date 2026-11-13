@@ -54,6 +54,7 @@
 | Issue | Comment |
 |-------|---------|
 | [#38514](https://github.com/wazuh/wazuh/issues/38514) | Fixed the Windows agent leaving a temporary file behind after a failed `/stateful` body compression, and a failed `fclose()` passing a truncated compressed body as complete. |
+| [#41384](https://github.com/wazuh/wazuh/pull/41384) | Hardened how the agent loads its internal options files: a symlinked, non-regular or non-root-owned file is ignored, and an invalid line is reported by number instead of content. |
 
 ## Prior versions
 

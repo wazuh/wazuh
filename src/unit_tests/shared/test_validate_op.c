@@ -1436,6 +1436,103 @@ static int teardown_local_defines(void **state)
     return 0;
 }
 
+#ifndef TEST_WINAGENT
+static uid_t fake_euid;
+static bool use_fake_euid;
+
+uid_t __real_geteuid(void);
+uid_t __wrap_geteuid(void)
+{
+    return use_fake_euid ? fake_euid : __real_geteuid();
+}
+
+static void write_file(const char *path, const char *content)
+{
+    FILE *fp = fopen(path, "w");
+    assert_non_null(fp);
+    fputs(content, fp);
+    fclose(fp);
+}
+
+static int teardown_defines_links(void **state)
+{
+    (void)state;
+
+    use_fake_euid = false;
+    unlink("./local_internal_options.conf");
+    unlink("./defines_target.conf");
+
+    return 0;
+}
+
+void getDefine_Int_default_symlink_is_not_followed(void **state)
+{
+    (void)state;
+
+    write_file("./defines_target.conf", "agent.good_value=9\nTARGET-LINE\n");
+    assert_int_equal(symlink("./defines_target.conf", "./local_internal_options.conf"), 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1103): Could not open file './local_internal_options.conf' due to [(40)-(Too many levels of symbolic links)].");
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
+void getDefine_Int_default_hard_link_is_refused(void **state)
+{
+    (void)state;
+
+    write_file("./defines_target.conf", "agent.good_value=9\n");
+    assert_int_equal(link("./defines_target.conf", "./local_internal_options.conf"), 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root.");
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
+void getDefine_Int_default_fifo_is_refused(void **state)
+{
+    (void)state;
+
+    assert_int_equal(mkfifo("./local_internal_options.conf", 0600), 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root.");
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
+void getDefine_Int_default_other_owner_is_refused(void **state)
+{
+    (void)state;
+
+    write_file("./local_internal_options.conf", "agent.good_value=9\n");
+    if (getuid() == 0) {
+        assert_int_equal(chown("./local_internal_options.conf", 4242, -1), 0);
+    }
+    fake_euid = 4243;
+    use_fake_euid = true;
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root.");
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
+void getDefine_Int_default_invalid_line_logs_line_number(void **state)
+{
+    (void)state;
+
+    write_file("./local_internal_options.conf", "# comment\nagent.good_value=7\nINVALID-LINE\nagent.no_equal\n");
+
+    expect_string(__wrap__merror, formatted_msg, "(1119): Invalid line on file './local_internal_options.conf': line 3.");
+    expect_string(__wrap__merror, formatted_msg, "(1119): Invalid line on file './local_internal_options.conf': line 4.");
+
+    assert_int_equal(getDefine_Int_default("agent", "never_written", 0, 10, 5), 5);
+}
+#endif
+
 /* Refused: an empty value carries no digit, even where 0 would be in range. */
 void getDefine_Int_default_empty_value_exits(void **state)
 {
@@ -1642,6 +1739,13 @@ int main(void) {
                                         teardown_local_defines),
         cmocka_unit_test_setup_teardown(getDefine_Int_default_plus_sign_exits, setup_local_defines,
                                         teardown_local_defines),
+#ifndef TEST_WINAGENT
+        cmocka_unit_test_teardown(getDefine_Int_default_symlink_is_not_followed, teardown_defines_links),
+        cmocka_unit_test_teardown(getDefine_Int_default_hard_link_is_refused, teardown_defines_links),
+        cmocka_unit_test_teardown(getDefine_Int_default_fifo_is_refused, teardown_defines_links),
+        cmocka_unit_test_teardown(getDefine_Int_default_other_owner_is_refused, teardown_defines_links),
+        cmocka_unit_test_teardown(getDefine_Int_default_invalid_line_logs_line_number, teardown_defines_links),
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

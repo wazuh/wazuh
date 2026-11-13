@@ -69,7 +69,7 @@ list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} -Wl,--wrap,syscom_dispatch 
 else()
 # The getDefine_Int_default cases assert the merror_exit an invalid value raises; the winagent
 # branch above already links these wrappers.
-list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} ${DEBUG_OP_WRAPPERS}")
+list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} ${DEBUG_OP_WRAPPERS} -Wl,--wrap,geteuid")
 endif()
 
 list(APPEND shared_tests_names "test_string_op")
