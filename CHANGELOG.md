@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Hardened the cluster handshake and request queues. The master now rejects the reserved worker node name `master`, and a request that fails unexpectedly in the cluster request queues is discarded instead of stopping `wazuh-clusterd`. ([#41203](https://github.com/wazuh/wazuh/pull/41203))
 - Fixed the configuration upload validation to also apply the `upload_configuration.remote_commands` setting to the `prefilter_cmd` option of the `syscheck` section. ([#40792](https://github.com/wazuh/wazuh/pull/40792))
 - Fixed `wazuh-analysisd` sending active responses for Windows events whose `win.eventdata.ipAddress` or `win.eventdata.destinationIp` is in the `white_list`, which let the agent block that address. As with `srcip`, no active response is sent for these events, whatever its command. The `::ffff:` prefix of an IPv4-mapped address is now removed regardless of case before checking the lists. ([#41272](https://github.com/wazuh/wazuh/pull/41272))
 - Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41204](https://github.com/wazuh/wazuh/pull/41204))
