@@ -39,9 +39,10 @@ std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dat
 
     auto op = base::Term<base::EngineOp>::create(
         ENRICHMENT_SPACE_TRACEABLE_NAME,
-        [originSpace = policy.getOriginSpace(), isTestMode](base::Event event) -> base::result::Result<base::Event>
+        [originSpace = policy.getOriginSpace(), isTestMode, originSpacePP = json::PointerPath(JPATH_ORIGIN_SPACE)](
+            base::Event event) -> base::result::Result<base::Event>
         {
-            event->setString(originSpace, JPATH_ORIGIN_SPACE);
+            event->setString(originSpace, originSpacePP);
             if (isTestMode)
             {
                 return base::result::makeSuccess<decltype(event)>(event, "[map: $wazuh.space.name] -> Success");
@@ -58,7 +59,7 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
                          const std::shared_ptr<fastmetrics::ICounter>& discardedCounter)
 {
     const bool shouldIndex = policy.shouldIndexDiscardedEvents();
-    const auto discardFieldPath = json::Json::formatJsonPath(syntax::asset::discard::TARGET_FIELD);
+    const json::PointerPath discardFieldPath {json::Json::formatJsonPath(syntax::asset::discard::TARGET_FIELD)};
 
     auto op = base::Term<base::EngineOp>::create(
         DISCARDED_EVENTS_FILTER_TRACEABLE_NAME,

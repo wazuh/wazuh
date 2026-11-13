@@ -37,15 +37,19 @@ MapOp mapReference(const Reference& reference, const std::shared_ptr<const IBuil
     auto referenceNotFound =
         fmt::format("{} -> Reference '{}' not found", buildCtx->context().opName, reference.dotPath());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
-    return [successTrace, isTestMode = buildCtx->isTestMode(), referenceNotFound, referencePath = reference.jsonPath()](
-               base::ConstEvent event) -> MapResult
+    return [successTrace,
+            isTestMode = buildCtx->isTestMode(),
+            referenceNotFound,
+            referencePath = json::PointerPath(reference.jsonPath())](base::ConstEvent event) -> MapResult
     {
-        if (!event->exists(referencePath))
+        // One lookup: getJson() is empty when the reference is missing
+        auto found = event->getJson(referencePath);
+        if (!found)
         {
             RETURN_FAILURE(isTestMode, json::Json(), referenceNotFound);
         }
 
-        auto jValue = event->getJson(referencePath).value();
+        auto jValue = std::move(found).value();
 
         RETURN_SUCCESS(isTestMode, jValue, successTrace);
     };

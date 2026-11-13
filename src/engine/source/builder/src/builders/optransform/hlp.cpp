@@ -160,8 +160,10 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     const auto failureTrace3 = fmt::format("{} -> There is still text to analyze after parsing", traceName);
 
     // Return Op
-    return [=, source = source.jsonPath(), isTestMode = buildCtx->isTestMode(), parser = std::move(parser)](
-               base::Event event) -> TransformResult
+    return [=,
+            source = json::PointerPath(source.jsonPath()),
+            isTestMode = buildCtx->isTestMode(),
+            parser = std::move(parser)](base::Event event) -> TransformResult
     {
         // Check if source is a reference
         // HLP mappers retain views into the source while mutating the event. MemoryPoolAllocator

@@ -221,17 +221,22 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
         const auto& integrationName = newContext->context().integration.name;
         const auto& integrationCategory = newContext->context().integration.category;
 
-        auto automapping = base::Term<base::EngineOp>::create(
-            "Automapping",
-            [integrationCategory, integrationName, assetName = newContext->context().assetName](auto e)
-            {
-                {
-                    e->setString(integrationCategory, syntax::asset::CATEGORY_PATH);
-                    e->setString(integrationName, syntax::asset::INTEGRATION_PATH);
-                    e->appendString(assetName, syntax::asset::DECODERS_PATH);
-                }
-                return base::result::makeSuccess(e, "");
-            });
+        auto automapping =
+            base::Term<base::EngineOp>::create("Automapping",
+                                               [integrationCategory,
+                                                integrationName,
+                                                assetName = newContext->context().assetName,
+                                                categoryPP = json::PointerPath(syntax::asset::CATEGORY_PATH),
+                                                integrationPP = json::PointerPath(syntax::asset::INTEGRATION_PATH),
+                                                decodersPP = json::PointerPath(syntax::asset::DECODERS_PATH)](auto e)
+                                               {
+                                                   {
+                                                       e->setString(integrationCategory, categoryPP);
+                                                       e->setString(integrationName, integrationPP);
+                                                       e->appendString(assetName, decodersPP);
+                                                   }
+                                                   return base::result::makeSuccess(e, "");
+                                               });
         consequenceExpressions.emplace_back(std::move(automapping));
     }
 

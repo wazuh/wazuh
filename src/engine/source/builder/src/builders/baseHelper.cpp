@@ -20,7 +20,7 @@ auto setObjectTerm(const std::string& field) -> base::Expression
     auto name {fmt::format("map.value[{}={}]", field, "{}")};
     auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    auto fn = [field, successTrace](const auto& e)
+    auto fn = [field = json::PointerPath(field), successTrace](const auto& e)
     {
         if (!e->isObject(field))
         {
@@ -42,7 +42,7 @@ auto deleteEmptyObjectTerm(const std::string& field) -> base::Expression
     auto name {fmt::format("unmap.ifEmpty.value[{}]", field)};
     auto successTrace {fmt::format("[{}] -> Success", name)};
 
-    auto fn = [field, successTrace](const auto& e)
+    auto fn = [field = json::PointerPath(field), successTrace](const auto& e)
     {
         if (e->isObject(field) && e->isEmpty(field))
         {
@@ -164,8 +164,9 @@ TransformBuilder mapToTransform(MapBuilder builder, Reference targetField)
         auto mapOp = builder(opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [mapOp = std::move(mapOp), targetField, isTestMode = buildCtx->isTestMode()](
-                   base::Event event) -> TransformResult
+        return [mapOp = std::move(mapOp),
+                targetFieldPP = json::PointerPath(targetField.jsonPath()),
+                isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {
             auto mapRes = mapOp(event);
             if (mapRes.failure())
@@ -173,7 +174,7 @@ TransformBuilder mapToTransform(MapBuilder builder, Reference targetField)
                 RETURN_FAILURE(isTestMode, event, mapRes.popTrace());
             }
 
-            event->set(targetField.jsonPath(), mapRes.popPayload());
+            event->set(targetFieldPP, mapRes.popPayload());
 
             RETURN_SUCCESS(isTestMode, event, mapRes.popTrace());
         };
