@@ -16,6 +16,7 @@
 #include <array>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <string>
 
 namespace Utils
@@ -23,7 +24,16 @@ namespace Utils
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-    static void expandAbsolutePath(const std::string& path, std::deque<std::string>& output)
+    /// @brief Expands the wildcards of an absolute path into the existing paths that match it.
+    ///
+    /// @param path Absolute path, may contain '*' and '?' in any component.
+    /// @param output Matching paths are appended here.
+    /// @param skipEntry Entries matched by the first wildcard of the path for which it returns true
+    /// are neither matched nor descended into. Deeper levels are not asked about: in a pattern such
+    /// as /home/*/... the first wildcard is the level that lists the home directories.
+    static void expandAbsolutePath(const std::string& path,
+                                   std::deque<std::string>& output,
+                                   const std::function<bool(const std::string&)>& skipEntry)
     {
         // Find the first * or ? from path.
         std::array<char, 2> wildcards { '*', '?' };
@@ -86,7 +96,7 @@ namespace Utils
                 {
                     const auto entryName { entry.path().filename().string()};
 
-                    if (patternMatch(entryName, pattern))
+                    if (patternMatch(entryName, pattern) && !(skipEntry && skipEntry(entry.path().string())))
                     {
                         std::string nextPath;
                         nextPath += baseDir;
@@ -95,7 +105,7 @@ namespace Utils
                         nextPath += nextDirectoryPos == std::string::npos ? "" :
                                     path.substr(nextDirectoryPos);
 
-                        expandAbsolutePath(nextPath, output);
+                        expandAbsolutePath(nextPath, output, nullptr);
                     }
                 }
             }
@@ -104,6 +114,15 @@ namespace Utils
         {
             output.push_back(path);
         }
+    }
+
+    /// @brief Expands the wildcards of an absolute path into the existing paths that match it.
+    ///
+    /// @param path Absolute path, may contain '*' and '?' in any component.
+    /// @param output Matching paths are appended here.
+    static void expandAbsolutePath(const std::string& path, std::deque<std::string>& output)
+    {
+        expandAbsolutePath(path, output, nullptr);
     }
 #pragma GCC diagnostic pop
 };

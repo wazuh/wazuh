@@ -6,6 +6,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 include_directories(${CMAKE_SOURCE_DIR}/src/packages)
 include_directories(${CMAKE_SOURCE_DIR}/../shared_modules/utils/tests/mocks)
+include_directories(${CMAKE_SOURCE_DIR}/../shared_modules/utils/tests)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")

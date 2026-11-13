@@ -129,8 +129,11 @@ class NPM final
                 {
                     std::deque<std::string> expandedPaths;
 
-                    // Expand paths
-                    Utils::expandAbsolutePath(osRootFolder, expandedPaths);
+                    // Expand paths, skipping the home directories that are not mounted yet
+                    Utils::expandAbsolutePath(osRootFolder, expandedPaths, [this](const std::string & path)
+                    {
+                        return TFileSystem::is_unmounted_automount_point(path);
+                    });
                     // Explore expanded paths
                     exploreExpandedPaths(expandedPaths, callback);
                 }

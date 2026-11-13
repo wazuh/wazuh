@@ -100,6 +100,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-logcollector` keeping a field of the log line instead of the label configured with the same name for `json` localfiles. ([#41072](https://github.com/wazuh/wazuh/pull/41072))
 - Fixed `wazuh-syscheckd` crash when the eBPF whodata provider fails to load `libbpf.so`. ([#41095](https://github.com/wazuh/wazuh/issues/41095))
 - Fixed the Windows agent failing to start on Windows XP and Windows Server 2003. ([#41438](https://github.com/wazuh/wazuh/pull/41438))
+- Fixed the Linux packages and browser extensions inventory mounting every automounted home directory on each scan. ([#41427](https://github.com/wazuh/wazuh/pull/41427))
 
 ## [v4.14.10]
 

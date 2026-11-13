@@ -735,8 +735,15 @@ namespace chrome
                 continue;
             }
 
-            m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
             const std::string userHomePath = Utils::joinPaths(homePath, user);
+
+            // Looking for profiles inside a home that is not mounted yet would mount it
+            if (m_chromeExtensionsWrapper->isUnmountedAutomountPoint(userHomePath))
+            {
+                continue;
+            }
+
+            m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
             m_currentOwnerUid = m_currentUid.empty() ? browser_extensions::homeDirectoryOwner(userHomePath) : m_currentUid;
 
 #if defined(_WIN32) || defined(_WIN64)
