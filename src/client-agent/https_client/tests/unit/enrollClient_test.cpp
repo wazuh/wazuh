@@ -42,6 +42,7 @@ namespace
         config.serverPort = 1517;
         config.verifyMode = HC_VERIFY_NONE;
         config.requestTimeoutMs = 10000;
+        config.enrollTimeoutMs = 35000;
         // Explicit, not relying on ModuleConfig's own default (which is a
         // separate, independently-tunable production default that can change
         // -- e.g. it flipped to true after this test was written): tests that
@@ -301,6 +302,52 @@ TEST(EnrollClientTest, DoesNotCompressWhenDisabled)
         EXPECT_FALSE(hasHeader(spec.headers, "Content-Encoding:"));
         EXPECT_EQ(BODY, std::string(reinterpret_cast<const char*>(spec.body), spec.bodyLength));
         return okResponse();
+    }));
+
+    client.enroll(BODY, "");
+}
+
+TEST(EnrollClientTest, UsesTheEnrollTimeoutNotTheRequestTimeout)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+    EnrollClient client {openModeConfig(), performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(35000u, spec.timeoutMs);
+        return okResponse();
+    }));
+
+    client.enroll(BODY, "");
+}
+
+TEST(EnrollClientTest, TheUncompressedRetryKeepsTheEnrollTimeout)
+{
+    NiceMock<MockFsProbe> fsProbe;
+    NiceMock<MockHttpPerformer> performer;
+    FakeClock clock;
+
+    auto config = openModeConfig();
+    config.httpsCompressionEnabled = true;
+    EnrollClient client {config, performer, fsProbe, clock, TEST_LOG};
+
+    EXPECT_CALL(performer, perform(_))
+    .Times(2)
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(35000u, spec.timeoutMs);
+        return okResponse(415);
+    }))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(35000u, spec.timeoutMs);
+        return okResponse(200);
     }));
 
     client.enroll(BODY, "");

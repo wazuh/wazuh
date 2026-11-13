@@ -461,6 +461,28 @@ handed out exactly once per enrollment, it is never returned by `get`, it is nev
 The response does not wait for persistence or remoted's reload. Those may finish before or after
 the agent receives it.
 
+### Recovering an agent whose enrollment answer was lost
+
+The manager applies an enrollment whether or not the agent is still waiting. The agent waits
+`agent.https_enroll_timeout` (35 s by default), longer than remoted's `http_request_timeout`, but a
+manager that stays unresponsive past remoted's own wait can still apply the request after the agent
+has been told `503` (`Enrollment outcome unknown`) or has heard nothing.
+
+- **Re-enrollment.** The master has rotated the agent's key and re-enrollment secret, and the agent
+  holds neither. Every later re-enrollment is refused (`409`/`9030` while the rotation is being
+  written, then `401` `invalid_signature`), and no secret can be restored: authd never accepts the
+  previous one. The agent logs `Re-enrollment was refused for this agent's own credential after an
+  earlier attempt timed out or got no answer`. The manager may keep listing the agent as `active`
+  while it is locked out.
+- **First enrollment with a token.** The manager registered the agent, which stays `never_connected`,
+  and the retry is refused as a duplicate (`9008`). `wazuh-agentd` exits with `Enrollment-token
+  bootstrap failed; refusing to enroll unverified.`, after logging `Enrollment was refused as a
+  duplicate after an earlier attempt in this start timed out or got no answer`. A single-use token
+  was already spent by the lost request, so the retry is refused with `9024` instead.
+
+In both cases, delete the agent on the manager, wait for its deletion to finish (see
+[Agent removal](README.md#agent-removal)), and enroll the agent again with a new enrollment token.
+
 ## Step 11: The writer settles it
 
 The insert/rotation and removal queues feed one writer thread. Serving threads also perform I/O:

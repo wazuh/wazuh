@@ -873,6 +873,23 @@ static void test_enroll_reuses_the_configured_endpoint(void **state)
     assert_string_equal(g_captured_enroll_config.server_endpoint, "wazuh-manager");
 }
 
+static void test_enroll_reads_its_own_timeout_option(void **state)
+{
+    (void)state;
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    w_https_client_enroll("{}", "", NULL, NULL, &result);
+
+    assert_true(g_captured_enroll_valid);
+    assert_int_equal(g_captured_enroll_config.enroll_timeout_ms, 35000);
+    assert_non_null(strstr(g_resolved_options, "https_enroll_timeout:1000:600000;"));
+    /* The per-request timeout of the other endpoints is not read for /enroll. */
+    assert_int_equal(g_captured_enroll_config.request_timeout_ms, 0);
+}
+
 static void test_enroll_passes_body_and_password_through(void **state)
 {
     (void)state;
@@ -3525,6 +3542,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_absent_endpoint_leaves_the_field_empty, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_transport_config_not_identity, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_the_configured_endpoint, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_reads_its_own_timeout_option, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_the_keyed_credential_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_ignores_a_half_keyed_credential, setup_test, teardown_test),

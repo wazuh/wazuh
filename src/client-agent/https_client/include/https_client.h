@@ -180,6 +180,7 @@ typedef struct hc_config_t
     ///< here on, since it changes when a bundle is adopted.
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
+    uint32_t enroll_timeout_ms;   ///< Per /enroll request; 0 -> 35000.
     uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
     ///< 0 -> 90000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.

@@ -529,6 +529,7 @@ static int setup_test(void **state) {
     agt = (agent *) calloc(1, sizeof(agent));
     os_strdup("test-agent", agt->enrollment.agent_name);
     memset(&keys, 0, sizeof(keys));
+    w_enrollment_clear_outcome_unknown();
 
     memset(&g_fetch_config, 0, sizeof(g_fetch_config));
     memset(&g_enroll_config, 0, sizeof(g_enroll_config));
@@ -2071,6 +2072,68 @@ static void test_enroll_transport_failure_stays_transient_and_is_reported(void *
     os_free(token);
 }
 
+/* The retry after a timed-out /enroll that the manager applied anyway: the duplicate is still
+ * permanent, as before, but the log names the probable cause instead of a bare "duplicate agent". */
+static void test_enroll_duplicate_after_a_timeout_names_the_cause_and_stays_permanent(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    g_enroll_transport_error = "(28) Operation timed out";
+
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, NULL);
+    will_return(__wrap_hc_enroll, 0);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_true(report.transient);
+
+    will_return(__wrap_hc_enroll, 409L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9008,\"message\":\"Duplicate name\"}}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment was refused as a duplicate after an earlier attempt in this start timed out "
+                  "or got no answer. The manager most likely registered this agent from that attempt. "
+                  "Delete the agent on the manager and enroll again with a new enrollment token.");
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_int_equal(report.http_code, 409);
+    assert_false(report.transient);
+    assert_false(report.pending);
+
+    os_free(token);
+}
+
+/* No ambiguous predecessor: a duplicate is not tied to this agent's own request, so nothing about
+ * it is said beyond what the manager answered. */
+static void test_enroll_duplicate_without_a_timeout_stays_generic(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+
+    will_return(__wrap_hc_enroll, 409L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9008,\"message\":\"Duplicate name\"}}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Duplicate name");
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_false(report.transient);
+
+    os_free(token);
+}
+
 /* A load balancer's own error page carries nothing the agent can read. The status is then the
  * only fact left that tells "the manager said no" from "something in front of it failed", and
  * wazuh-agent-auth only prints the report, so it has to be there. */
@@ -2950,6 +3013,10 @@ int main(void) {
                                         teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_flat_403_reason_reaches_the_report, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_transport_failure_stays_transient_and_is_reported,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_duplicate_after_a_timeout_names_the_cause_and_stays_permanent,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_duplicate_without_a_timeout_stays_generic,
                                         setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_unreadable_5xx_body_reports_the_status,
                                         setup_test, teardown_test),

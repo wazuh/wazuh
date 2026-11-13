@@ -2151,6 +2151,10 @@ static void bridge_build_transport_config(hc_config_t *config)
      * getDefine_Int_default (not getDefine_Int) so a missing key defaults to
      * on instead of aborting the agent. */
     config->https_compression_enabled = (bool)getDefine_Int_default("agent", "https_compression_enabled", 0, 1, 1);
+
+    /* /enroll only, hence here and not with the other timeouts. */
+    config->enroll_timeout_ms =
+        (uint32_t)getDefine_Int_default("agent", "https_enroll_timeout", 1000, 600000, 35000);
 }
 
 /* Builds the full module config: the transport half above, plus the

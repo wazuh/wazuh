@@ -38,6 +38,18 @@ STATIC w_enroll_status_t w_enrollment_classify_auth_failure(const char *auth_cla
                                                             const char *manager_message);
 STATIC int w_enrollment_fallback_credential_exists(void);
 
+/* Set when an attempt may have reached the manager without the agent learning the outcome: no
+ * answer at all, or a 503 saying the outcome is unknown. Cleared by a successful enrollment. */
+STATIC bool w_enroll_outcome_unknown = false;
+
+void w_enrollment_note_outcome_unknown(void) {
+    w_enroll_outcome_unknown = true;
+}
+
+void w_enrollment_clear_outcome_unknown(void) {
+    w_enroll_outcome_unknown = false;
+}
+
 int w_enrollment_build_request(w_enroll_request_t *out) {
     assert(out != NULL);
     out->body_json = NULL;
@@ -346,6 +358,10 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         merror("Enrollment request could not be sent: %s.",
                result->transport_error[0] != '\0' ? result->transport_error
                                                  : "transport or configuration error");
+        /* An empty transport_error means the attempt never reached libcurl: nothing was sent. */
+        if (result->transport_error[0] != '\0') {
+            w_enrollment_note_outcome_unknown();
+        }
         return W_ENROLL_ERR_TRANSPORT;
     }
 
@@ -404,6 +420,7 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
         }
 
         minfo("Valid key received");
+        w_enrollment_clear_outcome_unknown();
         return W_ENROLL_OK;
     }
 
@@ -416,6 +433,13 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
     char token_reason[32];
     const char *token_refusal = w_enrollment_token_refusal(result->http_code, &error, token_reason,
                                                            sizeof(token_reason));
+    const bool token_kid = strcmp(w_enrollment_token_id_or_unknown(enroll_kid), "(id unknown)") != 0;
+    const bool reenroll_kid = enroll_kid != NULL && enroll_kid[0] != '\0' && !token_kid;
+
+    /* authd's code -2: the request reached authd but no answer came back in time. */
+    if (result->http_code == 503 && error.has_numeric_code && authd_code == -2) {
+        w_enrollment_note_outcome_unknown();
+    }
 
     if (token_refusal != NULL) {
         /* Named with the token id: the operator has to replace this token, and a fleet
@@ -434,7 +458,17 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             status = W_ENROLL_ERR_INVALID_REQUEST;
             break;
         case 401:
-            status = w_enrollment_classify_auth_failure(auth_class, manager_message);
+            if (w_enroll_outcome_unknown && reenroll_kid && auth_class != NULL &&
+                    strcmp(auth_class, "invalid_signature") == 0) {
+                merror("Re-enrollment was refused for this agent's own credential after an earlier "
+                       "attempt timed out or got no answer. The manager most likely applied that attempt "
+                       "and rotated the credential after the agent gave up, so the stored one is stale "
+                       "and cannot be recovered. Delete this agent on the manager and enroll it again "
+                       "with a new enrollment token.");
+                status = W_ENROLL_ERR_AUTH_RETRY;
+            } else {
+                status = w_enrollment_classify_auth_failure(auth_class, manager_message);
+            }
             break;
         case 403:
             /* Besides a refused token, handled above, two 403s told apart by the envelope:
@@ -467,8 +501,20 @@ w_enroll_status_t w_enrollment_process_response(const hc_enroll_result_t *result
             }
             break;
         case 409:
-            merror("Enrollment rejected by the manager: duplicate agent.%s%s",
-                   manager_message ? " " : "", manager_message ? manager_message : "");
+            if (w_enroll_outcome_unknown && reenroll_kid && authd_code == 9030) {
+                merror("A re-enrollment is already in progress on the manager after an earlier attempt of "
+                       "this agent timed out or got no answer. That attempt most likely rotated the "
+                       "credential; if the next attempt is refused as an invalid signature, delete this "
+                       "agent on the manager and enroll it again with a new enrollment token.");
+            } else if (w_enroll_outcome_unknown && token_kid && (authd_code == 9007 || authd_code == 9008)) {
+                merror("Enrollment was refused as a duplicate after an earlier attempt in this start timed "
+                       "out or got no answer. The manager most likely registered this agent from that "
+                       "attempt. Delete the agent on the manager and enroll again with a new enrollment "
+                       "token.");
+            } else {
+                merror("Enrollment rejected by the manager: duplicate agent.%s%s",
+                       manager_message ? " " : "", manager_message ? manager_message : "");
+            }
             status = W_ENROLL_ERR_DUPLICATE;
             break;
         case 404:

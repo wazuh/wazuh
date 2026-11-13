@@ -117,6 +117,15 @@ const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *e
 const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
 
 /**
+ * @brief Records that an attempt may have reached the manager without the agent learning the
+ *        outcome. Later refusals in the same run are then explained by it instead of generically.
+ */
+void w_enrollment_note_outcome_unknown(void);
+
+/** @brief Forgets that record. A successful enrollment does it on its own. */
+void w_enrollment_clear_outcome_unknown(void);
+
+/**
  * @brief Parses one /enroll HTTP outcome and, on success, writes client.keys
  *        (atomically on Linux, directly on Windows -- see
  *        w_enrollment_store_key_entry()'s platform split) from the response

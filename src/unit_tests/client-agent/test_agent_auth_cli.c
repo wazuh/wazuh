@@ -22,6 +22,7 @@
 #include "agentd.h"
 #include "agent_auth_cli.h"
 #include "token_bootstrap.h"
+#include "enrollment.h"
 #include "enrollment_token.h"
 #include "https_client.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -417,6 +418,7 @@ static int setup_test(void **state) {
     g_fetch_calls = 0;
     g_enroll_calls = 0;
     g_enroll_body[0] = '\0';
+    w_enrollment_clear_outcome_unknown();
     g_fail_anchor_move = false;
     g_chown_calls = 0;
     g_fchown_calls = 0;

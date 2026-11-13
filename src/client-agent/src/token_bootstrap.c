@@ -1332,6 +1332,11 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
                               enroll_result.transport_error[0] != '\0' ? enroll_result.transport_error : "");
         }
 
+        /* No answer: the manager may still have registered the agent, which explains a later duplicate refusal. */
+        if (enroll_result.http_code == 0 && !tls_rejected && enroll_result.transport_error[0] != '\0') {
+            w_enrollment_note_outcome_unknown();
+        }
+
         if (report != NULL) {
             /* Nothing answered, or the manager answered with its own trouble. Either may clear.
              * A refused client certificate does not. */

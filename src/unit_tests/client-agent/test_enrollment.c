@@ -130,6 +130,7 @@ static int setup_test(void **state) {
     (void)state;
     agt = (agent *)calloc(1, sizeof(agent));
     memset(&keys, 0, sizeof(keys));
+    w_enrollment_clear_outcome_unknown();
 
     /* Every build_request test configures an explicit agent_name: sidesteps
      * gethostname()/OS_ConvertToValidAgentName() (no shared cmocka wrapper
@@ -893,6 +894,142 @@ static void test_process_response_409_is_duplicate(void **state) {
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DUPLICATE);
 }
 
+/* A possibly-applied earlier attempt (no answer, or 503/-2) changes how the next refusal reads. */
+#define LOST_ROTATION_MSG \
+    "Re-enrollment was refused for this agent's own credential after an earlier attempt timed out or " \
+    "got no answer. The manager most likely applied that attempt and rotated the credential after the " \
+    "agent gave up, so the stored one is stale and cannot be recovered. Delete this agent on the " \
+    "manager and enroll it again with a new enrollment token."
+#define ROTATION_PENDING_MSG \
+    "A re-enrollment is already in progress on the manager after an earlier attempt of this agent " \
+    "timed out or got no answer. That attempt most likely rotated the credential; if the next attempt " \
+    "is refused as an invalid signature, delete this agent on the manager and enroll it again with a " \
+    "new enrollment token."
+#define LOST_REGISTRATION_MSG \
+    "Enrollment was refused as a duplicate after an earlier attempt in this start timed out or got no " \
+    "answer. The manager most likely registered this agent from that attempt. Delete the agent on the " \
+    "manager and enroll again with a new enrollment token."
+#define TEST_TOKEN_KID "AAAAAAAAAAAAAAAAAAAAAA"
+
+static void note_timed_out_attempt(void) {
+    hc_enroll_result_t lost = {0};
+
+    strncpy(lost.transport_error, "(28) Timeout was reached", sizeof(lost.transport_error) - 1);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&lost, NULL), W_ENROLL_ERR_TRANSPORT);
+}
+
+static void test_lost_answer_then_invalid_signature_explains_the_rotation(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    note_timed_out_attempt();
+    set_error_body(&result, 401, "\"invalid_signature\"", "Invalid client authentication");
+
+    expect_string(__wrap__merror, formatted_msg, LOST_ROTATION_MSG);
+    assert_int_equal(w_enrollment_process_response(&result, "001"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+static void test_invalid_signature_without_a_lost_answer_keeps_the_generic_advice(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    set_error_body(&result, 401, "\"invalid_signature\"", "Invalid client authentication");
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: the credential's signature was refused: Invalid "
+                  "client authentication. This will keep failing until the credential is corrected on "
+                  "the manager; the agent is keeping the one it has and retrying.");
+    assert_int_equal(w_enrollment_process_response(&result, "001"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+static void test_a_request_that_never_left_the_agent_is_not_a_lost_answer(void **state) {
+    (void)state;
+    hc_enroll_result_t never_sent = {0};
+    hc_enroll_result_t result = {0};
+
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&never_sent, NULL), W_ENROLL_ERR_TRANSPORT);
+
+    set_error_body(&result, 409, "9030", "Re-enrollment already in progress");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Re-enrollment already in progress");
+    assert_int_equal(w_enrollment_process_response(&result, "001"), W_ENROLL_ERR_DUPLICATE);
+}
+
+static void test_outcome_unknown_503_then_pending_rotation_is_explained(void **state) {
+    (void)state;
+    hc_enroll_result_t unknown = {0};
+    hc_enroll_result_t pending = {0};
+
+    set_error_body(&unknown, 503, "-2", "Enrollment outcome unknown");
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&unknown, "001"), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&pending, 409, "9030", "Re-enrollment already in progress");
+    expect_string(__wrap__merror, formatted_msg, ROTATION_PENDING_MSG);
+    assert_int_equal(w_enrollment_process_response(&pending, "001"), W_ENROLL_ERR_DUPLICATE);
+}
+
+static void test_503_that_never_reached_authd_is_not_a_lost_answer(void **state) {
+    (void)state;
+    hc_enroll_result_t unavailable = {0};
+    hc_enroll_result_t pending = {0};
+
+    set_error_body(&unavailable, 503, "-1", "Enrollment service temporarily unavailable");
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&unavailable, "001"), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&pending, 409, "9030", "Re-enrollment already in progress");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Re-enrollment already in progress");
+    assert_int_equal(w_enrollment_process_response(&pending, "001"), W_ENROLL_ERR_DUPLICATE);
+}
+
+static void test_lost_answer_then_duplicate_name_for_a_token_names_the_cause(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+    const char *codes[] = {"9007", "9008"};
+    size_t i;
+
+    for (i = 0; i < 2; i++) {
+        note_timed_out_attempt();
+        set_error_body(&result, 409, codes[i], "Duplicate name");
+        expect_string(__wrap__merror, formatted_msg, LOST_REGISTRATION_MSG);
+        assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+    }
+}
+
+/* The security-relevant half: without an ambiguous predecessor, or without a token, a duplicate is
+ * reported as before, and the token bootstrap's fatal exit is untouched. */
+static void test_duplicate_name_without_a_lost_answer_stays_generic(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    set_error_body(&result, 409, "9008", "Duplicate name");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Duplicate name");
+    assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+
+    note_timed_out_attempt();
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Duplicate name");
+    assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DUPLICATE);
+}
+
+static void test_clearing_the_lost_answer_restores_the_generic_message(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    note_timed_out_attempt();
+    w_enrollment_clear_outcome_unknown();
+
+    set_error_body(&result, 409, "9008", "Duplicate name");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Duplicate name");
+    assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+}
+
 /* A 429 is the manager's node-wide enrollment rate limit, not a verdict on this request: retryable
  * (W_ENROLL_ERR_SERVER, which both enrollment loops ramp on), and named at info level so a mass
  * enrollment does not read as a failure of each agent. */
@@ -1494,6 +1631,14 @@ int main(void) {
         cmocka_unit_test(test_parse_error_flat_401_class_is_not_read),
         cmocka_unit_test(test_parse_error_unreadable_body_is_empty),
         cmocka_unit_test_setup_teardown(test_process_response_409_is_duplicate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_lost_answer_then_invalid_signature_explains_the_rotation, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_invalid_signature_without_a_lost_answer_keeps_the_generic_advice, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_request_that_never_left_the_agent_is_not_a_lost_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_outcome_unknown_503_then_pending_rotation_is_explained, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_503_that_never_reached_authd_is_not_a_lost_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_lost_answer_then_duplicate_name_for_a_token_names_the_cause, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_duplicate_name_without_a_lost_answer_stays_generic, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_clearing_the_lost_answer_restores_the_generic_message, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_429_is_rate_limited_and_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_flat_500_logs_the_manager_message, setup_test, teardown_test),
