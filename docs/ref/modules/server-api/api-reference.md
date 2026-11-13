@@ -583,13 +583,18 @@ Errors follow a structured JSON response format.
 | 400       | Bad Request       | Invalid parameters       |
 | 401       | Unauthorized      | Invalid credentials, or an invalid or expired token |
 | 403       | Forbidden         | RBAC denied a single-resource or mutating call (list endpoints answer `200` with empty results instead), or the client IP is blocked after too many failed logins (`6000`) |
-| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`) |
-| 405       | Method Not Allowed | Invalid HTTP method     |
+| 404       | Not Found         | Invalid endpoint, or the named resource does not exist: a group (`1710`), a file in a group (`1006`), a cluster node (`1730`), an enrollment token (`1767`). A request without a valid token to an invalid endpoint gets `401` |
+| 405       | Method Not Allowed | Invalid HTTP method. A request without a valid token gets `401`. It counts against `max_unauthenticated_request_per_minute` (`6005`) and, while the address's authenticated bucket is exhausted, is refused with `6001` |
 | 413       | Payload Too Large | Request body too large. The body carries `"error": 413` (the HTTP status, not an error code) |
 | 415       | Unsupported Media Type | A body sent with no `Content-Type` at all carries error `6002`, on every operation that takes a body, the `run_as` login included; `PUT /cluster/{node_id}/configuration` accepts `application/octet-stream`, but a body with no `Content-Type` is still refused there, not read as one. A `Content-Type` the operation's specification does not list is refused earlier, by the request validator: the body has only `title` and `detail` (`Unsupported Media Type`), with no Wazuh error code |
 | 417       | Expectation Failed | An `Expect` header other than `100-continue` |
 | 429       | Too Many Requests | Rate limit exceeded (`6001` authenticated, `6005` unauthenticated), or too many logins already waiting for their password check (`6006`) |
 | 500       | Internal Error    | Check `logs/api.log`; also a request that exceeded `intervals.request_timeout` without `wait_for_complete=true` (`3021`), or a core daemon that is down (`1017`, below) |
+
+A path written with trailing slashes (`/route/`, `/route//`, `/route%2F`) is served as `/route`; the API
+does not answer it with a redirect, which would tell a caller without a token which routes exist. A reverse
+proxy or WAF in front of the API that filters by exact path, such as `location = /security/user/authenticate/run_as`
+in nginx, must also match those forms, for example with a prefix rule or on the normalized path.
 
 ### Exception Hierarchy
 
