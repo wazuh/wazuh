@@ -201,6 +201,8 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
  */
 STATIC void send_wrong_version_response(const char *agent_id, char *msg, agent_status_code_t status_code, char *version, int *wdb_sock);
 
+void agent_data_hash_cleaner(void *data);
+
 /* Groups structures */
 static OSHash *groups;
 static OSHash *multi_groups;
@@ -306,7 +308,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
                     // Update agent data to keep context of events to forward
-                    OSHash_Set_ex(agent_data_hash, key->id, cJSON_Duplicate(agent_info, true));
+                    cJSON *agent_data = cJSON_CreateObject();
+                    char *agent_version = w_strndup(version->valuestring, OS_SIZE_32);
+                    cJSON_AddStringToObject(agent_data, "version", agent_version);
+                    os_free(agent_version);
+                    if (!OSHash_Update_ex(agent_data_hash, key->id, agent_data) &&
+                        OSHash_Add_ex(agent_data_hash, key->id, agent_data) != 2) {
+                        cJSON_Delete(agent_data);
+                    }
                     if (!logr.allow_higher_versions &&
                         compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
 
@@ -1781,10 +1790,11 @@ void manager_init()
     pending_queue = linked_queue_init();
     pending_data = OSHash_Create();
 
-    if (!m_hash || !invalid_files || !groups || !multi_groups || !pending_data) {
+    if (!m_hash || !invalid_files || !groups || !multi_groups || !agent_data_hash || !pending_data) {
         merror_exit("OSHash_Create() failed");
     }
 
+    OSHash_SetFreeDataPointer(agent_data_hash, agent_data_hash_cleaner);
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }
 
