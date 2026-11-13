@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file.
 - Hardened the creation and removal of Unix domain sockets in the shared modules' socket wrapper. ([#40481](https://github.com/wazuh/wazuh/pull/40481))
 - Added type validation for the error details of cluster synchronization messages and bound the received archive path to the file transfer completed for the task. ([#40367](https://github.com/wazuh/wazuh/pull/40367))
 - Hardened how cluster workers apply the files received from the master. ([#40366](https://github.com/wazuh/wazuh/pull/40366))
+- Fixed the indexer refusing Amazon Security Lake alerts whose null OCSF fields were decoded as the text `"null"` instead of being left out, which also disabled the CloudTrail successful-operation rules; added a dedicated decoder for these events and reworked the affected rules to stop depending on the literal text `"null"`. ([#40522](https://github.com/wazuh/wazuh/pull/40522))
 - Fixed the snort decoder truncating `srcip` to all but its last octet and keeping the port in `dstip`. ([#40521](https://github.com/wazuh/wazuh/pull/40521))
 - Added validation of the provider names received by the router in `wazuh-modulesd`. ([#40592](https://github.com/wazuh/wazuh/pull/40592))
 - Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))
