@@ -99,6 +99,13 @@ harden_tree 770 ${USER}:${GROUP} ${DIR}/queue/sockets
 harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/diff
 harden_tree 750 ${USER}:${GROUP} ${DIR}/queue/rids
 
+# The credential store is root-only. The harden_tree walk over ${DIR} above made it group-readable
+if [ -d "${DIR}/queue/credentials" ]; then
+    chown root:wheel ${DIR}/queue/credentials
+    chmod 750 ${DIR}/queue/credentials
+    find ${DIR}/queue/credentials -type f -links 1 -exec chown root:wheel {} + -exec chmod 640 {} +
+fi
+
 # For the logging user. logs/ is writable by the wazuh account, so the chown and the file chmod
 # must skip a hard link it may have planted there, whose target would otherwise be re-owned and
 # re-moded. Directories cannot be hard-linked by an unprivileged user.

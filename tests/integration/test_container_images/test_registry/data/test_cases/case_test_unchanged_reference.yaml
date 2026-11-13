@@ -1,0 +1,12 @@
+- name: A second scan of an unchanged reference retrieves no image contents
+  description: The digest is unchanged, so the metadata is read and no blob is requested
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: ghcr.io/owner/public:1.0
+  metadata:
+    repository: owner/public
+    reference: ghcr.io/owner/public:1.0
+    private: false
+    credential: none
+    platforms: [amd64]
+    expected_packages: 1

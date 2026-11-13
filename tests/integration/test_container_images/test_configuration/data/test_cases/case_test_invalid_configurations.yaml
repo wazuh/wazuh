@@ -1,0 +1,59 @@
+- name: empty_value_enabled
+  description: Verify that an empty enabled value is rejected with an error
+  configuration_parameters:
+    ENABLED: ''
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    field: enabled
+
+- name: invalid_value_enabled
+  description: Verify that a non yes/no enabled value is rejected with an error
+  configuration_parameters:
+    ENABLED: 'maybe'
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    field: enabled
+
+- name: empty_value_scan_on_start
+  description: Verify that an empty scan_on_start value is rejected with an error
+  configuration_parameters:
+    ENABLED: 'yes'
+    SCAN_ON_START: ''
+    INTERVAL: 1h
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    field: scan_on_start
+
+- name: empty_value_interval
+  description: Verify that an empty interval value is rejected with an error
+  configuration_parameters:
+    ENABLED: 'yes'
+    SCAN_ON_START: 'yes'
+    INTERVAL: ''
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    field: interval
+
+- name: invalid_value_interval
+  description: Verify that an interval with an unsupported unit suffix is rejected with an error
+  configuration_parameters:
+    ENABLED: 'yes'
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1y
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    field: interval
+
+- name: empty_archive_reference
+  description: Verify that an empty archive reference is rejected with an error
+  configuration_parameters:
+    ENABLED: 'yes'
+    SCAN_ON_START: 'yes'
+    INTERVAL: 1h
+    ARCHIVE_PATH: ''
+  metadata:
+    field: archive

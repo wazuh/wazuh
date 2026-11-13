@@ -1,0 +1,8 @@
+- name: image_update_detected_on_next_scan
+  description: An image rebuilt between scans is detected on the next interval scan and the tables are updated
+  configuration_parameters:
+    SCAN_ON_START: 'yes'
+    INTERVAL: 5s
+    ARCHIVE_PATH: /tmp/wazuh-container-images/oci
+  metadata:
+    interval_seconds: 5
