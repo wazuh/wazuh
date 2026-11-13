@@ -38,6 +38,7 @@ namespace task_manager::storage
         AgentTaskMarkDelivered,
         AgentTaskExpire,
         AgentTaskDeleteOld,
+        AgentTaskOpenByType,
 
         // ---- manager tasks: create and claim ------------------------------------------------
         MtFindPendingByAgent,
@@ -117,6 +118,16 @@ namespace task_manager::storage
         /* AgentTaskDeleteOld -- the cutoff binds twice, once per branch. */
         "DELETE FROM TASKS WHERE (STATUS = 'expired' AND CREATE_TIME < ?) "
         "OR (STATUS = 'delivered' AND DELIVERY_TIME < ?);",
+
+        /* AgentTaskOpenByType -- one cutoff per branch. A delivered row is aged by its delivery. A
+           row this node did not deliver is aged by its creation and stays open after it expires:
+           in a cluster another node may have handed it out, and this node cannot tell.
+           TASK_ID breaks CREATE_TIME ties deterministically. */
+        "SELECT TASK_ID, TASK_TYPE, PAYLOAD, CREATE_TIME FROM TASKS "
+        "WHERE AGENT_ID = ? AND TASK_TYPE = ? "
+        "AND ((STATUS IN ('pending', 'expired') AND CREATE_TIME >= ?) "
+        "OR (STATUS = 'delivered' AND DELIVERY_TIME >= ?)) "
+        "ORDER BY CREATE_TIME DESC, TASK_ID DESC;",
 
         // -------------------------------------------------------------------------------------
         // Manager tasks: create and claim

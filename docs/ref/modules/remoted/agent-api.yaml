@@ -770,9 +770,10 @@ paths:
         row for is never served `default`: like a database that does not answer in time, it is
         `503`, and the agent retries. The comparison is exact, multigroup order included.
 
-        **`wpk` downloads are not authorized this way.** A package's authority is the agent's
-        pending upgrade task, which `/control` does not carry, so any authenticated agent may still
-        fetch a staged package; stock packages are signature-verified by the agent against
+        **`wpk` downloads are authorized by task, not by group.** A package is served only if the
+        authenticated agent has an open `remote_upgrade` task for exactly that file in the task
+        manager; otherwise the answer is the same 404 as a missing package, and `503` if the task
+        manager cannot answer. Stock packages are also signature-verified by the agent against
         `wpk_root.pem` before installing.
 
         A failed transfer is a truncation, never a short success: the terminating chunk is withheld
@@ -836,8 +837,8 @@ paths:
                   value: { error: "Client certificate does not match the peer address", code: 403 }
         "404":
           description: |
-            Absent, not a regular file, or `O_NOFOLLOW` refused a symlink -- deliberately
-            indistinguishable to the agent.
+            Absent, not a regular file, or `O_NOFOLLOW` refused a symlink or, for `wpk`, the agent has
+            no open `remote_upgrade` task for that file -- deliberately indistinguishable to the agent.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -863,6 +864,8 @@ paths:
             `wazuh-manager-db` (the fallback used when the agent registry cannot vouch for the
             agent): the database did not answer in time, it has no row for the agent yet, or the
             agent's membership changed on the node while it was being read.
+            For `wpk`, a task manager that does not answer within `remoted.control_tm_deadline`, or
+            answers anything but a valid `200`, also produces it.
             Both clear by themselves; the agent retries a `503` as back-pressure. No `Retry-After` is
             sent. The manager's log names the dependency when it is `wazuh-manager-db`.
           content:

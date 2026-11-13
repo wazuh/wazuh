@@ -2452,6 +2452,10 @@ components:
                       type: integer
                       format: int64
                       description: "Bytes offered across all started downloads"
+                    wpk_auth_unavailable:
+                      type: integer
+                      format: int64
+                      description: "WPK download requests answered 503 because the task manager could not authorize them. Nothing is opened for these; a 5.0.0 agent makes up to agent.https_download_attempts attempts in total (2 by default) and then abandons the upgrade"
                 tls:
                   type: object
                   description: "The HTTPS listener's own certificate. `cert_expiry_days` is evaluated when the listener starts and every 24 hours afterwards; `ca_matches_leaf` reflects the CA file as it was last read. Both read `0` while the listener is down"
@@ -7298,6 +7302,7 @@ paths:
                             not_found: 1
                             open_error: 0
                             bytes_total: 48213004
+                            wpk_auth_unavailable: 0
                           vd_scan:
                             requests_total: 8
                             accepted: 8

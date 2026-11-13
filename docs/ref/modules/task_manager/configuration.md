@@ -28,7 +28,12 @@ once, when `wazuh-manager-modulesd` starts.
 
 Time-to-live for a **pending** agent task, measured from its `create_time`. On each cleanup pass
 (every `cleanup_interval`), pending tasks older than `task_ttl` are moved to `expired` and are never
-handed out. Manager tasks are never expired by age.
+handed out. `task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its
+WPK: a task this node delivered does while it was delivered within the last `task_ttl` seconds, and
+one it did not deliver (pending or expired) while it was created within the last
+`2 * task_ttl + cleanup_interval` seconds (see [Agent upgrades](agent-upgrades.md)). A delivered task
+also stops once the cleanup pass deletes it, which happens 24 h after delivery.
+Manager tasks are never expired by age.
 
 - **Default value:** `3600` (1 hour)
 - **Allowed values:** integer 0–2147483647 (seconds). `0` means "use default".
@@ -449,6 +454,16 @@ version gates are listed under
 **WPK downloads fail.** Confirm outbound HTTPS access to `<wpk_repository>`, or place the WPK under
 `/var/wazuh-manager/var/upgrade/` and use the custom-upgrade endpoint. A custom WPK **must** be
 inside that directory; anything else is refused with *The WPK file does not exist*.
+
+**The agent cannot download the WPK (`404` or `503`).** `remoted` serves the package only to the agent
+that has an open `remote_upgrade` task for that file (see [Agent upgrades](agent-upgrades.md)). A `404`
+counted in `remoted.download.denied` means the task was no longer open, typically because the download
+came more than `task_ttl` seconds after the task was delivered (or, on a node that did not deliver it,
+more than `2 * task_ttl + cleanup_interval` seconds after it was created), or because the node that
+answered never created the task (it missed the upgrade request, or had not yet seen the agent); one counted in
+`remoted.download.not_found` means the file is missing from `var/upgrade/` on the node that answered. A
+`503` (`remoted.download.wpk_auth_unavailable`) means the task manager did not answer `remoted` in time.
+A task is handed out only once, so after a `404`, or a `503` the agent gave up on, launch the upgrade again.
 
 *A missing CA bundle fails every repository request, by design* (peer verification is never
 disabled; see [The WPK file](agent-upgrades.md#the-wpk-file)). The module says so once at start-up,

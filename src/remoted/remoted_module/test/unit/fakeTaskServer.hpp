@@ -7,7 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Stands in for the Task Manager's POST /v1/tasks/pending route.
+ * Stands in for the Task Manager's POST /v1/tasks/pending and /v1/tasks/wpk-authorization routes.
  *
  * NOT fakeUdsServer.hpp, which emulates the `[uint32_t size][payload]` SizeHeaderProtocol. The
  * Task Manager serves HTTP/1.1 over its socket now and TaskClient reaches it through
@@ -44,19 +44,8 @@ namespace remoted::test
             std::filesystem::remove(m_socketPath);
             m_server.set_address_family(AF_UNIX);
 
-            m_server.Post("/v1/tasks/pending",
-                          [this](const httplib::Request& req, httplib::Response& res)
-                          {
-                              m_requestCount.fetch_add(1);
-                              {
-                                  std::lock_guard<std::mutex> lock(m_stateMutex);
-                                  m_lastBody = req.body;
-                              }
-                              if (const auto handler = copyHandler())
-                              {
-                                  handler(req, res);
-                              }
-                          });
+            route("/v1/tasks/pending", m_lastBody);
+            route("/v1/tasks/wpk-authorization", m_lastWpkAuthorizationBody);
 
             m_thread = std::thread(
                 [this]
@@ -140,12 +129,44 @@ namespace remoted::test
             return m_lastBody;
         }
 
+        std::string lastWpkAuthorizationBody() const
+        {
+            std::lock_guard<std::mutex> lock(m_stateMutex);
+            return m_lastWpkAuthorizationBody;
+        }
+
+        /// @brief Path of the last request on any route.
+        std::string lastPath() const
+        {
+            std::lock_guard<std::mutex> lock(m_stateMutex);
+            return m_lastPath;
+        }
+
+        /// @brief Requests received on any route.
         std::size_t requestCount() const
         {
             return m_requestCount.load();
         }
 
     private:
+        void route(const std::string& path, std::string& lastBody)
+        {
+            m_server.Post(path,
+                          [this, &lastBody](const httplib::Request& req, httplib::Response& res)
+                          {
+                              m_requestCount.fetch_add(1);
+                              {
+                                  std::lock_guard<std::mutex> lock(m_stateMutex);
+                                  lastBody = req.body;
+                                  m_lastPath = req.path;
+                              }
+                              if (const auto handler = copyHandler())
+                              {
+                                  handler(req, res);
+                              }
+                          });
+        }
+
         // Copied under the lock and invoked outside it: a stalling handler holding the mutex would
         // serialize the whole pool behind one parked request.
         Handler copyHandler() const
@@ -160,6 +181,8 @@ namespace remoted::test
         mutable std::mutex m_stateMutex;
         Handler m_handler;
         std::string m_lastBody;
+        std::string m_lastWpkAuthorizationBody;
+        std::string m_lastPath;
         std::atomic<bool> m_bindFailed {false};
         std::atomic<std::size_t> m_requestCount {0};
     };

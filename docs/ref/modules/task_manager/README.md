@@ -48,6 +48,10 @@ Only a v5.x agent fetches these itself, over remoted's `POST /control`. A pre-v5
 by remoted's legacy poller, which pushes **only `remote_upgrade`**: the other three types are never
 delivered to such an agent and expire after `task_ttl`.
 
+`task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its WPK: counted
+from its delivery on the node that delivered it, and from its creation, for
+`2 * task_ttl + cleanup_interval`, on a node that did not (see [Agent upgrades](agent-upgrades.md)).
+
 Manager tasks are described in [Manager tasks](manager-tasks.md); the three recurring ones in [Recurring manager tasks](schedules.md).
 
 ---
@@ -61,7 +65,7 @@ per-route contract (fields, limits, status codes, the upgrade envelope) is the
 
 | Group | Routes | Used for |
 | --- | --- | --- |
-| Agent tasks | `POST /v1/tasks`, `/v1/tasks/bulk`, `/v1/tasks/pending` | storing tasks for agents and handing them out on a poll |
+| Agent tasks | `POST /v1/tasks`, `/v1/tasks/bulk`, `/v1/tasks/pending`, `/v1/tasks/wpk-authorization` | storing tasks for agents, handing them out on a poll and looking up the task that authorizes a WPK download |
 | Manager tasks | `POST /v1/manager-tasks`, `/get`, `/by-agent`, `/list`, `/count` | creating manager tasks and looking them up |
 | Agent upgrades | `POST /v1/agents/upgrade`, `/v1/agents/upgrade-custom` | the manager side of remote agent upgrades |
 | Operations | `GET /v1/health`, `GET /v1/metrics` | liveness and the metrics dump |
@@ -127,7 +131,7 @@ workers (`manager_task_executor_threads`) + 1 scheduler + `cores / 2` upgrade ba
 
 | Table | Holds |
 | --- | --- |
-| `TASKS` | Agent tasks: `pending` → `delivered`, or `pending` → `expired` after `task_ttl`; a delivered task is removed 24 h after delivery, an expired one once it is 24 h old |
+| `TASKS` | Agent tasks: `pending` → `delivered`, or `pending` → `expired` after `task_ttl`; a delivered task is removed 24 h after delivery, an expired one once it is 24 h old; `task_ttl` also bounds how long a `remote_upgrade` task authorizes the download of its WPK (from delivery once delivered here, otherwise `2 * task_ttl + cleanup_interval` from creation) |
 | `MANAGER_TASKS` | Manager tasks and their outcomes |
 | `MANAGER_TASK_SCHEDULES` | The mutable half of each recurring schedule |
 | `metadata` | Module bookkeeping |
@@ -146,6 +150,7 @@ alter an existing table, any change to a table's shape needs a real step in the 
 | Client | Uses |
 | --- | --- |
 | `wazuh-manager-remoted` (legacy C poller and the C++ `TaskClient` behind `POST /control`) | `/v1/tasks/pending` |
+| `wazuh-manager-remoted` (`POST /download` for a WPK) | `/v1/tasks/wpk-authorization` |
 | `wazuh-manager-clusterd` (active-response poller) | `/v1/tasks`, via `wazuh.core.task_http` |
 | Server API / framework (agent restart and reload) | `/v1/tasks/bulk`, same client |
 | Server API / framework (the `agent_upgrade` CLI calls the same framework function) | `/v1/agents/upgrade`, `/v1/agents/upgrade-custom`, same client |
