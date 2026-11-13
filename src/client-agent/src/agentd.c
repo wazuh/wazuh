@@ -81,11 +81,9 @@ static void remove_systemd_pidfile(void)
     unlink(path);
 }
 
-/* The PID file is what tells wazuh-control that agentd started, and what lets it stop one that
- * is still enrolling. Published before a token bootstrap that will enroll, since /enroll alone can
- * take longer than wazuh-control's start deadline and a start that gives up would kill agentd
- * mid-request; otherwise only after startup's own checks, so any exit before that point still ends
- * the start as "did not start" and never gets the other daemons launched. */
+/* Published before an enrolling token bootstrap, because /enroll can outlast wazuh-control's start
+ * deadline and a start that gives up would kill agentd mid-request; otherwise only after the
+ * startup checks, so an earlier exit still reads as "did not start". */
 static void publish_pid_files(uid_t uid, gid_t gid)
 {
     static bool published = false;

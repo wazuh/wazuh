@@ -2143,6 +2143,30 @@ static void test_enroll_duplicate_without_a_timeout_stays_generic(void **state) 
     os_free(token);
 }
 
+/* Decides whether agentd publishes its PID files before the first attempt: only a bootstrap that
+ * will enroll can outlast wazuh-control's start deadline. */
+static void test_will_enroll_only_with_a_token_and_neither_anchor_nor_key(void **state) {
+    (void) state;
+
+    assert_false(w_agent_token_bootstrap_will_enroll());
+
+    write_file(AGENT_ENROLLMENT_TOKEN_FILE, "token");
+    assert_true(w_agent_token_bootstrap_will_enroll());
+
+    write_file(KEYS_FILE, "");
+    assert_true(w_agent_token_bootstrap_will_enroll());
+
+    write_file(KEYS_FILE, "007 old-agent any 11111111111111111111111111111111\n");
+    assert_false(w_agent_token_bootstrap_will_enroll());
+
+    unlink(KEYS_FILE);
+    write_file(AGENT_ANCHOR_CA, "OLD-CA");
+    assert_false(w_agent_token_bootstrap_will_enroll());
+
+    unlink(AGENT_ENROLLMENT_TOKEN_FILE);
+    assert_false(w_agent_token_bootstrap_will_enroll());
+}
+
 /* The manager was down (connection refused) and then answered with a genuine duplicate: the first
  * attempt never reached it, so the duplicate has nothing to do with a lost answer. */
 static void test_enroll_duplicate_after_a_connection_failure_stays_generic(void **state) {
@@ -3120,6 +3144,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_enroll_duplicate_after_a_timeout_names_the_cause_and_stays_permanent,
                                         setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_duplicate_without_a_timeout_stays_generic,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_will_enroll_only_with_a_token_and_neither_anchor_nor_key,
                                         setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_duplicate_after_a_connection_failure_stays_generic,
                                         setup_test, teardown_test),
