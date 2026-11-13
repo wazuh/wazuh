@@ -137,3 +137,5 @@ runs:
     shell: bash
     run: |
       cat ${{ inputs.report_file }} >> $GITHUB_STEP_SUMMARY
+      echo "=== TMP-41333 REPORT BEGIN ==="; cat ${{ inputs.report_file }}; echo "=== TMP-41333 REPORT END ==="
+      echo "=== TMP-41333 CURRENT BEGIN ==="; cat ${{ inputs.current_status }}; echo "=== TMP-41333 CURRENT END ==="
