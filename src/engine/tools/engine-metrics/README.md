@@ -40,6 +40,11 @@ The dashboard organises global metrics into sections automatically:
 - **Cache** — agent metadata cache occupancy, limits, hits, insertions, updates, evictions and
   capacity bypasses. Ingestion identity rejections (`agent.cache.rejected.identity`) remain in
   **Events**, because they count rejected requests rather than cache operations.
+- **Indexer events bucket**, **Indexer raw bucket**, **Indexer runtime**, **Indexer nodes** and **Indexer
+  queries** — the indexer client library's metrics the engine publishes (`indexer_client.bucket.analysisd.events.*`,
+  `indexer_client.bucket.analysisd.raw.*`, `indexer_client.runtime.*`, `indexer_client.node.<i>.*`, and
+  `indexer_client.query.*` with `indexer_client.pit.*`). They are pull metrics, plotted cumulative (unit `total`);
+  the per-node names are listed once in `metrics_meta.json` with `<i>` in place of the node's index.
 - Any other category creates its own section on the fly.
 - Per-space metrics always get their own section, one per space.
 
