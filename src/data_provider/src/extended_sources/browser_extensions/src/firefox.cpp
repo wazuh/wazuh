@@ -86,7 +86,9 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
         const std::string userHome = Utils::joinPaths(homePath, userDir);
 
-        if (!Utils::existsDir(userHome) || !isValidPath(userHome))
+        // Looking for profiles inside a home that is not mounted yet would mount it
+        if (m_firefoxAddonsWrapper->isUnmountedAutomountPoint(userHome) || !Utils::existsDir(userHome) ||
+                !isValidPath(userHome))
         {
             continue;
         }

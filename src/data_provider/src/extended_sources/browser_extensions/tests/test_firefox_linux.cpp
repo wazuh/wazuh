@@ -26,6 +26,12 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 };
 
 
+class MockAutomountBrowserExtensionsWrapper : public MockBrowserExtensionsWrapper
+{
+    public:
+        MOCK_METHOD(bool, isUnmountedAutomountPoint, (const std::string&), (override));
+};
+
 // The fixture files must belong to the profile owner, so the owner reported is whoever owns the checkout
 static std::string fixtureOwner(const std::string& path)
 {
@@ -284,4 +290,35 @@ TEST_F(FirefoxAddonsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherAddon
     }
 
     EXPECT_EQ(emptyIdentifiers, static_cast<size_t>(2));
+}
+
+TEST(FirefoxAddonsTests, UnmountedAutomountedHomeIsNotLookedInto)
+{
+    auto mockWrapper = std::make_shared<::testing::StrictMock<MockAutomountBrowserExtensionsWrapper>>();
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux");
+
+    EXPECT_CALL(*mockWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
+    EXPECT_CALL(*mockWrapper, isUnmountedAutomountPoint(Utils::joinPaths(mockHomePath, "mock-user")))
+    .WillOnce(::testing::Return(true));
+    // Neither the user lookup nor the profile search may run for a home that is not mounted
+    EXPECT_CALL(*mockWrapper, getUserId(::testing::_)).Times(0);
+
+    FirefoxAddonsProvider provider(mockWrapper);
+    nlohmann::json extensionsJson = provider.collect();
+    EXPECT_TRUE(extensionsJson.empty());
+}
+
+TEST(FirefoxAddonsTests, MountedHomeIsStillCollected)
+{
+    auto mockWrapper = std::make_shared<::testing::StrictMock<MockAutomountBrowserExtensionsWrapper>>();
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux");
+
+    EXPECT_CALL(*mockWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
+    EXPECT_CALL(*mockWrapper, isUnmountedAutomountPoint(Utils::joinPaths(mockHomePath, "mock-user")))
+    .WillOnce(::testing::Return(false));
+    EXPECT_CALL(*mockWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
+
+    FirefoxAddonsProvider provider(mockWrapper);
+    nlohmann::json extensionsJson = provider.collect();
+    EXPECT_FALSE(extensionsJson.empty());
 }
