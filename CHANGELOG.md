@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the validation of the configuration uploaded through `PUT /manager/configuration` and `PUT /cluster/{node_id}/configuration` so that it handles comments, escaped markup and namespaces the way the daemons do. ([#40726](https://github.com/wazuh/wazuh/pull/40726))
 - Fixed `wazuh-maild` stopping when an alert's text contained lines that start with `** Alert`, which `wazuh-analysisd` wrote to `alerts.log` as the start of new alerts. ([#41245](https://github.com/wazuh/wazuh/pull/41245))
 - Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41273](https://github.com/wazuh/wazuh/pull/41273))
+- Hardened the validation of the network inventory data in `wazuh-analysisd`. ([#TBD](https://github.com/wazuh/wazuh/pull/TBD))
 
 ### Agent
 
