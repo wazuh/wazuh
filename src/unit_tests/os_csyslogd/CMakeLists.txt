@@ -38,6 +38,9 @@ list(APPEND os_csyslogd_flags "-Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,sel
                                -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_RecvSecureTCP \
                                -Wl,--wrap,OS_SendSecureTCP ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND os_csyslogd_names "test_alert")
+list(APPEND os_csyslogd_flags "-Wl,--wrap,OS_SendUDPbySize ${DEBUG_OP_WRAPPERS}")
+
 # Compiling tests
 list(LENGTH os_csyslogd_names count)
 math(EXPR count "${count} - 1")
