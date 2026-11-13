@@ -32,10 +32,15 @@ esac
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"
+# Held by the one run at a time that may replace a lock whose holder is gone.
+RECLAIM="${LOCK}.reclaim"
+RECLAIM_PID="${RECLAIM}/pid"
 
-# Seconds the lock wait and the WHOLE start sequence may take. Below the unit's TimeoutSec
-# (45, templates/wazuh-agent.service), or systemd reports a timeout instead of the daemon
-# that did not come up. Cumulative: a per-daemon counter adds up past that limit.
+# Seconds the lock wait may take, and then again the whole start sequence once the lock is held
+# (start_service() sets its deadline after lock()). Each is below the unit's TimeoutSec (45,
+# templates/wazuh-agent.service), or systemd reports a timeout instead of the daemon that did not
+# come up, but a start that first waits long for the lock can still run past it. The start's
+# budget is cumulative: a per-daemon counter adds up past that limit.
 MAX_ITERATION="40"
 
 MAX_KILL_TRIES=30
@@ -47,15 +52,29 @@ SYSTEMD_RUNTIME_DIR="/run/systemd/system"
 SELF_CGROUP="/proc/$$/cgroup"
 
 # Seconds to wait for wazuh-agent.service to finish starting or reloading before handing it an
-# action. Longer than the unit's TimeoutSec (45), after which systemd itself leaves those states.
-SYSTEMD_SETTLE_TIMEOUT="50"
+# action. Longer than a start can take: ExecStartPre and ExecStart each get the unit's TimeoutSec
+# (45), after which systemd itself leaves those states.
+SYSTEMD_SETTLE_TIMEOUT="95"
+
+# Whether pid $1 runs daemon $2. The pid file of an agent that did not stop cleanly (a crash, a power
+# loss) can name a pid that another process took since, for instance after a reboot: it must be
+# neither stopped nor taken for that daemon. Matches the program's name, not its path, so a daemon
+# started through a symlink to the installation still counts. -ww: ps cuts the line to an exported
+# COLUMNS even when its output is not a terminal.
+pid_runs_daemon()
+{
+    _prd_args=`ps -ww -p $1 -o args= 2>/dev/null` || return 1
+    case "${_prd_args%% *}" in
+        */$2|$2) return 0 ;;
+    esac
+    return 1
+}
 
 checkpid()
 {
     for i in ${DAEMONS}; do
         for j in `cat ${DIR}/var/run/${i}-*.pid 2>/dev/null`; do
-            ps -p $j > /dev/null 2>&1
-            if [ ! $? = 0 ]; then
+            if ! pid_runs_daemon $j $i; then
                 echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
                 rm ${DIR}/var/run/${i}-${j}.pid
             fi
@@ -63,50 +82,116 @@ checkpid()
     done
 }
 
-lock()
+# Writes this run's pid into the file $1 unless it is there already: of two runs that both believe they
+# made its directory, only the one that writes the pid owns it. Readable by every user: on the manager,
+# the API, which runs as another user, checks who holds the lock.
+write_pid()
 {
-    i=0;
+    ( umask 022; set -C; echo "$$" > "$1" ) > /dev/null 2>&1
+}
 
-    # Providing a lock.
-    while [ 1 ]; do
-        mkdir ${LOCK} > /dev/null 2>&1
-        MSL=$?
-        if [ "${MSL}" = "0" ]; then
-            # Lock acquired (setting the pid)
-            echo "$$" > ${LOCK_PID}
-            return;
+# Creates the directory $1 and writes this run's pid in it: true only when this run owns it. The pid is
+# read back: a run stalled between creating the pid file and writing it may have lost the directory to a
+# run that reclaimed it meanwhile, and then wrote into a file that is gone.
+take_dir()
+{
+    ( umask 022; mkdir "$1" ) > /dev/null 2>&1 && write_pid "$1/pid" && [ "$(cat "$1/pid" 2>/dev/null)" = "$$" ]
+}
+
+# True when the pid file $1 names no live process, or names none at all.
+pid_gone()
+{
+    ! kill -0 $(cat "$1" 2>/dev/null) > /dev/null 2>&1
+}
+
+# True when this run holds the lock.
+holds_lock()
+{
+    [ "$(cat ${LOCK_PID} 2>/dev/null)" = "$$" ]
+}
+
+# Replaces a lock whose holder is gone with this run's, unless another run took it meanwhile. Only the
+# holder of ${RECLAIM} gets here, so one run at a time. A live run writes its pid right after creating
+# the lock, so a pid-less lock gets that moment first.
+replace_stale_lock()
+{
+    [ -s ${LOCK_PID} ] || sleep 1
+    pid_gone ${LOCK_PID} && rm -rf ${LOCK} && take_dir ${LOCK}
+}
+
+# A ${RECLAIM} whose holder is gone, or that stays pid-less for several rounds in a row, was left by a
+# run that died holding it: remove it, so that a later round can take it. One held by a live run stays.
+clear_dead_reclaim()
+{
+    if [ -s ${RECLAIM_PID} ]; then
+        reclaim_pidless=0
+        if pid_gone ${RECLAIM_PID}; then
+            rm -rf ${RECLAIM}
         fi
-
-        # Waiting 1 second before trying again
-        sleep 1;
-        i=`expr $i + 1`;
-        pid=$(cat ${LOCK_PID} 2>/dev/null)
-
-        if [ $? = 0 ]
-        then
-            kill -0 ${pid} >/dev/null 2>&1
-            if [ ! $? = 0 ]; then
-                # Pid is not present.
-                # Unlocking and executing
-                unlock;
-                mkdir ${LOCK} > /dev/null 2>&1
-                echo "$$" > ${LOCK_PID}
-                return;
-            fi
+    elif [ -d ${RECLAIM} ]; then
+        reclaim_pidless=`expr ${reclaim_pidless} + 1`
+        if [ "${reclaim_pidless}" -gt 4 ]; then
+            rm -rf ${RECLAIM}
+            reclaim_pidless=0
         fi
+    fi
+}
 
-        # We tried 10 times to acquire the lock.
+# Takes ${RECLAIM} and, holding it, replaces a stale lock: true when this run now holds the lock.
+reclaim_lock()
+{
+    if ! take_dir ${RECLAIM}; then
+        clear_dead_reclaim
+        return 1
+    fi
+    reclaim_pidless=0
+    replace_stale_lock
+    reclaimed=$?
+    rm -rf ${RECLAIM}
+    return ${reclaimed}
+}
+
+# Waits up to MAX_ITERATION one-second rounds for the lock, reclaiming one whose holder is gone: a dead
+# pid is stale right away. A lock with no pid yet may be mid-acquisition, so only several consecutive
+# pid-less rounds make it stale. False when the lock is still held at the end.
+wait_for_lock()
+{
+    i=0
+    pidless=0
+    reclaim_pidless=0
+    until take_dir ${LOCK}; do
+        sleep 1
+        i=`expr $i + 1`
+        if [ -s ${LOCK_PID} ]; then
+            pidless=0
+        elif [ -d ${LOCK} ]; then
+            pidless=`expr ${pidless} + 1`
+        fi
+        if pid_gone ${LOCK_PID} && { [ -s ${LOCK_PID} ] || [ "${pidless}" -gt 2 ]; }; then
+            reclaim_lock && return 0
+        fi
         if [ "$i" = "${MAX_ITERATION}" ]; then
-            echo "ERROR: Another instance is locking this process."
-            echo "If you are sure that no other instance is running, please remove ${LOCK}"
-            exit 1
+            return 1
         fi
     done
 }
 
+# Releases the lock if this run holds it: a run refused before it took the lock must not remove the
+# lock of the run that did.
 unlock()
 {
-    rm -rf ${LOCK}
+    if holds_lock; then
+        rm -rf ${LOCK}
+    fi
+}
+
+lock()
+{
+    if ! wait_for_lock; then
+        echo "ERROR: Another instance is locking this process."
+        echo "If you are sure that no other instance is running, please remove ${LOCK}"
+        exit 1
+    fi
 }
 
 help()
@@ -164,6 +249,80 @@ is_systemd() {
     [ -d "${SYSTEMD_RUNTIME_DIR}" ]
 }
 
+# Whether this call has to go through wazuh-agent.service: systemd runs this installation's agent
+# and the call is not one of the unit's own Exec lines (see systemd_redirect).
+systemd_supervises_call()
+{
+    [ "X${WAZUH_CONTROL_SKIP_SYSTEMD}" = "X1" ] && return 1
+    is_systemd || return 1
+    command -v systemctl > /dev/null 2>&1 || return 1
+    [ -r "${SELF_CGROUP}" ] || return 1
+    unit_runs_this_installation || return 1
+    ! called_by_unit_exec_line
+}
+
+# Whether the unit's PIDFile= is this installation's, compared through their real directories so
+# that a symlinked installation path or a trailing slash still match.
+unit_runs_this_installation()
+{
+    _ur_pidfile=$(systemctl show -p PIDFile "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^PIDFile=//p')
+    case "${_ur_pidfile}" in
+        */wazuh-agentd.pid) ;;
+        *) return 1 ;;
+    esac
+    _ur_unit_run=$(cd "$(dirname "${_ur_pidfile}")" 2>/dev/null && pwd -P)
+    [ -n "${_ur_unit_run}" ] || return 1
+    [ "X${_ur_unit_run}" = "X$(cd "${DIR}/var/run" 2>/dev/null && pwd -P)" ]
+}
+
+# Whether systemd runs this call for one of the unit's Exec lines: it sits in the unit's cgroup and
+# its pid, or its parent's, is the unit's ControlPID.
+called_by_unit_exec_line()
+{
+    grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}" || return 1
+    _cu_control_pid=$(systemctl show -p ControlPID "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^ControlPID=//p')
+    case "${_cu_control_pid}" in
+        "$$"|"${PPID}") return 0 ;;
+    esac
+    return 1
+}
+
+# Waits up to SYSTEMD_SETTLE_TIMEOUT seconds while the unit is starting or reloading, and leaves
+# the state it ends in in UNIT_STATE.
+wait_for_unit_to_settle()
+{
+    UNIT_STATE=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
+    case "${UNIT_STATE}" in
+        activating|reloading) ;;
+        *) return ;;
+    esac
+    echo "${SYSTEMD_UNIT} is ${UNIT_STATE}: waiting for it to finish."
+    _ws_deadline=`expr \`date +%s\` + ${SYSTEMD_SETTLE_TIMEOUT}`
+    while [ "`date +%s`" -lt "${_ws_deadline}" ]; do
+        sleep 1
+        UNIT_STATE=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
+        case "${UNIT_STATE}" in
+            activating|reloading) ;;
+            *) return ;;
+        esac
+    done
+}
+
+# Run by start with the lock held. Between the unit's ExecStartPre, which releases the lock, and its
+# ExecStart, which takes it, a start here would bring the daemons up outside the unit: ExecStart
+# would find them running, systemd would refuse the PID file and ExecStopPost would stop the agent.
+# So while the unit is starting, this releases the lock, waits for the unit and takes the lock
+# again. Checked with the lock held, a start the unit begins afterwards waits for the lock in
+# ExecStartPre, which then stops what this run starts and lets ExecStart bring it up inside.
+wait_for_unit_start()
+{
+    systemd_supervises_call || return
+    [ "$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)" = "activating" ] || return
+    unlock
+    wait_for_unit_to_settle
+    lock
+}
+
 # Hands stop, restart and reload to systemctl while systemd supervises the agent, and returns
 # otherwise. Run outside systemd, they take the daemons away from the unit: it tracks
 # wazuh-agentd through PIDFile=, so when this script stops it systemd runs ExecStop, which waits
@@ -171,19 +330,19 @@ is_systemd() {
 # the agent ends up stopped right after "Completed.". Through systemctl the unit runs them with
 # its own ExecStop, ExecStart and ExecReload, which call this script again from inside the unit.
 #
-# Those calls from systemd's own ExecStart, ExecStop and ExecReload must stay here: systemctl
-# would queue a job behind the one running them and wait until the unit times out. The unit's
-# ControlPID is the process systemd started for the line it is running (this script, or a shell
-# that runs it), so a call from inside the unit's cgroup is one of them when its pid or its
-# parent's is the ControlPID. Any other call from there comes from something the daemons
-# launched, such as an upgrade's installer, and is handled like a call from outside.
+# Those calls from systemd's own ExecStartPre, ExecStart, ExecStop, ExecStopPost and ExecReload
+# must stay here: systemctl would queue a job behind the one running them and wait until the unit
+# times out. The unit's ControlPID is the process systemd started for the line it is running (this
+# script, or a shell that runs it), so a call from inside the unit's cgroup is one of them when its
+# pid or its parent's is the ControlPID. Any other call from there comes from something the
+# daemons launched, such as an upgrade's installer, and is handled like a call from outside.
 #
 # Every other call waits while the unit is starting or reloading. A stop or restart job issued
-# then skips ExecStop (systemd runs it only after a successful start) and, with KillMode=process,
-# only signals wazuh-agentd, leaving the other daemons running outside any supervision; and a
-# reload issued during a start is folded into it and returns 0 without reloading anything. Once
-# the unit is active, all three are handed over. While it is stopping, stop and restart are
-# handed over too, and run after that stop.
+# then cuts the start or reload short: systemd skips ExecStop (it runs it only after a
+# successful start) and, with KillMode=process, only signals wazuh-agentd, so the other daemons
+# are left to ExecStopPost. A reload issued during a start is folded into it and returns 0
+# without reloading anything. Once the unit is active, all three are handed over. While it is
+# stopping, stop and restart are handed over too, and run after that stop.
 #
 # Left to this script:
 # - a unit that runs another installation of the agent, whose PIDFile= is not in this one.
@@ -192,50 +351,15 @@ is_systemd() {
 #   reload then starts the daemons that are down, as it does without systemd.
 # - a reload while the unit is stopping, which waits for this script's lock like before.
 # - a unit still starting or reloading after SYSTEMD_SETTLE_TIMEOUT seconds.
-# - start: on a running unit systemctl start does nothing, while this script still brings up a
-#   daemon that is down.
+# - start, which is never handed over: on a running unit systemctl start does nothing, while this
+#   script still brings up a daemon that is down. It only waits while the unit is starting (see
+#   wait_for_unit_start).
 # WAZUH_CONTROL_SKIP_SYSTEMD=1 keeps every action in this script.
 systemd_redirect()
 {
-    [ "X${WAZUH_CONTROL_SKIP_SYSTEMD}" = "X1" ] && return
-    is_systemd || return
-    command -v systemctl > /dev/null 2>&1 || return
-    [ -r "${SELF_CGROUP}" ] || return
-
-    # The unit's PIDFile= and this installation's, compared through their real directories so
-    # that a symlinked installation path or a trailing slash still match.
-    _sr_pidfile=$(systemctl show -p PIDFile "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^PIDFile=//p')
-    case "${_sr_pidfile}" in
-        */wazuh-agentd.pid) ;;
-        *) return ;;
-    esac
-    _sr_unit_run=$(cd "$(dirname "${_sr_pidfile}")" 2>/dev/null && pwd -P)
-    [ -n "${_sr_unit_run}" ] || return
-    [ "X${_sr_unit_run}" = "X$(cd "${DIR}/var/run" 2>/dev/null && pwd -P)" ] || return
-
-    if grep -Eq '/wazuh-agent\.service(/|$)' "${SELF_CGROUP}"; then
-        _sr_control_pid=$(systemctl show -p ControlPID "${SYSTEMD_UNIT}" 2>/dev/null | sed -n 's/^ControlPID=//p')
-        case "${_sr_control_pid}" in
-            "$$"|"${PPID}") return ;;
-        esac
-    fi
-
-    _sr_state=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
-    case "${_sr_state}" in
-        activating|reloading)
-            echo "${SYSTEMD_UNIT} is ${_sr_state}: waiting for it to finish."
-            _sr_deadline=`expr \`date +%s\` + ${SYSTEMD_SETTLE_TIMEOUT}`
-            while [ "`date +%s`" -lt "${_sr_deadline}" ]; do
-                sleep 1
-                _sr_state=$(systemctl is-active "${SYSTEMD_UNIT}" 2>/dev/null)
-                case "${_sr_state}" in
-                    activating|reloading) ;;
-                    *) break ;;
-                esac
-            done
-            ;;
-    esac
-    case "${_sr_state}" in
+    systemd_supervises_call || return
+    wait_for_unit_to_settle
+    case "${UNIT_STATE}" in
         active) ;;
         deactivating) [ "$1" = "reload" ] && return ;;
         *) return ;;
@@ -392,7 +516,8 @@ start_service()
                 echo "${i} did not start; see ${OSSEC_LOG} for the reason";
                 log_since ${i} 'ERROR|CRITICAL' | tail -n 5
                 # Stop what this start brought up, so the agent is not left half started; daemons
-                # that were already running stay. A reload keeps wazuh-agentd up, so it stops nothing.
+                # that were already running stay, though under the unit its ExecStopPost then stops
+                # them too. A reload keeps wazuh-agentd up, so it stops nothing.
                 # The deadline already took most of the unit's TimeoutSec: one second per daemon.
                 if [ -z "${RELOADING}" ]; then
                     DAEMONS="${STARTED} ${i}"
@@ -433,8 +558,7 @@ pstatus()
     ls ${DIR}/var/run/${pfile}-*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
-            ps -p ${pid} > /dev/null 2>&1
-            if [ ! $? = 0 ]; then
+            if ! pid_runs_daemon ${pid} ${pfile}; then
                 if [ "X${_pstatus_quiet}" = "X" ]; then
                     echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
                 fi
@@ -543,6 +667,7 @@ start)
     testconfig
     check_folders
     lock
+    wait_for_unit_start
     start_service
     unlock
     ;;

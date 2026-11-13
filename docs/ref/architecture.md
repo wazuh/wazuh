@@ -255,7 +255,42 @@ Anything after `start`, `stop`, `restart`, `reload`, `check` or `status` is igno
 so redirect `start` to a file rather than piping it: a pipe never sees end-of-file and the command
 appears to hang. On a systemd host the `wazuh-manager` unit drives the same script (`ExecStart`, `ExecStop`, `ExecReload`); its
 `TimeoutStartSec=180` bounds `start` and also `reload` (systemd times `ExecReload` with the start timeout), which
-covers the engine wait in both; `stop` is bounded by `TimeoutSec=45`.
+covers the engine wait in both. A `systemctl stop` or `restart` runs `wazuh-manager-control stop` twice, as
+`ExecStop` and then as `ExecStopPost` (the second finds nothing left to stop), and `TimeoutSec=45` bounds each
+of them, so a stop that hangs can take up to 90 seconds.
+
+A `systemctl restart` that arrives while a reload is still running is merged into the reload: systemd skips
+`ExecStop` and, with `KillMode=process`, kills only the reload's script. The unit's `ExecStopPost` runs
+`wazuh-manager-control stop` on that path too, so the start that follows brings up every daemon, `remoted`
+included. It skips the stop when the start or stop failed on its own (`SERVICE_RESULT=exit-code`), so a failed
+start leaves running daemons alone: a start refused by the configuration check, or one that gave up on the
+lock, stops nothing, and a start that failed partway has already stopped what it started. A start cut by
+`TimeoutStartSec` still gets the stop.
+
+`restart` and `reload` write `var/run/.restart` once they hold the start-script lock, and remove it before
+releasing the lock. While it is there the API reports `restarting` for every daemon that has no `.failed`
+verdict. A run killed while holding the lock leaves the marker, and its `<daemon>.start` markers, behind:
+`lock()` removes them, so whatever command takes the lock next does. Until then the API ignores the marker
+once the pid in the lock names no live process; a pid that another process has reused since still counts.
+
+The start-script lock, `var/start-script-lock`, belongs to the run that writes its pid into it. The pid is
+written exclusively and read back, so of two runs that both believe they created the lock only one owns it,
+and only the owner releases it: a command refused by its checks, before it takes the lock, leaves the lock and
+the markers of the run that holds it. A lock whose holder is gone is reclaimed, at once for a dead pid and
+after a few seconds for a missing one, through a marker, `var/start-script-lock.reclaim`, that records its own
+holder the same way. The agent's `wazuh-control` uses the same lock.
+
+The agent's `wazuh-agent` unit has the same `ExecStopPost`, without the `exit-code` check. There it also runs when `wazuh-agentd` exits on its
+own with a failure (a crash, or an exit with an error): systemd 233 and later skip `ExecStop` then, and
+`ExecStopPost` stops the other agent daemons, so the unit ends `failed` with nothing left running, as `ExecStop`
+already did on older systemd.
+
+The agent unit also runs `wazuh-control stop` as `ExecStartPre`. An agent started with `wazuh-control start`
+runs outside the unit, and systemd refuses the PID file of a `wazuh-agentd` it did not start, so a
+`systemctl start` or `restart`, including the restart a manager sends, would fail and `ExecStopPost` would stop
+the agent. With `ExecStartPre` those daemons are stopped first and the start brings them all up inside the
+unit. On a normal start nothing is running and it stops nothing. `ExecStartPre` and `ExecStart` each get their
+own `TimeoutSec`.
 
 **`wazuh-manager-control` always acts on the daemons itself**, whoever runs it: `start` launches every daemon
 that is not running (and reports `already running` for the rest), even while the unit is `active`, and the
