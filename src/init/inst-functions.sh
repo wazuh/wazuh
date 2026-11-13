@@ -286,7 +286,7 @@ WriteLogs()
 # WriteLogBlocks <mode>
 # Each localfile-logs/*.xml file holds one <localfile> block, for sources that need more than a log
 # format and a location. The block is written as is when the file in its <location> exists. The
-# installer summary does not list them, as they are package manager logs, like dpkg.log.
+# installer summary does not list them.
 ##########
 WriteLogBlocks()
 {

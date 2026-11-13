@@ -147,9 +147,21 @@ same "Red Hat family without journald" \
 host
 same "No package manager logs" "$(blocks "$journald" "$active_responses")" "$(write_logs journald add)"
 
-# The installer summary lists neither dpkg.log nor the blocks, which are all package manager logs.
-host dpkg.log apt/history.log dnf.log dnf.rpm.log syslog
+# The installer summary lists neither dpkg.log nor the blocks.
+host dpkg.log apt/history.log dnf.log dnf.rpm.log syslog amazon/ssm/amazon-ssm-agent.log
 same "Installer summary" "    -- $LOG/syslog" "$(write_logs no-journald echo)"
+
+# ----------------------------------------------------------------------------- Amazon SSM Agent log
+ssm="  <localfile>
+    <log_format>multi-line-regex</log_format>
+    <location>$LOG/amazon/ssm/amazon-ssm-agent.log</location>
+    <multiline_regex match=\"start\" replace=\"wspace\">^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}</multiline_regex>
+  </localfile>"
+host amazon/ssm/amazon-ssm-agent.log
+same "Amazon SSM Agent log present" "$(blocks "$journald" "$active_responses" "$ssm")" "$(write_logs journald add)"
+
+host
+same "Amazon SSM Agent log absent" "$(blocks "$journald" "$active_responses")" "$(write_logs journald add)"
 
 # ------------------------------------------------------------------------------------- *.xml blocks
 mkdir -p "$TMP/blocks"
