@@ -30,6 +30,12 @@ All notable changes to this project will be documented in this file.
 - Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 - Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 
+### Ruleset
+
+#### Fixed
+
+- Updated rootcheck trojan signatures to avoid false positives on distributions shipping uutils coreutils (Ubuntu 25.10 and later). ([#32142](https://github.com/wazuh/wazuh/issues/32142))
+
 ## [v4.14.11]
 
 ### Manager
