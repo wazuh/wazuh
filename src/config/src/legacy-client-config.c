@@ -15,6 +15,7 @@
 #include "config.h"
 #include "legacy-server-targets.h"
 #include "legacy-server-entry.h"
+#include "agent-manager-blocks.h"
 
 /* Direct children of a 4.x <client> block that 5.x reads under <agent> instead. */
 static const char * LEGACY_CLIENT_MOVED_OPTIONS[] = {
@@ -88,7 +89,7 @@ static void w_collect_legacy_server(const OS_XML *xml, xml_node *server, w_legac
     OS_ClearNode(chld_node);
 }
 
-/* Connect to one of the collected targets. */
+/* Connect to one of the collected targets, and say which ones were dropped. */
 static int w_apply_legacy_targets(agent *logr, const w_legacy_targets_t *targets)
 {
     size_t chosen = 0;
@@ -101,34 +102,15 @@ static int w_apply_legacy_targets(agent *logr, const w_legacy_targets_t *targets
         return OS_INVALID;
     }
 
+    w_legacy_targets_warn_ignored(targets, chosen);
     return 0;
 }
 
-/**
- * @brief Read the two things still wanted from a 4.x <client> block: the manager
- *        address under <server>, and the whole <enrollment> sub-block.
- *
- * A WPK upgrade never rewrites ossec.conf, so a 5.x agent can start against a file that
- * only has <client>. The address is taken when <agent>, or an earlier <client>, did not
- * already provide one, and <enrollment> is read because it carries the agent's identity,
- * which has no 5.x replacement inside the legacy block: dropping it makes the agent
- * re-register under its hostname with no groups. Every other direct child is ignored, and
- * says so, since the block is 4.x's and its options are not. Of <server>'s own children
- * only <address> and <endpoint> are read; the message printed for the address names the
- * port in use and a copy-pasteable replacement for the whole block.
- *
- * 5.x connects to a single manager (#37702). When the block names several, the last
- * <endpoint> wins, else the last <address>.
- */
-int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+/* Walk the block: <enrollment> is read, <server> targets are collected, anything else is
+ * warned about. Stops at the first error. */
+static int w_read_legacy_children(const OS_XML *xml, XML_NODE node, agent *logr, w_legacy_targets_t *targets)
 {
-    agent *logr = (agent *)d1;
-    w_legacy_targets_t targets = {0};
     int ret = 0;
-
-    /* Captured once rather than returned on, so the block is still walked for its
-     * <enrollment> child, and before this block adds an address of its own. */
-    const bool address_taken = (logr->server != NULL);
 
     for (int i = 0; node[i] && ret == 0; i++) {
         if (!node[i]->element) {
@@ -137,13 +119,63 @@ int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__
             ret = w_read_legacy_enrollment(xml, node[i], logr);
         } else if (strcmp(node[i]->element, "server") != 0) {
             w_warn_legacy_client_option(node[i]->element);
-        } else if (!address_taken) {
-            w_collect_legacy_server(xml, node[i], &targets);
+        } else {
+            w_collect_legacy_server(xml, node[i], targets);
         }
     }
 
+    return ret;
+}
+
+/* Decide what the block's targets are for. When <agent>, or an earlier <client>, already set
+ * the manager, they are only named. When an <agent><manager> later in the file is going to
+ * set it, they wait for it, so the warning can name that manager. Otherwise one of them is
+ * the manager. */
+static int w_settle_legacy_targets(const OS_XML *xml, agent *logr, w_legacy_targets_t *targets,
+                                   bool address_taken)
+{
+    int managers = 0;
+
+    if (address_taken) {
+        w_legacy_targets_warn_skipped(targets, &logr->server[0]);
+        return 0;
+    }
+
+    if ((managers = w_count_agent_manager_blocks(xml)) > 0) {
+        w_legacy_targets_defer(logr, targets, managers);
+        return 0;
+    }
+
+    return w_apply_legacy_targets(logr, targets);
+}
+
+/**
+ * @brief Read the two things still wanted from a 4.x <client> block: the manager
+ *        address under <server>, and the whole <enrollment> sub-block.
+ *
+ * A WPK upgrade never rewrites ossec.conf, so a 5.x agent can start against a file that
+ * only has <client>. The address is taken when neither an <agent><manager>, wherever it
+ * sits in the file, nor an earlier <client> provides one. <enrollment> is read because it
+ * carries the agent's identity, which has no 5.x replacement inside the legacy block:
+ * dropping it makes the agent re-register under its hostname with no groups. Every other direct child is ignored, and
+ * says so, since the block is 4.x's and its options are not. Of <server>'s own children
+ * only <address> and <endpoint> are read; the message printed for the address names the
+ * port in use and a copy-pasteable replacement for the whole block.
+ *
+ * 5.x connects to a single manager (#37702). When the block names several, the last
+ * <endpoint> wins, else the last <address>, and the others are named in a warning.
+ */
+int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
+{
+    agent *logr = (agent *)d1;
+    w_legacy_targets_t targets = {0};
+
+    /* Captured before the block adds an address of its own. */
+    const bool address_taken = (logr->server != NULL);
+    int ret = w_read_legacy_children(xml, node, logr, &targets);
+
     if (ret == 0) {
-        ret = w_apply_legacy_targets(logr, &targets);
+        ret = w_settle_legacy_targets(xml, logr, &targets, address_taken);
     }
 
     w_legacy_targets_free(&targets);
