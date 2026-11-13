@@ -27,7 +27,7 @@
 #define DEFAULT_IPV4_NETMASK 32
 
 
-static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
+static char *_read_file(const char *high_name, const char *low_name, const char *defines_file, bool empty_is_fatal) __attribute__((nonnull(3)));
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour, const size_t ossec_hour_len) __attribute__((nonnull));
 static int parse_define_int_value(const char *high_name, const char *low_name, char *value, int min, int max) __attribute__((nonnull));
@@ -86,9 +86,10 @@ NULL,
 
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
- * If return is not null, value must be freed
+ * If return is not null, value must be freed.
+ * A key written with no value exits when empty_is_fatal is set and returns "" otherwise.
  */
-static char *_read_file(const char *high_name, const char *low_name, const char *defines_file)
+static char *_read_file(const char *high_name, const char *low_name, const char *defines_file, bool empty_is_fatal)
 {
     FILE *fp;
     char buf[OS_SIZE_1024 + 1];
@@ -176,8 +177,9 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 
         /* A key written with no value is an unfinished edit, not an unset option. Left through, it
          * reaches atoi() as 0, which the range check accepts on every option whose minimum is 0 and
-         * rejects on the rest. Refused here, before anything is allocated. */
-        if (*buf_pt == '\0') {
+         * rejects on the rest. Refused here, before anything is allocated; a non-fatal reader gets ""
+         * and refuses it itself. */
+        if (*buf_pt == '\0' && empty_is_fatal) {
             fclose(fp);
             merror_exit(INV_DEF, high_name, low_name, buf_pt);
         }
@@ -271,10 +273,10 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
     char *value;
 
     /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, WAZUH_LDEFINES);
+    value = _read_file(high_name, low_name, WAZUH_LDEFINES, true);
 #ifdef WAZUH_DEFINES
     if (!value) {
-        value = _read_file(high_name, low_name, WAZUH_DEFINES);
+        value = _read_file(high_name, low_name, WAZUH_DEFINES, true);
     }
 #endif
     if (!value) {
@@ -344,10 +346,10 @@ int getDefine_Int_default(const char *high_name, const char *low_name, int min, 
     char *value;
 
     /* Try to read from the local define file */
-    value = _read_file(high_name, low_name, WAZUH_LDEFINES);
+    value = _read_file(high_name, low_name, WAZUH_LDEFINES, true);
 #ifdef WAZUH_DEFINES
     if (!value) {
-        value = _read_file(high_name, low_name, WAZUH_DEFINES);
+        value = _read_file(high_name, low_name, WAZUH_DEFINES, true);
     }
 #endif
     if (!value) {
@@ -360,6 +362,42 @@ int getDefine_Int_default(const char *high_name, const char *low_name, int min, 
     free(value);
 
     return (ret);
+}
+
+/* Get an integer definition without ever exiting: 1 valid, 0 absent, -1 invalid. */
+int getDefine_Int_nonfatal(const char *high_name, const char *low_name, int min, int max, int *value)
+{
+    char *text = _read_file(high_name, low_name, WAZUH_LDEFINES, false);
+#ifdef WAZUH_DEFINES
+    if (!text) {
+        text = _read_file(high_name, low_name, WAZUH_DEFINES, false);
+    }
+#endif
+    if (!text) {
+        return 0;
+    }
+
+    /* Digits only, with an optional leading '-' (strtol() alone would also take spaces and a '+'); strtol()
+     * then reports the overflow that atoi() would wrap. */
+    const char *pt = (*text == '-') ? text + 1 : text;
+    bool valid = (*pt != '\0');
+    for (; valid && *pt != '\0'; pt++) {
+        valid = isdigit((int)*pt);
+    }
+
+    long number = 0;
+    if (valid) {
+        errno = 0;
+        number = strtol(text, NULL, 10);
+        valid = (errno == 0 && number >= min && number <= max);
+    }
+
+    free(text);
+    if (!valid) {
+        return -1;
+    }
+    *value = (int)number;
+    return 1;
 }
 
 /* Whether the entry can be compared against an address of the given family.

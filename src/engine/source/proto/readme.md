@@ -45,7 +45,7 @@ Despite using protobuf for schema definition and validation, the **wire format i
 
 Although messages are defined in protobuf, they are serialized as **JSON** on the wire (HTTP over the engine's Unix domain sockets, `/var/wazuh-manager/queue/sockets/engine-api-http.sock` for the API). Protobuf serves as a **schema and validation layer**:
 
-- **C++ side**: `eMessage::eMessageFromJson<T>(jsonStr)` → protobuf object, `eMessage::eMessageToJson(msg)` → JSON string
+- **C++ side**: `eMessage::eMessageFromJson<T>(jsonView)` (a `std::string_view`) → protobuf object, `eMessage::eMessageToJson(msg)` → JSON string
 - **Python side**: `google.protobuf.json_format.ParseDict(dict, msg)` and `MessageToDict(msg)` for validation and conversion
 
 ### Message Naming Convention
@@ -142,7 +142,7 @@ This is the only hand-written file in `include/eMessages/`. It provides template
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `eMessageFromJson<T>` | `(const std::string& json) → std::variant<base::Error, T>` | Parse JSON string → protobuf message. Ignores unknown fields. |
+| `eMessageFromJson<T>` | `(std::string_view json) → std::variant<base::Error, T>` | Parse JSON (the view need not be NUL-terminated) → protobuf message. Ignores unknown fields. |
 | `eMessageToJson<T>` | `(const T& message, bool printPrimitiveFields = true) → std::variant<base::Error, std::string>` | Serialize protobuf message → compact JSON string. Preserves field names, prints default fields unless `printPrimitiveFields` is false. Use it for response serialization, not to rebuild request payloads in handlers. |
 | `eRepeatedFieldToJson<T>` | `(const RepeatedPtrField<T>&, bool printPrimitiveFields = true) → std::variant<base::Error, std::string>` | Serialize a repeated field as a JSON array string. |
 | `ShutdownEMessageLibrary` | `() → void` | Call `google::protobuf::ShutdownProtobufLibrary()` for clean exit. |

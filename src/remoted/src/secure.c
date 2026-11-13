@@ -513,6 +513,41 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
               rm_config->auth_max_body_size);
         rm_config->auth_max_decoded_body_size = rm_config->auth_max_body_size;
     }
+
+    // The engine refuses a /stateless batch over its ingest cap from the declared length, and remoted
+    // forwards the body exactly as decoded. A decoded cap above the engine's turns a batch the agent could
+    // split (413) into a refused write here and a 503 it retries unchanged. The key is the engine's, which
+    // refuses to start on a bad value: remoted only compares against it, so a value it cannot use skips the
+    // check with a warning instead of stopping remoted, and is never replaced by the engine's default.
+    int engine_max_body_read = 67108864; // The engine's default, used when its key is absent.
+    if (getDefine_Int_nonfatal(
+            "analysisd", "server_enriched_events_max_body_bytes", 33554432, 1073741824, &engine_max_body_read) < 0) {
+        mwarn("'analysisd.server_enriched_events_max_body_bytes' is not an integer between 33554432 and 1073741824; "
+              "remoted's body caps are not checked against the engine's ingest cap.");
+    } else {
+        const long long engine_max_body = engine_max_body_read;
+        if (rm_config->auth_max_decoded_body_size > engine_max_body) {
+            // Never below the wire cap: a body accepted on the wire must still be accepted once decoded.
+            const long long capped =
+                engine_max_body > rm_config->auth_max_body_size ? engine_max_body : rm_config->auth_max_body_size;
+            mwarn("'remoted.auth_max_decoded_body_size' (%lld) is above "
+                  "'analysisd.server_enriched_events_max_body_bytes' (%lld), the largest batch the engine accepts; "
+                  "using %lld.",
+                  rm_config->auth_max_decoded_body_size,
+                  engine_max_body,
+                  capped);
+            rm_config->auth_max_decoded_body_size = capped;
+        }
+        // Not lowered: the wire cap applies to every authenticated route, not only to the batches the
+        // engine receives.
+        if (rm_config->auth_max_body_size > engine_max_body) {
+            mwarn("'remoted.auth_max_body_size' (%lld) is above 'analysisd.server_enriched_events_max_body_bytes' "
+                  "(%lld): the engine refuses an uncompressed batch larger than that. Lower the first or raise the "
+                  "second.",
+                  rm_config->auth_max_body_size,
+                  engine_max_body);
+        }
+    }
 }
 
 /**
@@ -2227,7 +2262,7 @@ void *dispach_events_thread(void *arg) {
         .user_agent         = "wazuh-manager-remoted/1.0",
         .timeout_ms         = 5000,
         .connect_timeout_ms = 2000,
-        .keepalive          = true
+        .keepalive          = false                         // the ingest server closes after each response
     };
 
     uhttp_client_t *cli = NULL;

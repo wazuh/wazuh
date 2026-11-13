@@ -4,8 +4,8 @@
 
 This directory contains the integration tests for the Wazuh Engine. These tests are essential for validating the interactions between different components of the Wazuh Engine and ensuring that they function together as expected.
 
-The tests are [behave](https://behave.readthedocs.io/) suites, one per directory (`crud_cm`, `crud_ns`,
-`geo`, `router`, `status`, `tester`), each with a `features/` and a `steps/` directory and an `environment.py`
+The tests are [behave](https://behave.readthedocs.io/) suites, one per directory (`api_transport`, `crud_cm`,
+`crud_ns`, `geo`, `router`, `status`, `tester`), each with a `features/` and a `steps/` directory and an `environment.py`
 that starts and stops the engine with `engine-test-utils`. They run with the `engine-it` tool
 ([engine-it/README.md](engine-it/README.md)), in the `api_tests` job of
 [5_testintegration_engine.yml](../../../../.github/workflows/5_testintegration_engine.yml).

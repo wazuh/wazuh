@@ -362,6 +362,109 @@ TEST(RouteClassesTest, APerRouteBodyCapOverridesTheClassCapOnThatRouteOnly)
     server->stop();
 }
 
+namespace
+{
+    /// A head declaring @p length body bytes and carrying none of them, so any 413 must come from
+    /// the declared length at headers-complete.
+    std::string headDeclaring(const std::string& target, std::size_t length)
+    {
+        return "POST " + target + " HTTP/1.1\r\nHost: localhost\r\nContent-Length: " + std::to_string(length) +
+               "\r\nConnection: close\r\n\r\n";
+    }
+} // namespace
+
+TEST(RouteClassesTest, ACustomTooLargeBodyIsAnsweredForTheClassCap)
+{
+    const auto path = uniqueSocketPath("custom_413_class");
+    auto server = makeUdsHttpServer();
+    RouteOptions options {RouteClass::Control};
+    options.payloadTooLargeBody = "Too big.";
+    server->addRoute(Method::Post, "/scan", answer200(), options);
+    server->start(configFor(path)); // control cap: 64 KiB
+
+    const auto response = sendRaw(path, headDeclaring("/scan", 65537));
+    EXPECT_EQ(413, response.status);
+    EXPECT_EQ("Too big.", response.body);
+    EXPECT_NE(std::string::npos, response.raw.find("\r\nContent-Type: text/plain\r\n")) << response.raw;
+    EXPECT_EQ(1U, server->diagnostics().rejectedTooLarge) << "a custom body is still a counted 413";
+    server->stop();
+}
+
+TEST(RouteClassesTest, ACustomTooLargeBodyIsAnsweredForTheRouteCap)
+{
+    const auto path = uniqueSocketPath("custom_413_route");
+    auto server = makeUdsHttpServer();
+    RouteOptions options {RouteClass::Control};
+    options.maxBodyBytes = 4096;
+    options.payloadTooLargeBody = R"({"title":"Too big"})";
+    options.payloadTooLargeContentType = "application/problem+json";
+    server->addRoute(Method::Post, "/scan", answer200(), options);
+    server->start(configFor(path));
+
+    const auto rejected = sendRaw(path, headDeclaring("/scan", 4097));
+    EXPECT_EQ(413, rejected.status);
+    EXPECT_EQ(R"({"title":"Too big"})", rejected.body);
+    EXPECT_NE(std::string::npos, rejected.raw.find("\r\nContent-Type: application/problem+json\r\n")) << rejected.raw;
+
+    EXPECT_EQ(200, sendRaw(path, peerRequest("POST", "/scan", std::string(4096, 'x'))).status)
+        << "at the route cap is fine";
+    server->stop();
+}
+
+TEST(RouteClassesTest, TheDefaultTooLargeBodyIsUnchanged)
+{
+    const auto path = uniqueSocketPath("default_413");
+    auto server = makeUdsHttpServer();
+    RouteOptions custom {RouteClass::Control};
+    custom.payloadTooLargeBody = "Too big.";
+    server->addRoute(Method::Post, "/custom", answer200(), custom);
+    server->addRoute(Method::Post, "/plain", answer200(), RouteOptions {RouteClass::Control});
+    server->start(configFor(path));
+
+    // The sibling that set nothing answers today's bytes.
+    const auto response = sendRaw(path, headDeclaring("/plain", 65537));
+    EXPECT_EQ(413, response.status);
+    EXPECT_EQ(R"({"error":"Request body exceeds the control-class limit","code":413})", response.body);
+    EXPECT_NE(std::string::npos, response.raw.find("\r\nContent-Type: application/json\r\n")) << response.raw;
+    server->stop();
+}
+
+TEST(RouteClassesTest, ACustomTypeWithoutABodyIsIgnored)
+{
+    const auto path = uniqueSocketPath("type_only_413");
+    auto server = makeUdsHttpServer();
+    RouteOptions options {RouteClass::Control};
+    options.payloadTooLargeContentType = "text/html";
+    server->addRoute(Method::Post, "/scan", answer200(), options);
+    server->start(configFor(path));
+
+    const auto response = sendRaw(path, headDeclaring("/scan", 65537));
+    EXPECT_EQ(413, response.status);
+    EXPECT_EQ(R"({"error":"Request body exceeds the control-class limit","code":413})", response.body);
+    EXPECT_NE(std::string::npos, response.raw.find("\r\nContent-Type: application/json\r\n")) << response.raw;
+    EXPECT_EQ(std::string::npos, response.raw.find("text/html")) << response.raw;
+    server->stop();
+}
+
+TEST(RouteClassesTest, TheServerWideCapKeepsTheGenericBody)
+{
+    // The server-wide cap is decided by the parser before the route is matched, so no route's
+    // custom body can apply to it.
+    const auto path = uniqueSocketPath("server_413");
+    auto server = makeUdsHttpServer();
+    RouteOptions options {RouteClass::Control};
+    options.payloadTooLargeBody = "Too big.";
+    server->addRoute(Method::Post, "/scan", answer200(), options);
+    auto config = configFor(path);
+    config.maxBodySize = 1024;
+    server->start(config);
+
+    const auto response = sendRaw(path, headDeclaring("/scan", 2048));
+    EXPECT_EQ(413, response.status);
+    EXPECT_EQ(R"({"error":"Request body is too large","code":413})", response.body);
+    server->stop();
+}
+
 TEST(RouteClassesTest, DiagnosticsExposePerClassOccupancy)
 {
     const auto path = uniqueSocketPath("class_diag");

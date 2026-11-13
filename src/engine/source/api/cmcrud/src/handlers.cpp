@@ -891,7 +891,7 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             const auto maxAcceptedBytes = std::max(maxResourcePayloadBytes, maxKvdbPayloadBytes);
             res = adapter::userErrorResponse<ResponseType>(
                 fmt::format("Request body exceeds maximum allowed document size of {} bytes", maxAcceptedBytes));
-            res.status = httplib::StatusCode::PayloadTooLarge_413;
+            res.status = 413;
             return;
         }
 
@@ -931,7 +931,7 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
                 fmt::format("Request body exceeds maximum allowed size of {} bytes for type '{}'",
                             typeLimit,
                             cm::store::resourceTypeToString(rType)));
-            res.status = httplib::StatusCode::PayloadTooLarge_413;
+            res.status = 413;
             return;
         }
 

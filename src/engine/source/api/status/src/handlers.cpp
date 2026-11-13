@@ -32,8 +32,8 @@ adapter::RouteHandler getStatus(const std::shared_ptr<cm::sync::ICMSync>& cmSync
         if ((hasCmSync && !cmSyncPtr) || (hasIocSync && !iocSyncPtr) || !geoPtr)
         {
             LOG_ERROR("Status handler: one or more providers are unavailable");
-            res.status = httplib::StatusCode::InternalServerError_500;
-            res.set_content("Internal Server Error", "text/plain");
+            res.status = 500;
+            res.setContent("Internal Server Error", "text/plain");
             return;
         }
 

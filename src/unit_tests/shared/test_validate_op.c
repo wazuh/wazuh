@@ -1420,7 +1420,9 @@ static int setup_local_defines(void **state)
           "agent.past_long_long=99999999999999999999\n"
           "agent.below_int_min=-2147483649\n"
           "agent.int_max=2147483647\n"
-          "agent.plus_sign=+5\n",
+          "agent.plus_sign=+5\n"
+          "agent.word_value=64MiB\n"
+          "agent.huge_value=2147483648\n",
           fp);
     fclose(fp);
 
@@ -1549,6 +1551,38 @@ void getDefine_Int_default_plus_sign_exits(void **state)
     expect_assert_failure(getDefine_Int_default("agent", "plus_sign", 0, 10, 0));
 }
 
+/* getDefine_Int_nonfatal() never exits: __wrap__merror_exit has no expectation here, so a call fails the test. */
+void getDefine_Int_nonfatal_present_value_is_read(void **state)
+{
+    (void)state;
+    int value = 99;
+
+    assert_int_equal(getDefine_Int_nonfatal("agent", "good_value", 0, 10, &value), 1);
+    assert_int_equal(value, 7);
+}
+
+void getDefine_Int_nonfatal_absent_key_is_reported(void **state)
+{
+    (void)state;
+    int value = 99;
+
+    assert_int_equal(getDefine_Int_nonfatal("agent", "never_written", 0, 10, &value), 0);
+    assert_int_equal(value, 99);
+}
+
+/* Empty, not an integer, too large for an int, or out of range: -1, value untouched, no exit. */
+void getDefine_Int_nonfatal_invalid_value_is_reported(void **state)
+{
+    (void)state;
+    int value = 99;
+
+    assert_int_equal(getDefine_Int_nonfatal("agent", "blank_value", 0, 10, &value), -1);
+    assert_int_equal(getDefine_Int_nonfatal("agent", "word_value", 0, 1073741824, &value), -1);
+    assert_int_equal(getDefine_Int_nonfatal("agent", "huge_value", 0, 1073741824, &value), -1);
+    assert_int_equal(getDefine_Int_nonfatal("agent", "good_value", 10, 20, &value), -1);
+    assert_int_equal(value, 99);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1641,6 +1675,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(getDefine_Int_default_int_max_is_read, setup_local_defines,
                                         teardown_local_defines),
         cmocka_unit_test_setup_teardown(getDefine_Int_default_plus_sign_exits, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_nonfatal_present_value_is_read, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_nonfatal_absent_key_is_reported, setup_local_defines,
+                                        teardown_local_defines),
+        cmocka_unit_test_setup_teardown(getDefine_Int_nonfatal_invalid_value_is_reported, setup_local_defines,
                                         teardown_local_defines),
     };
 

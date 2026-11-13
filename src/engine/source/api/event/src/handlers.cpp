@@ -22,7 +22,7 @@ constexpr auto REJECTED_BATCH_LOG_WINDOW = std::chrono::seconds(60);
 
 /**
  * @brief Logs the first rejected batch, then at most one per window with the count suppressed since the previous
- * line (the same policy as the router's malformed-event WARNING). Shared by the server's I/O threads.
+ * line (the same policy as the router's malformed-event WARNING). Shared by the server's handler threads.
  */
 class RejectedBatchLog
 {
@@ -54,7 +54,7 @@ private:
 };
 } // namespace
 
-adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
+httpsrv::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
                                 const std::shared_ptr<::dumper::IDumper>& dumper,
                                 std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache)
 {
@@ -78,14 +78,14 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             eventsReceivedCounter,
             identityRejectedCounter,
             identityWarningGate,
-            rejectedBatchLog](const auto& req, auto& res)
+            rejectedBatchLog](const httpsrv::Request& req, httpsrv::Response& res)
     {
         auto orchestratorRef = weakOrchestrator.lock();
         if (!orchestratorRef)
         {
             LOG_ERROR_L(lambdaName.c_str(), "[API::Event] Received request but orchestrator is not available");
-            res.status = httplib::StatusCode::InternalServerError_500;
-            res.set_content("{\"error\": \"Internal server error\", \"code\": 500}", "application/json");
+            res.status = 500;
+            res.setContent("{\"error\": \"Internal server error\", \"code\": 500}", "application/json");
             return;
         }
 
@@ -104,16 +104,16 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         // Track bytes received (entire HTTP body size)
         bytesReceivedCounter->add(req.body.size());
 
-        const auto carrierCount = req.get_header_value_count("X-Wazuh-Agent-Id");
-        const std::string agentId = carrierCount == 1 ? req.get_header_value("X-Wazuh-Agent-Id")
+        const auto carrierCount = req.headerCount("X-Wazuh-Agent-Id");
+        const std::string agentId = carrierCount == 1 ? std::string {*req.header("X-Wazuh-Agent-Id")}
                                                       : (carrierCount == 0 ? "<missing>" : "<repeated>");
         const auto badRequest = [&res](std::string_view message)
         {
             json::Json body;
             body.setString(message, "/error");
             body.setInt(400, "/code");
-            res.status = httplib::StatusCode::BadRequest_400;
-            res.set_content(body.str(), "application/json");
+            res.status = 400;
+            res.setContent(body.str(), "application/json");
         };
 
         try
@@ -174,7 +174,8 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             return;
         }
 
-        res.status = httplib::StatusCode::OK_200;
+        res.status = 200;
+        res.contentType.clear(); // an empty 200 carries no Content-Type, as before
     };
 }
 } // namespace api::event::handlers

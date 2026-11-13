@@ -7,56 +7,79 @@ if(NOT DEFINED SRC_FOLDER)
   get_filename_component(SRC_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
 
-add_library(wazuh_uds_http_server STATIC src/asioUdsHttpServer.cpp src/requestParser.cpp)
+# One definition, two archives: the plain one every consumer links and, under the engine's
+# ThreadSanitizer build, an instrumented copy for the engine (below).
+function(wazuh_uds_http_server_library name)
+  add_library(${name} STATIC src/asioUdsHttpServer.cpp src/requestParser.cpp)
 
-# Minimum 17 (the consumers include a strict-C++17 module: remoted_module); compiles unchanged
-# under the tree-wide 20. The PUBLIC compile-feature is a FLOOR for consumers -- their own TUs
-# keep their own standard -- while the archive's own TUs are PINNED to 17 below, so the promise
-# is enforced on every build rather than trusted to review.
-target_compile_features(wazuh_uds_http_server PUBLIC cxx_std_17)
-set_target_properties(wazuh_uds_http_server PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+  # Minimum 17 (the consumers include a strict-C++17 module: remoted_module); compiles unchanged
+  # under the tree-wide 20. The PUBLIC compile-feature is a FLOOR for consumers -- their own TUs
+  # keep their own standard -- while the archive's own TUs are PINNED to 17 below, so the promise
+  # is enforced on every build rather than trusted to review.
+  target_compile_features(${name} PUBLIC cxx_std_17)
+  set_target_properties(${name} PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 
-# Static lib archived into each consumer (inventory_sync_server, remoted_module, wazuh_db,
-# task_manager, vulnerability_scanner). NEVER make this SHARED: Log::GLOBAL_LOG_FUNCTION has hidden per-DSO
-# visibility (see loggerHelper.h), so the archive must resolve it inside each consumer .so for
-# every copy to log through its own module's sink.
-set_target_properties(wazuh_uds_http_server PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  # Static lib archived into each consumer (inventory_sync_server, remoted_module, wazuh_db,
+  # task_manager, vulnerability_scanner). NEVER make this SHARED: Log::GLOBAL_LOG_FUNCTION has hidden per-DSO
+  # visibility (see loggerHelper.h), so the archive must resolve it inside each consumer .so for
+  # every copy to log through its own module's sink.
+  set_target_properties(${name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# Nothing in this archive is an export: every consumer embeds its own private copy, so any
-# dynamic symbol that escapes a consumer .so is a defect waiting to happen -- measured in the
-# wild before this was enforced, libinventory_sync_server.so ended up binding llhttp_execute
-# from libvulnerability_scanner.so at runtime because VD exported it first and the linker never
-# pulled inventory's own llhttp members. Two layers, because each covers what the other cannot:
-#  - hidden visibility on the archive's OWN TUs kills its strong function/vtable exports, its
-#    internal lambdas and its GNU-unique statics (which would otherwise be process-wide across
-#    DSOs and pin dlclose);
-#  - --exclude-libs, propagated to every embedder's link via INTERFACE, localizes whatever
-#    still arrives from the archives -- crucially including llhttp, which may be a PRECOMPILED
-#    imported archive (external/CMakeLists.txt) that no compile flag of ours can reach.
-# Deliberately NOT hidden: the vague-linkage (weak) instantiations consumer TUs create from
-# these headers. Hiding those (a header-wide visibility pragma) clamps every module function
-# whose SIGNATURE mentions a lib type -- including sanctioned cross-boundary calls like
-# content_manager::dispatchOnDemand and the module APIs the unit-test binaries link against --
-# and identical weak template code collapsing across DSOs is ABI-normal C++, not a leak.
-# LogThrottle marks itself hidden in its own header (its inline statics would export as
-# GNU-unique from every consumer otherwise).
-target_compile_options(wazuh_uds_http_server PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
-target_link_options(wazuh_uds_http_server INTERFACE "LINKER:--exclude-libs,libwazuh_uds_http_server.a"
-                    "LINKER:--exclude-libs,libllhttp.a")
+  # Nothing in this archive is an export: every consumer embeds its own private copy, so any
+  # dynamic symbol that escapes a consumer .so is a defect waiting to happen -- measured in the
+  # wild before this was enforced, libinventory_sync_server.so ended up binding llhttp_execute
+  # from libvulnerability_scanner.so at runtime because VD exported it first and the linker never
+  # pulled inventory's own llhttp members. Two layers, because each covers what the other cannot:
+  #  - hidden visibility on the archive's OWN TUs kills its strong function/vtable exports, its
+  #    internal lambdas and its GNU-unique statics (which would otherwise be process-wide across
+  #    DSOs and pin dlclose);
+  #  - --exclude-libs, propagated to every embedder's link via INTERFACE, localizes whatever
+  #    still arrives from the archives -- crucially including llhttp, which may be a PRECOMPILED
+  #    imported archive (external/CMakeLists.txt) that no compile flag of ours can reach.
+  # Deliberately NOT hidden: the vague-linkage (weak) instantiations consumer TUs create from
+  # these headers. Hiding those (a header-wide visibility pragma) clamps every module function
+  # whose SIGNATURE mentions a lib type -- including sanctioned cross-boundary calls like
+  # content_manager::dispatchOnDemand and the module APIs the unit-test binaries link against --
+  # and identical weak template code collapsing across DSOs is ABI-normal C++, not a leak.
+  # LogThrottle marks itself hidden in its own header (its inline statics would export as
+  # GNU-unique from every consumer otherwise).
+  target_compile_options(${name} PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
+  target_link_options(${name} INTERFACE "LINKER:--exclude-libs,lib${name}.a"
+                        "LINKER:--exclude-libs,libllhttp.a")
 
-target_include_directories(
-  wazuh_uds_http_server
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-  PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, proc.hpp
-)
+  target_include_directories(
+    ${name}
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, proc.hpp
+  )
 
-# Transport stays PRIVATE and confined behind the PImpl: no public header names asio or llhttp,
-# which is what keeps makeUdsHttpServer() a one-line transport swap point.
-target_link_libraries(wazuh_uds_http_server PRIVATE ext_asio ext_llhttp)
+  # Transport stays PRIVATE and confined behind the PImpl: no public header names asio or llhttp,
+  # which is what keeps makeUdsHttpServer() a one-line transport swap point.
+  target_link_libraries(${name} PRIVATE ext_asio ext_llhttp)
 
-# Explicit rather than relying on asio's Boost auto-detection: nothing in this tree provides
-# Boost, so leaving it to be inferred just makes the build depend on what happens to be installed.
-target_compile_definitions(wazuh_uds_http_server PRIVATE ASIO_STANDALONE)
+  # Explicit rather than relying on asio's Boost auto-detection: nothing in this tree provides
+  # Boost, so leaving it to be inferred just makes the build depend on what happens to be installed.
+  target_compile_definitions(${name} PRIVATE ASIO_STANDALONE)
+endfunction()
+
+wazuh_uds_http_server_library(wazuh_uds_http_server)
+
+# ThreadSanitizer only sees the synchronization of instrumented code: an uninstrumented archive
+# linked into the instrumented engine (asio's strands and scheduler, shared_ptr counts) makes it
+# report races that do not exist. With ENGINE_ENABLE_TSAN the engine (httpsrv) links this
+# instrumented copy; the other consumers keep the plain archive, because they are not built with
+# the sanitizer and could not link an instrumented one.
+if(ENGINE_ENABLE_TSAN)
+  wazuh_uds_http_server_library(wazuh_uds_http_server_tsan)
+  target_compile_options(wazuh_uds_http_server_tsan PRIVATE -fsanitize=thread -fno-omit-frame-pointer)
+endif()
+
+# AddressSanitizer checks only instrumented code, so the engine's ASAN build links this copy too.
+# Always defined, and built only when linked: under UNIT_TEST the engine turns ENGINE_ENABLE_ASAN on
+# itself, after this directory is processed, so testing it here would miss a fresh configure.
+wazuh_uds_http_server_library(wazuh_uds_http_server_asan)
+target_compile_options(wazuh_uds_http_server_asan PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+set_target_properties(wazuh_uds_http_server_asan PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 if(UNIT_TEST)
   set(BENCHMARK_TEST OFF)

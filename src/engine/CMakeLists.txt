@@ -195,7 +195,6 @@ endif()
 include_directories(${SHARED_MODULES}/utils)
 # Include external dependencies needed by shared modules and engine
 include_directories(${CMAKE_SOURCE_DIR}/external/cJSON)
-include_directories(${CMAKE_SOURCE_DIR}/external/cpp-httplib)
 include_directories(${CMAKE_SOURCE_DIR}/external/nlohmann)
 
 # Set the indexer connector build directory
