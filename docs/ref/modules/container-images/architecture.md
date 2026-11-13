@@ -83,11 +83,11 @@ A saved archive is read twice: a tar is sequential, while the layer order comes 
 
 ### **Registry Reader**
 
-Reads an image from GitHub Container Registry. It implements the same reader interface as the archive reader, so the scan loop does not know which kind of source it is talking to.
+Reads an image from GitHub Container Registry or Amazon ECR. It implements the same reader interface as the archive reader, so the scan loop does not know which kind of source it is talking to.
 
 The sequence is the one the registry advertises rather than one assumed of it:
 
-1. An unauthenticated manifest request is answered with `401` and a `WWW-Authenticate` header naming the token endpoint, the service and the scope.
+1. An unauthenticated manifest request is answered with `401` and a `WWW-Authenticate` header naming the token endpoint, the service and the scope. A private Amazon ECR reference skips this step, see [Amazon ECR Private Authentication](#amazon-ecr-private-authentication), and Amazon ECR Public is read as the anonymous case above, with no credential ever sent.
 2. A token is obtained from that endpoint: anonymously for a public repository, or with HTTP Basic and a credential read from the agent credential store for a private one. When the registry answers `401` or `403` to the token request that carries the credential, the reference is tried once more with an anonymous token, so a wrong credential does not fail the public references on the same host. If the registry serves the manifest that way, the reference is inventoried and one warning per scan and host reports the refusal. Otherwise the reference fails with the error of the credential. The same retry applies when a token is issued for the credential and the manifest request is then answered with `401` or `403`, as it is for a token without the scope the repository needs. A credential missing from the store, a transport failure and throttling get no anonymous retry. The token belongs to one reader, which is one reference, so the anonymous token cannot reach another reference. Only a refusal at the token endpoint is remembered for the rest of the scan, with the reason the registry gave, because it is the credential itself that was refused: the later references under the same registry and organization (`ghcr.io/owner`) are not sent the credential and ask for an anonymous token at once, and a private one among them is reported with the remembered reason. The memory is keyed by organization rather than host because a registry can answer per organization, so a refusal for one organization leaves the credential in use for the others on the same host. A refusal at the manifest speaks for one repository, so it is not remembered and the next reference sends the credential again. A manifest answered with `401` is reported as a rejected credential only when one was sent; with an anonymous token the registry is reported as requiring a credential for the reference. The warning is deduplicated separately and is logged once per scan and host for either kind. The scan's next run starts with nothing remembered.
 3. The image index is fetched and the matching variant is selected: the architecture is the agent's, and the operating system is always `linux`, because an image is a Linux image whatever runs the engine. Build attestation entries, which carry no image content, are skipped.
 4. The configuration digest is compared against the one already stored. When they match, nothing further is retrieved.
@@ -98,6 +98,43 @@ The transport owns its own cURL handle rather than using the shared HTTP wrapper
 Its security posture is set explicitly in one place: the peer and the host name are verified against a resolved certificate bundle, only `https` is allowed for a request and for anything it is redirected to, and the access token is not carried across a redirect to another host. That last one matters because a layer request is redirected off the registry to a content host which neither needs the token nor should receive it.
 
 A request that produces no response is retried unless it would fail the same way again. The transport reports that on the response, and the reader attempts such a request once: peer verification and certificate bundle errors, a response over the size limit, a redirect loop and an unusable address or protocol. Every network-level failure stays retryable. A layer blob is requested as stored, with no content decoding by libcurl, so the bytes counted against the image ceiling are the bytes of the blob.
+
+### **Registry Profiles**
+
+The registry reader asks a small profile, chosen by the host of the reference, how a registry is authenticated. There are three, and no others: `ghcr.io`, `public.ecr.aws` and the private Amazon ECR hosts. The host is matched exactly, and the region of a private host is validated, because the host decides where a credential-derived value is sent.
+
+| Profile | Authentication | Repository path |
+|---------|----------------|-----------------|
+| GHCR | Bearer token, anonymous or exchanged for a stored user name and token. | At least `owner/name`. |
+| Amazon ECR Public | Bearer token, always anonymous. The realm must be `public.ecr.aws`. | At least `alias/name`. |
+| Amazon ECR private | `Basic` with a token that comes from a signed AWS request. | One or more components. |
+
+A profile also says which statuses can mean the credential was refused: `401` for the Bearer registries, and `400`, `401` or `403` for private ECR, which answered `400` and a `DENIED` body to a refused token. For private ECR those statuses are only a candidate: the token is dropped when the status is `401`, or when the body names the token as invalid or expired.
+
+### **Amazon ECR Private Authentication**
+
+A private registry does not issue its own token. It answers an unauthenticated request with a `Basic` challenge, and the password is obtained from AWS:
+
+1. The reader looks up the `<registry>` entry for the host. With none, the reference fails before any request, naming the missing entry.
+2. The token is taken from the shared token cache when one valid for ten more minutes is held for that host, credential key names and region.
+3. Otherwise `EcrTokenClient` sends `GetAuthorizationToken` to `api.ecr.<region>.<domain>`, signed with AWS Signature Version 4 (`aws_sigv4`). The endpoint is built only from a region and a domain that passed strict validation, and the request is never redirected.
+4. The token is stored in the cache with its expiry and sent as `Authorization: Basic <token>` on every request of the reference, the first one included.
+5. When the registry refuses the token, as defined above, the cache entry is dropped, one new token is requested and the request is repeated. A second refusal fails the reference with the registry's reason. A refusal that does not name the token, such as a missing IAM permission, fails the reference with its reason and keeps the shared token, so it costs no further signed request. A refused layer has no body to read, so the manifest is requested again to learn which of the two it was. When `<region>` overrides the host's region and the registry refuses the token, the token is not renewed either, and the reason names both regions.
+
+There is no anonymous retry for a private Amazon ECR registry: it has no anonymous access, so a refused credential is the answer and its error stands. What the retry does for GHCR, remembering a refusal for the rest of the scan, is kept for private ECR with a different scope. The refusal is remembered under the account host and the repository (`123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend`) and not under the host, because IAM grants access per repository and an account has no organizations. A later reference of the same repository, another tag for instance, then fails at once with the remembered reason, and nothing is requested. The other half of the memory is the credential itself. When AWS refuses it, with a `4xx` that is not throttling (an unknown access key id, a signature that does not match, an access denied on the token call), the reason is remembered under the account host, because it is the same for every repository of the account, and the later references of the scan fail with it at once. A mistyped secret then costs one signed call and one reason from AWS per scan, not one per reference. A server error, throttling and a call that got no answer say nothing about the credential and are not remembered. The memory ends with the scan, so a corrected store works at the next one. The shared token cache is untouched by the refusal memory.
+
+`GetAuthorizationToken` follows the same retry rules as the token exchange of the other registries. A `5xx`, a `429` and the `ThrottlingException` AWS answers with `400` are retried with the usual back-off, waiting for `Retry-After` when AWS sends one and ending at once when the module is asked to stop. A call that was never answered and would fail the same way, a certificate that does not verify or a URL that is not usable, is tried once. The call carries no content decoding, as a blob does not.
+
+The pieces are separate on purpose:
+
+| Piece | Responsibility |
+|-------|----------------|
+| `aws_sigv4` | The signature, as pure functions of method, path, query, headers, payload, region, service and time. General, so the reference cases AWS publishes run against it unmodified. |
+| `EcrTokenClient`, behind `IEcrTokenSource` | Builds and sends the `GetAuthorizationToken` call and reads the answer. The reader's tests replace it. |
+| `RegistryTokenCache` | Tokens with an expiry, an injectable clock and a renewal margin. Owned by the module, not by a reader, so the references of one registry share a token. Only successes are stored. |
+| `registry_errors` | Reads a registry error body and an AWS error into one reason that is safe to log. |
+
+The token cache holds key names, never values, in its key. The signing key, the signature, the `Authorization` header, the token, the access key id and the secret are held in `Secret` objects or scrubbed after use, and none of them is logged at any level. The signed request is the only code that handles them together, and it does not throw with a message that contains an input. What stays outside that control is libcurl's own internal copy of a header while a request is in flight and the TLS send buffer, which this module cannot reach. Credentials are not encryption at rest in the store either, see [the credential store](configuration.md#what-the-credential-store-protects).
 
 ### **Registry Byte Stream**
 
@@ -246,4 +283,5 @@ Discovered images are represented with `ImageReferenceRecord` entries:
 The implementation includes:
 
 - C++ tests for the byte streams, the tar variants, the composition rules, both package parsers, the supported inputs end to end, reader discovery, scan behavior, injected reader factories, no-source scans, and disabled-module behavior. The image inputs are built on disk by the tests.
-- C tests for configuration parsing, defaults, every reference entry type, multiple references, invalid values, and unknown entry names.
+- C tests for configuration parsing, defaults, every reference entry type, multiple references, invalid values, unknown entry names, and the Amazon ECR entry (valid, missing keys, invalid region, mixed tags, wrong host) and its configuration dump.
+- C++ tests for the registry profiles and reference parsing, the AWS Signature Version 4 signature of the `GetAuthorizationToken` request, asserted against a value computed independently with Python, the request and its answers, the token cache lifetime with an injected clock, the error reasons, the reader against scripted registries (public, private, token reuse, renewal, refusal), and one test that runs the whole private flow with recognisable secrets and checks that no log line at any level carries a credential or a value derived from one.
