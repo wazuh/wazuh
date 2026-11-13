@@ -62,7 +62,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Added a workflow that validates the FIM eBPF whodata events of every syscall on several kernels and filesystems. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
-- Limited the rootcheck hidden-process check on Linux to PIDs up to 32768 by default. The new `rootcheck.max_pid` internal option raises the limit up to 4194304, at a higher CPU cost per scan. ([#41313](https://github.com/wazuh/wazuh/issues/41313))
+- Limited the rootcheck hidden-process check on Linux to PIDs up to 32768 by default. The new `rootcheck.max_pid` internal option raises the limit up to 4194304. ([#41313](https://github.com/wazuh/wazuh/issues/41313))
 
 #### Fixed
 
@@ -94,7 +94,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#40916](https://github.com/wazuh/wazuh/pull/40916))
 - Fixed `wazuh-logcollector` dropping a `snort-full` alert when a read stopped before the alert's date line. ([#40671](https://github.com/wazuh/wazuh/issues/40671))
 - Fixed the agent applying the `agent.conf` blocks of the previous `<config-profile>` until a second restart after the profile was changed. On Linux this affected the labels and client buffer of `wazuh-agentd`; on Windows it affected the whole agent. ([#40930](https://github.com/wazuh/wazuh/pull/40930))
-- Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads, and skipping PIDs above 32768. ([#40913](https://github.com/wazuh/wazuh/pull/40913))
+- Fixed the rootcheck hidden-process check taking hours and filling the agent's memory limit on Linux hosts with many threads, and not allowing PIDs above 32768 to be checked. ([#40913](https://github.com/wazuh/wazuh/pull/40913))
 - Fixed the Windows agent not monitoring the registry keys that match a `windows_registry` wildcard and are created after the agent starts. ([#40978](https://github.com/wazuh/wazuh/pull/40978))
 - Fixed `wazuh-logcollector` skipping the newer journald entries of a read when one entry could not be formatted. ([#41068](https://github.com/wazuh/wazuh/pull/41068))
 - Fixed `wazuh-logcollector` keeping a field of the log line instead of the label configured with the same name for `json` localfiles. ([#41072](https://github.com/wazuh/wazuh/pull/41072))
