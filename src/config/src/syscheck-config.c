@@ -957,50 +957,6 @@ int fim_parse_check_attribute(const char *attr, const char *value, int *opts) {
     return 0;
 }
 
-static void fim_warn_retired_container_tag(const char *tags) {
-    /* tags="container" used to be what scoped a <directories> entry to containers.
-     * It no longer does, and the failure is otherwise completely silent, so say so
-     * once per configuration read rather than per entry. */
-    static int warned = 0;
-    const char *cursor;
-
-    if (tags == NULL || warned) {
-        return;
-    }
-
-    for (cursor = tags; *cursor != '\0';) {
-        const char *start;
-        const char *end;
-
-        while (*cursor == ',' || *cursor == ' ' || *cursor == '\t') {
-            ++cursor;
-        }
-
-        start = cursor;
-
-        while (*cursor != '\0' && *cursor != ',') {
-            ++cursor;
-        }
-
-        end = cursor;
-
-        while (end > start && (end[-1] == ' ' || end[-1] == '\t')) {
-            --end;
-        }
-
-        if ((size_t)(end - start) == 9 && strncmp(start, "container", 9) == 0) {
-            mwarn("tags=\"container\" no longer scopes a <directories> entry to containers. "
-                  "Use <container_security><syscheck><directories> instead.");
-            warned = 1;
-            return;
-        }
-
-        if (*cursor == ',') {
-            ++cursor;
-        }
-    }
-}
-
 static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs, char **g_values)
 {
     /* The check_* attributes are handled by fim_parse_check_attribute(), shared with
@@ -1112,7 +1068,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         else if (strcmp(*attrs, xml_tag) == 0) {
             os_free(tag);
             os_strdup(*values, tag);
-            fim_warn_retired_container_tag(tag);
         }
         /* Check follow symbolic links */
         else if (strcmp(*attrs, xml_follow_symbolic_link) == 0) {
