@@ -60,6 +60,10 @@
     "category": "events",
     "unit": "total"
   },
+  "indexer.events.deduplicated": {
+    "category": "events",
+    "unit": "total"
+  },
   "indexer_client.bucket.analysisd.events.accepted": {
     "category": "indexer events bucket",
     "unit": "total"

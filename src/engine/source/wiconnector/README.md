@@ -7,7 +7,7 @@ read the remote configuration needs, and the owner of the Engine's `indexer_clie
 
 - **Indexing events** — posting processed / raw-event JSON documents to data-stream indices.
 - **Remote engine configuration** — pulling runtime engine settings from `.wazuh-settings`.
-- **Metrics** — the queued bytes, their share of the capacity and the events not indexed (the three `indexer.*`
+- **Metrics** — the queued bytes, their share of the capacity and the events not indexed (the four `indexer.*`
   metrics), every metric of the two buckets and the runtime's, published through fastmetrics by
   `registerIndexerMetrics()`.
 
@@ -27,10 +27,11 @@ content manager makes through that same Client. An indexer outage is reported on
                      ▼
           ┌──────────────────────────────┐
           │  WIndexerConnector           │
-          │  • index(): IWriter::post    │
-          │    (no lock, fixed writers)  │
+          │  • index(): sets the _id and │
+          │    IWriter::post (no lock,   │
+          │    fixed writers)            │
           │  • metrics: 1 snapshot / s   │
-          │    (3 getters + per bucket)  │
+          │    (4 getters + per bucket)  │
           └─────────┬────────────────────┘
                     │  buckets `events` (weight 2) and `raw` (weight 1); IQuery for the reads
                     ▼
@@ -47,18 +48,32 @@ The Client is created by `EngineIndexerRuntime` with both buckets, shared with t
 
 ### Hot path and thread safety
 
-`index(index, data)` takes both strings by value and moves them into an `Op{IndexDataStream}` that it posts with
-`IWriter::post` (no ticket, no callback) to `raw` when the index is `RAW_EVENTS_INDEX` (`wazuh-events-raw-v5`, declared
-next to the interface and shared with `rawevtindexer`) and to `events` otherwise: no copy of the body and no lock. The two
-writers are fixed in the constructor. A refused post (`payload_too_large`, `invalid_argument`, `client_closed`, ...)
-never throws: it is logged on the edge (one WARN until a post is accepted again, then one INFO) and counted only by
-the library, in the bucket's `rejected` counters.
+`index(index, data)` takes both strings by value, generates a document id with
+`base::utils::generators::generateDocId()` (27-char base64url; a per-thread clock plus a random prefix) and moves
+everything into an `Op{IndexDataStream, index, body, id}` that it posts with `IWriter::post` (no ticket, no callback) to
+`raw` when the index is `RAW_EVENTS_INDEX` (`wazuh-events-raw-v5`, declared next to the interface and shared with
+`rawevtindexer`) and to `events` otherwise: no copy of the body and no lock. The two writers are fixed in the
+constructor. Every write has its own `_id`: each per-environment copy of an event and the raw
+document are different writes, so none shares an id with another. A resend of the same `_bulk` (the library resends one
+after a timeout or a dropped connection) repeats the ids; the indexer answers `409 version_conflict_engine_exception` for
+an item it already has, and the library resolves it as Ok and counts it in the bucket's `deduplicated`. The indexer client
+also logs a WARN for it (`Indexer client bucket 'analysisd/events': the indexer already had <n> document(s) of a resent
+bulk …`, and the same for `analysisd/raw`), at most once per `log_summary_interval_ms` of 409s; see the
+[indexer client reference](../../../../docs/ref/modules/indexer_client/README.md).
+
+If the id cannot be generated (in practice only when a thread draws its random prefix and OpenSSL `RAND_bytes` fails, or
+when memory runs out), the event is dropped before posting, counted in `indexer.events.dropped` by the connector (a second
+local counter, next to the after-shutdown discards) and logged on the same edge as a refused post (one WARN until a post is
+accepted again, then one INFO). A failing thread while others keep posting alternates WARN and INFO.
+
+A refused post (`payload_too_large`, `invalid_argument`, `client_closed`, ...) never throws: it is logged on the edge (one
+WARN until a post is accepted again, then one INFO) and counted only by the library, in the bucket's `rejected` counters.
 
 `shutdown()` sets an atomic flag and releases the writers and the Client (a mutex guards only the Client pointer,
 which the reads and the metrics copy out before calling it). **Precondition**: no `index()` runs concurrently with
 `shutdown()` — the router and tester workers are joined before the indexer's exit handler runs. After
-`shutdown()`, `index()` discards the event and counts it (the module's only local counter), the queue size and usage
-read 0, and `getEngineRemoteConfig()` throws `std::runtime_error`. The Engine calls `shutdown()` after the Client's
+`shutdown()`, `index()` discards the event and counts it (one of the module's two local counters, the other one counts
+the events dropped for lack of an id), the queue size and usage read 0, and `getEngineRemoteConfig()` throws `std::runtime_error`. The Engine calls `shutdown()` after the Client's
 `requestClose()`, so a remote configuration read in flight returns `ClientClosed`.
 
 ### Buckets (`engineBucketSpecs`)
@@ -75,8 +90,15 @@ that `main.cpp` reads (`EngineWriteOptions`) and the validated `RuntimeConfig` (
 | `bulk.maxDocs` | `SIZE_MAX`: as in the v1, a bulk is cut only by bytes and by age (the library's default is 10 000) |
 | `retry` | unlimited attempts and duration; `cap` = `analysisd.indexer_max_retry_delay` (the base is lowered to the cap if needed) |
 | `overflow` | `DropNewest` (the router never waits) |
-| `onAmbiguous5xx` | `Fail` (data streams without `_id`: a resend would duplicate); it also covers a `_bulk` answer over `max_response_bytes`, never split nor resent |
+| `onAmbiguous5xx` | `Fail`, the policy kept from before the `_id` (see below the table) |
+| `onConflict` | `Success`, set explicitly (it is also the library default): a 409 `version_conflict_engine_exception` on an item is resolved Ok and, for these `IndexDataStream` ops with `_id`, counted in `deduplicated` |
 | `trustedBodies` | `true` (the Engine only sends compact `json::Json::str()` output) |
+
+`Fail` is a policy choice and not a need: with the `_id`, resending an ambiguous 500, 502 or 504 would be idempotent within
+the backing index (changing it is a separate follow-up). Its cost is that those events count as dropped although the
+indexer may have applied them. It also covers a `_bulk` answer over `max_response_bytes`, never split nor resent (that is
+what `Fail` prevents). The `_id` is unique only within one backing index: a resend that crosses a rollover can still
+duplicate (accepted limit).
 
 A quota that cannot hold a 64 KiB bulk and its reserve fails the start (`InvalidConfig`, no runtime); the error names
 the key the quota came from (`analysisd.indexer_client_global_quota_bytes` when `indexer_queue_max_bytes` is `0` or
@@ -88,14 +110,15 @@ holds fewer small events than a v1 queue of the same size.
 
 ### Metrics
 
-The three getters and `getBucketMetric()` read one cached `Client::metrics()` snapshot, refreshed at most once per
+The four getters and `getBucketMetric()` read one cached `Client::metrics()` snapshot, refreshed at most once per
 second (one scrape of every indexer metric takes one snapshot):
 
 | Getter | Value |
 |---|---|
 | `getQueueSize()` | Σ `retainedBytes` of `events` and `raw` |
 | `getQueueUsagePercent()` | max(the fullest bucket, the shared budget) × 100, capped at 100: max over `events` and `raw` of `charge` / `quotaBytes`, and Σ `charge` / `queueCapacityBytes`. 100 = a bucket or the global budget is full, i.e. new events are dropped (`QueueFull` or `GlobalFull`): the second term only matters when 2 × quota > global (a quota of `0` or above half the global quota). A bucket with quota 0 is skipped; 0.0 with no capacity or once shut down |
-| `getDroppedEvents()` | Σ `dropped` + `failed` + `rejected` (every cause) of both buckets, plus the events discarded after `shutdown()`; after it the bucket part is the last snapshot taken before it (up to `METRICS_TTL`, 1 s, older than the close; zeros if nothing read the metrics before), so what the runtime's stop drops later (`Dropped(Shutdown)`) is not in it |
+| `getDroppedEvents()` | Σ `dropped` + `failed` + `rejected` (every cause) of both buckets, plus the events discarded after `shutdown()` and the events dropped because no `_id` could be generated (see the hot path); after it the bucket part is the last snapshot taken before it (up to `METRICS_TTL`, 1 s, older than the close; zeros if nothing read the metrics before), so what the runtime's stop drops later (`Dropped(Shutdown)`) is not in it |
+| `getDeduplicatedEvents()` | Σ `deduplicated` of `events` and `raw`: the items the indexer already had (409 on a resent `_bulk`), resolved Ok. Not a loss, never added to `getDroppedEvents()`. After `shutdown()` the last snapshot (the `indexer.events.deduplicated` metric reads 0 while no connector exists) |
 
 `getBucketMetric(name)` serves the library's catalog for the two buckets from that snapshot:
 `indexer_client.bucket.analysisd.{events,raw}.<field>`, 52 names per bucket (`accepted`, `ok`, `deduplicated`, `late_results`,
@@ -106,7 +129,7 @@ kind, from a snapshot with no values, so the set is known before any metrics() c
 values are those of the last snapshot, as the bucket part of `getDroppedEvents()`; any other name reads 0.
 
 `registerIndexerMetrics(manager, connector, runtime)` (`indexerMetrics.hpp`) registers them all as fastmetrics pull
-metrics, once, from `main.cpp`: the three `indexer.*` names over the getters, every `bucketMetricNames()` name over
+metrics, once, from `main.cpp`: the four `indexer.*` names over the getters, every `bucketMetricNames()` name over
 `getBucketMetric()` (as integers), and, given the `RuntimeRef` (`EngineIndexerRuntime::runtime()`), the runtime's
 `indexer_client.{runtime,query,pit}.*` and `indexer_client.node.<i>.*` metrics through an
 `indexer_client::MetricsSlot` holding only the runtime and refreshed at most once per `METRICS_TTL` (counters as
@@ -245,10 +268,10 @@ public:
     void shutdown(); // releases the writers and the Client; never concurrent with index()
 
     static std::vector<std::pair<std::string, indexer_client::MetricKind>> bucketMetricNames(); // both buckets
-    double getBucketMetric(const std::string& name); // same cached snapshot as the three getters
+    double getBucketMetric(const std::string& name); // same cached snapshot as the four getters
 };
 
-// The three indexer.* metrics, the buckets' catalog and, with a runtime, the runtime/node/query/PIT metrics.
+// The four indexer.* metrics, the buckets' catalog and, with a runtime, the runtime/node/query/PIT metrics.
 void registerIndexerMetrics(fastmetrics::IManager& manager,
                             const std::weak_ptr<WIndexerConnector>& connector,
                             const std::optional<indexer_client::RuntimeRef>& runtime);
@@ -287,7 +310,7 @@ void registerIndexerMetrics(fastmetrics::IManager& manager,
 - **`engineIndexerRuntime_test.cpp`** — `engineBucketSpecs` (`EngineBucketSpecsTest.*`) and the runtime against the
   library's in-process fake indexer: start with and without buckets, the capacity, the failed start, the stop phases.
 - **`indexerMetrics_test.cpp`** — `bucketMetricNames()` (52 names per bucket, nothing client-wide) and
-  `registerIndexerMetrics()` on a local `fastmetrics::Manager`: the three `indexer.*` names and every bucket metric from
+  `registerIndexerMetrics()` on a local `fastmetrics::Manager`: the four `indexer.*` names and every bucket metric from
   one `metrics()` call, the last snapshot after `shutdown()` and 0 without a connector, and, on a runtime started
   against the library's fake indexer, the runtime, node, query and PIT families (one node set per host).
 - **Mock** (`test/mocks/wiconnector/mockswindexerconnector.hpp`) — `MockWIndexerConnector`.

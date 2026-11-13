@@ -226,8 +226,8 @@ namespace indexer_client::detail::write
     Outcome<Encoded>
     encode(Op&& op, const ConflictPolicy& effective, bool trustedBody = false, HeadTable* heads = nullptr);
 
-    /// Entries of the per-thread cache of encode() (engine workers alternate the raw and the events index,
-    /// the latter templated per event).
+    /// Entries of the per-thread cache of encode() (producers that post ops without an `_id` and alternate between a
+    /// few indices; the engine's writes carry an `_id` and never use this cache).
     constexpr std::size_t THREAD_CACHE = 16;
 } // namespace indexer_client::detail::write
 

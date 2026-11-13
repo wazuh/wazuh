@@ -40,8 +40,8 @@ struct EngineWriteOptions
 
 /**
  * @brief The `events` and `raw` bucket specs for @p options under @p config: DropNewest, unlimited retry,
- *        `onAmbiguous5xx = Fail`, trusted bodies, weights 2 and 1, the same quota (0 or above the global cap ⇒ the
- * global cap), bulk.maxBytes clipped to quota − RESULT_RESERVE_BYTES.
+ *        `onAmbiguous5xx = Fail`, `onConflict = Success`, trusted bodies, weights 2 and 1, the same quota (0 or above
+ *        the global cap ⇒ the global cap), bulk.maxBytes clipped to quota − RESULT_RESERVE_BYTES.
  *
  * @param warnings Receives one line per value changed or ignored.
  * @return The two specs, or Cause::InvalidConfig when the quota cannot hold a 64 KiB bulk and its reserve.

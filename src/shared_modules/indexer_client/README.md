@@ -520,8 +520,9 @@ it.
   every reader of a line (the runtime joins its CPU pool first; a group of a dead path never reads its lines); past 256 an op
   builds its own `head`. The cap is per runtime lifetime (the table never shrinks): once 256 (kind, index) pairs were seen, an
   op of a new pair finds the table full without a lock and only builds its line, never taking the table's append mutex.
-  Each producer thread keeps a 16-entry `thread_local` cache {table generation, kind, index, line} (the
-  engine alternates its raw and events indices): on a hit (same table, same kind, index equal byte for byte) the index is not
+  Each producer thread keeps a 16-entry `thread_local` cache {table generation, kind, index, line} (it serves producers that post ops
+  without an `_id` and alternate between a few indices; the engine's writes carry an `_id`, so they never use the
+  cache nor the table and build their own action line): on a hit (same table, same kind, index equal byte for byte) the index is not
   validated again and no line is built; on a miss the op is validated as always and, once valid, its line is found (lock-free) or
   interned in the table and takes an entry of the cache (an invalid index never enters either). The rest of the validation runs in the same order either way, so the first
   failure still wins. The charge does not count the shared line apart: every op charges its own `wire()` (which includes it) plus
@@ -866,7 +867,7 @@ probe already marks the node `Down` for them and discarding data over credential
 ### Ambiguous 5xx
 
 A `_bulk` answered 500, 502 or 504 may have been **applied** by the indexer (a partial failure behind a gateway or a coordinating node).
-Resending it duplicates documents in an index without `_id` (data streams). `BucketSpec::onAmbiguous5xx` (v1 parity: the async
+Resending it duplicates documents in an index without `_id` (data streams written without an `_id`). `BucketSpec::onAmbiguous5xx` (v1 parity: the async
 connector never resent these) chooses per bucket:
 
 | Policy | A 500, 502 or 504 on `_bulk` | A `_bulk` response over `max_response_bytes` (`ResponseTooLarge`) |
@@ -891,9 +892,11 @@ connector never resent these) chooses per bucket:
   after it (an allocation failure, say) resolves what is still unresolved `Failed(Ambiguous)` instead of the usual requeue with an attempt.
 - **Known asymmetry.** The policy covers the status codes only. A transport timeout, a reset or any other failure **after the request was
   sent** (`mayHaveSent`) stays a counted failover (`Retry`, v1 parity) under both policies, so it may still duplicate in buckets without
-  `_id`. Buckets whose operations carry an `_id` are idempotent and should keep `Retry`; append-only buckets without `_id` (the engine's `events`
-  and `raw`) are the ones that choose `Fail`. An `IndexDataStream` with an `_id` is the conditional exception: its resend is idempotent
-  within the backing index and its 409 is counted ([Deduplicated 409](#conflict-policy)).
+  `_id`. Buckets whose operations carry an `_id` are idempotent and should keep `Retry`; append-only buckets without `_id` choose `Fail`.
+  An `IndexDataStream` with an `_id` is the conditional exception: its resend is idempotent within the backing index and its 409 is
+  counted ([Deduplicated 409](#conflict-policy)). The engine's `events` and `raw` are that case: each write carries its own
+  `_id`, yet they keep `Fail` as their previous policy (a policy choice, not a need: the resend would be idempotent within the
+  backing index).
 
 `classifyItems(std::string& body, expected)` reads a 2xx body item by item and returns one `ItemResult{verdict, outcome, httpStatus,
 itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (the sender

@@ -974,8 +974,9 @@ holds one connection to the indexer and an outage logs one line. Writes use two 
 
 Both buckets have the same policy: unlimited retry of retryable failures, `DropNewest` when the quota is full (the
 router is never slowed down), and no resend of a `_bulk` that fails with an ambiguous 500, 502 or 504, or whose
-answer is larger than `analysisd.indexer_client_max_response_bytes` (the indexer may have applied it, and a resend
-could duplicate documents in a data stream; the events are counted as dropped). A 503 is retried. The weights set
+answer is larger than `analysisd.indexer_client_max_response_bytes` (the indexer may have applied it; every event carries its own document `_id`, so a resend would be idempotent
+within the backing index and not resending is a policy choice, and for the oversized answer it is what prevents splitting
+the `_bulk`; the events are counted as dropped). A 503 is retried. The weights set
 the share of the transport when both buckets compete. A bulk leaves when its payload reaches
 `analysisd.indexer_bulk_max_bytes` or its oldest event reaches `analysisd.indexer_flush_interval`; there is no limit
 on the number of events in a bulk.
@@ -2545,19 +2546,27 @@ How close the writes are to dropping new events, as a percentage capped at 100: 
 
 ##### `indexer.events.dropped`
 
-Total number of events the engine wanted to index and that did not reach the indexer: the sum of the dropped, failed and rejected operations of the `events` and `raw` buckets. It counts events refused because the bucket quota was full (`DropNewest`), events refused while the writes were closed or the indexer unavailable, events of a `_bulk` that failed (including an ambiguous 500, 502 or 504 answer, or an answer larger than `analysisd.indexer_client_max_response_bytes`, which are not retried) or that the indexer rejected as too large (413), and events offered after the writes closed at shutdown. Failed items inside a `_bulk` that the indexer accepted are not counted. Events still pending when the engine stops are discarded but not counted here: once the writes close, the counter keeps the value of the last snapshot taken before (at most about 1 s older than the close, or `0` if the metrics were never read). The log reports them instead: the indexer client's last summary at shutdown includes the engine's buckets, with the discarded events under the `shutdown` cause and in the `dropped` total (for example `Indexer client bucket 'analysisd/events' unsuccessful operations in the last 2 s: shutdown=3.`).
+Total number of events the engine wanted to index and that did not reach the indexer: the sum of the dropped, failed and rejected operations of the `events` and `raw` buckets. It counts events refused because the bucket quota was full (`DropNewest`), events refused while the writes were closed or the indexer unavailable, events of a `_bulk` that failed (including an ambiguous 500, 502 or 504 answer, or an answer larger than `analysisd.indexer_client_max_response_bytes`, which are not retried) or that the indexer rejected as too large (413), events offered after the writes closed at shutdown, and events dropped before posting because a document `_id` could not be generated (in practice only when a thread draws its random prefix and the random source fails, or when memory runs out). Failed items inside a `_bulk` that the indexer accepted are not counted. Events still pending when the engine stops are discarded but not counted here: once the writes close, the counter keeps the value of the last snapshot taken before (at most about 1 s older than the close, or `0` if the metrics were never read). The log reports them instead: the indexer client's last summary at shutdown includes the engine's buckets, with the discarded events under the `shutdown` cause and in the `dropped` total (for example `Indexer client bucket 'analysisd/events' unsuccessful operations in the last 2 s: shutdown=3.`).
 
 This is a change of meaning from earlier versions, where the counter only included events refused by a full queue and batches discarded after a final `_bulk` status.
 
-The three indexer metrics keep their names. They are read from one snapshot of the writes, refreshed at most once per second, so two scrapes less than a second apart report the same values. The snapshot also lags the router: the indexer client admits the events of each router worker in batches, so an event is counted in `indexer.queue.size`, `indexer.queue.usage.percent` and the quota-full part of `indexer.events.dropped` only when its batch is admitted, up to 64 events per worker (and per bucket) or about 1 ms after it was offered. While they wait, those batched events are outside the quota: per bucket they hold at most half of the bucket's effective quota of extra memory (see [Indexer connector settings](configuration.md#indexer-connector-settings)).
+The three metrics `indexer.queue.size`, `indexer.queue.usage.percent` and `indexer.events.dropped` keep their names; `indexer.events.deduplicated` is new and reads the same snapshot. They are read from one snapshot of the writes, refreshed at most once per second, so two scrapes less than a second apart report the same values. The snapshot also lags the router: the indexer client admits the events of each router worker in batches, so an event is counted in `indexer.queue.size`, `indexer.queue.usage.percent` and the quota-full part of `indexer.events.dropped` only when its batch is admitted, up to 64 events per worker (and per bucket) or about 1 ms after it was offered. While they wait, those batched events are outside the quota: per bucket they hold at most half of the bucket's effective quota of extra memory (see [Indexer connector settings](configuration.md#indexer-connector-settings)).
 
 **Used for:** detecting loss conditions and overload situations.
 
 ---
 
+##### `indexer.events.deduplicated`
+
+Total number of events the indexer answered with a version conflict (409 `version_conflict_engine_exception`) because it already had them: the sum of the `deduplicated` items of the `events` and `raw` buckets. Every write carries its own document `_id`, so a conflict means a resent `_bulk` (after a timeout or a dropped connection) reached a document the indexer had already applied. The event is resolved as written, so this is not a loss and it is never added to `indexer.events.dropped`. It is `0` while the indexer connector does not exist, and once the engine has shut its writes down it keeps the value of the last snapshot. It is read from the same snapshot as the other indexer metrics, refreshed at most once per second. The indexer client also logs a WARN (`Indexer client bucket 'analysisd/events': the indexer already had <n> document(s) of a resent bulk …`, and the same for `analysisd/raw`), at most once per `log_summary_interval_ms` of 409s; see the [indexer client reference](../indexer_client/README.md).
+
+**Used for:** detecting a slow or unstable indexer that forces the engine to resend.
+
+---
+
 #### Indexer client metrics
 
-Next to the three indexer metrics above, the engine publishes the indexer client library's own metrics for its two write buckets and for its runtime, with the same names the manager's modules use for theirs (see [Indexer Client Metrics](../indexer_client/metrics.md)). They are pull metrics, registered when the indexer connector starts.
+Next to the four indexer metrics above, the engine publishes the indexer client library's own metrics for its two write buckets and for its runtime, with the same names the manager's modules use for theirs (see [Indexer Client Metrics](../indexer_client/metrics.md)). They are pull metrics, registered when the indexer connector starts.
 
 | Prefix | Scope | Count |
 |---|---|---|
@@ -2570,7 +2579,7 @@ Next to the three indexer metrics above, the engine publishes the indexer client
 
 Each bucket has `accepted`, `ok`, `deduplicated` and `late_results`; per-cause counters `rejected.<cause>`, `dropped.<cause>`, `failed.<cause>` and `retries.<cause>` (for example `retries.server_5xx`, `failed.ambiguous`, `dropped.queue_full`); the gauges `retained_bytes`, `charge_bytes` and `quota_bytes`; `bulk_requests` and `bulk_bytes`; and a cumulative latency histogram of the `_bulk` responses (`latency.le_1` ... `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count`, in milliseconds). The meaning of every field and cause is the library's catalog, listed in [Indexer Client Metrics § Names](../indexer_client/metrics.md#names).
 
-The bucket metrics are read from the same snapshot as `indexer.queue.size`, `indexer.queue.usage.percent` and `indexer.events.dropped` (at most one per second), so they add up: `indexer.events.dropped` is the sum of every `dropped.*`, `failed.*` and `rejected.*` of the two buckets, plus the events offered after the writes closed. Once the engine has shut its writes down they keep the last snapshot taken. The runtime, node, query and point-in-time metrics come from the runtime's own snapshot, also refreshed at most once per second; the node family has one set per configured host. Counters are integers; gauges such as a node's `window` can be fractions.
+The bucket metrics are read from the same snapshot as `indexer.queue.size`, `indexer.queue.usage.percent`, `indexer.events.dropped` and `indexer.events.deduplicated` (at most one per second), so they add up: `indexer.events.dropped` is the sum of every `dropped.*`, `failed.*` and `rejected.*` of the two buckets, plus the events offered after the writes closed and those dropped because no document `_id` could be generated, and `indexer.events.deduplicated` is the sum of the two buckets' `deduplicated`. Once the engine has shut its writes down they keep the last snapshot taken. The runtime, node, query and point-in-time metrics come from the runtime's own snapshot, also refreshed at most once per second; the node family has one set per configured host. Counters are integers; gauges such as a node's `window` can be fractions.
 
 **Used for:** telling why events are not indexed (which cause, which bucket), how often writes are retried and how long the indexer takes to answer them, and whether the indexer hosts are available or throttling the engine.
 

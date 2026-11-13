@@ -10,6 +10,7 @@
 #include <json.hpp>
 
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
 
 #include <wiconnector/engineIndexerRuntime.hpp>
 #include <wiconnector/windexerconnector.hpp>
@@ -246,10 +247,32 @@ void WIndexerConnector::index(std::string index, std::string data)
         return;
     }
 
+    // Every write carries its own `_id`: a resend of the same `_bulk` repeats it, so the indexer answers
+    // 409 instead of indexing the event twice. In practice generation only fails when a thread draws its random prefix
+    // (the first id of that thread) or when memory runs out, so a failing thread while others post alternates the
+    // WARN/INFO edge.
+    std::string id;
+    try
+    {
+        id = base::utils::generators::generateDocId();
+    }
+    catch (const std::exception& e)
+    {
+        m_idFailures.fetch_add(1, std::memory_order_relaxed);
+        if (!m_refusing.exchange(true, std::memory_order_relaxed))
+        {
+            LOG_WARNING("[indexer-connector] The indexer connector dropped an event before posting it: could not "
+                        "generate a document id: {} (further refusals are counted in indexer.events.dropped)",
+                        e.what());
+        }
+        return;
+    }
+
     auto& writer = index == RAW_EVENTS_INDEX ? *m_raw : *m_events;
     indexer_client::Op op;
     op.kind = indexer_client::Op::Kind::IndexDataStream;
     op.index = std::move(index);
+    op.id = std::move(id);
     op.body = std::move(data);
     const auto posted = writer.post(std::move(op));
 
@@ -353,6 +376,7 @@ void WIndexerConnector::refreshLocked()
         {
             totals.dropped += count;
         }
+        totals.deduplicated += bucket.deduplicated;
     }
     // The global budget drops too (`GlobalFull`) when it binds (2 x quota > global, e.g. a quota of 0), so the
     // sum against the capacity also counts. When the global quota does not bind it never exceeds the fullest bucket.
@@ -399,7 +423,13 @@ double WIndexerConnector::getQueueUsagePercent()
 
 uint64_t WIndexerConnector::getDroppedEvents()
 {
-    return totals().dropped + m_discardedAfterShutdown.load(std::memory_order_relaxed);
+    return totals().dropped + m_discardedAfterShutdown.load(std::memory_order_relaxed)
+           + m_idFailures.load(std::memory_order_relaxed);
+}
+
+uint64_t WIndexerConnector::getDeduplicatedEvents()
+{
+    return totals().deduplicated;
 }
 
 json::Json WIndexerConnector::getEngineRemoteConfig()
