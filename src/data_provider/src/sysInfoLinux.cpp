@@ -654,6 +654,15 @@ nlohmann::json SysInfo::getGroups() const
 
     auto collectedGroups = groupsProvider.collect({});
 
+    // Resolve the members of every group in one pass over the group and passwd databases.
+    // Asking per group cost a group lookup and a whole passwd enumeration for each group, and
+    // on a host whose accounts come from a network directory each of those went to it.
+    // An empty set means "every group" and always yields an object keyed by gid.
+    const auto usersByGid = collectedGroups.empty()
+                            ? nlohmann::json::object()
+                            : userGroupsProvider.getUserNamesByGid({});
+    const auto noMembers = nlohmann::json::array();
+
     for (auto& group : collectedGroups)
     {
         nlohmann::json groupItem {};
@@ -665,8 +674,9 @@ nlohmann::json SysInfo::getGroups() const
         groupItem["group_uuid"] = UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = 0;
 
-        std::set<gid_t> gids {static_cast<gid_t>(group["gid"].get<int>())};
-        auto collectedUsersGroups = userGroupsProvider.getUserNamesByGid(gids);
+        // Keyed exactly as getUserNamesByGid() built it, from gid_t.
+        const auto entry = usersByGid.find(std::to_string(static_cast<gid_t>(group["gid"].get<int>())));
+        const auto& collectedUsersGroups = entry != usersByGid.end() ? *entry : noMembers;
 
         if (collectedUsersGroups.empty())
         {
