@@ -2918,6 +2918,32 @@ void test_w_fopen_vetted_follow_missing_file(void **state) {
     assert_vetted_rejected(path, ENOENT);
 }
 
+void test_is_ascii_utf8_text_file(void **state) {
+    char path[PATH_MAX + 1];
+
+    nofollow_create_file("regular", "content");
+    nofollow_path(path, "regular");
+
+    assert_int_equal(is_ascii_utf8(path, 10, 1400), 0);
+}
+
+void test_is_ascii_utf8_fifo_rejected_without_blocking(void **state) {
+    char path[PATH_MAX + 1];
+    char msg[PATH_MAX + 64];
+
+    nofollow_path(path, "fifo");
+    assert_int_equal(mkfifo(path, 0640), 0);
+    if (geteuid() == 0) {
+        assert_int_equal(chown(path, 1000, (gid_t) -1), 0);
+    }
+    assert_int_equal(__real_chmod(nofollow_dir, 0777), 0);
+
+    snprintf(msg, sizeof(msg), "(1963): Unable to open file '%s'.", path);
+    expect_string(__wrap__mdebug1, formatted_msg, msg);
+
+    assert_int_equal(is_ascii_utf8(path, 10, 1400), 1);
+}
+
 void test_w_fopen_vetted_follow_fifo_rejected_without_blocking(void **state) {
     char path[PATH_MAX + 1];
 
@@ -3427,6 +3453,118 @@ void test_w_vet_opened_file_hard_link_writable_dir_rejected(void **state) {
     assert_int_equal(w_vet_opened_file(&fd_stat, &dir_stat, NULL), -1);
 }
 
+/* Tests checkBinaryFile */
+
+// The file is read from disk; only ftell is mocked, so the returns it needs are queued from the layout of the reads.
+
+static char binary_dir[PATH_MAX + 1];
+static char binary_file[PATH_MAX + 1];
+static char binary_long_line[OS_MAXSTR + 10];
+
+static int setup_check_binary(void **state) {
+    test_mode = 0;
+    snprintf(binary_dir, sizeof(binary_dir), "/tmp/wazuh_binary_XXXXXX");
+    assert_non_null(mkdtemp(binary_dir));
+    snprintf(binary_file, sizeof(binary_file), "%s/shared_file", binary_dir);
+    return 0;
+}
+
+static int teardown_check_binary(void **state) {
+    remove(binary_file);
+    remove(binary_dir);
+    test_mode = 1;
+    return 0;
+}
+
+// Writes data to the file and queues the offsets ftell returns: the start and the end of each of the first reads.
+static void check_binary_prepare(const char *data, size_t len, size_t reads) {
+    size_t pos = 0;
+    int fd = open(binary_file, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+
+    assert_int_not_equal(fd, -1);
+    assert_int_equal(write(fd, data, len), (ssize_t)len);
+    close(fd);
+
+    will_return(__wrap_ftell, 0);
+
+    for (size_t i = 0; i < reads; i++) {
+        size_t n = 0;
+
+        // fgets stops after a \n or after OS_MAXSTR bytes
+        while (pos + n < len && n < OS_MAXSTR) {
+            if (data[pos + n++] == '\n') {
+                break;
+            }
+        }
+
+        pos += n;
+        will_return(__wrap_ftell, pos);
+    }
+}
+
+static void check_binary_zero_bytes(const char *data, size_t len, size_t reads, const char *expected_msg) {
+    check_binary_prepare(data, len, reads);
+    expect_string(__wrap__mdebug2, formatted_msg, expected_msg);
+    assert_int_equal(checkBinaryFile(binary_file), 1);
+}
+
+void test_checkBinaryFile_only_zeros_without_lf(void **state) {
+    static char zeros[4096];
+
+    check_binary_zero_bytes(zeros, sizeof(zeros), 1, "Line contains some zero-bytes (valid=0/ total=4096).");
+}
+
+void test_checkBinaryFile_zero_in_middle_without_lf(void **state) {
+    check_binary_zero_bytes("AAAA\0BBBB", 9, 1, "Line contains some zero-bytes (valid=4/ total=9).");
+}
+
+void test_checkBinaryFile_zero_in_middle_with_lf(void **state) {
+    check_binary_zero_bytes("AAAA\0BBBB\n", 10, 1, "Line contains some zero-bytes (valid=4/ total=9).");
+}
+
+void test_checkBinaryFile_zero_at_end_without_lf(void **state) {
+    check_binary_zero_bytes("AAAA\0", 5, 1, "Line contains some zero-bytes (valid=4/ total=5).");
+}
+
+void test_checkBinaryFile_zero_in_last_line(void **state) {
+    check_binary_zero_bytes("line one\nline two\nAAAA\0BBBB", 27, 3, "Line contains some zero-bytes (valid=4/ total=9).");
+}
+
+void test_checkBinaryFile_text_with_final_lf(void **state) {
+    check_binary_prepare("line one\nline two\n", 18, 2);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_text_without_final_lf(void **state) {
+    check_binary_prepare("line one\nline two", 17, 2);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_empty_file(void **state) {
+    check_binary_prepare("", 0, 0);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_long_line_without_zeros(void **state) {
+    memset(binary_long_line, 'A', sizeof(binary_long_line));
+    check_binary_prepare(binary_long_line, sizeof(binary_long_line), 2);
+    assert_int_equal(checkBinaryFile(binary_file), 0);
+}
+
+void test_checkBinaryFile_long_line_zero_in_first_read(void **state) {
+    memset(binary_long_line, 'A', sizeof(binary_long_line));
+    binary_long_line[100] = '\0';
+    check_binary_zero_bytes(binary_long_line, sizeof(binary_long_line), 1,
+                            "Line contains some zero-bytes (valid=100/ total=65536).");
+}
+
+void test_checkBinaryFile_long_line_zero_in_second_read(void **state) {
+    memset(binary_long_line, 'A', sizeof(binary_long_line));
+    binary_long_line[OS_MAXSTR + 2] = '\0';
+    check_binary_zero_bytes(binary_long_line, sizeof(binary_long_line), 2,
+                            "Line contains some zero-bytes (valid=2/ total=10).");
+}
+
 #endif /* TEST_WINAGENT */
 
 int main(void) {
@@ -3523,6 +3661,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_directory_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_missing_file, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_is_ascii_utf8_text_file, setup_nofollow, teardown_vetted),
+        cmocka_unit_test_setup_teardown(test_is_ascii_utf8_fifo_rejected_without_blocking, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_in_root_only_dir_accepted, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_owner_fifo_in_own_dir_rejected, setup_nofollow, teardown_vetted),
         cmocka_unit_test_setup_teardown(test_w_fopen_vetted_follow_fifo_component_rejected_without_blocking, setup_nofollow, teardown_vetted),
@@ -3554,6 +3694,18 @@ int main(void) {
         cmocka_unit_test(test_w_vet_opened_file_hard_link_trusted_dir_accepted),
         cmocka_unit_test(test_w_vet_opened_file_hard_link_foreign_dir_rejected),
         cmocka_unit_test(test_w_vet_opened_file_hard_link_writable_dir_rejected),
+        // checkBinaryFile
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_only_zeros_without_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_in_middle_without_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_in_middle_with_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_at_end_without_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_zero_in_last_line, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_text_with_final_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_text_without_final_lf, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_empty_file, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_long_line_without_zeros, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_long_line_zero_in_first_read, setup_check_binary, teardown_check_binary),
+        cmocka_unit_test_setup_teardown(test_checkBinaryFile_long_line_zero_in_second_read, setup_check_binary, teardown_check_binary),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),

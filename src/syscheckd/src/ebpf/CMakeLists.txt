@@ -27,6 +27,9 @@ target_link_libraries(fimebpf PRIVATE wazuh)
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)
 
+add_executable(ebpf_syscalls_test EXCLUDE_FROM_ALL tests/syscalls/ebpf_syscalls_test.cpp)
+target_link_libraries(ebpf_syscalls_test fimebpf pthread ${CMAKE_DL_LIBS})
+
 if(UNIT_TEST)
   # Use PRIVATE coverage for eBPF to avoid ODR violations with test executables
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

@@ -682,6 +682,14 @@ if [ $1 = 0 ]; then
   fi
   %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
 
+  # The enable links are not owned by the package, so they would outlive it
+  if command -v systemctl > /dev/null 2>&1; then
+    systemctl --no-reload disable wazuh-agent.service > /dev/null 2>&1
+  fi
+  if command -v chkconfig > /dev/null 2>&1; then
+    chkconfig --del wazuh-agent > /dev/null 2>&1
+  fi
+
   # Remove the SELinux policy
   if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
     if [ $(getenforce) != "Disabled" ]; then

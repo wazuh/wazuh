@@ -12,10 +12,14 @@
 
 #include "shared.h"
 
+#define LOGCOLLECTOR_STATE_NAME "wazuh-logcollector.state"
+
 #ifdef WIN32
-#define LOGCOLLECTOR_STATE      "wazuh-logcollector.state"
+#define LOGCOLLECTOR_STATE_DIR  "."
+#define LOGCOLLECTOR_STATE      LOGCOLLECTOR_STATE_NAME
 #else
-#define LOGCOLLECTOR_STATE      "var/run/wazuh-logcollector.state"
+#define LOGCOLLECTOR_STATE_DIR  "var/run"
+#define LOGCOLLECTOR_STATE      LOGCOLLECTOR_STATE_DIR "/" LOGCOLLECTOR_STATE_NAME
 #endif
 
 #define LOGCOLLECTOR_STATE_FILES_MAX   40                   ///< Size of the statistics hash table
