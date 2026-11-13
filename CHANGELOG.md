@@ -101,6 +101,8 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-syscheckd` crash when the eBPF whodata provider fails to load `libbpf.so`. ([#41095](https://github.com/wazuh/wazuh/issues/41095))
 - Fixed the Windows agent failing to start on Windows XP and Windows Server 2003. ([#41438](https://github.com/wazuh/wazuh/pull/41438))
 - Fixed the Linux packages and browser extensions inventory mounting every automounted home directory on each scan. ([#41427](https://github.com/wazuh/wazuh/pull/41427))
+- Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41439](https://github.com/wazuh/wazuh/pull/41439))
+- Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41439](https://github.com/wazuh/wazuh/pull/41439))
 
 ## [v4.14.10]
 
