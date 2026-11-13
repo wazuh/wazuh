@@ -217,6 +217,16 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
                            bool *port_present, char *endpoint, size_t endpoint_size,
                            uint32_t *scope_id);
 
+/**
+ * @brief w_parse_agent_endpoint() without logging why a value is refused.
+ *
+ * For a value that is only compared, such as a legacy target the agent drops: it must not
+ * report errors for a configuration that is not using it.
+ */
+int w_parse_agent_endpoint_quiet(const char *raw, char *host, size_t host_size, int *port,
+                                 bool *port_present, char *endpoint, size_t endpoint_size,
+                                 uint32_t *scope_id);
+
 /* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
  * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
  * that passed validation here. */
