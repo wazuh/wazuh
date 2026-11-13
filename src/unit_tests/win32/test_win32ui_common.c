@@ -118,7 +118,7 @@ static void test_endpoint_wins_over_address_when_both_present(void **state) {
 /* Both a 5.x <agent><manager> block and a leftover 4.x <client><server> block
  * present in the same file -- e.g. a config-management tool wrote the new
  * block without cleaning up the old one. <agent> must win, matching
- * Read_Legacy_Client()'s address_taken gate (client-config.c), which skips
+ * Read_Legacy_Client()'s address_taken gate (legacy-client-config.c), which skips
  * the legacy <server> block entirely once <agent> has resolved anything. */
 static void test_agent_block_wins_over_legacy_client_block_when_both_present(void **state) {
     (void) state;

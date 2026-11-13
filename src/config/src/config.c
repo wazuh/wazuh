@@ -162,8 +162,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
             /* 4.x spelled this block <client> (#38103). An upgrade never rewrites
-             * ossec.conf, so the block is still accepted, but only <server><address>
-             * - as the fallback for <agent><manager><address> - and <enrollment>,
+             * ossec.conf, so the block is still accepted, but only <server>'s <address>
+             * or <endpoint> - as the fallback for <agent><manager> - and <enrollment>,
              * which carries the agent's identity, are read from it. */
             if (modules & CCLIENT) {
                 if (modules & CAGENT_CONFIG) {

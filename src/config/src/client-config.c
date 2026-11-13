@@ -13,6 +13,7 @@
 #include "os_net.h"
 #include "config.h"
 #include "sec.h"
+#include "legacy-server-targets.h"
 
 /* #38624: <endpoint> is parsed with libcurl's URL API. Already a dependency here --
  * shared/src/url.c links the same library -- so this adds no new one. */
@@ -28,15 +29,6 @@
 #include <net/if.h>
 #endif
 
-/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
- * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
- * that passed validation here. */
-#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
-
-/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
- * 256) for the same reason. */
-#define AGENT_SERVER_HOST_MAX_LEN 255
-
 int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
                            bool *port_present, char *endpoint, size_t endpoint_size,
                            uint32_t *scope_id);
@@ -45,7 +37,6 @@ int Read_Agent_Manager(XML_NODE node, agent *logr);
 int Read_Agent_SSL(XML_NODE node, agent *logr);
 int Read_Agent_Batch(XML_NODE node, agent *logr);
 int Read_Agent_Report(XML_NODE node, agent_report *report);
-int Read_Agent_Enrollment(XML_NODE node, agent *logr);
 
 /**
  * @brief Read the <agent> block, the 5.x name of what 4.x spelled <client> (#38103).
@@ -262,204 +253,6 @@ int Read_Agent(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     return (0);
 }
 
-/* Direct children of a 4.x <client> block that 5.x reads under <agent> instead. */
-static const char * LEGACY_CLIENT_MOVED_OPTIONS[] = {
-    "config-profile", "notify_time", "auto_restart", "disable-active-response", NULL
-};
-
-/**
- * @brief Report a <client> child that is read from neither <server> nor <enrollment>.
- *
- * A warning rather than info: on an upgraded agent this is a setting that used to apply
- * and silently stopped. The message never advises renaming the block, because <server>
- * and a bare <port> are rejected under <agent> - that advice would leave a configuration
- * that no longer starts.
- */
-static void w_warn_legacy_client_option(const char *option)
-{
-    for (int i = 0; LEGACY_CLIENT_MOVED_OPTIONS[i]; i++) {
-        if (strcmp(option, LEGACY_CLIENT_MOVED_OPTIONS[i]) == 0) {
-            mwarn("<%s> inside the legacy <client> block is ignored. Configure it under <agent>.", option);
-            return;
-        }
-    }
-
-    mwarn("<%s> inside the legacy <client> block is ignored: only <server> and <enrollment> "
-          "are read from it.", option);
-}
-
-/**
- * @brief Read the two things still wanted from a 4.x <client> block: the manager
- *        address under <server>, and the whole <enrollment> sub-block.
- *
- * A WPK upgrade never rewrites ossec.conf, so a 5.x agent can start against a file that
- * only has <client>. The address is taken when <agent> did not already provide one - so
- * <agent> wins whichever block comes first - and <enrollment> is read because it carries
- * the agent's identity, which has no 5.x replacement inside the legacy block: dropping it
- * makes the agent re-register under its hostname with no groups. Every other direct child
- * is ignored, and says so, since the block is 4.x's and its options are not. <server>'s
- * own children stay silent: neither <port> nor <protocol> is read, and the message printed
- * for the address already names the port in use and a copy-pasteable replacement for the
- * whole block.
- *
- * Repeated addresses resolve the same way as under <agent>: the last one prevails
- */
-int Read_Legacy_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
-{
-    const char *xml_client_server = "server";
-    const char *xml_client_addr = "address";
-    const char *xml_client_endpoint = "endpoint";
-    const char *xml_client_enrollment = "enrollment";
-    char * address = NULL;
-    char * endpoint_value = NULL;
-
-    agent * logr = (agent *)d1;
-
-    /* Captured once rather than returned on, so the block is still walked for its
-     * <enrollment> child. <server> is then skipped whole instead of parsed and
-     * discarded, so a malformed legacy <endpoint> cannot fail a configuration that
-     * is not using it. */
-    const bool address_taken = (logr->server != NULL);
-
-    for (int i = 0; node[i]; i++) {
-        XML_NODE chld_node = NULL;
-
-        if (!node[i]->element) {
-            continue;
-        }
-
-        if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
-            /* Skipped, rather than merged, once <agent> supplied this block: the two
-             * are one block under two names, and an identity assembled from both is
-             * not one an operator wrote. A legacy block listed first still stands for
-             * whatever an <agent> one below it leaves unset, the same way repeated
-             * <agent><enrollment> blocks resolve. */
-            if (logr->enrollment.set_under_agent) {
-                mwarn("<enrollment> inside the legacy <client> block is ignored: <agent> "
-                      "already supplies it. Keep the identity in one of the two blocks.");
-                continue;
-            }
-
-            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-                if (Read_Agent_Enrollment(chld_node, logr) < 0) {
-                    OS_ClearNode(chld_node);
-                    os_free(address);
-                    os_free(endpoint_value);
-                    return (OS_INVALID);
-                }
-
-                OS_ClearNode(chld_node);
-            }
-
-            continue;
-        }
-
-        if (strcmp(node[i]->element, xml_client_server) != 0) {
-            w_warn_legacy_client_option(node[i]->element);
-            continue;
-        }
-
-        if (address_taken) {
-            continue;
-        }
-
-        if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
-            continue;
-        }
-
-        for (int j = 0; chld_node[j]; j++) {
-            if (!chld_node[j]->element || !chld_node[j]->content) {
-                continue;
-            }
-
-            if (strcmp(chld_node[j]->element, xml_client_addr) == 0) {
-                os_free(address);
-                os_strdup(chld_node[j]->content, address);
-            } else if (strcmp(chld_node[j]->element, xml_client_endpoint) == 0) {
-                /* The MSI reconfigures a preserved 4.x file in place and, having no
-                 * <agent> block to target, writes the endpoint into this <server> one.
-                 * Reading only <address> here left that agent with no manager at all. */
-                os_free(endpoint_value);
-                os_strdup(chld_node[j]->content, endpoint_value);
-            }
-        }
-
-        OS_ClearNode(chld_node);
-    }
-
-    /* An <endpoint> written here by the installer carries the whole target, so it wins
-     * and is parsed exactly as one under <agent><manager> would be. */
-    if (endpoint_value) {
-        char host[AGENT_SERVER_HOST_MAX_LEN + 1] = {'\0'};
-        char endpoint[AGENT_SERVER_ENDPOINT_MAX_LEN + 1] = {'\0'};
-        uint32_t scope_id = 0;
-        int port = DEFAULT_HTTPS_REMOTE_PORT;
-        bool port_present = false;
-
-        if (w_parse_agent_endpoint(endpoint_value, host, sizeof(host), &port, &port_present,
-                                   endpoint, sizeof(endpoint), &scope_id) == OS_INVALID) {
-            os_free(address);
-            os_free(endpoint_value);
-            return (OS_INVALID);
-        }
-
-        os_free(address);
-        os_free(endpoint_value);
-
-        os_calloc(2, sizeof(agent_server), logr->server);
-        os_strdup(host, logr->server[0].rip);
-
-        if (strchr(logr->server[0].rip, ':') != NULL) {
-            os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-            OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
-        }
-
-        if (endpoint[0] != '\0') {
-            os_strdup(endpoint, logr->server[0].endpoint);
-        }
-
-        logr->server[0].scope_id = scope_id;
-        logr->server[0].port = port;
-        logr->server_count = 1;
-
-        return (0);
-    }
-
-    if (!address) {
-        return (0);
-    }
-
-    os_calloc(2, sizeof(agent_server), logr->server);
-    logr->server[0].rip = address;
-    if (strchr(logr->server[0].rip, ':') != NULL) {
-        os_realloc(logr->server[0].rip, IPSIZE + 1, logr->server[0].rip);
-        OS_ExpandIPv6(logr->server[0].rip, IPSIZE);
-    }
-    logr->server[0].port = DEFAULT_HTTPS_REMOTE_PORT;
-    /* 4.x had no <endpoint> concept at all -- any <port> under this legacy
-     * <client><server> block was never read either (see this function's own
-     * docstring), so a WPK-upgraded agent always reconnects on the 5.x HTTPS
-     * port with the manager's default reverse-proxy prefix, never the old
-     * 4.x port or unprefixed requests. */
-    os_strdup(DEFAULT_AGENT_ENDPOINT_PREFIX, logr->server[0].endpoint);
-    logr->server_count = 1;
-
-    /* A 4.x file has no <endpoint> at all, so say exactly what to write -- this is the
-     * upgrade path most likely to be edited by hand, and a copy-pasteable line is the
-     * whole point. The composed value is the one now in use, so pasting it changes
-     * nothing about where the agent connects. */
-    minfo("<agent><manager><endpoint> is not configured. Using <client><server><address> '%s' "
-          "with the default port %d and the default endpoint prefix '%s'. Replace the "
-          "<client><server> block with a single <endpoint>%s%s%s:%d/%s</endpoint>",
-          logr->server[0].rip, DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX,
-          (strchr(logr->server[0].rip, ':') != NULL) ? "[" : "",
-          logr->server[0].rip,
-          (strchr(logr->server[0].rip, ':') != NULL) ? "]" : "",
-          DEFAULT_HTTPS_REMOTE_PORT, DEFAULT_AGENT_ENDPOINT_PREFIX);
-
-    return (0);
-}
-
 int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
 {
     /* XML definitions - what a manager may set through the centralized
@@ -501,6 +294,10 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
     return (0);
 }
 
+/* An <endpoint> grammar error, logged only when the caller reports them: a value the agent
+ * is going to use must say why it was refused, one it only compares must stay silent. */
+#define ENDPOINT_ERROR(report, ...) do { if (report) { merror(__VA_ARGS__); } } while (0)
+
 /**
  * @brief Validate and normalize a present <endpoint> tag's content (#38492).
  *
@@ -524,9 +321,10 @@ int Read_Agent_Shared(const OS_XML *xml, XML_NODE node, void *d1)
  * @param raw Raw XML content (never NULL).
  * @param out Buffer to receive the normalized value.
  * @param out_size Size of out, including the terminating NUL.
+ * @param report Log the reason when the value is refused.
  * @return 0 on success (out holds the normalized value, possibly ""), OS_INVALID on error.
  */
-static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_size)
+static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_size, bool report)
 {
     size_t start = 0;
     size_t end = strlen(raw);
@@ -547,7 +345,7 @@ static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_siz
     }
 
     if (len >= out_size) {
-        merror("Invalid endpoint '%s': longer than %zu characters.", raw, out_size - 1);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': longer than %zu characters.", raw, out_size - 1);
         return OS_INVALID;
     }
 
@@ -563,13 +361,13 @@ static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_siz
             bool is_slash = (c == '/');
 
             if (!(isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' || is_slash)) {
-                merror("Invalid endpoint '%s': only letters, digits, '-', '_', '.', and '/' "
+                ENDPOINT_ERROR(report, "Invalid endpoint '%s': only letters, digits, '-', '_', '.', and '/' "
                        "(as a segment separator) are allowed.", raw);
                 return OS_INVALID;
             }
 
             if (is_slash && previous_was_slash) {
-                merror("Invalid endpoint '%s': empty path segment (repeated '/').", raw);
+                ENDPOINT_ERROR(report, "Invalid endpoint '%s': empty path segment (repeated '/').", raw);
                 return OS_INVALID;
             }
 
@@ -581,7 +379,7 @@ static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_siz
 
             if ((segment_len == 1 && out[segment_start] == '.') ||
                     (segment_len == 2 && out[segment_start] == '.' && out[segment_start + 1] == '.')) {
-                merror("Invalid endpoint '%s': '.' and '..' are not allowed path segments.", raw);
+                ENDPOINT_ERROR(report, "Invalid endpoint '%s': '.' and '..' are not allowed path segments.", raw);
                 return OS_INVALID;
             }
 
@@ -607,9 +405,10 @@ static int w_normalize_agent_endpoint(const char *raw, char *out, size_t out_siz
  *
  * @param zone Zone id text, already percent-decoded (never NULL, never empty).
  * @param out Receives the numeric scope id.
+ * @param report Log the reason when the zone is refused.
  * @return 0 on success, OS_INVALID when the interface does not exist.
  */
-static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
+static int w_resolve_ipv6_zone(const char *zone, uint32_t *out, bool report)
 {
     if (OS_StrIsNum(zone)) {
         char *end = NULL;
@@ -623,7 +422,7 @@ static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
 
         if (errno == ERANGE || end == zone || (end && *end != '\0') ||
             numeric == 0 || numeric > UINT32_MAX) {
-            merror("Invalid endpoint: IPv6 zone id '%s' is out of range.", zone);
+            ENDPOINT_ERROR(report, "Invalid endpoint: IPv6 zone id '%s' is out of range.", zone);
             return OS_INVALID;
         }
 
@@ -634,7 +433,7 @@ static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
     unsigned int index = if_nametoindex(zone);
 
     if (index == 0) {
-        merror("Invalid endpoint: no network interface named '%s' on this host.", zone);
+        ENDPOINT_ERROR(report, "Invalid endpoint: no network interface named '%s' on this host.", zone);
         return OS_INVALID;
     }
 
@@ -676,11 +475,12 @@ static int w_resolve_ipv6_zone(const char *zone, uint32_t *out)
  * @param endpoint Receives the normalized prefix, possibly "".
  * @param endpoint_size Size of endpoint, including the terminating NUL.
  * @param scope_id Receives the IPv6 scope id, or 0 when there is no zone id.
+ * @param report Log the reason when the value is refused.
  * @return 0 on success, OS_INVALID on any grammar violation.
  */
-int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
-                           bool *port_present, char *endpoint, size_t endpoint_size,
-                           uint32_t *scope_id)
+static int w_parse_agent_endpoint_as(const char *raw, char *host, size_t host_size, int *port,
+                                     bool *port_present, char *endpoint, size_t endpoint_size,
+                                     uint32_t *scope_id, bool report)
 {
     CURLU *url = NULL;
     char *part = NULL;
@@ -694,7 +494,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
     host[0] = '\0';
 
     if (*raw == '\0') {
-        merror("Invalid endpoint '%s': a manager address is required.", raw);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': a manager address is required.", raw);
         return OS_INVALID;
     }
 
@@ -703,7 +503,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
      * explicitly because curl would otherwise read "https:///wazuh-manager/" as the
      * hostname "wazuh-manager" and silently connect somewhere unintended. */
     if (*raw == '/') {
-        merror("Invalid endpoint '%s': a manager address is required before the path.", raw);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': a manager address is required before the path.", raw);
         return OS_INVALID;
     }
 
@@ -722,7 +522,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
     url = curl_url();
 
     if (url == NULL) {
-        merror("Invalid endpoint '%s': could not initialize the URL parser.", raw);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': could not initialize the URL parser.", raw);
         goto end;
     }
 
@@ -735,17 +535,17 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
                                 CURLU_DISALLOW_USER | CURLU_PATH_AS_IS);
 
     if (rc != CURLUE_OK) {
-        merror("Invalid endpoint '%s': %s.", raw, curl_url_strerror(rc));
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': %s.", raw, curl_url_strerror(rc));
         goto end;
     }
 
     if (curl_url_get(url, CURLUPART_SCHEME, &part, 0) != CURLUE_OK) {
-        merror("Invalid endpoint '%s': missing scheme.", raw);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': missing scheme.", raw);
         goto end;
     }
 
     if (strcasecmp(part, "https") != 0) {
-        merror("Invalid endpoint '%s': unsupported scheme '%s'; only https is served.", raw, part);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': unsupported scheme '%s'; only https is served.", raw, part);
         goto end;
     }
 
@@ -755,17 +555,17 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
     /* A configuration value has to be exact, so anything curl parsed off the end
      * that this grammar has no slot for is an error rather than a silent drop. */
     if (curl_url_get(url, CURLUPART_QUERY, &part, 0) == CURLUE_OK) {
-        merror("Invalid endpoint '%s': a query string is not allowed.", raw);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': a query string is not allowed.", raw);
         goto end;
     }
 
     if (curl_url_get(url, CURLUPART_FRAGMENT, &part, 0) == CURLUE_OK) {
-        merror("Invalid endpoint '%s': a fragment is not allowed.", raw);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': a fragment is not allowed.", raw);
         goto end;
     }
 
     if (curl_url_get(url, CURLUPART_HOST, &part, 0) != CURLUE_OK || *part == '\0') {
-        merror("Invalid endpoint '%s': a manager address is required.", raw);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': a manager address is required.", raw);
         goto end;
     }
 
@@ -782,7 +582,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
     }
 
     if (host_len >= host_size) {
-        merror("Invalid endpoint '%s': address longer than %zu characters.", raw, host_size - 1);
+        ENDPOINT_ERROR(report, "Invalid endpoint '%s': address longer than %zu characters.", raw, host_size - 1);
         goto end;
     }
 
@@ -799,7 +599,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
         size_t authority_len = authority_end ? (size_t)(authority_end - authority) : strlen(authority);
 
         if (authority_len > 0 && authority[authority_len - 1] == ':') {
-            merror("Invalid endpoint '%s': a ':' must be followed by a port.", raw);
+            ENDPOINT_ERROR(report, "Invalid endpoint '%s': a ':' must be followed by a port.", raw);
             goto end;
         }
     }
@@ -812,7 +612,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
         long parsed = atol(part);
 
         if (parsed < 1 || parsed > 65535) {
-            merror("Invalid endpoint '%s': port %ld is out of the range 1-65535.", raw, parsed);
+            ENDPOINT_ERROR(report, "Invalid endpoint '%s': port %ld is out of the range 1-65535.", raw, parsed);
             goto end;
         }
 
@@ -823,7 +623,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
     }
 
     if (curl_url_get(url, CURLUPART_ZONEID, &part, 0) == CURLUE_OK) {
-        if (w_resolve_ipv6_zone(part, scope_id) == OS_INVALID) {
+        if (w_resolve_ipv6_zone(part, scope_id, report) == OS_INVALID) {
             goto end;
         }
         curl_free(part);
@@ -832,7 +632,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
 
     if (path_given) {
         if (curl_url_get(url, CURLUPART_PATH, &part, 0) != CURLUE_OK) {
-            merror("Invalid endpoint '%s': could not read the path.", raw);
+            ENDPOINT_ERROR(report, "Invalid endpoint '%s': could not read the path.", raw);
             goto end;
         }
 
@@ -841,7 +641,7 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
          * operator wrote it, rather than a slash they did not type. */
         const char *prefix = (*part == '/') ? part + 1 : part;
 
-        if (w_normalize_agent_endpoint(prefix, endpoint, endpoint_size) == OS_INVALID) {
+        if (w_normalize_agent_endpoint(prefix, endpoint, endpoint_size, report) == OS_INVALID) {
             goto end;
         }
     } else {
@@ -860,6 +660,22 @@ end:
     os_free(with_scheme);
 
     return retval;
+}
+
+int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *port,
+                           bool *port_present, char *endpoint, size_t endpoint_size,
+                           uint32_t *scope_id)
+{
+    return w_parse_agent_endpoint_as(raw, host, host_size, port, port_present, endpoint,
+                                     endpoint_size, scope_id, true);
+}
+
+int w_parse_agent_endpoint_quiet(const char *raw, char *host, size_t host_size, int *port,
+                                 bool *port_present, char *endpoint, size_t endpoint_size,
+                                 uint32_t *scope_id)
+{
+    return w_parse_agent_endpoint_as(raw, host, host_size, port, port_present, endpoint,
+                                     endpoint_size, scope_id, false);
 }
 
 /**
@@ -1052,6 +868,9 @@ int Read_Agent_Manager(XML_NODE node, agent * logr)
         mdebug1("No port in <agent><manager><endpoint>. Using the default port %d.",
                 DEFAULT_HTTPS_REMOTE_PORT);
     }
+
+    /* A legacy <client> read above this block left its targets to be named now. */
+    w_legacy_targets_report_deferred(logr);
 
     return (0);
 }
@@ -1619,6 +1438,8 @@ void Free_Agent(agent * config){
         os_free(config->enrollment.groups);
         os_free(config->enrollment.agent_address);
         os_free(config->enrollment.authorization_pass_path);
+
+        w_legacy_targets_free_deferred(config);
     }
 }
 

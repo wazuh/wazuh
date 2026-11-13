@@ -61,6 +61,13 @@ if(NOT ${TARGET} STREQUAL "manager")
                               -Wl,--wrap,syscom_dispatch -Wl,--wrap=is_fim_shutdown \
                               -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
                               -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
+    # The legacy 4.x <client> block. Same wraps as the test above, for the same reason.
+    list(APPEND config_names "test_legacy-client-config")
+    list(APPEND config_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap=Start_win32_Syscheck \
+                              -Wl,--wrap,syscom_dispatch -Wl,--wrap=is_fim_shutdown \
+                              -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
+                              -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 endif()
 
 if(${TARGET} STREQUAL "manager")
