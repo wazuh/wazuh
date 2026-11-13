@@ -52,6 +52,7 @@ static int proc_listings;           /* /proc listings read to the end */
 static int ps_runs;                 /* ps snapshots taken */
 static int listing_pos;
 static pid_t highest_killed;        /* Highest PID probed with kill() */
+static int proc_unreadable;         /* /proc is not mounted */
 static int fake_dir;                /* Its address is the DIR * of every opened directory */
 static struct dirent fake_entry;
 static char ps_buf[OS_SIZE_65536];
@@ -172,6 +173,11 @@ static const fake_task_t *reachable_task(const char *path, const char *suffix)
 
 DIR *__wrap_wopendir(const char *name)
 {
+    if (proc_unreadable && strncmp(name, "/proc", 5) == 0) {
+        errno = ENOENT;
+        return NULL;
+    }
+
     if (strcmp(name, "/proc") == 0) {
         listing_pos = 0;
         return (DIR *)&fake_dir;
@@ -354,7 +360,7 @@ static int setup(void **state)
 {
     (void)state;
     memset(&rootcheck, 0, sizeof(rkconfig));
-    rootcheck.max_pid = RC_MAX_PID_MAX;
+    rootcheck.max_pid = 4194303;
     set_fake_tasks(NULL, 0);
     ps_status = 0;
     ps_empty = 0;
@@ -362,6 +368,7 @@ static int setup(void **state)
     ps_runs = 0;
     listing_pos = 0;
     highest_killed = 0;
+    proc_unreadable = 0;
     expected_msgs_used = 0;
     return 0;
 }
@@ -588,19 +595,38 @@ static void test_scan_unset_limit(void **state)
     assert_int_equal(highest_killed, RC_MAX_PID_DEFAULT);
 }
 
-/* 4194304 is accepted as a pid_max value, but the last PID is 4194303 */
-static void test_scan_limit_capped(void **state)
+/* The highest value rc_read_max_pid() stores */
+static void test_scan_full_range_limit(void **state)
 {
     (void)state;
     static const fake_task_t tasks[] = { PROC(1) };
     set_fake_tasks(tasks, sizeof(tasks) / sizeof(tasks[0]));
-    rootcheck.max_pid = RC_MAX_PID_MAX;
+    rootcheck.max_pid = 4194303;
 
     expect_no_hidden(1);
 
     check_rc_pids();
 
     assert_int_equal(highest_killed, 4194303);
+}
+
+/* Without /proc the previous loop runs up to MAX_PID, which is reported once */
+static void test_scan_no_proc_reports_limit_once(void **state)
+{
+    (void)state;
+    set_fake_tasks(NULL, 0);
+    proc_unreadable = 1;
+    rootcheck.max_pid = 65536;
+
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "Hidden process check: /proc cannot be read, checking PIDs up to 32768 instead of 65536.");
+    expect_no_hidden(32768);
+    check_rc_pids();
+    assert_int_equal(highest_killed, 32768);
+
+    expect_no_hidden(32768);
+    check_rc_pids();
 }
 
 /* ===================================================================
@@ -815,7 +841,8 @@ int main(void)
         cmocka_unit_test_setup(test_scan_default_limit, setup),
         cmocka_unit_test_setup(test_scan_configured_limit, setup),
         cmocka_unit_test_setup(test_scan_unset_limit, setup),
-        cmocka_unit_test_setup(test_scan_limit_capped, setup),
+        cmocka_unit_test_setup(test_scan_full_range_limit, setup),
+        cmocka_unit_test_setup(test_scan_no_proc_reports_limit_once, setup),
         cmocka_unit_test_setup(test_scan_hidden_from_ps, setup),
         cmocka_unit_test_setup(test_scan_ps_lists_nothing, setup),
         cmocka_unit_test_setup(test_scan_ps_exit_status_ignored, setup),
