@@ -38,11 +38,13 @@ namespace invsync::indexer
     AgentDeleteSweeper::AgentDeleteSweeper(std::shared_ptr<indexer_client::IQuery> query,
                                            std::chrono::milliseconds window,
                                            std::chrono::milliseconds deadline,
-                                           std::shared_ptr<const std::atomic<bool>> closing)
+                                           std::shared_ptr<const std::atomic<bool>> closing,
+                                           NowFn now)
         : m_query {std::move(query)}
         , m_window {window}
         , m_deadline {deadline}
         , m_closing {std::move(closing)}
+        , m_now {std::move(now)}
     {
         // Last, once every member the thread reads is in place.
         m_thread = std::thread {&AgentDeleteSweeper::run, this};
@@ -62,7 +64,7 @@ namespace invsync::indexer
             ++m_stats.dropped;
             return;
         }
-        m_pending.push_back(Pending {agentId, Clock::now(), false});
+        m_pending.push_back(Pending {agentId, m_now ? m_now() : Clock::now(), false});
         updateTrackedLocked();
     }
 
@@ -141,13 +143,14 @@ namespace invsync::indexer
             // window apart (at most one pass per window, I146b).
             nextTick += m_window;
             const auto now = Clock::now();
+            const auto ageNow = m_now ? m_now() : now; // `now` unless a test injected the age clock.
 
             // The ids whose note() is at least one window old: by then a report that timed out before the delete
             // has either been applied or failed for good (window = request timeout + 5 s).
             std::vector<Pending> due;
             for (auto it = m_pending.begin(); it != m_pending.end();)
             {
-                if (it->notedAt + m_window <= now)
+                if (it->notedAt + m_window <= ageNow)
                 {
                     due.push_back(std::move(*it));
                     it = m_pending.erase(it);

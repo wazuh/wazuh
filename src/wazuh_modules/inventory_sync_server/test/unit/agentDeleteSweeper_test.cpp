@@ -8,8 +8,9 @@
  * Foundation.
  */
 
-// The post-deletion sweeper (I146, I146b, I146c; CA-E7c-5) on a REAL runtime of the client library served by the
-// library's in-process fake indexer (IC/tests/fake). The fake keeps no documents, so the oracles are the wire --
+// The post-deletion sweeper (the best-effort cleanup of the documents a late write leaves after an agent deletion) on a
+// REAL runtime of the client library served by the library's in-process fake indexer (indexer_client's tests/fake).
+// The fake keeps no documents, so the oracles are the wire --
 // one `_delete_by_query` per index, its `terms._id` ids, the spacing of the passes, the chunking -- and the
 // `deleted` count the fake is scripted to answer, which is what the sweeper reports as `residual`.
 #include "indexer/agentDeleteSweeper.hpp"
@@ -24,6 +25,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <thread>
@@ -62,18 +64,55 @@ namespace
     {
         return {ids.begin(), ids.end()};
     }
+
+    /// The age clock a test injects: it moves only when the test advances it, and counts its reads. The sweeper reads
+    /// it once per note() and once per tick, holding its own lock until that tick has decided what is due, so a read
+    /// seen here is a tick whose decision stats() then reflects. The tick cadence stays on the real clock.
+    class ManualClock final
+    {
+    public:
+        AgentDeleteSweeper::NowFn fn()
+        {
+            return [this]()
+            {
+                std::lock_guard lock {m_mutex};
+                ++m_reads;
+                return m_now;
+            };
+        }
+
+        void advance(std::chrono::steady_clock::duration by)
+        {
+            std::lock_guard lock {m_mutex};
+            m_now += by;
+        }
+
+        std::uint64_t reads() const
+        {
+            std::lock_guard lock {m_mutex};
+            return m_reads;
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::chrono::steady_clock::time_point m_now {std::chrono::steady_clock::now()};
+        std::uint64_t m_reads {0};
+    };
 } // namespace
 
 class AgentDeleteSweeperTest : public ::testing::Test
 {
 protected:
     /// Runtime + Client + sweeper on the fake. Rules a test wants for the by-query routes go in BEFORE this call.
-    void start(std::chrono::milliseconds window = WINDOW, std::chrono::milliseconds deadline = 3000ms)
+    void start(std::chrono::milliseconds window = WINDOW,
+               std::chrono::milliseconds deadline = 3000ms,
+               AgentDeleteSweeper::NowFn now = {})
     {
         real.startRuntime();
         ASSERT_TRUE(real.runtimeStarted) << real.startError;
         ASSERT_TRUE(real.makeClient(RealIndexer::specs())) << real.startError;
-        sweeper = std::make_unique<AgentDeleteSweeper>(real.client->query(), window, deadline, real.closing);
+        sweeper =
+            std::make_unique<AgentDeleteSweeper>(real.client->query(), window, deadline, real.closing, std::move(now));
     }
 
     /// Lets half a window pass after start(): the sweeper's first tick is one window after its thread started, and an
@@ -179,23 +218,29 @@ TEST_F(AgentDeleteSweeperTest, TrickleIsOnePassPerWindow)
     }
 }
 
-/// An id noted right after a pass waits its own window: the next tick, one window later, finds it younger than a
-/// window and leaves it; the tick after that sweeps it. A sweep of young ids (the mutation) would show at the tick.
+/// An id noted right after a pass waits its own window: a tick that finds it younger than a window -- even by 1 ms --
+/// leaves it; the first tick at which it is a window old sweeps it. A sweep of young ids (the mutation) would show at
+/// the first of those ticks. The ages come from a clock the test moves, and each check waits for a tick to have read
+/// it: on the real clock, a tick that woke a few ms late found the young id already a window old.
 TEST_F(AgentDeleteSweeperTest, YoungIdsWaitTheirWindow)
 {
-    start();
+    const auto clock = std::make_shared<ManualClock>();
+    start(WINDOW, 3000ms, clock->fn());
     const auto old = agentIds(1, 1);
     sweeper->note(old.front());
+    clock->advance(WINDOW); // Exactly a window old: due.
     ASSERT_TRUE(waitUntil([&] { return sweeper->stats().runs == 1; }, 4000ms));
 
-    // Right after the pass: the next tick is about one window away and this id is no older than that.
+    // Right after the pass, and one millisecond short of a window by the time the next tick reads the clock.
     const auto young = agentIds(1, 2);
     sweeper->note(young.front());
-
-    std::this_thread::sleep_for(WINDOW * 3 / 2); // Past the next tick, short of the one after it.
+    clock->advance(WINDOW - 1ms);
+    const auto readsBefore = clock->reads();
+    ASSERT_TRUE(waitUntil([&] { return clock->reads() > readsBefore; }, 4000ms)) << "no tick read the clock";
     EXPECT_EQ(1U, sweeper->stats().runs) << "the tick found nothing due: no pass, no delete-by-query";
     EXPECT_EQ(1U, real.dbqRequests(STATS_INDEX).size());
 
+    clock->advance(1ms); // Now exactly a window old.
     ASSERT_TRUE(waitUntil([&] { return sweeper->stats().runs == 2; }, 4000ms));
     ASSERT_TRUE(waitUntil([&] { return real.dbqRequests(STATS_INDEX).size() == 2; }));
     const auto requests = idsPerRequest(STATS_INDEX);
