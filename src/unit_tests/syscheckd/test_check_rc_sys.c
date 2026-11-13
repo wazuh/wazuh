@@ -963,7 +963,35 @@ static void test_read_non_regular_skipped(void **state)
     rmdir(dir);
 }
 
-static void test_shm_files_not_read(void **state)
+static void test_read_symlink_not_followed(void **state)
+{
+    (void)state;
+    char dir[] = "/tmp/rc_sys_read_XXXXXX";
+    char target[sizeof(dir) + 7];
+    char path[sizeof(dir) + 5];
+    struct stat file_stat;
+
+    assert_non_null(mkdtemp(dir));
+    snprintf(target, sizeof(target), "%s/target", dir);
+    snprintf(path, sizeof(path), "%s/link", dir);
+    FILE *fp = fopen(target, "w");
+    assert_non_null(fp);
+    fputs("0123456789", fp);
+    fclose(fp);
+    assert_int_equal(symlink(target, path), 0);
+    assert_int_equal(stat(target, &file_stat), 0);
+    file_stat.st_size = 100;
+    rootcheck.readall = 1;
+
+    expect_scan_one_file(path, &file_stat, 0);
+
+    check_rc_sys("/");
+    unlink(path);
+    unlink(target);
+    rmdir(dir);
+}
+
+static void test_world_writable_dir_not_read(void **state)
 {
     (void)state;
     char path[] = "/dev/shm/rc_sys_read_XXXXXX";
@@ -1059,7 +1087,8 @@ int main(void)
         cmocka_unit_test_setup(test_read_size_mismatch_alerts, setup),
         cmocka_unit_test_setup(test_read_large_file_skipped, setup),
         cmocka_unit_test_setup(test_read_non_regular_skipped, setup),
-        cmocka_unit_test_setup(test_shm_files_not_read, setup),
+        cmocka_unit_test_setup(test_read_symlink_not_followed, setup),
+        cmocka_unit_test_setup(test_world_writable_dir_not_read, setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
