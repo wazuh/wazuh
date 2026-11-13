@@ -69,8 +69,6 @@ ReporterStream::ReporterStream(const ModuleConfig& config,
     , m_statsBackoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_configBackoff(config.backoffBaseMs, config.backoffCapMs, random)
 {
-    // Set in the body (not the init list) to keep the brace-nested aggregate
-    // init from confusing astyle's indentation for the rest of the file.
     m_stats.target = "/stats";
     m_stats.enabled = config.statsEnabled;
     m_stats.interval = std::chrono::seconds {config.statsIntervalS};

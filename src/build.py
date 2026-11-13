@@ -87,16 +87,6 @@ def processArgs():
                               --asan <{}> --path /home/test"
                         .format(utils.moduleListStr()),
                         metavar="")
-    parser.add_argument("--scheck",
-                        help="Run AStyle on the code for checking \
-                              purposes. Example: python3 build.py \
-                              --scheck <{}>".format(utils.moduleListStr()),
-                        metavar="")
-    parser.add_argument("--sformat",
-                        help="Run AStyle on the code formatting the \
-                              needed files. Example: python3 build.py \
-                              --sformat <{}>".format(utils.moduleListStr()),
-                        metavar="")
     parser.add_argument("--scanbuild",
                         help="Run scan-build on the code. Example: \
                               python3 build.py --scanbuild <agent|\
@@ -147,10 +137,6 @@ def processArgs():
     elif args.asan and args.path:
         run_check.runASAN(moduleName=args.asan,
                           testToolConfig=utils.readJSONFile(jsonFilePath=args.path))
-    elif args.scheck:
-        run_check.runAStyleCheck(moduleName=args.scheck)
-    elif args.sformat:
-        run_check.runAStyleFormat(moduleName=args.sformat)
     elif args.scanbuild:
         run_check.runScanBuild(targetName=args.scanbuild)
     elif args.deleteLogs:
