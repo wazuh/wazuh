@@ -217,7 +217,8 @@ int fim_execute_set_version(int version) {
     int result_file = fim_db_set_version_file(version);
 
     if (result_file != 0) {
-        merror("Failed to set version for file_entry table");
+        // The database layer already logged why: a real error, or FIM busy, which is retried
+        mdebug1("FIM version not set for file_entry table");
         return -1;
     }
 
@@ -225,7 +226,7 @@ int fim_execute_set_version(int version) {
     int result_registry = fim_db_set_version_registry(version);
 
     if (result_registry != 0) {
-        merror("Failed to set version for registry tables");
+        mdebug1("FIM version not set for registry tables");
         return -1;
     }
 #endif

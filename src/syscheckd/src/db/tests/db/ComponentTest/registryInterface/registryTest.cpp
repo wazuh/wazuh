@@ -357,3 +357,62 @@ TEST_F(DBTestFixture, TestFimDBSetVersionRegistryMultipleTimes)
         ASSERT_EQ(maxVersion, 35);
     });
 }
+
+static std::vector<nlohmann::json> registryRows(const std::string& table)
+{
+    std::vector<nlohmann::json> rows;
+    const auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            rows.push_back(jsonResult);
+        }
+    }};
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(table)
+                      .columnList({"path", "checksum", "version"})
+                      .rowFilter("")
+                      .orderByOpt("path")
+                      .distinctOpt(false)
+                      .build()};
+
+    FIMDB::instance().executeQuery(selectQuery.query(), callback);
+
+    return rows;
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionRegistryKeepsContent)
+{
+    auto handlerKey = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, transaction_callback, &txn_ctx);
+    ASSERT_TRUE(handlerKey);
+
+    const auto registryKeyFIMTest1 {std::make_unique<RegistryKey>(insertRegistryKeyStatement1)};
+    ASSERT_EQ(fim_db_transaction_sync_row(handlerKey, registryKeyFIMTest1->toFimEntry()), FIMDB_OK);
+    ASSERT_EQ(fim_db_transaction_deleted_rows(handlerKey, transaction_callback, &txn_ctx), FIMDB_OK);
+
+    auto handlerValue = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, transaction_callback, &txn_ctx);
+    ASSERT_TRUE(handlerValue);
+
+    const auto registryValueFIMTest1 {std::make_unique<RegistryValue>(insertRegistryValueStatement1)};
+    ASSERT_EQ(fim_db_transaction_sync_row(handlerValue, registryValueFIMTest1->toFimEntry()), FIMDB_OK);
+    ASSERT_EQ(fim_db_transaction_deleted_rows(handlerValue, transaction_callback, &txn_ctx), FIMDB_OK);
+
+    ASSERT_EQ(fim_db_set_version_registry(10), 0);
+
+    // Both tables get the version and keep every other column
+    const auto keys = registryRows(FIMDB_REGISTRY_KEY_TABLENAME);
+    ASSERT_EQ(keys.size(), 1u);
+    EXPECT_EQ(keys.front().at("checksum"), insertRegistryKeyStatement1.at("checksum"));
+    EXPECT_EQ(keys.front().at("version"), 10);
+
+    const auto values = registryRows(FIMDB_REGISTRY_VALUE_TABLENAME);
+    ASSERT_EQ(values.size(), 1u);
+    EXPECT_EQ(values.front().at("checksum"), insertRegistryValueStatement1.at("checksum"));
+    EXPECT_EQ(values.front().at("version"), 10);
+
+    // A lower version changes nothing
+    ASSERT_EQ(fim_db_set_version_registry(7), 0);
+    EXPECT_EQ(registryRows(FIMDB_REGISTRY_KEY_TABLENAME).front().at("version"), 10);
+    EXPECT_EQ(registryRows(FIMDB_REGISTRY_VALUE_TABLENAME).front().at("version"), 10);
+}

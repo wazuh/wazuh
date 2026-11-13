@@ -969,6 +969,11 @@ void DBSync::increaseEachEntryVersion(const std::string& tableName)
 
 }
 
+void DBSync::setEachEntryVersion(const std::string& tableName, const long long version)
+{
+    DBSyncImplementation::instance().setEachEntryVersion(m_dbsyncHandle, tableName, version);
+}
+
 DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const nlohmann::json& tables,
                      const unsigned int    threadNumber,

@@ -214,3 +214,13 @@ void DBSyncImplementation::closeAndDeleteDatabase(const DBSYNC_HANDLE handle,
     std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->closeAndDeleteDatabase(path);
 }
+
+void DBSyncImplementation::setEachEntryVersion(const DBSYNC_HANDLE handle,
+                                               const std::string&  table,
+                                               const long long     version)
+{
+    const auto ctx{ dbEngineContext(handle) };
+
+    std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
+    ctx->m_dbEngine->setEachEntryVersion(table, version);
+}

@@ -59,6 +59,11 @@ DBSYNC_HANDLE DB::DBSyncHandle()
     return FIMDB::instance().DBSyncHandler()->handle();
 }
 
+void DB::quiesce()
+{
+    FIMDB::instance().quiesce();
+}
+
 void DB::teardown()
 {
     FIMDB::instance().teardown();
@@ -163,60 +168,24 @@ int DB::maxVersion(const std::string& tableName)
 
 int DB::updateVersion(const std::string& tableName, int version)
 {
-    // Use dbsync to update all rows by setting version field
-    // We'll select all primary keys and update each row
-
-    int retval {0};
-    std::vector<nlohmann::json> rows;
-    auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
-    {
-        if (ReturnTypeCallback::SELECTED == type)
-        {
-            rows.push_back(jsonResult);
-        }
-    }};
-
+    // One statement that only raises the version column, run while no row write is in flight
     try
     {
-        // Select all rows (only primary keys and version column)
-        auto selectQuery {SelectQuery::builder()
-                          .table(tableName)
-                          .columnList({"*"}) // Get all columns to properly identify rows
-                          .rowFilter("")
-                          .orderByOpt("")
-                          .distinctOpt(false)
-                          .build()};
-
-        FIMDB::instance().executeQuery(selectQuery.query(), callback);
+        if (!FIMDB::instance().setTableVersion(tableName, version))
+        {
+            FIMDB::instance().logFunction(LOG_WARNING,
+                                          "FIM is busy or shutting down, version not set for table " + tableName);
+            return -1;
+        }
     }
     catch (const std::exception& ex)
     {
-        FIMDB::instance().logFunction(LOG_ERROR, std::string("Error selecting rows for version update: ") + ex.what());
+        FIMDB::instance().logFunction(LOG_ERROR,
+                                      "Error setting the version for table " + tableName + ": " + ex.what());
         return -1;
     }
 
-    // Update version for each row
-    for (auto& row : rows)
-    {
-        row["version"] = version;
-
-        // Use syncRow to update the entry
-        auto updateCallback {[](ReturnTypeCallback, const nlohmann::json&) {}};
-
-        auto syncQuery {SyncRowQuery::builder().table(tableName).data(row).build()};
-
-        try
-        {
-            FIMDB::instance().updateItem(syncQuery.query(), updateCallback);
-        }
-        catch (const std::exception& ex)
-        {
-            FIMDB::instance().logFunction(LOG_ERROR, std::string("Error updating version: ") + ex.what());
-            retval = -1;
-        }
-    }
-
-    return retval;
+    return 0;
 }
 
 int DB::countSyncedDocs(const std::string& tableName)
@@ -468,6 +437,21 @@ static std::atomic<bool (*)()> g_teardown_hook {nullptr};
 void fim_db_set_teardown_hook(bool (*hook)())
 {
     g_teardown_hook.store(hook);
+}
+
+void fim_db_quiesce()
+{
+    try
+    {
+        DB::quiesce();
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+    }
+
+    // LCOV_EXCL_STOP
 }
 
 void fim_db_teardown()

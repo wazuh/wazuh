@@ -842,10 +842,10 @@ int fim_execute_is_flush_completed(void);
 int fim_execute_get_version(void);
 
 /**
- * @brief Sets the FIM maximum data version
+ * @brief Raises the version of the FIM entries below it
  *
  * @param version The version to set
- * @return 0 on success, -1 on error
+ * @return 0 on success, -1 on error or if FIM was busy or stopping
  */
 int fim_execute_set_version(int version);
 

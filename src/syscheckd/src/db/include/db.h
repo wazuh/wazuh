@@ -104,10 +104,10 @@ EXPORTED int fim_db_get_count_file_entry();
 EXPORTED int fim_db_get_max_version_file();
 
 /**
- * @brief Set the version for all entries in file_entry table.
+ * @brief Raise the version of the entries below it in file_entry table.
  *
  * @param version The version value to set.
- * @return 0 on success, -1 on error.
+ * @return 0 on success, -1 on error or if the database was busy or shutting down.
  */
 EXPORTED int fim_db_set_version_file(int version);
 
@@ -202,6 +202,15 @@ EXPORTED FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
  * @retval FIMDB_ERR on failure.
  */
 EXPORTED FIMDBErrorCode fim_db_transaction_close(TXN_HANDLE txn_handler);
+
+/**
+ * @brief Stops the row writes made outside a scan transaction and waits for the ones in flight.
+ *
+ * The database stays open. Called before the synchronization handle is destroyed, so no realtime
+ * or whodata row is written without its event being queued. Scan transactions do not go through
+ * this gate: a scan still running at stop is left uncommitted instead.
+ */
+EXPORTED void fim_db_quiesce();
 
 /**
  * @brief Turns off the services provided.
@@ -340,10 +349,10 @@ EXPORTED int fim_db_get_count_registry_key();
 EXPORTED int fim_db_get_max_version_registry();
 
 /**
- * @brief Set the version for all entries in registry tables.
+ * @brief Raise the version of the entries below it in registry tables.
  *
  * @param version The version value to set.
- * @return 0 on success, -1 on error.
+ * @return 0 on success, -1 on error or if the database was busy or shutting down.
  */
 EXPORTED int fim_db_set_version_registry(int version);
 

@@ -89,4 +89,10 @@ class IDBSync
         /// @param tableName Name of the table to update
         /// @throws std::exception if an error occurs during the version update
         virtual void increaseEachEntryVersion(const std::string& tableName) = 0;
+
+        /// @brief Raises the version of every entry below it in a table, in one statement
+        /// @param tableName Name of the table to update
+        /// @param version Version to set, entries already at or above it are left as they are
+        /// @throws std::exception if the table is unknown, has no version column or the update fails
+        virtual void setEachEntryVersion(const std::string& tableName, const long long version) = 0;
 };

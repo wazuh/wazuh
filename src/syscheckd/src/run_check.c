@@ -208,6 +208,19 @@ static bool fim_sync_teardown(void) {
         }
     }
 
+    fim_syscom_cleanup_pause();
+
+    /* Decided before the handle is destroyed, like fim_shutdown_waiter() does: with a scan in
+     * progress fim.db is not torn down, so none of the rows that scan writes from here on is
+     * committed. */
+    bool file_scan_idle = fim_teardown_wait_for_scan_mutex(&syscheck.fim_scan_mutex, "file");
+    bool registry_scan_idle = file_scan_idle &&
+                              fim_teardown_wait_for_scan_mutex(&syscheck.fim_registry_scan_mutex, "registry");
+
+    /* Stop the row writes and wait for the ones in flight, so the event of every row already
+     * written is queued while the handle below is still alive. */
+    fim_db_quiesce();
+
     // The write lock excludes the handle users that take it for reading around each asp_ call.
     w_rwlock_wrlock(&fim_sync_handle_rwlock);
     if (syscheck.sync_handle) {
@@ -216,21 +229,15 @@ static bool fim_sync_teardown(void) {
     }
     w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-    fim_syscom_cleanup_pause();
-
-    if (!fim_teardown_wait_for_scan_mutex(&syscheck.fim_scan_mutex, "file")) {
-        return false;
+    if (registry_scan_idle) {
+        w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
     }
 
-    if (!fim_teardown_wait_for_scan_mutex(&syscheck.fim_registry_scan_mutex, "registry")) {
+    if (file_scan_idle) {
         w_mutex_unlock(&syscheck.fim_scan_mutex);
-        return false;
     }
 
-    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-    w_mutex_unlock(&syscheck.fim_scan_mutex);
-
-    return true;
+    return file_scan_idle && registry_scan_idle;
 }
 
 void fim_sync_register_teardown_hook(void) {
@@ -570,6 +577,9 @@ void persist_syscheck_msg(const char *id, Operation_t operation, const char *ind
         w_rwlock_rdlock(&fim_sync_handle_rwlock);
         if (syscheck.sync_handle) {
             asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
+        } else {
+            mdebug1("FIM event not queued, the sync handle is closed: id '%s', version %llu",
+                    id, (unsigned long long)version);
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
 

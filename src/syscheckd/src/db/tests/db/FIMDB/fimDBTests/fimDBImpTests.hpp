@@ -34,6 +34,7 @@ class MockDBSyncHandler : public DBSync
         MOCK_METHOD(void, syncRow, (const nlohmann::json&, ResultCallbackData), (override));
         MOCK_METHOD(void, selectRows, (const nlohmann::json&, ResultCallbackData), (override));
         MOCK_METHOD(void, closeAndDeleteDatabase, (), (override));
+        MOCK_METHOD(void, setEachEntryVersion, (const std::string&, const long long), (override));
 };
 
 class MockFIMDB : public FIMDB

@@ -13,7 +13,9 @@
 #include "dbsync.hpp"
 #include "stringHelper.h"
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
@@ -28,6 +30,12 @@ extern "C"
 constexpr auto QUEUE_SIZE
 {
     4096
+};
+
+// Longest wait of setTableVersion() for the row writes in flight.
+constexpr std::chrono::milliseconds SET_VERSION_LOCK_TIMEOUT
+{
+    3000
 };
 
 constexpr auto CREATE_FILE_DB_STATEMENT
@@ -131,6 +139,14 @@ class FIMDB
         void removeItem(const nlohmann::json& item);
 
         /**
+         * @brief Remove a given item from the database, then report it before any stop or version change
+         *
+         * @param item json item that represent the fim_entry data
+         * @param afterRemove Function called once the item is removed. It must not call FIMDB.
+         */
+        void removeItem(const nlohmann::json& item, const std::function<void()>& afterRemove);
+
+        /**
          * @brief Update a given item in the database, or insert a new one if not exists,
          *        then uses the callbackData for that row
          *
@@ -146,6 +162,18 @@ class FIMDB
          * @param callbackData Pointer to the callback used after execute query
          */
         void executeQuery(const nlohmann::json& item, ResultCallbackData& callbackData);
+
+        /**
+         * @brief Raise the version of every row below it in a table, with no row write in flight
+         *
+         * @param table Table to update
+         * @param version Version to set
+         * @param timeout Longest wait for the row writes in flight to finish
+         * @return true if the version was set, false if FIMDB was busy, is stopping or is not initialized
+         */
+        bool setTableVersion(const std::string& table,
+                             int version,
+                             std::chrono::milliseconds timeout = SET_VERSION_LOCK_TIMEOUT);
 
         /**
          * @brief Its the function to log an error
@@ -174,6 +202,11 @@ class FIMDB
 
             return m_dbsyncHandler;
         }
+
+        /**
+         * @brief Stops the row writes made through FIMDB and waits for the ones in flight. The database stays open.
+         */
+        void quiesce();
 
         /**
          * @brief Turns off the services provided.

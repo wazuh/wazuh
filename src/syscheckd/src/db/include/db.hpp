@@ -103,6 +103,14 @@ class EXPORTED DB final
         void removeFile(const std::string& path);
 
         /**
+         * @brief removeFile Remove a file from the database and report it before any stop or version change.
+         *
+         * @param path File to remove.
+         * @param afterRemove Function called once the file is removed. It must not call FIMDB.
+         */
+        void removeFile(const std::string& path, const std::function<void()>& afterRemove);
+
+        /**
          * @brief getFile Get a file from the database.
          *
          * @param path File to get.
@@ -128,11 +136,11 @@ class EXPORTED DB final
         static int maxVersion(const std::string& tableName);
 
         /**
-         * @brief updateVersion Update the version column for all entries in a table.
+         * @brief updateVersion Raise the version column of every entry below it in a table.
          *
          * @param tableName Table name.
          * @param version New version value to set.
-         * @return 0 on success, -1 on error.
+         * @return 0 on success, -1 on error or if FIMDB was busy or shutting down.
          */
         static int updateVersion(const std::string& tableName, int version);
 
@@ -152,6 +160,11 @@ class EXPORTED DB final
          * @param callback Callback return the file data.
          */
         void searchFile(const SearchData& data, std::function<void(const std::string&)> callback);
+
+        /**
+         * @brief quiesce Stop the row writes made through FIMDB and wait for the ones in flight, leaving the database open.
+         */
+        static void quiesce();
 
         /**
          * @brief teardown Close the fimdb instances.
