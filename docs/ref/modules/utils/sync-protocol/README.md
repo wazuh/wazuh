@@ -43,7 +43,8 @@ Each internal module maintains its own instance of the Agent Sync Protocol with 
        │                 │                 │
 ┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐
 │   SQLite    │   │   SQLite    │   │   SQLite    │
-│ fim_sync.db │   │ sca_sync.db │   │ sys_sync.db │
+│ fim_sync.db │   │ sca_sync.db │   │syscollector_│
+│             │   │             │   │  sync.db    │
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
        └────────────┬────┴─────────────────┘
@@ -67,7 +68,8 @@ Each module instance:
 - Has its own Agent Sync Protocol instance
 - Maintains separate SQLite database for persistent storage
 - Manages its own synchronization sessions independently
-- Shares the same Message Queue infrastructure
+- Hands every session to `wazuh-agentd` over the same local `queue-sync` socket
+- Exceptions: agent-info's sync-protocol instance has no queue database (metadata, groups and integrity checks only), and Syscollector runs a second instance (`syscollector_vd`, `syscollector_vd_sync.db`) for vulnerability-detection data
 
 ## Documentation Structure
 

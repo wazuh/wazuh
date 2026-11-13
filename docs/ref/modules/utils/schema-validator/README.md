@@ -189,11 +189,12 @@ else
 
 ## Integration Best Practices
 
-1. **Initialize Once**: Call `initialize()` once during module startup
+1. **Initialize Once**: Call `initialize()` once during module startup (later calls return `true` without reloading, so several modules in one process can each call it)
 2. **Check Initialization**: Always check `isInitialized()` before getting validators
 3. **Cache Validators**: Get validators once and reuse them (they're thread-safe)
 4. **Handle a Missing Schema**: If the factory is not initialized, skip validation; if it is initialized but has no schema for the index, discard the message: the C API rejects it with `No schema validator found for index` (FIM then logs that at ERROR), and SCA and Syscollector log `No schema validator found for index: <index>. Discarding message.` at WARNING
 5. **Delete Invalid Data**: Remove data that fails validation from local databases to prevent integrity sync loops
+6. **FIM Conditions**: FIM validates only when `enable_synchronization` is on and the validator is initialized, and it ignores a validation failure seen while it is shutting down (see the [Integration Guide](integration-guide.md#step-3-validate-before-sending-data))
 
 ## Error Handling
 

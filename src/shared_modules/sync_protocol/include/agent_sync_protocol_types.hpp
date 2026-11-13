@@ -22,12 +22,12 @@ enum class SyncResult
     SUCCESS,             ///< Operation completed successfully
     COMMUNICATION_ERROR, ///< Failed to communicate with the manager
     CHECKSUM_ERROR,      ///< Checksum validation failed
-    START_TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response for the Start message
-    END_TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response for the End message
+    START_TIMEOUT_ERROR,       ///< Not produced: kept from the Start/End exchange, which no longer exists
+    END_TIMEOUT_ERROR,       ///< No HTTP result arrived for the session within SESSION_RESPONSE_TIMEOUT
     PROTOCOL_ERROR,       ///< Manager sent an unexpected or invalid response
     NO_GROUPS_ERROR,     ///< No groups available in metadata.
     PAYLOAD_TOO_LARGE,   ///< Manager rejected the session as larger than its total in-flight
-    ///< budget (HTTP 413); the session must be split and resent smaller.
+    ///< budget (HTTP 413); not split, retried on the next cycle.
     FEED_NOT_READY,      ///< Manager's vulnerability feed is not loaded yet (HTTP 503 "vulnerability
     ///< feed not ready"); the session is resent on the next cycle.
 };

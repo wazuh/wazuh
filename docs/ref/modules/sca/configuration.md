@@ -60,9 +60,9 @@ Maximum events per second that the SCA module can generate.
 
 Configuration section containing individual policy file definitions.
 
-- **Default value:** Policies are auto-detected based on operating system
+- **Default value:** Every `.yml` and `.yaml` file in the `ruleset/sca/` directory of the installation
 - **Allowed values:** Contains one or more `<policy>` elements
-- **Note:** If no policies are specified, the module loads default policies matching the system OS
+- **Note:** The files present in `ruleset/sca/` are decided by the installed package, so the default policies depend on the operating system the agent was installed on. A `<policy>` element for a file already loaded by default only changes its `enabled` attribute. A `<policy>` element whose value is a prefix of one of the obsolete 4.x policy file names (for example `cis_debian_linux_rcl.yml`) is silently skipped; the match is on the raw configured text, so a path such as `ruleset/sca/cis_debian_linux_rcl.yml` is not skipped
 
 ### policy
 
@@ -91,7 +91,7 @@ Enable or disable database synchronization for SCA results.
 Time interval between database synchronization cycles.
 
 - **Default value:** `300s` (5 minutes)
-- **Allowed values:** Time format strings in seconds (e.g., `300s`, `600s`)
+- **Allowed values:** Time format strings (`s`, `m`, `h`, `d` or `w` suffix; a bare number is seconds), greater than `0` and up to `4294967295` seconds. An invalid value is ignored with a warning
 - **Note:** Controls how frequently the agent synchronizes SCA state with the manager
 
 ### synchronization/integrity_interval
@@ -99,7 +99,7 @@ Time interval between database synchronization cycles.
 Interval between integrity checks for automatic recovery.
 
 - **Default value:** `86400s` (24 hours)
-- **Allowed values:** Time format strings in seconds, or `0` to disable
+- **Allowed values:** Time format strings (`s`, `m`, `h`, `d` or `w` suffix; a bare number is seconds) up to `4294967295` seconds, or `0` to disable. An invalid value is ignored with a warning
 - **Note:** Set to `0` to disable automatic integrity verification and recovery
 
 ---
@@ -270,7 +270,7 @@ Policy files are YAML documents containing:
 
 ### Operating System Specific Defaults
 
-When no policies are explicitly configured, SCA automatically loads policies based on the detected operating system:
+The module does not detect the operating system. When no policies are configured, it loads every policy file found in `ruleset/sca/`, and the installed package decides which files are there. The shipped sets are:
 
 **Linux Systems:**
 - **Debian/Ubuntu:** `cis_debian*.yml`, `cis_ubuntu*.yml`
@@ -300,7 +300,8 @@ Time-based configuration options support flexible time format specifications:
 
 **Valid ranges:**
 - **Scan interval:** Any positive value up to `4294967294` seconds; `0` and larger values are rejected
-- **Synchronization interval:** Minimum `1s`, recommended `60s` or higher
+- **Synchronization interval:** Any positive value up to `4294967295` seconds, recommended `60s` or higher
+- **Integrity interval:** `0` (disabled) or any positive value up to `4294967295` seconds
 
 ---
 
@@ -310,19 +311,18 @@ Time-based configuration options support flexible time format specifications:
 
 The SCA module validates configuration at agent startup:
 
-1. **Policy file existence:** All specified policy files must exist and be readable
-2. **YAML syntax:** Policy files must be valid YAML with correct structure
-3. **Required fields:** Policies must contain required metadata fields
-4. **Time intervals:** Must be within valid ranges
-5. **Path permissions:** Agent must have read access to policy file paths
+1. **Policy file existence:** A `<policy>` path that does not resolve to an existing file is logged as a warning and skipped
+2. **YAML syntax:** A policy file that cannot be parsed, or has no `policy` object or no `checks` list, is skipped with a warning when it is loaded
+3. **Time intervals:** `interval` must be a positive value; `<synchronization>` values must be in range
+4. **Option values:** `enabled` and `scan_on_start` accept `yes` or `no`
 
 ### Error Handling
 
 Invalid configuration results in:
 
-- **Warning messages:** Logged for non-critical issues (e.g., missing optional fields)
-- **Module disabled:** Critical configuration errors prevent module initialization
-- **Default values:** Invalid optional parameters fall back to default values
+- **Configuration error (the module configuration is rejected):** an invalid `enabled` or `scan_on_start` value, an invalid `interval`, an unknown tag, an empty or over-long `<policy>` value
+- **Warning messages and the value is ignored:** an invalid `max_eps`, an invalid `<synchronization>` value, a policy file that is not found
+- **Deprecated options:** `skip_nfs`, `day`, `wday` and `time` are reported and ignored
 
 Check `/var/ossec/logs/ossec.log` for SCA configuration validation messages.
 

@@ -37,7 +37,7 @@ These schemas define the standardized format for inventory data that is sent to 
 Every inventory table ends with the same three columns:
 
 - `sync`: `1` once the row is synchronized; `0` while a per-index document limit holds it back.
-- `checksum`: hash of the row, used to detect changes.
+- `checksum`: hash of the row, used to detect changes. Runtime counters that move between scans (memory free/used in `dbsync_hwinfo`, `utime`/`stime` in `dbsync_processes`, the traffic counters in `dbsync_network_iface`) are left out of it.
 - `version`: version of the row, sent as `document_version` in its stateful event.
 
 The package version columns are named `version_` (`dbsync_packages`) and `package_version_` (`dbsync_browser_extensions`), so they do not clash with `version`.
@@ -472,6 +472,9 @@ This table enables the recovery mechanism by tracking when each inventory table 
 3. Updates `last_sync_time` after check completes
 
 The same table also holds module-wide markers, stored in `last_sync_time` under these keys:
+- `first_scan_completed`: time the first inventory scan finished; the wodle waits for it before its first synchronization (query `get_first_scan_completed`)
+- `first_sync_completed`: time the first synchronization succeeded, and again when a resend under a new agent ID completes (query `get_first_sync_completed`)
+- `vd_first_sync_completed`: time the first vulnerability detection synchronization landed. While it is `0` the VD session is sent as the first one (`VDFIRST`), afterwards as `VDSYNC`; DataContext is not built until it is set. It is reset to `0` before the VD tables are resent under a new agent ID (query `get_vd_first_sync_completed`)
 - `synced_agent_id`: Agent ID under which the manager holds this module's whole inventory; when the agent's current ID differs (for example, after re-enrolling), Syscollector resends every table
 - `vd_synced_agent_id`: Agent ID under which the vulnerability detection tables (OS, packages and, on Windows, hotfixes) were last resent during a resend still in progress
 - `synced_agent_id:<table>`: Agent ID under which that table was last resent during a resend still in progress, so a resend cut short by a restart or by a failed table resumes with the tables still pending

@@ -40,7 +40,9 @@ bool initialize(
 **Parameters:**
 - `customValidators` - Optional map of index pattern → validator instances for testing
 
-**Returns:** `true` if initialization succeeded, `false` otherwise
+**Returns:** `true` if initialization succeeded, `false` otherwise (for example when no schema could be loaded)
+
+Initialization is idempotent: once the factory is initialized, further calls return `true` without loading anything, and `customValidators` is ignored. To inject validators into an already initialized factory, call `reset()` first.
 
 **Example:**
 ```cpp
@@ -203,10 +205,14 @@ Result of a schema validation operation.
 ```cpp
 struct ValidationResult
 {
-    bool isValid;                      // True if validation passed
+    bool isValid;                      // True if validation passed (true by default)
     std::vector<std::string> errors;   // List of validation errors (empty if valid)
+
+    ValidationResult();                // isValid = true, no errors
 };
 ```
+
+`ValidationResult` has a user-provided constructor, so it is not an aggregate: build a failing result by default-constructing it and then setting `isValid` and `errors`, not with brace initialization.
 
 **Example:**
 ```cpp

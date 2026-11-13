@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Agent Sync Protocol exposes APIs through both C++ and C interfaces, allowing modules written in different languages to integrate seamlessly. The protocol manages the complete synchronization lifecycle, from persisting differences to handling manager responses. On the wire, a whole session (data and all) crosses as one `FullSession` FlatBuffer message and the manager answers with one `EndAck` — see [Protocol Lifecycle](lifecycle.md) for the message-level detail.
+The Agent Sync Protocol exposes APIs through both C++ and C interfaces, allowing modules written in different languages to integrate seamlessly. The protocol manages the complete synchronization lifecycle, from persisting differences to handling manager responses. On the wire, a whole session (data and all) crosses as one `FullSession` FlatBuffer message and there is one terminal answer: the HTTP status of the `/stateful` request, routed back to the session as an `HCRESULT:<session>:<code>:<body>` string (there is no `EndAck` message) — see [Protocol Lifecycle](lifecycle.md) for the message-level detail.
 
 ## C++ Interface
 
@@ -26,16 +26,20 @@ AgentSyncProtocol(const std::string& moduleName,
                   LoggerFunc logger,
                   std::shared_ptr<IPersistentQueue> queue = nullptr,
                   std::shared_ptr<ISyncSessionTransport> syncTransport = nullptr,
-                  bool isFeedBased = false)
+                  bool isFeedBased = false,
+                  std::optional<std::size_t> flushBatchSize = std::nullopt,
+                  std::optional<std::chrono::milliseconds> flushInterval = std::nullopt,
+                  std::optional<int32_t> walAutocheckpointPages = std::nullopt)
 ```
 
 **Parameters:**
 - `moduleName`: Unique identifier for the module (e.g., "fim", "sca", "syscollector")
-- `dbPath`: Full path to the SQLite database file for persistent storage, or `std::nullopt` for in-memory-only synchronization
+- `dbPath`: Path to the SQLite database file for persistent storage, or `std::nullopt` for an instance without a queue (unless a `queue` is injected through the constructor's `queue` argument). Without a queue, `persistDifference()`, `synchronizeModule()`, `fetchPendingItems()` and `clearAllDataContext()` only log an error, and `notifyDataClean()` reports `success = false` even when the manager accepted the clean; only `synchronizeMetadataOrGroups()` and `requiresFullSync()` work (agent-info uses it this way)
 - `logger`: Callback function for logging messages
 - `queue`: Optional custom persistent queue implementation (mainly for testing)
 - `syncTransport`: Optional custom carrier for whole sessions (mainly for testing); defaults to `SyncSocketTransport`, which streams the session over the agent's local `queue-sync` socket
 - `isFeedBased`: `true` when the manager checks this instance's sessions against a feed position instead of a checksum. Only syscollector's vulnerability-detection instance sets it; it changes only the wording of the failure reason for an HTTP `409` whose body does not name the mismatch kind
+- `flushBatchSize`, `flushInterval`, `walAutocheckpointPages`: optional overrides for the persistent queue's flush batch size (default 100 items), flush interval (default 500 ms) and WAL auto-checkpoint threshold in pages (default: SQLite's 1000); the `asp_create()` parameters of the same names feed them
 
 There is no `timeout`/`retries` constructor parameter: HTTP-level timeout and retry are owned exclusively by the HTTPS transport layer (internal options `agent.https_stateful_timeout` and `agent.https_stateful_attempts`). See [Transport-Level Timeout and Retry](lifecycle.md#transport-level-timeout-and-retry).
 
@@ -104,7 +108,7 @@ IntegrityCheckResult requiresFullSync(const std::string& index,
                                       const std::string& checksum)
 ```
 
-Checks if a module index requires full synchronization by sending one `FullSession` carrying a `ChecksumModule` payload and waiting for the manager's answer. A `409` is only trusted as a mismatch once it repeats on every attempt (`CHECKSUM_MISMATCH_MAX_ATTEMPTS`), because the indexer may not have caught up with a recent write yet.
+Checks if a module index requires full synchronization by sending one `FullSession` carrying a `ChecksumModule` payload and waiting for the manager's answer. A `409` is only trusted as a mismatch once it repeats on every attempt (`CHECKSUM_MISMATCH_MAX_ATTEMPTS`), because the indexer may not have caught up with a recent write yet. Attempts are spaced 10 s apart. The number of mismatches reported in a row is stored in the instance's queue database, so a confirmation survives a restart; it expires 1 hour after the last mismatch, and a `VALID` answer, `notifyDataClean()` for the index or `clearIntegrityProgress()` discards it.
 
 **Parameters:**
 - `index`: The index/table to check
@@ -120,7 +124,7 @@ SyncModuleResult synchronizeMetadataOrGroups(Mode mode,
                                              uint64_t globalVersion)
 ```
 
-Synchronizes metadata or groups with the manager without sending any data items. Sent as one `FullSession` carrying `Start` and `End` only — `payload` is absent.
+Synchronizes metadata or groups with the manager without sending any data items. Sent as one `FullSession` carrying `Start` only — `payload` is absent.
 
 **Parameters:**
 - `mode`: Synchronization mode (must be `Mode::METADATA_DELTA`, `Mode::METADATA_CHECK`, `Mode::GROUP_DELTA`, or `Mode::GROUP_CHECK`)
@@ -189,6 +193,14 @@ Deletes the database file. This method closes the database connection and remove
 protocol.deleteDatabase();
 ```
 
+##### `clearIntegrityProgress()`
+
+```cpp
+void clearIntegrityProgress(const std::string& index)
+```
+
+Removes the checksum mismatches stored for `index` by `requiresFullSync()`. `notifyDataClean()` already does it for the indices it cleans; call this directly when the index is checked on one instance and cleaned on another, on the instance that checked it. A no-op on an instance without a queue.
+
 ##### `setSessionMaxBytes()` (static)
 
 ```cpp
@@ -196,6 +208,14 @@ static void setSessionMaxBytes(size_t maxBytes)
 ```
 
 Sets the byte ceiling for one `FullSession`, process-wide. The value belongs to `<agent><batch><size>`; the daemon hosting the modules reads it and calls this before any module creates its instance. Each instance copies the value at construction, so a later call does not affect existing instances. `0` leaves the current value unchanged: the built-in 1 MiB unless an earlier call set another.
+
+##### `setMaxBlocksPerSync()` (static)
+
+```cpp
+static void setMaxBlocksPerSync(size_t maxBlocks)
+```
+
+Sets how many `FullSession` blocks one `Mode::DELTA` cycle may send, process-wide. The value belongs to the `agent.sync_max_blocks_per_cycle` internal option (default 50); the hosting daemon reads it and calls this before any module creates its instance, and each instance copies it at construction. `0` leaves the current value unchanged.
 
 ##### `currentAgentId()` (static)
 
@@ -252,6 +272,18 @@ C wrapper for `setSessionMaxBytes()`. Process-wide, takes no handle. `wazuh-modu
 
 - `max_session_bytes`: Maximum bytes per session, or `0` to leave the current value unchanged
 
+#### `asp_set_max_blocks_per_sync()`
+
+```c
+void asp_set_max_blocks_per_sync(uint32_t max_blocks);
+```
+
+C wrapper for `setMaxBlocksPerSync()`. Process-wide, takes no handle. `wazuh-modulesd`, `wazuh-syscheckd` and the Windows agent call it at startup with `agent.sync_max_blocks_per_cycle`.
+
+**Parameters:**
+
+- `max_blocks`: Maximum blocks per `Mode::DELTA` cycle, or `0` to leave the current value unchanged
+
 #### `asp_get_agent_id()`
 
 ```c
@@ -277,7 +309,7 @@ Creates a new Agent Sync Protocol instance.
 
 **Parameters:**
 - `module`: Module name string (e.g. `"fim"`, `"syscollector"`)
-- `db_path`: SQLite database file path for the persistent queue (`NULL` for in-memory only)
+- `db_path`: SQLite database file path for the persistent queue (`NULL` for an instance without a queue; see the `dbPath` note above)
 - `logger`: Logging callback function
 - `flush_batch_size`: Persistent queue flush batch size override, or `0` to use the built-in default
 - `flush_interval_ms`: Persistent queue flush interval override in milliseconds, or `0` to use the built-in default
@@ -553,6 +585,7 @@ typedef struct SyncModuleResult_t {
 - `localTransportUnavailable`/`local_transport_unavailable`: `true` if the local `queue-sync` intake could not be reached (the `wazuh-agentd` HTTPS client is not up yet). Nothing reached the manager, so this is not a manager-side condition. In this case `consecutiveFailures` counts consecutive failures to reach the intake, a streak separate from the sync one.
 - `sessionSkipped` (C++ only): `true` if no session ran because another synchronization was already in flight on the same instance. Reported as a success, since the in-flight sync drains the same queue; do not record it as a completed session.
 - `sentAnything`/`sent_anything`: `true` if the manager accepted at least one block of queued items. `success` with `sentAnything == false` means the queue was empty or (C++ only, `sessionSkipped`) the session was skipped; the C struct cannot tell the two apart. Always `false` for metadata and group synchronizations and for `notifyDataClean()`.
+- `feedNotReady` (C++ only): `true` if the manager answered `503` with `vulnerability feed not ready`, which every new manager does while it loads its vulnerability feed. Only a vulnerability-detection data session gets that answer. `managerNotReady` is set as well, and the failure is left out of `consecutiveFailures`, so a caller should report it at INFO and not escalate it.
 - `reachedBlockLimit`/`reached_block_limit`: `true` if a `Mode::DELTA` cycle stopped because it sent its per-cycle block limit (`agent.sync_max_blocks_per_cycle`), not because the queue ran dry, so entries may still be queued for the next cycle. Not an exact count: a queue that empties with the last block allowed still sets it. `Option::VDFIRST`/`Option::VDSYNC` send the whole queue in their first block, so they never set it.
 
 #### `IntegrityCheckResult` / `IntegrityCheckResult_t`
@@ -628,7 +661,7 @@ public:
 };
 ```
 
-`SyncSocketTransport` is the real implementation: it streams one whole `FullSession` message over the agent's local `queue-sync` `AF_UNIX` STREAM socket, which `agentd`'s HTTPS-client intake binds. `sendSession()` reports whether the **agent** took the session, not whether the **manager** accepted it — the manager's verdict arrives asynchronously over the HTTPS response and is routed back through `parseResponseBuffer()`/`applyHttpResultCode()`.
+`SyncSocketTransport` is the real implementation: it streams one whole `FullSession` message over the agent's local `queue-sync` `AF_UNIX` STREAM socket, which `agentd`'s HTTPS-client intake binds. `sendSession()` reports whether the **agent** took the session, not whether the **manager** accepted it — the manager's verdict arrives asynchronously over the HTTPS response and is routed back through `parseResponseBuffer()`, which hands the status code to the private `applyHttpResult(int httpCode, std::string_view body, uint64_t expectedSession)`.
 
 `MQ_Functions`/`mq_start_fn`/`mq_send_binary_fn` are still declared in `agent_sync_protocol_c_interface_types.h` for ABI reasons but are not used by any current code path — the message-queue-based transport they described predates `SyncSocketTransport`/`FullSession`.
 
