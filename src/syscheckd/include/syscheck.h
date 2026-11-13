@@ -93,6 +93,7 @@ typedef struct fim_tmp_file {
 typedef struct diff_data {
     int file_size;
     int size_limit;
+    unsigned int lock_slot;
 
     char *compress_folder;
     char *compress_file;
@@ -696,6 +697,11 @@ char *fim_file_diff(const char *filename, const directory_t *configuration);
  * @param filename Path of the file that has been deleted
  */
 void fim_diff_process_delete_file(const char *filename);
+
+/**
+ * @brief Initializes the locks used by report_changes
+ */
+void fim_diff_init(void);
 
 #ifdef WIN32
 /**

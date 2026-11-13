@@ -84,6 +84,7 @@
 #define FIM_WARN_REG_WILDCARD_ROOT              "(6964): Registry wildcard '%s' does not start with a supported root key. It is not monitored."
 #define FIM_WARN_WHODATA_PROVIDER_UNSUPPORTED   "(6967): The whodata 'provider' option is only available on Linux. Ignoring it."
 #define FIM_WARN_EBPF_DIRS_MAP_FULL             "(6984): eBPF monitored directories map is full. Some whodata events will be lost."
+#define FIM_WARN_DIFF_PENDING_FULL              "(6985): Too many report_changes scratch folders could not be removed. '%s' will be removed at the next restart."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
