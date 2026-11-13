@@ -313,10 +313,19 @@ the runtime alive. The normative contract is the transport contract of the Index
   request was about to be written. It is conservative (true against a server that accepts and stays
   silent) and is reset on every use of an easy handle. `HttpResult.uploadedBytes` carries
   `CURLINFO_SIZE_UPLOAD_T`.
+- **`freshConnection`** (`HttpRequest`, off by default) sets `CURLOPT_FRESH_CONNECT`: the request goes on a new
+  connection, never a pooled one. libcurl resends a request by itself, inside the same submission and on a fresh
+  connection, when its **reused** keep-alive connection died before any response byte (or with a send error), even if
+  the whole request had been written (`Curl_retry_request`, curl 8.20 `lib/transfer.c`, which requires
+  `conn->bits.reuse`; its other branch, a refused HTTP/2 stream, is not built). The caller never sees that resend, so
+  no attempt limit counts it. A request on a fresh connection is never resent that way: it leaves at most once, at the
+  cost of one TCP/TLS handshake. The connection then joins the pool like any other (no `CURLOPT_FORBID_REUSE`: the next
+  such request opens its own). Only the query engine sets it, for a single-attempt delete- or update-by-query
+  ([One attempt](#one-attempt)); reads, the bulk path and the probe keep connection reuse.
 - **Response cap.** `max_response_bytes` is enforced only in the write callback
-  (`curlLoop.cpp:772`), which sets the cap flag and fails the transfer; `HttpResult.body` is never
+  (`writeCb` in `curlLoop.cpp`), which sets the cap flag and fails the transfer; `HttpResult.body` is never
   larger than the cap. `CURLOPT_MAXFILESIZE_LARGE` is not used. The transport sets
-  `CURLOPT_ACCEPT_ENCODING "gzip"` (gzip only; `curlLoop.cpp:295`); curl decompresses before the write callback, so
+  `CURLOPT_ACCEPT_ENCODING "gzip"` (gzip only; `configure` in `curlLoop.cpp`); curl decompresses before the write callback, so
   `max_response_bytes` counts **decompressed** bytes (a gzip bomb yields `ResponseTooLarge`) and a corrupt gzip body (curl 61) is a
   `RecvError`, attributable to the node. Measured against OpenSearch 3.6.0: bulk errors 363 594 to 13 217 B, a page of 1 000 hits
   200 722 to 11 744 B.
@@ -1306,6 +1315,13 @@ mutex and condition variable shared by the runtime and all its clients; the tran
 `shared_ptr`, so it may land after the engine returned). The result is reported to the `NodeSet` (passive signals, see
 [Node health](#node-health)) and classified by `classifyRequest(result, 1)` and then by the operation's classifier.
 
+**One attempt, one transmission.** A `deleteByQuery` or `updateByQuery` with `retry.maxAttempts == 1` submits every
+request with `freshConnection` ([Transport](#transport-internal)): libcurl's own resend of a request whose reused
+connection died without an answer happens inside one submission, out of reach of `maxAttempts`, `maxDuration` and
+`conflictAttempts`, and would deliver the same mutation twice; on a fresh connection it never happens. Each request
+costs one TCP/TLS handshake (the inventory sync sweep sends at most `2 * ceil(n / 10 000)` per pass). Reads (search,
+count, PIT) and any other `maxAttempts` keep connection reuse and curl's resend, which is harmless for them.
+
 With **no node to choose**, the engine waits `max(50 ms, min(retry.base, probeInterval))` and chooses again, without spending an
 attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node health](#node-health)), the wait ends at the first `notBefore` if that is sooner, so the read waits for that node within its deadline instead of `Unavailable`. It ends by `Deadline` (once the page has made its first attempt, also by the page deadline, or by `retry.maxDuration` with
 `RetryExhausted`), never by a busy wait.
@@ -2108,7 +2124,9 @@ with `readelf -d` that it needs `libasan` only in the ASAN tree, and prove the i
 
 Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexer), `component/`
 (transport over real sockets), `mocks/` (gmock mocks of the public interfaces), `fake/`
-(in-process fake indexer; `fake/pitResponder.hpp` is the programmable PIT responder of the PIT suites). 
+(in-process fake indexer; `fake/pitResponder.hpp` is the programmable PIT responder of the PIT suites;
+`fake/dropOnReuseServer.hpp` is a keep-alive server that closes a connection without answering, the case where curl
+resends a request by itself, see `freshConnection` in [Transport](#transport-internal)). 
 
 ## Tests and CI
 

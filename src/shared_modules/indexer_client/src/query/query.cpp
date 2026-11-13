@@ -443,6 +443,7 @@ namespace indexer_client::detail::query
                 request.method = route.method;
                 request.url = baseUrl(nodes->host(*node)) + route.target;
                 request.body = route.body;
+                request.freshConnection = route.freshConnection;
                 if (!pageEnd)
                 {
                     pageEnd = addSaturated(start, options.pageDeadline);
@@ -928,6 +929,9 @@ namespace indexer_client::detail::query
                 spec.method = HttpMethod::Post;
                 spec.target = target(joined(indices), route, wildcardParams(options, std::move(params)));
                 spec.body = std::make_shared<const std::string>(query.dump());
+                // A mutation with a single attempt must also be a single transmission: on a fresh connection libcurl
+                // never resends it inside the attempt (transport.hpp, HttpRequest::freshConnection).
+                spec.freshConnection = options.retry.maxAttempts && *options.retry.maxAttempts == 1;
                 const auto cap = m_client->maxResponseBytes;
                 auto out = execute(m_client,
                                    options,

@@ -40,9 +40,14 @@
 // past the attempt) → NodeSet::choose() → Transport::submit(HttpRequest{url = host + route, timeout}) → wait for the
 // result on the client's QueryGate (the transport callback captures the attempt state by shared_ptr: it may land
 // after the engine returned) → NodeSet::report(node, result) → classifyRequest(result, 1) and the operation's
-// classifier (queryResponse.hpp). No node to choose ⇒ wait max(50 ms, min(retry.base, probeInterval)) and choose
-// again, without an attempt; a node parked by a 429 Retry-After (NodeSet::earliestNotBefore()) ends that wait
-// early, so a read whose usable nodes are all parked waits for the first one within its deadline instead of failing.
+// classifier (queryResponse.hpp). SEND ONCE: a deleteByQuery or updateByQuery with retry.maxAttempts == 1 sends every
+// request on a fresh connection (RouteSpec/HttpRequest::freshConnection, one TCP/TLS handshake each): libcurl resends
+// by itself, inside one submission and out of reach of maxAttempts, maxDuration and conflictAttempts, only a request
+// whose reused connection died without a response byte, so the one attempt is one transmission. Reads and any other
+// policy keep connection reuse (and curl's resend, as the bulk path does).
+// No node to choose ⇒ wait max(50 ms, min(retry.base, probeInterval)) and choose again, without an attempt; a node
+// parked by a 429 Retry-After (NodeSet::earliestNotBefore()) ends that wait early, so a read whose usable nodes are all
+// parked waits for the first one within its deadline instead of failing.
 //
 // VERDICTS (the table). Failover ⇒ another attempt at once (counted only with mayHaveSent). Throttled ⇒ wait
 // max(retryAfter, backoffDelay(retry, ++throttles)) without an attempt: `throttles` grows the exponent so a 429 storm

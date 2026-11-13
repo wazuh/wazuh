@@ -34,8 +34,10 @@ namespace
     /// same list after a failure, deleting the documents of an id forget() withdrew meanwhile. The sweeper's own retry
     /// (once, on the next pass) rebuilds the list without the withdrawn ids. A 5xx, a timeout or a failover after the
     /// request may have left spends the only attempt; a 429 spends none, so the 1 ms series budget ends the call before
-    /// its backoff; a version conflict is not resent either. A request that never left (refused connection) may still
-    /// go to another node within that millisecond.
+    /// its backoff; a version conflict is not resent either. With maxAttempts = 1 the indexer client also sends each
+    /// delete-by-query on a new connection (one TCP/TLS handshake), where libcurl never resends it by itself as it
+    /// does, inside the one attempt and out of every limit here, when a reused connection died without an answer. A
+    /// request that never left (refused connection) may still go to another node within that millisecond.
     indexer_client::QueryOptions sweepQueryOptions()
     {
         indexer_client::QueryOptions options;

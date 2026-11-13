@@ -15,10 +15,12 @@
 // body) and it is reset on every use of an easy handle.
 
 #include <atomic>
+#include <optional>
 
 #include <curl/curl.h>
 
 #include "componentFixture.hpp"
+#include "dropOnReuseServer.hpp"
 #include "fakeIndexer.hpp"
 #include "rawTcpServer.hpp"
 
@@ -204,4 +206,81 @@ TEST_F(TransportTest, MayHaveSentReuseThenCancelBeforeStartFalse)
     EXPECT_FALSE(result->mayHaveSent) << "inherited from the easy handle's previous use";
     EXPECT_EQ(result->uploadedBytes, 0u);
     EXPECT_FALSE(fake.waitForRequests(2, 200ms)) << "the cancelled request reached the server";
+}
+
+namespace
+{
+    /// Two POSTs to "/once": the first answered over a new connection that stays in curl's pool, the second (with
+    /// `freshConnection` as given) read whole and dropped without a response byte (and so is any resend of it).
+    /// Returns the second one's result.
+    std::optional<HttpResult>
+    secondPostDropped(indexer_client::testing::DropOnReuseServer& server, Transport& transport, bool freshConnection)
+    {
+        auto collector = Collector::create();
+        auto warm = request(HttpMethod::Post, server.baseUrl() + "/once", std::make_shared<const std::string>("warm"));
+        const auto first = submitTo(transport, collector, std::move(warm));
+        EXPECT_TRUE(first.admission.admitted);
+        EXPECT_TRUE(collector->waitKey(first.key, 10s));
+        const auto answered = collector->result(first.key);
+        EXPECT_TRUE(answered && answered->cause == TransportCause::None && answered->status == 200);
+
+        auto target =
+            request(HttpMethod::Post, server.baseUrl() + "/once", std::make_shared<const std::string>("target"));
+        target.freshConnection = freshConnection;
+        const auto second = submitTo(transport, collector, std::move(target));
+        EXPECT_TRUE(second.admission.admitted);
+        EXPECT_TRUE(collector->waitKey(second.key, 10s));
+        return collector->result(second.key);
+    }
+} // namespace
+
+// Control for the next case: without freshConnection, the POST goes over the pooled connection and, when that
+// connection dies with no response byte, libcurl itself resends it on a fresh connection inside the same submission
+// (curl 8.20 Curl_retry_request), so the server reads the same body twice. The resend is dropped too: GOT_NOTHING on a
+// fresh connection, which curl never resends.
+TEST_F(TransportTest, CurlReplaysDroppedRequestOnReusedConnection)
+{
+    indexer_client::testing::DropOnReuseServer server("/once", 1);
+    auto transport = startRuntime(1, 2);
+    ASSERT_NE(transport, nullptr);
+
+    const auto result = secondPostDropped(server, *transport, false);
+    ASSERT_TRUE(result.has_value());
+    const auto seen = server.requestsTo("/once");
+    ASSERT_EQ(seen.size(), 3u) << "warm-up, the dropped POST and curl's resend of it";
+    EXPECT_EQ(seen[1].body, "target");
+    EXPECT_EQ(seen[1].connection, 0u);
+    EXPECT_EQ(seen[1].onConnection, 1u) << "the dropped POST went over the reused connection";
+    EXPECT_EQ(seen[2].body, "target") << "curl resent the same request";
+    EXPECT_EQ(seen[2].connection, 1u) << "on a fresh connection";
+    EXPECT_EQ(server.accepted(), 2u);
+    EXPECT_EQ(result->cause, TransportCause::RecvError) << indexer_client::detail::toString(result->cause);
+    EXPECT_EQ(result->curlCode, CURLE_GOT_NOTHING);
+    EXPECT_TRUE(result->mayHaveSent);
+}
+
+// freshConnection: the same POST skips the pooled connection (CURLOPT_FRESH_CONNECT), so curl has no reused connection
+// to blame and never resends it: the server reads it once, dropped, and the transfer ends GOT_NOTHING (a node that
+// closes a new connection without answering is a node fault). curl's resend happens inside the transfer, before the
+// result is delivered, so the count is final here. Mutant: configure() ignores freshConnection (the POST goes over the
+// pooled connection and is read twice).
+TEST_F(TransportTest, FreshConnectionRequestIsNeverReplayedByCurl)
+{
+    indexer_client::testing::DropOnReuseServer server("/once", 1);
+    auto transport = startRuntime(1, 2);
+    ASSERT_NE(transport, nullptr);
+
+    const auto result = secondPostDropped(server, *transport, true);
+    ASSERT_TRUE(result.has_value());
+    const auto seen = server.requestsTo("/once");
+    ASSERT_EQ(seen.size(), 2u) << "the POST was sent again";
+    EXPECT_EQ(seen[1].body, "target");
+    EXPECT_EQ(seen[1].connection, 1u) << "the POST did not open a new connection";
+    EXPECT_EQ(seen[1].onConnection, 0u);
+    EXPECT_TRUE(seen[1].dropped);
+    EXPECT_EQ(server.accepted(), 2u);
+    EXPECT_EQ(result->cause, TransportCause::RecvError) << indexer_client::detail::toString(result->cause);
+    EXPECT_EQ(result->curlCode, CURLE_GOT_NOTHING);
+    EXPECT_TRUE(result->nodeAttributable);
+    EXPECT_TRUE(result->mayHaveSent);
 }

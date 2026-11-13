@@ -342,12 +342,13 @@ is at least one window old (so each agent waits between one and two windows). Th
 `indexer_client_request_timeout_ms + 5 s`, enough for a default `refresh_interval` of the indexer
 (1 to 5 s) to make a late write visible. A pass runs **one delete-by-query per index**
 (`wazuh-agent-config` and `wazuh-agent-stats` separately, so a missing index does not void the other) with
-the due agent ids as a `terms` filter on `_id`, in chunks of at most 10 000 ids, **without a refresh**
-(for the same privilege reason as above), each with the deletion deadline. The documents a pass deletes
-are the **residual** it counts. Each request is sent once, without a retry of its own on a `5xx`, a `429` or a
-version conflict; a chunk that failed is retried once on the next pass, without the agents withdrawn by then (below),
-and then dropped (counted); nothing is sent when no id is due. Pending ids are dropped (counted) at stop. The sweep is
-best effort: it makes a leftover very unlikely, not impossible. Counters:
+the due agent ids as a `terms` filter on `_id`, in chunks of at most 10 000 ids, **without a refresh** (for the same
+privilege reason as above), each with the deletion deadline. The documents a pass deletes are the **residual** it
+counts. Each request is sent once, without a retry of its own on a `5xx`, a `429` or a version conflict, and on a new
+connection (one TCP/TLS handshake per request), where libcurl never makes the resend it would make by itself when a
+reused connection closes without an answer; a chunk that failed is retried once on the next pass, without the agents
+withdrawn by then (below), and then dropped (counted); nothing is sent when no id is due. Pending ids are dropped
+(counted) at stop. The sweep is best effort: it makes a leftover very unlikely, not impossible. Counters:
 [`sync.agent_delete.sweep.*`](metrics.md#post-deletion-sweep--syncagent_deletesweep).
 
 The sweep deletes by `_id` without looking at the document. Pass starts are always at least one window

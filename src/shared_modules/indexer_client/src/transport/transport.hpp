@@ -52,6 +52,12 @@ namespace indexer_client::detail
         std::shared_ptr<const std::string> body; ///< Shared, never copied per attempt; null = no body.
         std::string contentType {"application/json"};
         Duration timeout {Duration {0}}; ///< 0 = RuntimeConfig.requestTimeout.
+        /// Send the request on a new connection (CURLOPT_FRESH_CONNECT), never on a reused one. libcurl resends, inside
+        /// the same submission, a request whose reused keep-alive connection died before any response byte arrived,
+        /// even when the whole request had been written (curl 8.20 lib/transfer.c Curl_retry_request); it never does
+        /// so for a request on a fresh connection, which therefore leaves at most once. Costs one TCP/TLS handshake.
+        /// Off by default; set only by the query engine for a single-attempt delete- or update-by-query.
+        bool freshConnection {false};
     };
 
     /// Exhaustive classification of a finished transfer.

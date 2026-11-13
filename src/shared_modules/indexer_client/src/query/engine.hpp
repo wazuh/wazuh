@@ -53,6 +53,9 @@ namespace indexer_client::detail::query
         HttpMethod method {HttpMethod::Post};
         std::string target;
         std::shared_ptr<const std::string> body;
+        /// Every attempt goes on a new connection (HttpRequest::freshConnection), so libcurl never resends it by
+        /// itself. Set by deleteByQuery/updateByQuery when retry.maxAttempts == 1.
+        bool freshConnection {false};
     };
 
     /// The operation's classifier (queryResponse.hpp), called for a 2xx or a 404.

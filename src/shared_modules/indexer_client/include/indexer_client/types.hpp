@@ -313,6 +313,9 @@ namespace indexer_client
 
     struct QueryOptions final
     {
+        /// deleteByQuery / updateByQuery with retry.maxAttempts == 1 also send each request once: on a new connection
+        /// (one TCP/TLS handshake each), where libcurl never resends it by itself as it does, inside one attempt and
+        /// out of every limit here, for a request whose reused connection died without an answer.
         RetryPolicy retry;
         Duration pageDeadline {Duration {30000}};
         bool expandWildcardsAll {false};

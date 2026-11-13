@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "dropOnReuseServer.hpp"
 #include "queryFixture.hpp"
 
 using namespace query_component;
@@ -209,4 +210,84 @@ TEST_F(QueryTest, ByQueryOneConflictAttemptNeverResends)
     auto ok = query->deleteByQuery({"a"}, BY_AGENT, {}, once, in(10s));
     ASSERT_TRUE(ok.ok()) << ic::toString(ok.cause) << ": " << ok.reason;
     EXPECT_EQ(queries(*node).size(), 3u);
+}
+
+namespace
+{
+    /// The fake's answer: health green, a search with no hits, any by-query a clean 200.
+    std::string answerByTarget(const std::string& target)
+    {
+        if (target == indexer_client::testing::HEALTH_PATH)
+        {
+            return indexer_client::testing::healthBody("green");
+        }
+        return target.find("/_search") != std::string::npos ? searchResponse(nlohmann::json::array())
+                                                            : byQueryResponse(0);
+    }
+
+    /// The inventory sync sweep's options: one attempt, a 1 ms series, one conflict attempt.
+    ic::QueryOptions singleAttempt()
+    {
+        ic::QueryOptions once;
+        once.retry.maxAttempts = 1;
+        once.retry.maxDuration = ic::Duration {1};
+        once.conflictAttempts = 1;
+        return once;
+    }
+} // namespace
+
+// retry.maxAttempts = 1 (the inventory sync sweep's options): a delete- or update-by-query goes on a new connection,
+// so libcurl never resends it inside the one attempt. The node drops every by-query that arrives on a reused
+// keep-alive connection (a peer closing idle connections); none does, so each call succeeds and the node reads each
+// one once. Mutant: the transport ignores freshConnection, or the query does not set it (a by-query goes over the
+// pooled connection, is dropped and resent by curl: the node reads it twice).
+TEST_F(QueryTest, SingleAttemptByQueryGoesOnFreshConnection)
+{
+    indexer_client::testing::DropOnReuseServer server("_by_query", 0, answerByTarget, true);
+    ASSERT_NO_FATAL_FAILURE(start({server.baseUrl()}));
+    auto owner = client();
+    auto query = owner->query();
+
+    auto first = query->deleteByQuery({"a"}, BY_AGENT, {}, singleAttempt(), in(10s));
+    ASSERT_TRUE(first.ok()) << ic::toString(first.cause) << ": " << first.reason;
+    auto update = query->updateByQuery({"a"}, BY_AGENT, singleAttempt(), in(10s));
+    ASSERT_TRUE(update.ok()) << ic::toString(update.cause) << ": " << update.reason;
+    auto second = query->deleteByQuery({"a"}, BY_AGENT, {}, singleAttempt(), in(10s));
+    ASSERT_TRUE(second.ok()) << ic::toString(second.cause) << ": " << second.reason;
+
+    const auto sent = server.requestsTo("_by_query");
+    ASSERT_EQ(sent.size(), 3u) << "a by-query reached the node twice";
+    for (const auto& request : sent)
+    {
+        EXPECT_EQ(request.onConnection, 0u) << request.target << " went over a reused connection";
+        EXPECT_FALSE(request.dropped);
+    }
+    EXPECT_EQ(nodeState(0), NodeState::Available);
+}
+
+// Fresh connections are for single-attempt mutations only: a single-attempt search (an idempotent read, like the
+// engine's remote configuration poll) and a by-query with more than one attempt keep reusing the pooled connection.
+// Mutant: freshConnection set for every single-attempt query, or for every by-query.
+TEST_F(QueryTest, ReadsAndMultiAttemptByQueryReuseConnections)
+{
+    indexer_client::testing::DropOnReuseServer server("_never_dropped_", 0, answerByTarget);
+    ASSERT_NO_FATAL_FAILURE(start({server.baseUrl()}));
+    auto owner = client();
+    auto query = owner->query();
+
+    auto search = query->search("idx", nlohmann::json::object(), singleAttempt(), in(10s));
+    ASSERT_TRUE(search.ok()) << ic::toString(search.cause) << ": " << search.reason;
+    auto twice = singleAttempt();
+    twice.retry.maxAttempts = 2;
+    auto dbq = query->deleteByQuery({"a"}, BY_AGENT, {}, twice, in(10s));
+    ASSERT_TRUE(dbq.ok()) << ic::toString(dbq.cause) << ": " << dbq.reason;
+
+    // The probe's round left a pooled connection: both go over it.
+    const auto searched = server.requestsTo("/_search");
+    ASSERT_EQ(searched.size(), 1u);
+    EXPECT_GT(searched[0].onConnection, 0u) << "the single-attempt search did not reuse the pooled connection";
+    const auto deleted = server.requestsTo("/_delete_by_query");
+    ASSERT_EQ(deleted.size(), 1u);
+    EXPECT_GT(deleted[0].onConnection, 0u) << "the two-attempt by-query did not reuse the pooled connection";
+    EXPECT_EQ(server.accepted(), 1u);
 }

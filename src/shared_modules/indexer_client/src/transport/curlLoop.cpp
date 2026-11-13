@@ -260,6 +260,15 @@ namespace indexer_client::detail
             set(curl_easy_setopt(easy, CURLOPT_URL, request.url.c_str()));
             set(curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https"));
             set(curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L));
+            if (request.freshConnection)
+            {
+                // libcurl resends a request by itself only when it went over a reused connection that died without
+                // a response byte (curl 8.20 lib/transfer.c Curl_retry_request needs conn->bits.reuse; its other
+                // branch, a refused HTTP/2 stream, is not built). A fresh connection never has that bit (lib/url.c
+                // skips url_attach_existing with reuse_fresh), so the request leaves at most once. The connection
+                // then joins the pool like any other; no FORBID_REUSE: the next such request opens its own.
+                set(curl_easy_setopt(easy, CURLOPT_FRESH_CONNECT, 1L));
+            }
 
             // TLS: the configured CA in memory (CURL_BLOB_NOCOPY over TransportShared, alive until the last
             // curl_multi_cleanup), else the system CA store loadTlsMaterial located (by path: curl reads it, and a

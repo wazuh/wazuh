@@ -694,8 +694,10 @@ the ids whose note is at least one window old (each waits between W and 2W). A p
 index** (a missing index does not void the other) with `terms` on `_id`, `proceedOnConflicts`, ids in chunks of at
 most 10 000, **without `refresh`** (the role may lack `indices:admin/refresh`), each with `deadline` =
 `deleteBudget`. `residual` = the documents deleted. Each DBQ is **sent once** (`retry.maxAttempts = 1`,
-`retry.maxDuration = 1 ms` so a 429 is not waited out, `conflictAttempts = 1`): the query layer would resend the id
-list built before the request left, even after `forget()` withdrew one of its ids. A failed chunk's ids return once to
+`retry.maxDuration = 1 ms` so a 429 is not waited out, `conflictAttempts = 1`; with the single attempt the indexer client
+sends each DBQ on a new connection, one TCP/TLS handshake each, so libcurl never resends it by itself after a reused
+connection died without an answer): the query layer would resend the id list built before the request left, even after
+`forget()` withdrew one of its ids. A failed chunk's ids return once to
 the next pass, which rebuilds the list without the withdrawn ids, then are dropped (`dropped`); nothing is sent without due ids (at most `2 * ceil(n / 10 000)` DBQs per pass). `stop()` wakes,
 joins and drops what is pending (counted). Counters: `sync.agent_delete.sweep.{runs,failures,residual,dropped,forgotten}`
 (`common/metricNames.hpp`). Best effort: zero residue is not guaranteed.
