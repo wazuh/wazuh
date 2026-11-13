@@ -2488,6 +2488,14 @@ Number of items the indexer rejected with a per-item `429` (load shedding) or a 
 
 ---
 
+##### `indexer.events.deduplicated`
+
+Number of `_bulk` items the indexer had already applied when the connector resent them, since the indexer connector started. Every event is indexed with a `create` action carrying its own `_id`, and a resend after a timeout or a dropped connection repeats that `_id`; the indexer answers the already-applied item with `409` (`version_conflict_engine_exception`) and the connector counts it as applied. It is a pull metric (type `pull` in the dump): the engine reads the connector's own count on every read, and it reads `0` while no connector exists. It is not a loss and is never added to `indexer.events.dropped`.
+
+**Used for:** detecting a slow or unstable indexer that forces resends.
+
+---
+
 #### Router metrics
 
 ##### `router.queue.size`
