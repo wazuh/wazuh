@@ -2002,6 +2002,31 @@ TEST_F(ContainerReportingTest, AFailedDrainSettlesAdmissionWithoutAnotherFilesys
     EXPECT_EQ(baseline_walks, 1u);
 }
 
+TEST_F(ContainerReportingTest, AdmissionOnlyConsumesResolverCleanupAfterRelease)
+{
+    using fim_container_events::ContainerEventDrain;
+    using fim_container_events::ReconcileMode;
+    std::atomic<bool> consumed {false};
+    auto config = resolverConfig();
+    drain_reply_provider = [] { return settled_reply; };
+    EXPECT_FALSE(ContainerEventDrain::instance().start(config, [&](const auto& request)
+    {
+        if (request.mode == ReconcileMode::sweepAbsent) consumed = true;
+    }));
+    EXPECT_FALSE(ContainerEventDrain::instance().running());
+
+    // A changed whole-node list asks for cleanup without any kernel events.
+    // Waiting for another request lets the first refresh finish, so this also
+    // checks that queued cleanup stays behind the baseline's release gate.
+    EXPECT_TRUE(waitFor([] { return resolver_list_requests.load() > 1; }, std::chrono::seconds {2}));
+    EXPECT_FALSE(consumed.load());
+    ContainerEventDrain::instance().release();
+    EXPECT_TRUE(waitFor([&] { return consumed.load(); }, std::chrono::seconds {2}));
+    ContainerEventDrain::instance().stopAdmission();
+    ContainerEventDrain::instance().stopAdmission();
+    ContainerEventDrain::instance().stop();
+}
+
 TEST_F(ContainerReportingTest, AdmissionOnlyUnavailabilityRetainsAnInstalledVerdict)
 {
     const char* known[] = {"a", "b"};
@@ -2015,6 +2040,14 @@ TEST_F(ContainerReportingTest, AdmissionOnlyUnavailabilityRetainsAnInstalledVerd
     EXPECT_FALSE(fim_container_events::ContainerEventDrain::instance().start(config, {}));
     fim_container_events_release();
     ASSERT_TRUE(waitFor([] { return !fim_container_admission_pending(); }, std::chrono::seconds {2}));
+
+    // Waiting for the flag alone is not enough to observe the promotion it
+    // leads to. The install clears container_admission_pending BEFORE calling
+    // fim_container_reconcile_admission() -- it has to, because that function
+    // refuses to act while a verdict is pending -- so a waiter on the flag can
+    // be released in the window between the two and stop the drain before the
+    // promotion runs. Wait for the state the verdict is supposed to produce.
+    ASSERT_TRUE(waitFor([] { return syncFlag("a", "/etc/one") == 1; }, std::chrono::seconds {2}));
     fim_container_events_stop();
 
     EXPECT_EQ(syncFlag("a", "/etc/one"), 1);
