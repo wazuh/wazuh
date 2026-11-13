@@ -102,7 +102,13 @@ public:
     WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async, const std::size_t maxHitsPerRequest);
 
     /**
-     * @copydoc IWIndexerConnector::index
+     * @brief Indexes the given data into the specified index.
+     *
+     * Every call generates a new document `_id` (generateDocId()), so two calls with the same body produce
+     * two documents. If the generation fails a warning is logged and the event is not indexed.
+     *
+     * @param index The name of the index where the data will be stored
+     * @param data The data content to be indexed as a string view (JSON format)
      */
     void index(std::string_view index, std::string_view data) override;
 
@@ -164,6 +170,16 @@ public:
      * @copydoc IWIndexerConnector::getDroppedEvents
      */
     uint64_t getDroppedEvents() override;
+
+    /**
+     * @brief Number of items of a resent `_bulk` that the indexer already had (409
+     * `version_conflict_engine_exception` on `create`), counted as applied.
+     *
+     * These are not lost events. Returns 0 when there is no connector.
+     *
+     * @return Number of deduplicated items.
+     */
+    uint64_t getDeduplicatedEvents();
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.

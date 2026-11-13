@@ -832,8 +832,8 @@ public:
                     else
                     {
                         // 500, 502, 504 and any other status: not retried. 502/504 may mean the indexer
-                        // processed the bulk but the answer was lost; resending would duplicate documents
-                        // in data streams, which have no _id.
+                        // processed the bulk but the answer was lost; resending a data stream action without
+                        // an _id would duplicate documents. The engine now sends an _id, but the policy is kept.
                         m_consecutiveUnavailable = 0;
                         discardBatch(statusCode, bulkSize, error, responseBody, false);
                     }

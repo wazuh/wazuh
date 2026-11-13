@@ -25,10 +25,24 @@ class IIndexerConnectorAsync
 public:
     virtual ~IIndexerConnectorAsync() = default;
 
-    virtual void indexDataStream(std::string_view index, std::string_view data) = 0;
+    /**
+     * @brief Appends a `create` action with the given document `_id` (see IndexerConnectorAsync::indexDataStream).
+     *
+     * @param index Target data stream.
+     * @param id Document `_id`.
+     * @param data Document body (JSON).
+     */
+    virtual void indexDataStream(std::string_view index, std::string_view id, std::string_view data) = 0;
 
     virtual uint64_t getQueueSize() const = 0;
     virtual uint64_t getDroppedEvents() const = 0;
+
+    /**
+     * @brief Number of items of a resent bulk that the indexer had already applied (409 on `create`).
+     *
+     * These items are counted as applied; they are not lost events.
+     */
+    virtual uint64_t getDeduplicatedEvents() const = 0;
 
     virtual PointInTime
     createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards) = 0;
