@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include <base/json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdint>
@@ -280,16 +281,33 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
     }
     else
     {
-        // Replace ~ with ~0
-        for (auto pos = ptrPath.find('~'); pos != std::string::npos; pos = ptrPath.find('~', pos + 2))
+        // Escape the JSON Pointer special characters in one pass: '~' -> "~0", '/' -> "~1" (RFC 6901 §3).
+        // The two find() calls keep the common case (nothing to escape) as cheap as a memchr scan.
+        const auto first = std::min(ptrPath.find('~'), ptrPath.find('/'));
+        if (first != std::string::npos)
         {
-            ptrPath.replace(pos, 1, "~0");
-        }
-
-        // Replace / with ~1
-        for (auto pos = ptrPath.find('/'); pos != std::string::npos; pos = ptrPath.find('/', pos + 2))
-        {
-            ptrPath.replace(pos, 1, "~1");
+            const auto tail = ptrPath.cbegin() + static_cast<std::ptrdiff_t>(first);
+            const auto specials = std::count_if(tail, ptrPath.cend(), [](char c) { return c == '~' || c == '/'; });
+            std::string escaped;
+            escaped.reserve(ptrPath.size() + static_cast<std::size_t>(specials));
+            escaped.append(ptrPath, 0, first);
+            for (auto it = tail; it != ptrPath.cend(); ++it)
+            {
+                const char c = *it;
+                if (c == '~')
+                {
+                    escaped += "~0";
+                }
+                else if (c == '/')
+                {
+                    escaped += "~1";
+                }
+                else
+                {
+                    escaped += c;
+                }
+            }
+            ptrPath = std::move(escaped);
         }
 
         // Replace . with /

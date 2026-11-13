@@ -3,6 +3,9 @@
 
 #include "builders/opmap/opBuilderHelperMap.hpp"
 
+#include <string>
+#include <vector>
+
 using namespace builder::builders;
 
 namespace
@@ -48,6 +51,18 @@ auto targetNotAllowed()
         EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField"))).WillOnce(testing::Return(false));
         return None {};
     };
+}
+
+// Verbatim copy of the replacement loop of opBuilderHelperStringReplace at 0dfa50613c, used as an oracle; do not modify
+std::string legacyReplace(std::string newString, const std::string& oldSubstr, const std::string& newSubstr)
+{
+    size_t start_pos = 0;
+    while ((start_pos = newString.find(oldSubstr, start_pos)) != std::string::npos)
+    {
+        newString.replace(start_pos, oldSubstr.length(), newSubstr);
+        start_pos += newSubstr.length();
+    }
+    return newString;
 }
 
 } // namespace
@@ -373,6 +388,47 @@ INSTANTIATE_TEST_SUITE_P(
                    "target",
                    {makeValue(R"("-")"), makeValue(R"("+")")},
                    FAILURE()),
+        // Non-overlapping matches, left to right; the inserted text is not scanned again
+        TransformT(R"({"target": "banana"})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("a")"), makeValue(R"("aa")")},
+                   SUCCESS(makeEvent(R"({"target": "baanaanaa"})"))),
+        TransformT(R"({"target": "aaaa"})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("aa")"), makeValue(R"("b")")},
+                   SUCCESS(makeEvent(R"({"target": "bb"})"))),
+        TransformT(R"({"target": "aaa"})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("aa")"), makeValue(R"("b")")},
+                   SUCCESS(makeEvent(R"({"target": "ba"})"))),
+        TransformT(R"({"target": "-mid-"})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("-")"), makeValue(R"("<>")")},
+                   SUCCESS(makeEvent(R"({"target": "<>mid<>"})"))),
+        TransformT(R"({"target": "value"})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("value")"), makeValue(R"("x")")},
+                   SUCCESS(makeEvent(R"({"target": "x"})"))),
+        TransformT(R"({"target": "ab"})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("b")"), makeValue(R"("ab")")},
+                   SUCCESS(makeEvent(R"({"target": "aab"})"))),
+        TransformT(R"({"target": "a-b"})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("-")"), makeValue(R"("++")")},
+                   SUCCESS(makeEvent(R"({"target": "a++b"})"))),
+        TransformT(R"({"target": ""})",
+                   opBuilderHelperStringReplace,
+                   "target",
+                   {makeValue(R"("a")"), makeValue(R"("b")")},
+                   SUCCESS(makeEvent(R"({"target": ""})"))),
         /*** split($input, 'separator'): the target is set to the array of parts ***/
         TransformT(R"({"ref": "a b c"})",
                    opBuilderHelperAppendSplitString,
@@ -502,3 +558,128 @@ INSTANTIATE_TEST_SUITE_P(
     testNameFormatter<TransformOperationTest>("StrTransform"));
 
 } // namespace transformoperatestest
+
+namespace replacelegacytest
+{
+class StringReplaceLegacyTest : public BaseBuilderTest
+{
+protected:
+    // Builds the replace operation for target "target"
+    TransformOp buildReplace(const std::string& oldSubstr, const std::string& newSubstr)
+    {
+        return opBuilderHelperStringReplace(
+            Reference {"target"}, {makeValue("\"" + oldSubstr + "\""), makeValue("\"" + newSubstr + "\"")}, mocks->ctx);
+    }
+
+    // Applies the operation to an event holding the given string; returns false if the operation fails
+    static bool apply(const TransformOp& op, const std::string& input, std::string& output)
+    {
+        auto event = std::make_shared<json::Json>();
+        event->setString(input, "/target");
+        const auto result = op(event);
+        if (!result)
+        {
+            return false;
+        }
+        return result.payload()->getString(output, json::PointerPath {"/target"}) == json::RetGet::Success;
+    }
+};
+
+TEST_F(StringReplaceLegacyTest, MatchesLegacyExhaustive)
+{
+    expectBuildSuccess();
+
+    // Every string over {a, b} of length 0..8 (511 strings)
+    std::vector<std::string> inputs {""};
+    for (size_t len = 1; len <= 8; ++len)
+    {
+        for (size_t bits = 0; bits < (size_t {1} << len); ++bits)
+        {
+            std::string s;
+            for (size_t i = 0; i < len; ++i)
+            {
+                s.push_back(((bits >> i) & 1U) ? 'b' : 'a');
+            }
+            inputs.push_back(std::move(s));
+        }
+    }
+    ASSERT_EQ(inputs.size(), 511U);
+
+    const std::vector<std::string> olds {"a", "aa", "ab", "b", "aaa"};
+    const std::vector<std::string> news {"", "a", "aa", "b", "ba", "ab", "bbb"};
+
+    size_t cases = 0;
+    size_t diffs = 0;
+    for (const auto& oldSubstr : olds)
+    {
+        for (const auto& newSubstr : news)
+        {
+            const auto op = buildReplace(oldSubstr, newSubstr);
+            for (const auto& input : inputs)
+            {
+                ++cases;
+                const auto expected = legacyReplace(input, oldSubstr, newSubstr);
+                std::string obtained;
+                const bool ok = apply(op, input, obtained);
+                if (!ok || obtained != expected)
+                {
+                    ++diffs;
+                    if (diffs <= 5)
+                    {
+                        ADD_FAILURE() << "input='" << input << "' old='" << oldSubstr << "' new='" << newSubstr
+                                      << "' expected='" << expected << "' obtained='" << obtained << "' success=" << ok;
+                    }
+                }
+            }
+        }
+    }
+    ASSERT_EQ(cases, 17885U);
+    EXPECT_EQ(diffs, 0U);
+}
+
+TEST_F(StringReplaceLegacyTest, LargeInputsMatchLegacy)
+{
+    expectBuildSuccess();
+
+    const size_t n = 65536;
+    struct Case
+    {
+        std::string input;
+        std::string oldSubstr;
+        std::string newSubstr;
+        size_t expectedSize;
+    };
+    std::string ab;
+    for (size_t i = 0; i < n / 2; ++i)
+    {
+        ab += "ab";
+    }
+    const std::vector<Case> cases {{std::string(n, '-'), "-", "", 0},
+                                   {std::string(n, '-'), "-", "++", 2 * n},
+                                   {ab, "ab", "b", n / 2},
+                                   {std::string(n, 'a'), "-", "+", n}};
+
+    for (const auto& c : cases)
+    {
+        const auto op = buildReplace(c.oldSubstr, c.newSubstr);
+        std::string obtained;
+        ASSERT_TRUE(apply(op, c.input, obtained));
+        EXPECT_EQ(obtained.size(), c.expectedSize);
+        EXPECT_TRUE(obtained == legacyReplace(c.input, c.oldSubstr, c.newSubstr));
+    }
+}
+
+TEST_F(StringReplaceLegacyTest, EmbeddedNul)
+{
+    expectBuildSuccess();
+
+    const std::string input("a\0b\0", 4);
+    const auto op = opBuilderHelperStringReplace(
+        Reference {"target"}, {makeValue(R"("\u0000")"), makeValue(R"("--")")}, mocks->ctx);
+
+    std::string obtained;
+    ASSERT_TRUE(apply(op, input, obtained));
+    EXPECT_EQ(obtained, "a--b--");
+    EXPECT_EQ(obtained, legacyReplace(input, std::string(1, '\0'), "--"));
+}
+} // namespace replacelegacytest

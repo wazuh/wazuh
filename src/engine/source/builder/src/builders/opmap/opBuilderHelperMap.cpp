@@ -2112,11 +2112,21 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
             RETURN_FAILURE(isTestMode, event, failureTrace2);
         }
 
-        size_t start_pos = 0;
-        while ((start_pos = newString.find(oldSubstr, start_pos)) != std::string::npos)
+        // Build the result in one pass: non-overlapping matches, left to right; the inserted text is not rescanned.
+        std::size_t pos = newString.find(oldSubstr);
+        if (pos != std::string::npos)
         {
-            newString.replace(start_pos, oldSubstr.length(), newSubstr);
-            start_pos += newSubstr.length();
+            std::string replaced;
+            replaced.reserve(newString.size()); // grows at most geometrically when |new| > |old|
+            std::size_t from = 0;
+            for (; pos != std::string::npos; pos = newString.find(oldSubstr, from))
+            {
+                replaced.append(newString, from, pos - from);
+                replaced.append(newSubstr);
+                from = pos + oldSubstr.size();
+            }
+            replaced.append(newString, from, std::string::npos);
+            newString = std::move(replaced);
         }
 
         event->setString(newString, targetField);
