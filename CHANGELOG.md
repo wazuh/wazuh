@@ -248,4 +248,5 @@
 | [#41244](https://github.com/wazuh/wazuh/pull/41244) | Fixed the "Ensure accounts in /etc/passwd use shadowed passwords" SCA check, which always failed in the Amazon Linux 2023, Debian 11 to 13 and Ubuntu 18.04 policies and always passed in the other 18 Linux policies that have it. It now fails only when an `/etc/passwd` entry has a password field other than `x`. |
 | [#40944](https://github.com/wazuh/wazuh/issues/40944) | Fixed the Windows agent crashing shortly after starting on Windows Server 2012 R2. |
 | [#40711](https://github.com/wazuh/wazuh/issues/40711) | Fixed Windows users inventory reporting the account comment as `user.full_name` and `0` as `user.password.last_change`. The account comment is no longer reported. |
+| [#40946](https://github.com/wazuh/wazuh/issues/40946) | Fixed Logcollector losing lines when a truncated file grew past the old read position before the next check. |
 | [#41047](https://github.com/wazuh/wazuh/issues/41047) | Fixed `systemctl restart wazuh-agent` during a reload restarting only `wazuh-agentd`, and the ms-graph, office365, github, aws, azure and command modules losing every event after `wazuh-agentd` restarts. |
