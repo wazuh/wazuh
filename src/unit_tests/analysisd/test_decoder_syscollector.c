@@ -1693,6 +1693,112 @@ int test_setup_netinfo_valid_msg_net_data_free(void **state)
     return 0;
 }
 
+int test_setup_netinfo_ipv4_netmask_broadcast_not_string(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("\
+        {\
+            \"type\":\"network\",\
+            \"iface\":{\
+                \"IPv4\":{\
+                    \"address\" : [ \"0.0.0.0\" ],\
+                    \"netmask\" : [ 0 ],\
+                    \"broadcast\" : [ 1 ]\
+                }\
+            }\
+        }"),
+        lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_netinfo_ipv6_netmask_not_string(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("\
+        {\
+            \"type\":\"network\",\
+            \"iface\":{\
+                \"IPv6\":{\
+                    \"address\" : [ \"0000:0000:0000:0:0000:0000:0000:0000\" ],\
+                    \"netmask\" : [ 0 ],\
+                    \"broadcast\" : [ \"0000:0000:0000:0:0000:0000:0000:0001\" ]\
+                }\
+            }\
+        }"),
+        lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_netinfo_ipv6_broadcast_not_string(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("\
+        {\
+            \"type\":\"network\",\
+            \"iface\":{\
+                \"IPv6\":{\
+                    \"address\" : [ \"0000:0000:0000:0:0000:0000:0000:0000\" ],\
+                    \"netmask\" : [ \"0000::\" ],\
+                    \"broadcast\" : [ 1 ]\
+                }\
+            }\
+        }"),
+        lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_netinfo_ipv6_second_netmask_not_string(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup("\
+        {\
+            \"type\":\"network\",\
+            \"iface\":{\
+                \"IPv6\":{\
+                    \"address\" : [ \"0000:0000:0000:0:0000:0000:0000:0000\",\
+                                    \"0000:0000:0000:0:0000:0000:0001:0000\" ],\
+                    \"netmask\" : [ \"0000::\", 0 ],\
+                    \"broadcast\" : [ \"0000:0000:0000:0:0000:0000:0000:0001\",\
+                                      \"0000:0000:0000:0:0000:0000:0001:0001\" ]\
+                }\
+            }\
+        }"),
+        lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_netinfo_valid_network_end_msg(void **state)
 {
     Eventinfo *lf;
@@ -3941,6 +4047,115 @@ void test_syscollector_netinfo_net_data_free (void **state)
     }
 }
 
+void test_syscollector_netinfo_ipv4_netmask_broadcast_not_string (void **state)
+{
+    Eventinfo *lf = *state;
+    const char *queries[] = { "agent 001 netinfo save NULL|NULL|"
+                "NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL",
+            "agent 001 netproto save NULL|NULL|0|NULL|NULL|NULL",
+            "agent 001 netaddr save NULL|NULL|0|0.0.0.0|NULL|NULL" };
+
+    const char *result = "ok ";
+    int sock = 1;
+    size_t count = sizeof(queries) / sizeof(*queries);
+
+    for (int i = 0; i < count; i++)
+    {
+        expect_any(__wrap_wdbc_query_ex, *sock);
+        expect_string(__wrap_wdbc_query_ex, query, queries[i]);
+        expect_any(__wrap_wdbc_query_ex, len);
+        will_return(__wrap_wdbc_query_ex, result);
+        will_return(__wrap_wdbc_query_ex, 0);
+    }
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_netinfo_ipv6_netmask_not_string (void **state)
+{
+    Eventinfo *lf = *state;
+    const char *queries[] = { "agent 001 netinfo save NULL|NULL|"
+                "NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL",
+            "agent 001 netproto save NULL|NULL|1|NULL|NULL|NULL",
+            "agent 001 netaddr save NULL|NULL|1|0000:0000:0000:0:0000:0000:0000:0000|"
+                "NULL|0000:0000:0000:0:0000:0000:0000:0001" };
+
+    const char *result = "ok ";
+    int sock = 1;
+    size_t count = sizeof(queries) / sizeof(*queries);
+
+    for (int i = 0; i < count; i++)
+    {
+        expect_any(__wrap_wdbc_query_ex, *sock);
+        expect_string(__wrap_wdbc_query_ex, query, queries[i]);
+        expect_any(__wrap_wdbc_query_ex, len);
+        will_return(__wrap_wdbc_query_ex, result);
+        will_return(__wrap_wdbc_query_ex, 0);
+    }
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_netinfo_ipv6_broadcast_not_string (void **state)
+{
+    Eventinfo *lf = *state;
+    const char *queries[] = { "agent 001 netinfo save NULL|NULL|"
+                "NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL",
+            "agent 001 netproto save NULL|NULL|1|NULL|NULL|NULL",
+            "agent 001 netaddr save NULL|NULL|1|0000:0000:0000:0:0000:0000:0000:0000|"
+                "0000::|NULL" };
+
+    const char *result = "ok ";
+    int sock = 1;
+    size_t count = sizeof(queries) / sizeof(*queries);
+
+    for (int i = 0; i < count; i++)
+    {
+        expect_any(__wrap_wdbc_query_ex, *sock);
+        expect_string(__wrap_wdbc_query_ex, query, queries[i]);
+        expect_any(__wrap_wdbc_query_ex, len);
+        will_return(__wrap_wdbc_query_ex, result);
+        will_return(__wrap_wdbc_query_ex, 0);
+    }
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_netinfo_ipv6_second_netmask_not_string (void **state)
+{
+    Eventinfo *lf = *state;
+    const char *queries[] = { "agent 001 netinfo save NULL|NULL|"
+                "NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL|NULL",
+            "agent 001 netproto save NULL|NULL|1|NULL|NULL|NULL",
+            "agent 001 netaddr save NULL|NULL|1|0000:0000:0000:0:0000:0000:0000:0000|"
+                "0000::|0000:0000:0000:0:0000:0000:0000:0001",
+            "agent 001 netaddr save NULL|NULL|1|0000:0000:0000:0:0000:0000:0001:0000|"
+                "NULL|0000:0000:0000:0:0000:0000:0001:0001" };
+
+    const char *result = "ok ";
+    int sock = 1;
+    size_t count = sizeof(queries) / sizeof(*queries);
+
+    for (int i = 0; i < count; i++)
+    {
+        expect_any(__wrap_wdbc_query_ex, *sock);
+        expect_string(__wrap_wdbc_query_ex, query, queries[i]);
+        expect_any(__wrap_wdbc_query_ex, len);
+        will_return(__wrap_wdbc_query_ex, result);
+        will_return(__wrap_wdbc_query_ex, 0);
+    }
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
 void test_syscollector_osinfo_valid (void **state)
 {
     Eventinfo *lf = *state;
@@ -4558,6 +4773,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_netinfo_invalid_queries, test_setup_netinfo_valid_msg_groups_empty, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_netinfo_invalid_address_array_empty_queries, test_setup_netinfo_valid_msg_address_array_empty, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_netinfo_net_data_free, test_setup_netinfo_valid_msg_net_data_free, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_netinfo_ipv4_netmask_broadcast_not_string, test_setup_netinfo_ipv4_netmask_broadcast_not_string, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_netinfo_ipv6_netmask_not_string, test_setup_netinfo_ipv6_netmask_not_string, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_netinfo_ipv6_broadcast_not_string, test_setup_netinfo_ipv6_broadcast_not_string, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_netinfo_ipv6_second_netmask_not_string, test_setup_netinfo_ipv6_second_netmask_not_string, test_cleanup),
         // OSinfo tests
         cmocka_unit_test_setup_teardown(test_syscollector_osinfo_valid, test_setup_osinfo_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_osinfo_valid_inventory_empty, test_setup_osinfo_valid_msg_inventory_empty, test_cleanup),
