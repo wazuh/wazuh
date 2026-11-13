@@ -1,0 +1,5 @@
+  <localfile>
+    <log_format>multi-line-regex</log_format>
+    <location>/var/log/amazon/ssm/amazon-ssm-agent.log</location>
+    <multiline_regex match="start" replace="wspace">^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}</multiline_regex>
+  </localfile>
