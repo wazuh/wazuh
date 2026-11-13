@@ -25,7 +25,7 @@ def start_server(testtool, workdir, config):
     """Runs `testtool --serve --no-vd --config <workdir>/config.json` and waits for its socket.
 
     --no-vd keeps the vulnerability scanner facade down: the server's scanner seam then reports
-    feed-ready and answers every scan as a legitimate skip (D22's skip row), so VD-flagged sessions
+    feed-ready and answers every scan as a legitimate skip, so VD-flagged sessions
     still index deterministically.
 
     `config` is the testtool's config.json as a dict (it may carry `internal_options`, a string of

@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Test corresponding to modulesd's C side of the indexer client runtime bridge (plan 18, E7a)
+ * Test corresponding to modulesd's C side of the indexer client runtime bridge
  */
 
 #ifndef _GNU_SOURCE
@@ -215,7 +215,7 @@ static void configure_missing_file_silent(void **state) {
     assert_int_equal(fake_has_consumer, 1);
 }
 
-// Present but unreadable: one error naming the path (I133), then the defaults.
+// Present but unreadable: one error naming the path, then the defaults.
 static void configure_unreadable_logs_path(void **state) {
     (void)state;
     wfopen_errno = EACCES;
@@ -274,7 +274,7 @@ static void configure_reads_whole_file(void **state) {
     assert_string_equal(fake_text, expected);
 }
 
-// A runtime that does not start is one error carrying the library's reason, and -1 (I131: modulesd goes on).
+// A runtime that does not start is one error carrying the library's reason, and -1 (modulesd goes on).
 static void start_failure_logs_reason(void **state) {
     (void)state;
     fake_start_rc = -1;

@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-E6e-2…4 (plan 18, stage E6e, B): the staging of post() in the stripes of a DropNewest, unordered bucket
+// The staging of post() in the stripes of a DropNewest, unordered bucket
 // (bucket.hpp STAGING): the flushes (64 ops, STRIPE_BYTES, the min(1 ms, maxAge) deadline on loop 0 with or without
 // sink capacity, the seal), the seal on every close entry (requestClose, stop, a Client destroyed on a runtime
 // thread) and its race with a post, and what never stages (other policies, ordered, a tagged post, submit, a group,
@@ -79,7 +79,7 @@ namespace
             std::max<std::size_t>(1, std::min<std::size_t>(64, 2 * std::thread::hardware_concurrency())));
     }
 
-    /// G-diff E6e P3-4 (I113): what a deadline flush may take beyond min(1 ms, maxAge) — the scheduler's tick and the
+    /// What a deadline flush may take beyond min(1 ms, maxAge) — the scheduler's tick and the
     /// sink's dispatch — on the suite's time scale. Far below the 100 ms of a STRIPE_AGE mutant at scale 1; at any
     /// scale DeadlineIsOldestPlusStripeAge pins the deadline itself.
     std::chrono::milliseconds deadlineSlack()
@@ -87,7 +87,7 @@ namespace
         return scaled(std::chrono::milliseconds(40));
     }
 
-    /// The deadline of the contract (plan CA-E6e-2): min(1 ms, maxAge); a literal, so a mutant of STRIPE_AGE is seen.
+    /// The deadline of the contract: min(1 ms, maxAge); a literal, so a mutant of STRIPE_AGE is seen.
     constexpr std::chrono::milliseconds CONTRACT_AGE {1};
 
     std::string id(std::uint64_t key)
@@ -291,7 +291,7 @@ TEST_F(WriteLocalBatch, FlushesAt64)
 
 // The staged payload reaching STRIPE_BYTES = min(bulk.maxBytes, quotaBytes / (2K)) flushes before 64 ops: with
 // STRIPE_BYTES = 3.5 payloads, the 4th op flushes the four. 4 KiB bodies, so that the quota (7K payloads) holds the
-// four ops and their RESULT_RESERVEs for every K, 1 included (G-diff E6e P3-10: with 64-byte bodies and K < 8 the
+// four ops and their RESULT_RESERVEs for every K, 1 included (with 64-byte bodies and K < 8 the
 // quota was smaller than the four charges and three were dropped).
 TEST_F(WriteLocalBatch, FlushesAtByteThreshold)
 {
@@ -359,7 +359,7 @@ TEST_F(WriteLocalBatch, AdmitBatchThrowKeepsRest)
     drain(*bucket);
 }
 
-// G-diff E6e P3-4: the deadline of a stripe is exactly its oldest op's firstSubmit + min(1 ms, maxAge) — what nextDue
+// The deadline of a stripe is exactly its oldest op's firstSubmit + min(1 ms, maxAge) — what nextDue
 // reports and what flushDueStripes honours, not a tick before — whatever the suite's time scale.
 TEST_F(WriteLocalBatch, DeadlineIsOldestPlusStripeAge)
 {
@@ -381,7 +381,7 @@ TEST_F(WriteLocalBatch, DeadlineIsOldestPlusStripeAge)
     drain(*bucket);
 }
 
-// G-diff E6e P3-1: a flush is all-or-nothing per op. The global cap holds one op, so the 2nd and 3rd are DropNewest
+// A flush is all-or-nothing per op. The global cap holds one op, so the 2nd and 3rd are DropNewest
 // drops; the seam throws right before the 2nd one's interval keys are counted (after reserveLocked counted it): that op
 // is undone (submitted, accepted, droppedNewest back), it and the 3rd stay staged, and the next flush counts each
 // exactly once. Mutant: no undo (the 2nd counted twice).
@@ -434,7 +434,7 @@ TEST_F(WriteLocalBatch, AdmitBatchDropThrowUndone)
     EXPECT_EQ(budget.charge(), 0u);
 }
 
-// G-diff E6e P3-8: what a throw at the seal leaves out of the stripes (m_unstaged). The seam throws on the 3rd op of
+// What a throw at the seal leaves out of the stripes (m_unstaged). The seam throws on the 3rd op of
 // the seal's flush: two ops were admitted, the other three are kept unstaged — counted nowhere and charged nothing
 // (bucket and global charge are the two admitted ops') — and close() hands all five back, counting the three submitted
 // and accepted then, with no payload nor RESULT_RESERVE to release (reserveCharged false); resolved
@@ -499,7 +499,7 @@ TEST_F(WriteLocalBatch, UnstagedHandedBackByClose)
     expectInvariants(s);
 }
 
-// G-diff E6e P3-6 (README «Logging»: no mutex held): the quota edge line a stripe flush crosses is written after the
+// README «Logging»: no mutex held. The quota edge line a stripe flush crosses is written after the
 // stripe's mutex is dropped. The quota holds five 8 KiB ops; the flush that admits the 4th crosses 80 %; while the log
 // function runs, another thread must be able to take every stripe's mutex (stagedOps). Mutant: the line written
 // inside flushStripeLocked (the stripe's mutex held).
@@ -623,7 +623,7 @@ TEST_F(WriteLocalBatch, DeadlineFlushWithoutSinkCapacity)
     EXPECT_EQ(sink->resolveHeld(), 3u);
 }
 
-// G-diff E6e r2 P2: a pending op past its maxAge with no sink capacity (an indexer outage longer than maxAge) makes
+// A pending op past its maxAge with no sink capacity (an indexer outage longer than maxAge) makes
 // the bucket's nextDue already due, which armTimer does not arm (it would spin until sinkReady()). The stripes'
 // deadline must still be armed on its own: a later post is admitted within min(1 ms, maxAge) + a tick, and loop 0 does
 // not spin meanwhile. The control keeps the pending op's maxAge a minute away (nextDue in the future).
@@ -637,7 +637,7 @@ TEST_F(WriteLocalBatch, StripeDeadlineWithLivePendingAndNoCapacity)
     stagedBehindPending(ic::Duration {60000});
 }
 
-// D116 (I217): a stripe's empty -> non-empty transition notifies loop 0 only when no timer is known to fire by its
+// A stripe's empty -> non-empty transition notifies loop 0 only when no timer is known to fire by its
 // deadline. Both halves of the Dekker pair between stage() (store `oldest`, load the armed deadline) and a scheduler
 // pass (invalidate the armed deadline, read `oldest`, publish the new one) are raced on purpose; in both the op is
 // admitted within min(1 ms, maxAge) + a tick. No sink capacity: what is admitted stays retained, nothing is sent.
@@ -942,7 +942,7 @@ TEST_F(WriteLocalBatch, OnlyDropNewestUnordered)
 }
 
 // A tagged post admits by itself (counted at once; loop 0 parked, so no flush could hide it), so cancel(tag) sees it
-// and resolves it Dropped(Cancelled) (I80); an untagged post on the same bucket is staged.
+// and resolves it Dropped(Cancelled); an untagged post on the same bucket is staged.
 TEST_F(WriteLocalBatch, TaggedPostNotStaged)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -998,7 +998,7 @@ TEST_F(WriteLocalBatch, SubmitNeverStaged)
 }
 
 // An op that can never fit is refused PayloadTooLarge by admit(), with today's counters, on a staging bucket: wire
-// above bulk.maxBytes, and payload + RESULT_RESERVE above the quota through the body's heap slack alone (I124b) with
+// above bulk.maxBytes, and payload + RESULT_RESERVE above the quota through the body's heap slack alone with
 // the wire within bulk.maxBytes. (The global-cap condition cannot be isolated: a quota never exceeds the cap.)
 TEST_F(WriteLocalBatch, PostedEagerTooLarge)
 {

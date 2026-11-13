@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Compressed responses (plan 18, I117, P23, D41): every request asks for gzip, a gzip body is delivered decoded, the
+// Compressed responses: every request asks for gzip, a gzip body is delivered decoded, the
 // response cap counts decoded bytes (a gzip bomb is ResponseTooLarge) and a body that does not decode is the node's
 // failure (RecvError, curl 61). The blobs are built here with the zlib that libwazuhext exports.
 

@@ -93,8 +93,8 @@ TEST(ServerScanCoordinatorTest, TheCallersOwnScanHoldDoesNotDelayTheFence)
 }
 
 /**
- * A scanner that is stopping must not sit out the whole quiesce bound on an agent that stays busy
- * (I177b): the wait gives up within a slice of the cancel flag going up, and leaves no fence behind.
+ * A scanner that is stopping must not sit out the whole quiesce bound on an agent that stays busy:
+ *the wait gives up within a slice of the cancel flag going up, and leaves no fence behind.
  */
 TEST(ServerScanCoordinatorTest, CancelWakesPause)
 {

@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Ordered buckets and the ambiguous state end to end (plan-E3c-2 §Tests, step 6a; I36, I75, I79, D38): one bulk in
+// Ordered buckets and the ambiguous state end to end: one bulk in
 // flight, a key at most once per bulk, a key in retry blocking only its successors, the ambiguous pin (same node for
 // ambiguous_retry_window, then a counted failover), the failure before sending that fails over at once, no idle spin of
 // loop 0, and the unordered bucket unchanged. Every case runs the production sink over the real transport against one
@@ -187,7 +187,7 @@ namespace
     }
 } // namespace
 
-// RF-25 a: 20 ops of an ordered bucket (one op per batch) against two nodes that answer after 30 ms: never two bulks of
+// 20 ops of an ordered bucket (one op per batch) against two nodes that answer after 30 ms: never two bulks of
 // the bucket in flight (sampled from the sender, and each request reaches a fake only after the previous one was
 // answered); all end Ok in submit order. Mutant: the delivered set ignored (eligible/slice/headBytes/nextDue).
 TEST_F(BulkTest, OrderedOneBulkInFlight)
@@ -242,7 +242,7 @@ TEST_F(BulkTest, OrderedOneBulkInFlight)
     expectInvariants(stats("b"));
 }
 
-// RF-25 b: X, Y, X, Z queued in an ordered bucket of 4-op batches: the first bulk carries X, Y, Z (the second X is
+// X, Y, X, Z queued in an ordered bucket of 4-op batches: the first bulk carries X, Y, Z (the second X is
 // skipped and keeps its place); the second X leaves alone afterwards (by age). Mutant: the repeated key not skipped.
 TEST_F(BulkTest, OrderedKeyOncePerBulk)
 {
@@ -269,7 +269,7 @@ TEST_F(BulkTest, OrderedKeyOncePerBulk)
     expectInvariants(stats("b"));
 }
 
-// CA-25 b, I75: index(X) gets a 429 item and waits a 600 ms backoff in the retry lane; delete(X) and W are queued
+// index(X) gets a 429 item and waits a 600 ms backoff in the retry lane; delete(X) and W are queued
 // behind it. W leaves at once (its key is free), delete(X) never travels with index(X) and leaves only after index(X)
 // ended Ok. Mutants: a lane key blocks every pending op / blocks none.
 TEST_F(BulkTest, OrderedItemRetryBlocksOnlyItsKey)
@@ -366,7 +366,7 @@ TEST_F(BulkTest, OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys)
     expectInvariants(stats("b"));
 }
 
-// CA-25 a: two nodes; A records (applies) the bulk of X, Y, Z and never answers (timeout after sending), so the batch
+// Two nodes; A records (applies) the bulk of X, Y, Z and never answers (timeout after sending), so the batch
 // is pinned to A and A is reported Down; delete(X) waits behind it. A probe brings A back: the retry reaches A well
 // before window/2 from the probe, B never sees the ambiguous batch (no `_bulk` before the probe, no index op ever),
 // delete(X) arrives after it; orderedAmbiguous = 3, orderedAmbiguousFailover = 0. Mutants: immediate failover (no
@@ -432,7 +432,7 @@ TEST_F(BulkTest, OrderedTimeoutAfterApplyKeepsOrder)
     expectInvariants(s);
 }
 
-// CA-25 c: one-op batches; W goes to A and Ok, Y to B and gets a 429 item (200 ms backoff), X to A, which records it
+// One-op batches; W goes to A and Ok, Y to B and gets a 429 item (200 ms backoff), X to A, which records it
 // and never answers: X is pinned to A (Down after the timeout) and A dies. Y, due during the window, stays behind the
 // pin: nothing reaches B until the window ends; then both go to B and the pinned op counts orderedAmbiguousFailover.
 // Mutants: no window (the filter admits any node); a pin that does not stop the bucket (no pin gate).
@@ -484,7 +484,7 @@ TEST_F(BulkTest, OrderedAmbiguousFailoverAfterWindow)
     expectInvariants(stats("b"));
 }
 
-// D38: A refuses the connection (its fake stopped after the probe saw it Available): nothing was sent
+// A refuses the connection (its fake stopped after the probe saw it Available): nothing was sent
 // (!mayHaveSent), so the batch fails over to B at once, unpinned.
 TEST_F(BulkTest, OrderedFailureBeforeSendFailsOverAtOnce)
 {
@@ -508,7 +508,7 @@ TEST_F(BulkTest, OrderedFailureBeforeSendFailsOverAtOnce)
     expectInvariants(s);
 }
 
-// I79 obj. 2: no idle spin of loop 0 in an ordered bucket. B's health is Throttled, so A is always chosen while it is
+// No idle spin of loop 0 in an ordered bucket. B's health is Throttled, so A is always chosen while it is
 // Available and B keeps the sender's capacity above 0. The window and the request timeout are 8 s here, so that (2)
 // holds its bulk well beyond the quiet period even when the hold is observed late. (1) A batch pinned to A (timeout
 // after sending, A Down): the scheduler stays quiet for 2 s; a probe brings A back and the batch ends Ok. (2) A holds a
@@ -567,7 +567,7 @@ TEST_F(BulkTest, OrderedNoIdleSpin)
     expectInvariants(stats("busy"));
 }
 
-// I79: an unordered bucket is as in E3b-2: several bulks in flight on one node and a key repeated inside a bulk.
+// An unordered bucket is unconstrained: several bulks in flight on one node and a key repeated inside a bulk.
 TEST_F(BulkTest, UnorderedUnchanged)
 {
     constexpr std::uint64_t PAIRS = 4;

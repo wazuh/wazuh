@@ -10,8 +10,8 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The RF-9 matrix against the fake (CA-9, plan-E6a step 5): error × policy × path, one row per cell the earlier
-// suites left open (anexos/e6a/dossier-rf9.md) plus I105 with both values of onAmbiguous5xx. Each table is one
+// The error matrix against the fake: error × policy × path, one row per cell the earlier
+// suites left open plus the ambiguous 5xx with both values of onAmbiguous5xx. Each table is one
 // parameterised suite: `_bulk` request statuses (bucket retry bounded or unlimited, Retry/Fail), `_bulk` items (429,
 // cluster_block_exception, 409 under each ConflictPolicy), `_bulk` transport failures (unordered bucket), the query
 // statuses (search, DBQ, UBQ), the query transport failures (connect, timeout, TLS) and PIT (creation and page). The
@@ -52,7 +52,7 @@ using component::eventually;
 using ::testing::HasSubstr;
 using namespace std::chrono_literals;
 
-namespace rf9_matrix
+namespace error_matrix
 {
     namespace ic = indexer_client;
     namespace wr = indexer_client::detail::write;
@@ -87,7 +87,7 @@ namespace rf9_matrix
                " type '" + result->itemErrorType + "' reason '" + result->reason + "'";
     }
 
-    /// The RF-9 invariant on one op: a result, never Dropped; a Failed carries its cause, a reason and `status`.
+    /// The invariant on one op: a result, never Dropped; a Failed carries its cause, a reason and `status`.
     void expectNotSilent(const std::optional<ic::OpResult>& result, int status)
     {
         ASSERT_TRUE(result.has_value()) << "no result: the op was dropped silently";
@@ -199,7 +199,7 @@ namespace rf9_matrix
         {
             m_fd = ::socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
             const int one = 1;
-            // G-diff E6a obj. 5. SO_REUSEPORT co-binds a listener still open on the port (the stopped fake's, or
+            // SO_REUSEPORT co-binds a listener still open on the port (the stopped fake's, or
             // another shard's fake that took it) and the kernel would split the connections between the two, so no
             // listener may hold the port when this one binds (listenerOn, waited for while the fake's stop() closes
             // its own). SO_REUSEADDR alone is not enough: the fake's server-side TIME_WAIT connections on the port
@@ -313,16 +313,16 @@ namespace rf9_matrix
         std::atomic<std::size_t> m_accepted {0};
         std::thread m_thread;
     };
-} // namespace rf9_matrix
+} // namespace error_matrix
 
 // Named, not anonymous: the parameter types are members of gtest's factories (-Wsubobject-linkage).
-using namespace rf9_matrix;
+using namespace error_matrix;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // `_bulk`, request level: the injected answer `failures` times (ALWAYS: every request) and 2xx afterwards, against a
 // bucket with maxAttempts (nullopt: unlimited) and onAmbiguous5xx. Unlimited rows script three failures.
 
-namespace rf9_matrix
+namespace error_matrix
 {
     struct BulkStatusRow
     {
@@ -395,7 +395,7 @@ namespace rf9_matrix
         {
             rows.insert(rows.end(), more.begin(), more.end());
         };
-        // I105: 500/502/504 are ambiguous (Retry resends, Fail resolves without resending); 503 is retried by both.
+        // 500/502/504 are ambiguous (Retry resends, Fail resolves without resending); 503 is retried by both.
         add(retryableRows("Http500LimitedRetry", "Http500UnlimitedRetry", 500, ic::Cause::Server5xx, RETRY));
         add(retryableRows("Http502LimitedRetry", "Http502UnlimitedRetry", 502, ic::Cause::Server5xx, RETRY));
         add(retryableRows("Http504LimitedRetry", "Http504UnlimitedRetry", 504, ic::Cause::Server5xx, RETRY));
@@ -404,7 +404,7 @@ namespace rf9_matrix
         add(terminalRows("Http502LimitedFail", "Http502UnlimitedFail", 502, ic::Cause::Ambiguous, FAIL));
         add(terminalRows("Http504LimitedFail", "Http504UnlimitedFail", 504, ic::Cause::Ambiguous, FAIL));
         add(retryableRows("Http503LimitedFail", "Http503UnlimitedFail", 503, ic::Cause::Server5xx, FAIL));
-        // I65: 408, 401 and 403 are retried (408 with the cause TransportTimeout); Fail touches none of them.
+        // 408, 401 and 403 are retried (408 with the cause TransportTimeout); Fail touches none of them.
         add(retryableRows("Http408Limited", "Http408Unlimited", 408, ic::Cause::TransportTimeout, RETRY));
         add(retryableRows("Http408LimitedFail", "Http408UnlimitedFail", 408, ic::Cause::TransportTimeout, FAIL));
         add(retryableRows("Http401Limited", "Http401Unlimited", 401, ic::Cause::Client4xx, RETRY));
@@ -427,17 +427,17 @@ namespace rf9_matrix
                         RETRY_AFTER_MAX - 50ms});
         return rows;
     }
-} // namespace rf9_matrix
+} // namespace error_matrix
 
-class Rf9MatrixBulkStatusTest
+class ErrorMatrixBulkStatusTest
     : public BulkTest
     , public ::testing::WithParamInterface<BulkStatusRow>
 {
 };
 
-// CA-9: the row's verdict on every op of the batch, the number of requests (never one more afterwards) and no op
+// The row's verdict on every op of the batch, the number of requests (never one more afterwards) and no op
 // dropped silently. Mutant (5): 502 classified FailBatch ⇒ Http502UnlimitedRetry (and Http502LimitedRetry) fail.
-TEST_P(Rf9MatrixBulkStatusTest, Row)
+TEST_P(ErrorMatrixBulkStatusTest, Row)
 {
     const auto& row = GetParam();
     const auto failure = bulkFailure(row.status, row.retryAfter);
@@ -478,8 +478,8 @@ TEST_P(Rf9MatrixBulkStatusTest, Row)
     write_component::expectInvariants(stats("b"));
 }
 
-INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
-                         Rf9MatrixBulkStatusTest,
+INSTANTIATE_TEST_SUITE_P(ErrorMatrix,
+                         ErrorMatrixBulkStatusTest,
                          ::testing::ValuesIn(bulkStatusRows()),
                          [](const ::testing::TestParamInfo<BulkStatusRow>& info)
                          { return std::string(info.param.name); });
@@ -488,7 +488,7 @@ INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
 // `_bulk`, items: every op of a 2xx answered with the row's item `failures` times, then created/updated; the bucket's
 // maxAttempts and ConflictPolicy (409 rows: IndexVersionedScript ops, the update action).
 
-namespace rf9_matrix
+namespace error_matrix
 {
     enum class ItemKind
     {
@@ -615,16 +615,16 @@ namespace rf9_matrix
          "",
          4},
     };
-} // namespace rf9_matrix
+} // namespace error_matrix
 
-class Rf9MatrixItemTest
+class ErrorMatrixItemTest
     : public BulkTest
     , public ::testing::WithParamInterface<ItemRow>
 {
 };
 
-// CA-9: the row's verdict per op (status, cause, the item's status and type), the requests, and no silent drop.
-TEST_P(Rf9MatrixItemTest, Row)
+// The row's verdict per op (status, cause, the item's status and type), the requests, and no silent drop.
+TEST_P(ErrorMatrixItemTest, Row)
 {
     constexpr std::size_t OPS = 2;
     const auto& row = GetParam();
@@ -667,8 +667,8 @@ TEST_P(Rf9MatrixItemTest, Row)
     write_component::expectInvariants(stats("b"));
 }
 
-INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
-                         Rf9MatrixItemTest,
+INSTANTIATE_TEST_SUITE_P(ErrorMatrix,
+                         ErrorMatrixItemTest,
                          ::testing::ValuesIn(ITEM_ROWS),
                          [](const ::testing::TestParamInfo<ItemRow>& info) { return std::string(info.param.name); });
 
@@ -676,7 +676,7 @@ INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
 // `_bulk`, transport, unordered bucket: node A (where round robin starts) fails at the transport, B is sound. A refused
 // connection never sent anything; a timeout may have, so it costs an attempt (maxAttempts = 2 leaves one for B).
 
-namespace rf9_matrix
+namespace error_matrix
 {
     enum class TransportFault
     {
@@ -696,16 +696,16 @@ namespace rf9_matrix
                                                              {"ConnectUnlimited", TransportFault::Connect, UNLIMITED},
                                                              {"TimeoutLimited", TransportFault::Timeout, LIMITED},
                                                              {"TimeoutUnlimited", TransportFault::Timeout, UNLIMITED}};
-} // namespace rf9_matrix
+} // namespace error_matrix
 
-class Rf9MatrixBulkTransportTest
+class ErrorMatrixBulkTransportTest
     : public BulkTest
     , public ::testing::WithParamInterface<BulkTransportRow>
 {
 };
 
-// CA-9, CA-14: the op ends Ok through B (one failover), A goes Down, A got at most the one request that failed.
-TEST_P(Rf9MatrixBulkTransportTest, Row)
+// The op ends Ok through B (one failover), A goes Down, A got at most the one request that failed.
+TEST_P(ErrorMatrixBulkTransportTest, Row)
 {
     const auto& row = GetParam();
     const bool timeout = row.fault == TransportFault::Timeout;
@@ -738,17 +738,17 @@ TEST_P(Rf9MatrixBulkTransportTest, Row)
     write_component::expectInvariants(stats("b"));
 }
 
-INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
-                         Rf9MatrixBulkTransportTest,
+INSTANTIATE_TEST_SUITE_P(ErrorMatrix,
+                         ErrorMatrixBulkTransportTest,
                          ::testing::ValuesIn(BULK_TRANSPORT_ROWS),
                          [](const ::testing::TestParamInfo<BulkTransportRow>& info)
                          { return std::string(info.param.name); });
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Queries, HTTP statuses (I82 = the table of I65): the route answers the row's status `failures` times, then 200;
-// QueryOptions with maxAttempts = 2 and a 10 ms backoff.
+// Queries, HTTP statuses (the same table as for `_bulk`): the route answers the row's status `failures` times, then
+// 200; QueryOptions with maxAttempts = 2 and a 10 ms backoff.
 
-namespace rf9_matrix
+namespace error_matrix
 {
     enum class QueryPath
     {
@@ -826,17 +826,17 @@ namespace rf9_matrix
                         RETRY_AFTER_MAX - 50ms});
         return rows;
     }
-} // namespace rf9_matrix
+} // namespace error_matrix
 
-class Rf9MatrixQueryStatusTest
+class ErrorMatrixQueryStatusTest
     : public QueryTest
     , public ::testing::WithParamInterface<QueryStatusRow>
 {
 };
 
-// CA-9: the call's Outcome (Ok, or the cause with the injected status), the requests the route received and, for a
+// The call's Outcome (Ok, or the cause with the injected status), the requests the route received and, for a
 // 429, the gap its Retry-After imposed (capped by retry_after_max_ms).
-TEST_P(Rf9MatrixQueryStatusTest, Row)
+TEST_P(ErrorMatrixQueryStatusTest, Row)
 {
     const auto& row = GetParam();
     const auto route = routeOf(row.path);
@@ -890,16 +890,16 @@ TEST_P(Rf9MatrixQueryStatusTest, Row)
     EXPECT_LT(took, ROW_BOUND) << "the capped Retry-After was not honoured";
 }
 
-INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
-                         Rf9MatrixQueryStatusTest,
+INSTANTIATE_TEST_SUITE_P(ErrorMatrix,
+                         ErrorMatrixQueryStatusTest,
                          ::testing::ValuesIn(queryStatusRows()),
                          [](const ::testing::TestParamInfo<QueryStatusRow>& info) { return info.param.name; });
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Queries, transport (CA-14): two HTTPS nodes trusted by the runtime's CA; A (where the choice starts) fails at the
+// Queries, transport: two HTTPS nodes trusted by the runtime's CA; A (where the choice starts) fails at the
 // transport after the first probe round, B answers. request_timeout_ms = 300 and a 2 s pageDeadline.
 
-namespace rf9_matrix
+namespace error_matrix
 {
     struct QueryTransportRow
     {
@@ -912,17 +912,17 @@ namespace rf9_matrix
         {"SearchTimeout", TransportFault::Timeout},
         {"SearchTls", TransportFault::Tls},
     };
-} // namespace rf9_matrix
+} // namespace error_matrix
 
-class Rf9MatrixQueryTransportTest
+class ErrorMatrixQueryTransportTest
     : public QueryTest
     , public ::testing::WithParamInterface<QueryTransportRow>
 {
 };
 
-// CA-9: the search ends Ok through B with one failover; A goes Down; nothing reaches the consumer as a silent empty
+// The search ends Ok through B with one failover; A goes Down; nothing reaches the consumer as a silent empty
 // answer.
-TEST_P(Rf9MatrixQueryTransportTest, Row)
+TEST_P(ErrorMatrixQueryTransportTest, Row)
 {
     const auto& row = GetParam();
     indexer_client::testing::TlsMaterialFactory material;
@@ -978,8 +978,8 @@ TEST_P(Rf9MatrixQueryTransportTest, Row)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
-                         Rf9MatrixQueryTransportTest,
+INSTANTIATE_TEST_SUITE_P(ErrorMatrix,
+                         ErrorMatrixQueryTransportTest,
                          ::testing::ValuesIn(QUERY_TRANSPORT_ROWS),
                          [](const ::testing::TestParamInfo<QueryTransportRow>& info)
                          { return std::string(info.param.name); });
@@ -988,7 +988,7 @@ INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
 // PIT: the creation (`POST /<index>/_search/point_in_time`) or the second page (`POST /_search`) answers the row's
 // status `failures` times; QueryOptions with maxAttempts = 2. Six documents, pages of two.
 
-namespace rf9_matrix
+namespace error_matrix
 {
     struct PitRow
     {
@@ -1022,17 +1022,17 @@ namespace rf9_matrix
         {"Create401Transient", PitCall::Create, 401, 1, true, ic::Cause::None, 2},
         {"Create401Persistent", PitCall::Create, 401, ALWAYS, false, ic::Cause::RetryExhausted, 2},
     };
-} // namespace rf9_matrix
+} // namespace error_matrix
 
-class Rf9MatrixPitTest
+class ErrorMatrixPitTest
     : public PitTest
     , public ::testing::WithParamInterface<PitRow>
 {
 };
 
-// CA-9, CA-23: the creation or the page ends Ok (the retried page carries the same body) or with the row's cause and
+// The creation or the page ends Ok (the retried page carries the same body) or with the row's cause and
 // the injected status; the failing call got exactly `requests` requests.
-TEST_P(Rf9MatrixPitTest, Row)
+TEST_P(ErrorMatrixPitTest, Row)
 {
     const auto& row = GetParam();
     auto pits = std::make_shared<query_component::PitResponder>(6);
@@ -1099,7 +1099,7 @@ TEST_P(Rf9MatrixPitTest, Row)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Rf9Matrix,
-                         Rf9MatrixPitTest,
+INSTANTIATE_TEST_SUITE_P(ErrorMatrix,
+                         ErrorMatrixPitTest,
                          ::testing::ValuesIn(PIT_ROWS),
                          [](const ::testing::TestParamInfo<PitRow>& info) { return std::string(info.param.name); });

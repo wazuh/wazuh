@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-// The sync seam over indexer_client (E7b): the failure table (I135), the bucket and budget derivations
-// from the module's options (I138, I137b, I145), and the adapter itself on a REAL runtime of the client
+// The sync seam over indexer_client: the failure table, the bucket and budget derivations
+// from the module's options, and the adapter itself on a REAL runtime of the client
 // library served by the library's own in-process fake indexer (IC/tests/fake): per-session results,
 // chunking against the quota, the per-key barrier, the by-query barrier, deadlines and cancellation.
 #include "indexer/connectorFailure.hpp"
@@ -136,10 +136,10 @@ namespace
     };
 } // namespace
 
-// ---- The failure table (CA-E7b-1) ------------------------------------------------------------
+// ---- The failure table ------------------------------------------------------------
 
-/// I135 in one place: the code and body of every cause the seam can carry, `Retry-After` only for a
-/// by-query's exhausted conflicts, and the metric suffix each one counts under.
+/// The cause-to-HTTP mapping in one place: the code and body of every cause the seam can carry, `Retry-After` only
+/// for a by-query's exhausted conflicts, and the metric suffix each one counts under.
 TEST(ConnectorFailure, ResponseForEveryCause)
 {
     using Cause = ConnectorError::Cause;
@@ -175,7 +175,7 @@ TEST(ConnectorFailure, ResponseForEveryCause)
     }
 }
 
-// ---- Derivations from the module's options (CA-E7b-9) ----------------------------------------
+// ---- Derivations from the module's options ----------------------------------------
 
 class IndexerClientSyncAdapter : public ::testing::Test
 {
@@ -359,7 +359,7 @@ protected:
 };
 
 /// Every library cause maps to exactly one seam class, and the HTTP answer that class gets is the
-/// I135 table's: 503 for everything transient (Throttled included), 500 for a rejection a re-send
+/// mapping's: 503 for everything transient (Throttled included), 500 for a rejection a re-send
 /// alone will not fix.
 TEST_F(IndexerClientSyncAdapter, TranslatesEveryCause)
 {
@@ -404,7 +404,7 @@ TEST_F(IndexerClientSyncAdapter, TranslatesEveryCause)
         EXPECT_EQ(seam, invsync::indexer::translateCause(library)) << indexer_client::toString(library);
     }
 
-    // The code each cause finally answers: the 503 set of I135 and nothing else.
+    // The code each cause finally answers: the 503 set and nothing else.
     const std::vector<C> answered503 {C::Unavailable,
                                       C::Throttled,
                                       C::QueueFull,
@@ -534,7 +534,7 @@ TEST_F(IndexerClientSyncAdapter, ChunkCapIsEightyPercentOfTheQuotaPerLane)
 
 TEST_F(IndexerClientSyncAdapter, AvailabilityIsAnyUsable)
 {
-    // A throttled node is usable: the lenient aggregate keeps the sync endpoint admitting (I52-e).
+    // A throttled node is usable: the lenient aggregate keeps the sync endpoint admitting.
     startNode(BulkScript::items(), /*throttled=*/true);
     startRuntime();
     makeClient(testSpec(), /*waitAvailable=*/false);
@@ -558,7 +558,7 @@ TEST_F(IndexerClientSyncAdapter, AvailabilityIsFalseWithEveryNodeDown)
     EXPECT_FALSE(adapter.isAvailable());
 }
 
-// ---- Session results (CA-E7b-2) ----------------------------------------------------------------
+// ---- Session results ----------------------------------------------------------------
 
 TEST_F(IndexerClientSyncAdapter, SessionRangesMapToResults)
 {
@@ -613,7 +613,7 @@ TEST_F(IndexerClientSyncAdapter, SessionRangesMapToResultsWhenASessionSpansChunk
     EXPECT_GE(node.bulk->received().size(), 2U) << "the second session really spanned chunks";
 }
 
-// ---- Version conflicts of the versioned upsert (5.0.0 #41191) ------------------------------------
+// ---- Version conflicts of the versioned upsert: the update op retries ------------------------------------
 
 namespace
 {
@@ -753,9 +753,9 @@ TEST_F(IndexerClientSyncAdapter, AddRefusalFailsOnlyItsSession)
     EXPECT_TRUE(outcomes[2].ok) << outcomes[2].reason;
 }
 
-// ---- Chunking against the quota (CA-E7b-3) -----------------------------------------------------
+// ---- Chunking against the quota -----------------------------------------------------
 
-// CA-E11b-1 (D88): the cuts of a fixed sequence (index, delete and versioned ops, one `_id` that escapes) under a fixed
+// The cuts of a fixed sequence (index, delete and versioned ops, one `_id` that escapes) under a fixed
 // cap. Pinned on the adapter's own chunkCap/estimateCharge before they moved to indexer_client/chunking.hpp; the
 // extraction keeps them. Each committed chunk is one `_bulk`.
 TEST_F(IndexerClientSyncAdapter, CharacterizationChunkCuts)
@@ -926,7 +926,7 @@ TEST_F(IndexerClientSyncAdapter, BlockTimeoutIsUnavailable)
     EXPECT_LT(millisSince(started), 5000);
 }
 
-// ---- Per-key order and the abandoned chunk (CA-E7b-4) -------------------------------------------
+// ---- Per-key order and the abandoned chunk -------------------------------------------
 
 TEST_F(IndexerClientSyncAdapter, RepeatedKeyWaitsRetry)
 {
@@ -1140,11 +1140,11 @@ TEST_F(IndexerClientSyncAdapter, NoCommitWhileAbandonedUnresolved)
     EXPECT_LT(thirdMillis, 1000 + 2000) << "the third batch outlived its own deadline";
 }
 
-// ---- By-query calls (CA-E7b-5, 6) --------------------------------------------------------------
+// ---- By-query calls --------------------------------------------------------------
 
 TEST_F(IndexerClientSyncAdapter, DeleteByQueryAfterPendingWrites)
 {
-    // D49: a by-query first waits for every write the adapter already handed to the library, so a delete
+    // a by-query first waits for every write the adapter already handed to the library, so a delete
     // cannot overtake the documents it is meant to remove. The bulk answers after 400 ms.
     BulkScript slow;
     slow.latency = 400ms;
@@ -1240,7 +1240,7 @@ TEST_F(IndexerClientSyncAdapter, DbqConflictsExhausted)
     EXPECT_EQ(3U, node.fake->hits(node.dbqRule));
 }
 
-// ---- Deadlines, closing and cancellation (CA-E7b-7) ---------------------------------------------
+// ---- Deadlines, closing and cancellation ---------------------------------------------
 
 TEST_F(IndexerClientSyncAdapter, ClosingWakesWaitingFlush)
 {

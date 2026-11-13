@@ -60,10 +60,10 @@ namespace indexer_client
 
         thread_local bool t_onRuntimeThread = false;
 
-        /// Usage errors detected by the library (I37), process-wide; read through detail::testing::usageErrors().
+        /// Usage errors detected by the library, process-wide; read through detail::testing::usageErrors().
         std::atomic<std::uint64_t> g_usageErrors {0};
 
-        /// Internal invariants found broken and survived (issue 15, D64), process-wide; read by the test build only
+        /// Internal invariants found broken and survived, process-wide; read by the test build only
         /// (testing_hooks::internalErrors()). The production signal is the ERROR line internalError() writes.
         std::atomic<std::uint64_t> g_internalErrors {0};
 
@@ -155,7 +155,7 @@ namespace indexer_client
 
     namespace detail
     {
-        /// One network thread: its own io_context, kept alive by a work guard until shutdown (I22c).
+        /// One network thread: its own io_context, kept alive by a work guard until shutdown.
         struct IoLoop final
         {
             asio::io_context context {1};
@@ -210,7 +210,7 @@ namespace indexer_client
                 return true;
             }
 
-            /// Tasks queued and not yet taken by a worker, and the peak since the pool was created (E3a).
+            /// Tasks queued and not yet taken by a worker, and the peak since the pool was created.
             PoolStats stats()
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -256,7 +256,7 @@ namespace indexer_client
                     }
                     catch (...)
                     {
-                        // A task must never take a pool thread down; E3a adds the callback accounting.
+                        // A task must never take a pool thread down; the write path adds the callback accounting.
                     }
                 }
             }
@@ -269,7 +269,7 @@ namespace indexer_client
             std::vector<std::thread> m_threads;
         };
 
-        /// The PIT registry's timers (E4b, I93): one steady_timer per after() on loop 0, all cancelled by stop(),
+        /// The PIT registry's timers: one steady_timer per after() on loop 0, all cancelled by stop(),
         /// which runs before the loops' work guards are released (a pending wait would keep a loop running).
         class LoopTimers final : public std::enable_shared_from_this<LoopTimers>
         {
@@ -374,7 +374,7 @@ namespace indexer_client
             std::mutex mutex; ///< Guards everything below.
             bool accepting {true};
             std::optional<TimePoint> shutdownDeadline;
-            /// The live consumers (E5c, N23): raw name -> the client, weakly, and its sanitized metric name. Written by
+            /// The live consumers: raw name -> the client, weakly, and its sanitized metric name. Written by
             /// RuntimeRef::client() (which refuses a sanitized clash), erased by releaseClientName; read by
             /// runtimeLiveClients() (the log summary's per-client overruns).
             struct ClientEntry final
@@ -383,7 +383,7 @@ namespace indexer_client
                 std::string metricName;
             };
             std::map<std::string, ClientEntry> clients;
-            /// D133: the clients whose name was released once the stop began (a shutdown deadline is fixed or the
+            /// The clients whose name was released once the stop began (a shutdown deadline is fixed or the
             /// admission is closed), kept strongly so that the last summary still counts what their close dropped:
             /// the close order (client.hpp) runs each consumer's awaitClosed, which releases the name, before
             /// shutdown(). runtimeLiveClients() returns them too; stopAndJoin releases them right after the last
@@ -392,21 +392,21 @@ namespace indexer_client
             std::vector<std::shared_ptr<ClientState>> closedClients;
             bool closedReleased {false};
 
-            /// Created by start() once every runtime thread exists; stopped first by stopAndJoin() (I22c, D28).
+            /// Created by start() once every runtime thread exists; stopped first by stopAndJoin().
             std::shared_ptr<Transport> transport;
-            /// Node health (E2b, I57): created after the transport; the prober is stopped before it.
+            /// Node health: created after the transport; the prober is stopped before it.
             std::shared_ptr<NodeSet> nodes;
             std::shared_ptr<Prober> prober;
-            /// The write path (E3a, I62/I63) with the bulk sender (E3b-2): created after the prober and started before
+            /// The write path with the bulk sender: created after the prober and started before
             /// it; stopped first in stopAndJoin, right after the admission closes and before the probe.
             std::shared_ptr<write::WritePath> writePath;
-            /// E4a (I87): the gate every query of this runtime waits on; stopAndJoin() wakes it first.
+            /// The gate every query of this runtime waits on; stopAndJoin() wakes it first.
             std::shared_ptr<QueryGate> queryGate = std::make_shared<QueryGate>();
-            /// E4b (I90, I93): the PIT registry, created after the transport and the NodeSet, drained by stopAndJoin
+            /// The PIT registry, created after the transport and the NodeSet, drained by stopAndJoin
             /// after the write path and before the transport; its timers live on loop 0 and stop after the drain.
             std::shared_ptr<LoopTimers> pitTimers;
             std::shared_ptr<query::PitRegistry> pits;
-            /// E5c (runtime/logSummary.hpp): the periodic log summary and its loop-0 timers, started last by start()
+            /// (runtime/logSummary.hpp) The periodic log summary and its loop-0 timers, started last by start()
             /// and disarmed by stopAndJoin before the write path; its final summary runs after the PIT drain.
             std::shared_ptr<LoopTimers> summaryTimers;
             std::shared_ptr<logging::LogSummary> logSummary;
@@ -419,12 +419,12 @@ namespace indexer_client
             /// Contract order (contrato-transport.md, stop): close admission, stop the write path (buckets closed and
             /// blocked producers woken, scheduler stopped, sink stopped, every unresolved op Dropped(Shutdown) while
             /// the pool still runs its completions), stop the prober (no round is armed and
-            /// no probe submitted afterwards, I57), stop the transport (every transfer
+            /// no probe submitted afterwards), stop the transport (every transfer
             /// resolved, every multi cleaned up on its loop), release the work guards and join the loops, then drain
             /// and join the CPU pool. Never holds `mutex` while joining: a task may still need it (client registry,
-            /// seams). The deadline (fixed here) is the shutdown deadline, else now + drain; the PIT drain (E4b, I93)
+            /// seams). The deadline (fixed here) is the shutdown deadline, else now + drain; the PIT drain
             /// runs after the write path and ends min(DRAIN_STOP_MARGIN, half of what is left) before it, then the
-            /// transport stops. E5c: the log summary's timer stops before the write path; its last summary runs right
+            /// transport stops. The log summary's timer stops before the write path; its last summary runs right
             /// after the PIT drain.
             void stopAndJoin()
             {
@@ -452,7 +452,7 @@ namespace indexer_client
                 }
                 if (writePath)
                 {
-                    // I99: the completions still queued start no callback past stopDeadline - callbackBudget.
+                    // The completions still queued start no callback past stopDeadline - callbackBudget.
                     writePath->stop(stopDeadline - config.callbackBudget);
                 }
                 if (pits)
@@ -470,7 +470,7 @@ namespace indexer_client
                     logSummary->finish();
                 }
                 {
-                    // D133: the clients closed during the stop were only kept for that summary. Dropped outside the
+                    // The clients closed during the stop were only kept for that summary. Dropped outside the
                     // mutex (their buckets die here unless something else still holds them).
                     std::vector<std::shared_ptr<ClientState>> closed;
                     {
@@ -515,7 +515,7 @@ namespace indexer_client
                 }
                 if ((state->shutdownDeadline || !state->accepting) && !state->closedReleased)
                 {
-                    // D133: kept for the last summary. lock() fails when the release comes from ~ClientState.
+                    // Kept for the last summary. lock() fails when the release comes from ~ClientState.
                     if (auto client = found->second.state.lock())
                     {
                         state->closedClients.push_back(std::move(client));
@@ -551,7 +551,7 @@ namespace indexer_client
                 {
                     weak.push_back(entry.second.state);
                 }
-                alive = state->closedClients; // D133: their names are released already.
+                alive = state->closedClients; // Their names are released already.
             }
             // Locked outside the runtime mutex: a client whose last reference dies here releases its name under it.
             alive.reserve(alive.size() + weak.size());
@@ -568,7 +568,7 @@ namespace indexer_client
 
     namespace
     {
-        // Process-wide runtime (I37). `g_lifecycle` serializes the owner operations; `g_mutex` guards the pointers and
+        // Process-wide runtime. `g_lifecycle` serializes the owner operations; `g_mutex` guards the pointers and
         // is never held while joining threads.
         std::mutex g_lifecycle;
         std::mutex g_mutex;
@@ -637,7 +637,7 @@ namespace indexer_client
             {
                 return field("bulk.maxBytes") + " must be <= quotaBytes";
             }
-            // I62: the largest admissible op (a whole bulk) plus its result reserve must fit in the quota.
+            // The largest admissible op (a whole bulk) plus its result reserve must fit in the quota.
             if (static_cast<std::uint64_t>(spec.bulk.maxBytes) + detail::write::RESULT_RESERVE > spec.quotaBytes)
             {
                 return field("bulk.maxBytes") + " + RESULT_RESERVE (" + std::to_string(detail::write::RESULT_RESERVE) +
@@ -675,7 +675,7 @@ namespace indexer_client
             {
                 return field("onConflict.retryOnConflict") + " must be > 0 with ConflictPolicy::Retry";
             }
-            // I73: the same cap as an op's own onConflict (encoding.hpp).
+            // The same cap as an op's own onConflict (encoding.hpp).
             if (spec.onConflict.kind == ConflictPolicy::Kind::Retry &&
                 spec.onConflict.retryOnConflict > detail::write::MAX_RETRY_ON_CONFLICT)
             {
@@ -718,7 +718,7 @@ namespace indexer_client
             return Result::failure(Cause::InvalidArgument, "consumer name must not be empty");
         }
         std::set<std::string_view> names;
-        std::map<std::string, std::size_t> metricNames; // E5c (metrics.hpp CATALOG): sanitized name -> first index.
+        std::map<std::string, std::size_t> metricNames; // (metrics.hpp CATALOG) Sanitized name -> first index.
         for (std::size_t i = 0; i < buckets.size(); ++i)
         {
             if (auto reason = validateBucket(buckets[i], i, state->config.globalQuotaBytes); !reason.empty())
@@ -886,7 +886,7 @@ namespace indexer_client
 
     namespace
     {
-        /// Wipes the key and the password copies of start() on every exit (I55, best effort).
+        /// Wipes the key and the password copies of start() on every exit (best effort).
         struct SecretsWiper final
         {
             std::string& key;
@@ -922,14 +922,14 @@ namespace indexer_client
             return Result::failure(config.cause, std::move(config.reason), config.httpStatus);
         }
 
-        // TLS material and credentials are read and validated once, here, before any runtime thread exists (I48,
-        // I55): a failure creates no thread. The reason never carries the password nor the key.
+        // TLS material and credentials are read and validated once, here, before any runtime thread exists:
+        // a failure creates no thread. The reason never carries the password nor the key.
         auto tls = detail::loadTlsMaterial(config.value);
         if (!tls.ok())
         {
             return Result::failure(tls.cause, std::move(tls.reason));
         }
-        // E11e: once per start, before any thread; nothing when every host is http.
+        // Once per start, before any thread; nothing when every host is http.
         if (!tls.value.warning.empty())
         {
             logWarn(TAG, "%s", tls.value.warning.c_str());
@@ -1026,9 +1026,9 @@ namespace indexer_client
             };
             state->transport = detail::Transport::create(
                 state->config, std::move(tls.value), std::move(credentials), std::move(environment));
-            // Node health (I57): created after the transport, stopped before it (stopAndJoin).
+            // Node health: created after the transport, stopped before it (stopAndJoin).
             state->nodes = std::make_shared<detail::NodeSet>(state->config.hosts);
-            // The PIT registry (E4b, I90): after the transport and the NodeSet; its retries run on loop 0 timers.
+            // The PIT registry: after the transport and the NodeSet; its retries run on loop 0 timers.
             state->pitTimers = std::make_shared<detail::LoopTimers>(state->loops.front()->context);
             {
                 detail::query::PitRegistryEnvironment pitEnvironment;
@@ -1050,15 +1050,15 @@ namespace indexer_client
                                                    state->loops.front()->context,
                                                    state->config.probeInterval,
                                                    state->config.probeTimeout);
-            // The write path (I62/I63): its scheduler and the bulk sender's timer live on loop 0 like the probe; its
+            // The write path: its scheduler and the bulk sender's timer live on loop 0 like the probe; its
             // completions run on the pool, which outlives every completion the write path posts (stopAndJoin stops it
-            // long before the pool). Started BEFORE the prober (E3b-2, I68): the sender's NodeSet hook must see the
+            // long before the pool). Started BEFORE the prober: the sender's NodeSet hook must see the
             // first round's transitions.
             state->writePath = std::make_shared<detail::write::WritePath>(
                 state->config.globalQuotaBytes,
                 [pool = &state->pool](std::function<void()> task) { return pool->post(std::move(task)); });
             state->writePath->start(state->loops.front()->context, state->config, state->nodes, state->transport);
-            // E5c: the log summary, after the write path, the NodeSet and the PIT registry; its timer on loop 0.
+            // The log summary, after the write path, the NodeSet and the PIT registry; its timer on loop 0.
             state->summaryTimers = std::make_shared<detail::LoopTimers>(state->loops.front()->context);
             state->logSummary = detail::logging::makeLogSummary(state);
             state->logSummary->start();

@@ -24,7 +24,7 @@
 namespace content_manager::detail
 {
     /**
-     * @brief Parse a PIT keep-alive the way OpenSearch accepts it (D84, I189): `<n><unit>` with unit one of
+     * @brief Parse a PIT keep-alive the way OpenSearch accepts it: `<n><unit>` with unit one of
      *        `nanos|micros|ms|s|m|h|d`, lower case, an integer of at least 1 ms, surrounding spaces ignored.
      *        Verified against OpenSearch: `5m`, `300s`, ` 5m` accepted; `5M`, `1.5m`, `5` rejected.
      *

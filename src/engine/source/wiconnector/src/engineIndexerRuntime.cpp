@@ -17,7 +17,7 @@ namespace wiconnector
 namespace
 {
 
-/// Overwrites the string's bytes before clearing it (best effort, I55).
+/// Overwrites the string's bytes before clearing it (best effort).
 void wipe(std::string& secret) noexcept
 {
     volatile char* bytes = secret.data();
@@ -60,15 +60,15 @@ private:
 };
 
 /// The smallest bulk the engine accepts (`analysisd.indexer_bulk_max_bytes`, 64 KiB): a quota must hold it and its
-/// reserve (I196).
+/// reserve.
 constexpr std::uint64_t MIN_BULK_MAX_BYTES {std::uint64_t {1} << 16};
 /// The two keys a bucket's quota can come from.
 constexpr const char* QUEUE_MAX_BYTES_KEY {"analysisd.indexer_queue_max_bytes"};
 constexpr const char* GLOBAL_QUOTA_KEY {"analysisd.indexer_client_global_quota_bytes"};
-/// `events` is served twice as often as `raw` on the shared transport (I182, I194).
+/// `events` is served twice as often as `raw` on the shared transport.
 constexpr std::uint32_t EVENTS_WEIGHT {2};
 constexpr std::uint32_t RAW_WEIGHT {1};
-/// The v1 logger defaults: any other value is reported as ignored (I187).
+/// The v1 logger defaults: any other value is reported as ignored.
 constexpr std::uint64_t DEFAULT_LOGGER_QUEUE_SIZE {8};
 constexpr std::uint64_t DEFAULT_LOGGER_THREADS {1};
 
@@ -86,7 +86,7 @@ struct Started final
     indexer_client::RuntimeRef runtime;
 };
 
-/// Both start() overloads: without @p options the Client has no buckets (E10a).
+/// Both start() overloads: without @p options the Client has no buckets.
 indexer_client::Outcome<indexer_client::RuntimeConfig> startRuntime(indexer_client::ProcessId process,
                                                                     const indexer_client::IConfigSource& source,
                                                                     const EngineWriteOptions* options,
@@ -120,7 +120,7 @@ indexer_client::Outcome<indexer_client::RuntimeConfig> startRuntime(indexer_clie
     }
 
     // The buckets need the global quota, so they are built from the validated configuration, before the runtime
-    // starts: a quota that cannot hold a bulk fails the start without a runtime (I196).
+    // starts: a quota that cannot hold a bulk fails the start without a runtime.
     std::vector<indexer_client::BucketSpec> buckets;
     if (options != nullptr)
     {
@@ -166,7 +166,7 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
 {
     using Result = indexer_client::Outcome<std::vector<indexer_client::BucketSpec>>;
 
-    // I188: one quota for both buckets; 0 is the v1's "no limit", which the runtime's cap bounds.
+    // One quota for both buckets; 0 is the v1's "no limit", which the runtime's cap bounds.
     std::uint64_t quota = options.queueMaxBytes == 0 ? config.globalQuotaBytes : options.queueMaxBytes;
     // The key whose value the quota ends up with, for the error below.
     const char* quotaKey = options.queueMaxBytes == 0 ? GLOBAL_QUOTA_KEY : QUEUE_MAX_BYTES_KEY;
@@ -231,8 +231,8 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
     events.name = ENGINE_EVENTS_BUCKET;
     events.weight = EVENTS_WEIGHT;
     events.quotaBytes = static_cast<std::size_t>(quota);
-    // Unlimited retry (I6): the queue, not the attempts, bounds what an outage holds; a full quota drops the newest
-    // event and the router never waits (I182).
+    // Unlimited retry: the queue, not the attempts, bounds what an outage holds; a full quota drops the newest
+    // event and the router never waits.
     events.retry.maxAttempts = std::nullopt;
     events.retry.maxDuration = std::nullopt;
     events.retry.cap = std::chrono::duration_cast<indexer_client::Duration>(options.maxRetryDelay);
@@ -243,8 +243,8 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
     // The v1 cut a bulk only by bytes and by time: no document count closes one (the library only requires > 0).
     events.bulk.maxDocs = std::numeric_limits<std::size_t>::max();
     // Data streams without `_id`: resending an ambiguous 5xx, or splitting a `_bulk` whose answer went over
-    // max_response_bytes, would duplicate (I105). The engine only sends compact
-    // JSON from json::Json::str(), which escapes every '\n' (I125).
+    // max_response_bytes, would duplicate. The engine only sends compact
+    // JSON from json::Json::str(), which escapes every '\n'.
     events.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Fail;
     events.trustedBodies = true;
 
@@ -353,7 +353,7 @@ void EngineIndexerRuntime::finishStop()
     m_stopFinished = true;
 
     // The runtime first, with the Client still registered (issue 37): its stop discards whatever is still queued at
-    // once (no drain, I186: every op Dropped(Shutdown)) and its last summary, which only sees the live clients, then
+    // once (no drain: every op Dropped(Shutdown)) and its last summary, which only sees the live clients, then
     // logs the engine's buckets with what they discarded. awaitClosed() releases the consumer name, so it comes after.
     const auto cause = indexer_client::RuntimeOwner::shutdown();
     if (cause != indexer_client::Cause::None)

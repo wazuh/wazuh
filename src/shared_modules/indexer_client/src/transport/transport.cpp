@@ -10,8 +10,8 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The transport: admission, the spread of transfers over the K loops, cancel and stop (plan 18,
-// anexos/e2a-1/contrato-transport.md §Operaciones). The loops themselves live in curlLoop.cpp.
+// The transport: admission, the spread of transfers over the K loops, cancel and stop. The loops themselves live in
+// curlLoop.cpp.
 
 #include "transport/transport.hpp"
 
@@ -69,8 +69,8 @@ namespace indexer_client::detail
             return true;
         }
 
-        /// Schemes `http` and `https` (E2a-2); CURLOPT_PROTOCOLS_STR enforces the same set inside curl. https is
-        /// admitted with or without a configured CA (E11e): the trust anchor is the policy loadTlsMaterial resolved
+        /// Schemes `http` and `https`; CURLOPT_PROTOCOLS_STR enforces the same set inside curl. https is
+        /// admitted with or without a configured CA: the trust anchor is the policy loadTlsMaterial resolved
         /// (configured CA, system store or none), never curl's compiled-in bundle (curlLoop.cpp).
         bool admittedUrl(std::string_view url)
         {
@@ -233,7 +233,7 @@ namespace indexer_client::detail
 
         private:
             /// Under the admission mutex: the loop with the fewest admitted-and-unresolved transfers, ties broken
-            /// round-robin (I22c).
+            /// round-robin.
             std::uint32_t pickLoop()
             {
                 const auto count = m_loops.size();
@@ -277,7 +277,7 @@ namespace indexer_client::detail
 
     TransportShared::~TransportShared()
     {
-        // Best effort (I55): curl and OpenSSL keep their own copies of the key and of the password.
+        // Best effort: curl and OpenSSL keep their own copies of the key and of the password.
         cleanseString(tls.privateKey);
         cleanseString(credentials.password);
     }
@@ -310,7 +310,7 @@ namespace indexer_client::detail
         }
         try
         {
-            // Never run here: the callback, and the Retry-After parse, belong to the CPU pool (D27, D28).
+            // Never run here: the callback, and the Retry-After parse, belong to the CPU pool.
             auto task = [callback = std::move(state->callback),
                          outcome = std::move(result),
                          header = std::move(retryAfter),
@@ -333,7 +333,7 @@ namespace indexer_client::detail
                 }
                 catch (...)
                 {
-                    // A callback must never take a pool thread down; E3a/E5 account for it.
+                    // A callback must never take a pool thread down; the write path accounts for it.
                 }
             };
             if (!postToPool(std::move(task)))

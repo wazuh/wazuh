@@ -10,8 +10,8 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The bulk sender end to end (plan-E3b-2 §Tests, step 4a): the body it sends, the item and request verdicts it
-// applies (I65 through I68), the retry policy of the bucket (CA-8, CA-10), the splits (RF-9) and the per-node 429
+// The bulk sender end to end: the body it sends, the item and request verdicts it
+// applies, the retry policy of the bucket, the splits and the per-node 429
 // state (notBefore, pace, the passive report). Every case runs the production sink over the real transport against
 // one fake per node (bulkFixture.hpp); the probe interval is an hour, so a case moves health only with
 // probeNowAndWait(). Every wait is bounded; every case ends with the charge and the retained ops at 0 (TearDown).
@@ -118,7 +118,7 @@ namespace
     }
 } // namespace
 
-// I68: one batch is one `POST {host}/_bulk` (application/json) whose body is the ops' encoded lines, concatenated in
+// One batch is one `POST {host}/_bulk` (application/json) whose body is the ops' encoded lines, concatenated in
 // submit order. Mutant: the lines appended in reverse.
 TEST_F(BulkTest, BulkBodyIsTheEncodedLines)
 {
@@ -166,7 +166,7 @@ TEST_F(BulkTest, BulkBodyIsTheEncodedLines)
     EXPECT_EQ(wr::senderStats().sent, 1u);
 }
 
-// T16, RF-28: `errors:false` never skips the items: each op gets its own outcome (created, updated, noop, deleted)
+// `errors:false` never skips the items: each op gets its own outcome (created, updated, noop, deleted)
 // and status. Mutant: a body with `errors:false` resolves every op Ok without reading the items.
 TEST_F(BulkTest, ErrorsFalseStillPerItem)
 {
@@ -203,7 +203,7 @@ TEST_F(BulkTest, ErrorsFalseStillPerItem)
     EXPECT_EQ(a.bulk->answered(), 1u);
 }
 
-// CA-4: a delete of a missing document (404 without `error`) is an idempotent success.
+// A delete of a missing document (404 without `error`) is an idempotent success.
 TEST_F(BulkTest, DeleteNotFoundIsOk)
 {
     const auto a = startNode(BulkScript::all(BulkItem::notFound()));
@@ -220,7 +220,7 @@ TEST_F(BulkTest, DeleteNotFoundIsOk)
     EXPECT_EQ(a.bulk->answered(), 1u) << "never retried";
 }
 
-// CA-4: a 404 carrying `index_not_found_exception` is a permanent item failure, never retried.
+// A 404 carrying `index_not_found_exception` is a permanent item failure, never retried.
 TEST_F(BulkTest, IndexNotFoundIsPermanent)
 {
     const auto a = startNode(
@@ -239,7 +239,7 @@ TEST_F(BulkTest, IndexNotFoundIsPermanent)
     EXPECT_FALSE(eventually([&] { return a.bulk->answered() > 1; }, 200ms)) << "never retried";
 }
 
-// T2, CA-9: one batch with ok / 429 / mapping error / 409 ⇒ Ok, retried then Ok, Failed(ItemPermanent), Ok keeping
+// One batch with ok / 429 / mapping error / 409 ⇒ Ok, retried then Ok, Failed(ItemPermanent), Ok keeping
 // the 409; only the 429 item goes back, so the fake receives N + 1 ops. Mutant: a retryable item sends the whole
 // batch back.
 TEST_F(BulkTest, MixedItems)
@@ -287,7 +287,7 @@ TEST_F(BulkTest, MixedItems)
     expectInvariants(stats("b"));
 }
 
-// CA-6: 300 ops, several scripted requests with retryable items: every op gets exactly one result, all Ok, and the
+// 300 ops, several scripted requests with retryable items: every op gets exactly one result, all Ok, and the
 // fake receives each op once plus once per retry. Mutant: the retryable items are never requeued (the table's
 // «no CAS in resolve» survives here: nothing races the resolution in this scenario; see mutantes.log, 4a).
 TEST_F(BulkTest, EveryOpOneResult)
@@ -340,7 +340,7 @@ TEST_F(BulkTest, EveryOpOneResult)
     expectInvariants(s);
 }
 
-// CA-8: a bucket with maxAttempts = 3 against a node that always answers 503 ⇒ Failed(RetryExhausted) after exactly
+// A bucket with maxAttempts = 3 against a node that always answers 503 ⇒ Failed(RetryExhausted) after exactly
 // three requests, its last error (Server5xx, 503) kept. Mutant: the Retry verdict requeues without counting an
 // attempt.
 TEST_F(BulkTest, LimitedRetryExhausts)
@@ -361,7 +361,7 @@ TEST_F(BulkTest, LimitedRetryExhausts)
     EXPECT_EQ(wr::senderStats().exhausted, 1u);
 }
 
-// CA-8, T5: an unlimited bucket survives a node that answers 503 eight times in a row: every op ends Ok, none lost.
+// An unlimited bucket survives a node that answers 503 eight times in a row: every op ends Ok, none lost.
 // Mutant: an unset maxAttempts counted as the default five.
 TEST_F(BulkTest, UnlimitedSurvives5xx)
 {
@@ -388,7 +388,7 @@ TEST_F(BulkTest, UnlimitedSurvives5xx)
     expectInvariants(s);
 }
 
-// CA-10: a document with an invalid mapping is Failed(ItemPermanent) once and never sent again; the rest of its batch
+// A document with an invalid mapping is Failed(ItemPermanent) once and never sent again; the rest of its batch
 // and the next batch go through. Mutant: a permanent item is requeued for retry.
 TEST_F(BulkTest, PoisonDoesNotBlock)
 {
@@ -419,7 +419,7 @@ TEST_F(BulkTest, PoisonDoesNotBlock)
     EXPECT_EQ(a.bulk->opCount(), 8u);
 }
 
-// RF-9: `tooLargeAbove(1)` ⇒ every multi-op request gets 413 and the batch is halved until single ops go through;
+// `tooLargeAbove(1)` ⇒ every multi-op request gets 413 and the batch is halved until single ops go through;
 // one op whose single request still gets 413 ends Failed(PayloadTooLarge), the rest enter. Mutant: the Split verdict
 // requeues without halving.
 TEST_F(BulkTest, Split413)
@@ -469,7 +469,7 @@ TEST_F(BulkTest, Split413)
     EXPECT_GE(wr::senderStats().splits, 3u) << "5 -> 2 + 2 + 1 -> singles";
 }
 
-// RF-9: a `_bulk` response over max_response_bytes ⇒ the batch is halved; a single op whose response is still over
+// A `_bulk` response over max_response_bytes ⇒ the batch is halved; a single op whose response is still over
 // the cap ends Failed(ItemPermanent); the others go through.
 TEST_F(BulkTest, ResponseTooLargeSplits)
 {
@@ -519,7 +519,7 @@ TEST_F(BulkTest, ResponseTooLargeSplits)
     EXPECT_EQ(nodeState(0), NodeState::Available) << "a response over the cap is not the node's fault";
 }
 
-// RF-9: `Retry-After: 2` from node A ⇒ nothing goes to A for 2 s even once the probe has it Available again, while B
+// `Retry-After: 2` from node A ⇒ nothing goes to A for 2 s even once the probe has it Available again, while B
 // keeps taking the traffic; afterwards A takes traffic again. A 429 costs no attempt: maxAttempts = 1 still ends Ok.
 // Mutant: the node filter ignores notBefore.
 TEST_F(BulkTest, Request429HonorsRetryAfterPerNode)
@@ -569,7 +569,7 @@ TEST_F(BulkTest, Request429HonorsRetryAfterPerNode)
     EXPECT_GT(a.bulk->answered(), 1u) << "A takes traffic again once notBefore has passed";
 }
 
-// I68 + I98: a 429 without Retry-After makes the node wait `pace` (paceInitial), doubled by a 429 whose request left
+// A 429 without Retry-After makes the node wait `pace` (paceInitial), doubled by a 429 whose request left
 // after that wait was set. A 2xx keeps the pace: only paceRelaxAfter (here 2) clean sends halve it, and a pace below
 // paceInitial becomes 0; meanwhile every send is spaced by the pace (nextSendAt). PACE is 500 ms so that a stalled poll
 // on a slow CI cannot see both 429s in its first sample.
@@ -613,7 +613,7 @@ TEST_F(BulkTest, Request429Paces)
     EXPECT_EQ(afterOk.pace, ic::Duration {2 * PACE}) << "one clean send keeps the pace";
     EXPECT_EQ(afterOk.paceRelaxed, 0u);
     // No assertion on nextSendAt here: it is in force only for 2 x PACE after the send, and the response may come
-    // later than that (G-diff E5a obj. 5); the spacing below measures it by the clock.
+    // later than that; the spacing below measures it by the clock.
     EXPECT_EQ(a.bulk->answered(), 3u);
 
     // The second clean send, itself spaced by 2 × PACE from the third request, halves the pace to PACE.
@@ -641,7 +641,7 @@ TEST_F(BulkTest, Request429Paces)
     EXPECT_EQ(a.bulk->answered(), 6u);
 }
 
-// I68 + I98: a 2xx that completes while a 429's notBefore is in force never shortens that notBefore, and, its request
+// A 2xx that completes while a 429's notBefore is in force never shortens that notBefore, and, its request
 // having left before the notBefore was set, is no clean send: the pace is kept.
 TEST_F(BulkTest, NotBeforeNeverShortenedBy2xx)
 {
@@ -657,7 +657,7 @@ TEST_F(BulkTest, NotBeforeNeverShortenedBy2xx)
     ASSERT_TRUE(eventually([&] { return a.bulk->answered() == 1 && a.fake->heldNow() == 1; }, 5s));
     ASSERT_TRUE(writer->submit(indexOp(id(1)), results->callback(1)).accepted);
     ASSERT_TRUE(eventually([] { return wr::senderStats().throttled == 1; }, 5s));
-    // The same 429 sets the sender's notBefore and, through NodeSet::report and the hook, mirrors the NodeSet's (I109b)
+    // The same 429 sets the sender's notBefore and, through NodeSet::report and the hook, mirrors the NodeSet's
     // a few microseconds later: read it once the mirror has landed, so the comparison below can be exact.
     ASSERT_TRUE(eventually(
         []
@@ -688,7 +688,7 @@ TEST_F(BulkTest, NotBeforeNeverShortenedBy2xx)
     EXPECT_EQ(results->result(1)->status, ic::Status::Ok);
 }
 
-// RF-9: a request-level 400 fails the whole batch with Client4xx, never retried.
+// A request-level 400 fails the whole batch with Client4xx, never retried.
 TEST_F(BulkTest, Client4xxFailsBatch)
 {
     const auto a = startNode();
@@ -716,7 +716,7 @@ TEST_F(BulkTest, Client4xxFailsBatch)
     EXPECT_EQ(nodeState(0), NodeState::Available);
 }
 
-// RF-9 (I65 deviation): a 401 on `_bulk` is retried with an attempt, not dropped; the node is not reported.
+// A 401 on `_bulk` is retried with an attempt, not dropped; the node is not reported.
 TEST_F(BulkTest, CredentialsErrorRetries)
 {
     const auto a = startNode();
@@ -743,7 +743,7 @@ TEST_F(BulkTest, CredentialsErrorRetries)
     EXPECT_THAT(exhausted->reason, HasSubstr(ic::toString(ic::Cause::Client4xx)));
 }
 
-// I65: a 200 whose body is unreadable, then one with an item missing ⇒ both retried; once exhausted, the op's last
+// A 200 whose body is unreadable, then one with an item missing ⇒ both retried; once exhausted, the op's last
 // error carries the reason.
 TEST_F(BulkTest, UnreadableBodyRetries)
 {
@@ -773,7 +773,7 @@ TEST_F(BulkTest, UnreadableBodyRetries)
     EXPECT_EQ(a.bulk->answered(), 5u);
 }
 
-// E2b: a request-level 429 is reported to the NodeSet: the node shows Throttled in health() until the next probe
+// A request-level 429 is reported to the NodeSet: the node shows Throttled in health() until the next probe
 // round; the batch still ends Ok.
 TEST_F(BulkTest, PassiveReport429Throttled)
 {

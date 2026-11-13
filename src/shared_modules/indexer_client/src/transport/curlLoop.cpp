@@ -10,15 +10,15 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// asio io_context (one network thread) <-> libcurl multi_socket_action. Ported from the second pass of the E0 spike
-// (D26) onto the transport contract (plan 18, anexos/e2a-1/contrato-transport.md):
+// asio io_context (one network thread) <-> libcurl multi_socket_action. Ported from the spike
+// onto the transport contract:
 //  - CURLMOPT_SOCKETFUNCTION -> stream_descriptor::async_wait (read/write), re-armed after every readiness while curl
 //    still wants that direction.
 //  - CURLMOPT_TIMERFUNCTION -> steady_timer with a generation: a handler that already completed when curl changed or
-//    cancelled its timeout sees an old generation and never calls curl (D28).
+//    cancelled its timeout sees an old generation and never calls curl.
 //  - CURLOPT_OPENSOCKETFUNCTION / CLOSESOCKETFUNCTION are ours: on close the descriptor is cancelled and released
 //    (deregistered, not closed) before ::close(). Descriptors curl registers without opening them through us (the
-//    multi's wake-up pair, the resolver's) are only watched and released, never closed (H8).
+//    multi's wake-up pair, the resolver's) are only watched and released, never closed.
 //  - Every CURLM/CURL call happens on the loop's thread. Handlers capture the shared_ptr of the loop state, never a
 //    raw pointer; a closed loop refuses posts. No exception leaves a C callback or an asio handler.
 //  - Results are never delivered here: TransportShared::resolve posts them to the CPU pool.
@@ -45,7 +45,7 @@ namespace indexer_client::detail
 {
     namespace
     {
-        /// Per-host connection cap of every multi (constant of E2a-1; the real window is E5's).
+        /// Per-host connection cap of every multi (a constant; the real window is the sender's).
         constexpr long MAX_HOST_CONNECTIONS = 8;
         /// Idle easy handles kept per loop for reuse.
         constexpr std::size_t MAX_IDLE_EASY = 64;
@@ -156,10 +156,10 @@ namespace indexer_client::detail
             set(curl_multi_setopt(multi, CURLMOPT_MAX_HOST_CONNECTIONS, MAX_HOST_CONNECTIONS));
             // Keep every connection the per-host cap allows idle in the pool. curl's default pool is 4 x the transfers
             // running: after a burst it closes the extra connections and the next burst handshakes again (TLS). Not
-            // CURLMOPT_MAX_TOTAL_CONNECTIONS, which caps transfers and churns (E0 H2): this only stops the trimming.
+            // CURLMOPT_MAX_TOTAL_CONNECTIONS, which caps transfers and churns: this only stops the trimming.
             set(curl_multi_setopt(
                 multi, CURLMOPT_MAXCONNECTS, static_cast<long>(shared->hostCount) * MAX_HOST_CONNECTIONS));
-            // curl_multi_cleanup does not join a resolver thread stuck in getaddrinfo (I38b).
+            // curl_multi_cleanup does not join a resolver thread stuck in getaddrinfo.
             set(curl_multi_setopt(multi, CURLMOPT_QUICK_EXIT, 1L));
             if (rc != CURLM_OK)
             {
@@ -261,7 +261,7 @@ namespace indexer_client::detail
             set(curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https"));
             set(curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L));
 
-            // TLS (I48, E11e): the configured CA in memory (CURL_BLOB_NOCOPY over TransportShared, alive until the last
+            // TLS: the configured CA in memory (CURL_BLOB_NOCOPY over TransportShared, alive until the last
             // curl_multi_cleanup), else the system CA store loadTlsMaterial located (by path: curl reads it, and a
             // broken store fails the handshake), else no CA at all; never curl's compiled-in bundle nor a CA directory.
             // Peer and host verification follow the policy of loadTlsMaterial (ssl.verify_certificates); TLS 1.2 or
@@ -298,12 +298,12 @@ namespace indexer_client::detail
                 set(curl_easy_setopt(easy, CURLOPT_SSLKEY_BLOB, &key));
             }
 
-            // Credentials (I55): separate options, so a ':' in the password travels as is; never USERPWD.
+            // Credentials: separate options, so a ':' in the password travels as is; never USERPWD.
             set(curl_easy_setopt(easy, CURLOPT_USERNAME, shared->credentials.user.c_str()));
             set(curl_easy_setopt(easy, CURLOPT_PASSWORD, shared->credentials.password.c_str()));
             set(curl_easy_setopt(easy, CURLOPT_PROXY, "")); // Never a proxy from the environment.
             set(curl_easy_setopt(easy, CURLOPT_TCP_NODELAY, 1L));
-            // Responses may come gzip-compressed (I117, D41): only gzip is announced (not "", which would also offer
+            // Responses may come gzip-compressed: only gzip is announced (not "", which would also offer
             // deflate, br and zstd); curl decodes before writeCb, so the response cap counts decoded bytes.
             set(curl_easy_setopt(easy, CURLOPT_ACCEPT_ENCODING, "gzip"));
             set(curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, static_cast<long>(state.timeout.count())));
@@ -362,7 +362,7 @@ namespace indexer_client::detail
 
             // An explicit or suppressed Content-Type (curl would add a form type). `Expect` is left to curl, as the v1
             // does: 100-continue on bodies over 1 MiB, so the node can refuse (401, 413, 429) before the body is sent;
-            // measured in E2c at +18 % (TLS) and +5 % (clear) on a 4 MiB bulk against the fake (plan 18, I60).
+            // measured at +18 % (TLS) and +5 % (clear) on a 4 MiB bulk against the fake.
             const auto append = [&state](const std::string& line)
             {
                 auto* list = curl_slist_append(state.headers, line.c_str());
@@ -470,7 +470,7 @@ namespace indexer_client::detail
             if (state->easy != nullptr)
             {
                 active.erase(state.get());
-                detach(state, result); // Out of the multi before resolving (D27).
+                detach(state, result); // Out of the multi before resolving.
             }
             shared->resolve(state, std::move(result));
         }
@@ -506,7 +506,7 @@ namespace indexer_client::detail
                 curl_off_t value = 0;
                 curl_easy_getinfo(easy, CURLINFO_SIZE_UPLOAD_T, &value);
                 result.uploadedBytes = value > 0 ? static_cast<std::uint64_t>(value) : 0;
-                // Room for the JSON parser's padding (simdjson reads up to 64 bytes past the end; E3b-1 I65): reserved
+                // Room for the JSON parser's padding (simdjson reads up to 64 bytes past the end): reserved
                 // once, here, so the classifier never reallocates the body. Capacity only: the size is untouched.
                 state->response.reserve(state->response.size() + RESPONSE_PADDING);
                 result.body = std::move(state->response);
@@ -522,7 +522,7 @@ namespace indexer_client::detail
         }
 
         /// curl_multi_socket_action (or the injected seam) failed: the multi's view of its transfers is no longer
-        /// trustworthy. Whatever finished is delivered; every other transfer fails once as LocalError (D27). The multi
+        /// trustworthy. Whatever finished is delivered; every other transfer fails once as LocalError. The multi
         /// stays usable for new work.
         void handleMultiError() noexcept
         {
@@ -757,7 +757,7 @@ namespace indexer_client::detail
                 {
                     if (*forced == CURL_SOCKET_BAD)
                     {
-                        return CURL_SOCKET_BAD; // Test seam: a connect failure before any byte (I36).
+                        return CURL_SOCKET_BAD; // Test seam: a connect failure before any byte.
                     }
                     fd = *forced;
                 }
@@ -864,7 +864,7 @@ namespace indexer_client::detail
             return length;
         }
 
-        /// The connection is ready and the request is about to be written (I36): conservative "may have sent".
+        /// The connection is ready and the request is about to be written: conservative "may have sent".
         static int
         prereqCb(void* clientp, char* /*primaryIp*/, char* /*localIp*/, int /*primaryPort*/, int /*localPort*/) noexcept
         {

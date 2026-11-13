@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The query engine end to end (plan 18, plan-E4a §Tests; contract: src/query/query.hpp): search, searchAfter,
+// The query engine end to end (contract: src/query/query.hpp): search, searchAfter,
 // indexExists and the failure paths over the real transport and the fake indexer. Oracles: the recorded requests
 // (method, path, query string, body), the Outcome (cause, httpStatus, reason), times and queryStats() deltas.
 
@@ -59,7 +59,7 @@ namespace
     }
 } // namespace
 
-// CA-5: search posts the body to /<index>/_search and returns the whole response; with expandWildcardsAll every
+// search posts the body to /<index>/_search and returns the whole response; with expandWildcardsAll every
 // route (search, HEAD, DBQ, UBQ) carries expand_wildcards=all, and without it none does.
 TEST_F(QueryTest, SearchReturnsWholeResponse)
 {
@@ -98,7 +98,7 @@ TEST_F(QueryTest, SearchReturnsWholeResponse)
     EXPECT_EQ(queryString(sent[4]), "conflicts=proceed&expand_wildcards=all");
 }
 
-// CA-5: pages of 2, 2 and 1 with size 2 ⇒ page() x3, each later request carries search_after = the sort of the last
+// pages of 2, 2 and 1 with size 2 ⇒ page() x3, each later request carries search_after = the sort of the last
 // hit; page() = false on the first ⇒ one request, Ok; a body without sort or without size ⇒ InvalidArgument without a
 // request. Mutant: search_after not advanced.
 TEST_F(QueryTest, SearchAfterPagesUntilShort)
@@ -163,7 +163,7 @@ TEST_F(QueryTest, SearchAfterPagesUntilShort)
     EXPECT_EQ(queries(*node).size(), 0u);
 }
 
-// I87: the page deadline bounds each page. Page 2 is held with a long Deadline (10 s) and pageDeadline 500 ms ⇒
+// The page deadline bounds each page. Page 2 is held with a long Deadline (10 s) and pageDeadline 500 ms ⇒
 // Unavailable "page deadline expired" ~500 ms after page 2 started, page() called once.
 TEST_F(QueryTest, SearchAfterPageDeadlineIsPerPage)
 {
@@ -206,7 +206,7 @@ TEST_F(QueryTest, SearchAfterPageDeadlineIsPerPage)
     EXPECT_GE(page2, 450ms) << "page 2 ended before its own deadline";
 }
 
-// CA-14: node A Available with its port closed now, B sound ⇒ every search Ok through B, A goes Down (one failover).
+// Node A Available with its port closed now, B sound ⇒ every search Ok through B, A goes Down (one failover).
 // Mutant: the failover retried on the same node.
 TEST_F(QueryTest, ReadFailsOverToOtherNode)
 {
@@ -232,7 +232,7 @@ TEST_F(QueryTest, ReadFailsOverToOtherNode)
     EXPECT_EQ(queries(*b).size(), 2u);
 }
 
-// CA-14: every node Down ⇒ search, indexExists and deleteByQuery end Unavailable when the Deadline expires, never
+// Every node Down ⇒ search, indexExists and deleteByQuery end Unavailable when the Deadline expires, never
 // `false` or an empty answer, and send nothing. Mutant: indexExists answers false on an error.
 TEST_F(QueryTest, ReadsUnavailableWhenAllDown)
 {
@@ -274,7 +274,7 @@ TEST_F(QueryTest, ReadsUnavailableWhenAllDown)
     EXPECT_EQ(d.unavailable, 3u);
 }
 
-// I87: the consumer's Deadline is never an HTTP timeout. A held search with a 200 ms Deadline ⇒ Unavailable at the
+// The consumer's Deadline is never an HTTP timeout. A held search with a 200 ms Deadline ⇒ Unavailable at the
 // Deadline; the node stays Available with no transition. Mutant: the HTTP timeout = Deadline - now (the transfer
 // ends by its own timeout, which is reported).
 TEST_F(QueryTest, ShortDeadlineKeepsNodeAvailable)
@@ -301,7 +301,7 @@ TEST_F(QueryTest, ShortDeadlineKeepsNodeAvailable)
     node->releaseHeld();
 }
 
-// I87/I82, CA-14: a node that accepts and never answers. request_timeout_ms = 300 and pageDeadline 2 s: the attempt has
+// A node that accepts and never answers. request_timeout_ms = 300 and pageDeadline 2 s: the attempt has
 // the whole per-attempt budget, so its Timeout is reported ⇒ A Down (one transition), the search fails over to B and
 // both searches are Ok. Mutant: the Timeout not reported to the NodeSet.
 TEST_F(QueryTest, HungNodeTimesOutAndFailsOver)
@@ -340,7 +340,7 @@ TEST_F(QueryTest, HungNodeTimesOutAndFailsOver)
     a->releaseHeld();
 }
 
-// G-diff E4a obj. 1 (b): with pageDeadline < requestTimeout (the defaults' shape) the first attempt's timeout is the
+// With pageDeadline < requestTimeout (the defaults' shape) the first attempt's timeout is the
 // page itself; the result wait runs TIMEOUT_GRACE past the page so curl's Timeout reaches NodeSet::report. A single
 // hung node: the query ends Unavailable (its page is spent) and the node is Down. Mutant: the wait bounded by the page.
 TEST_F(QueryTest, HungNodeReportedWhenThePageIsTheBudget)
@@ -365,7 +365,7 @@ TEST_F(QueryTest, HungNodeReportedWhenThePageIsTheBudget)
     a->releaseHeld();
 }
 
-// I82: a 429 with Retry-After: 1 and then 200 ⇒ Ok, the second request >= 1 s after the first; with maxAttempts = 1
+// A 429 with Retry-After: 1 and then 200 ⇒ Ok, the second request >= 1 s after the first; with maxAttempts = 1
 // too (a 429 spends no attempt). Mutant: Retry-After ignored.
 TEST_F(QueryTest, Query429HonoursRetryAfter)
 {
@@ -399,7 +399,7 @@ TEST_F(QueryTest, Query429HonoursRetryAfter)
     }
 }
 
-// I82: three 429 without Retry-After back off with growing gaps (base 100 ms, no jitter: ~100, 200, 400 ms) and
+// Three 429 without Retry-After back off with growing gaps (base 100 ms, no jitter: ~100, 200, 400 ms) and
 // spend no attempt (maxAttempts = 1, then Ok).
 TEST_F(QueryTest, Query429WithoutRetryAfterBacksOff)
 {
@@ -428,7 +428,7 @@ TEST_F(QueryTest, Query429WithoutRetryAfterBacksOff)
     EXPECT_GT(g3, g2);
 }
 
-// I82: retry.base = 0, retry.cap < retry.base, retry.jitter > 1 or NaN, retry.maxAttempts = 0, retry.maxDuration = 0
+// retry.base = 0, retry.cap < retry.base, retry.jitter > 1 or NaN, retry.maxAttempts = 0, retry.maxDuration = 0
 // and pageDeadline = 0 ⇒ InvalidArgument naming the field, no request.
 TEST_F(QueryTest, QueryRejectsZeroBase)
 {
@@ -479,7 +479,7 @@ TEST_F(QueryTest, QueryRejectsZeroBase)
     EXPECT_EQ(queries(*node).size(), 0u);
 }
 
-// I82: a 503 every time with maxAttempts = 3 ⇒ RetryExhausted after 3 requests; a 400 ⇒ Client4xx after 1, its
+// A 503 every time with maxAttempts = 3 ⇒ RetryExhausted after 3 requests; a 400 ⇒ Client4xx after 1, its
 // reason the error type and at most REASON_BODY_BYTES of the body.
 TEST_F(QueryTest, QueryRetriesAndExhausts)
 {
@@ -570,7 +570,7 @@ TEST_F(QueryTest, NoNodeWaitEndsAtMaxDuration)
     EXPECT_EQ(nodeState(0), NodeState::Down);
 }
 
-// I83: indexExists is a HEAD: 200 ⇒ true, 404 ⇒ false, 503 then 200 ⇒ true; also over the fake's TLS. Mutant: a 404
+// indexExists is a HEAD: 200 ⇒ true, 404 ⇒ false, 503 then 200 ⇒ true; also over the fake's TLS. Mutant: a 404
 // treated as an error.
 TEST_F(QueryTest, IndexExistsUsesHead)
 {
@@ -624,7 +624,7 @@ TEST_F(QueryTest, IndexExistsUsesHead)
     ASSERT_NO_FATAL_FAILURE(exercise(*c->query(), *secure, "https"));
 }
 
-// I85: a 404 index_not_found_exception ⇒ search, searchAfter and UBQ NotFound with the type in reason, DBQ Ok({}); a
+// A 404 index_not_found_exception ⇒ search, searchAfter and UBQ NotFound with the type in reason, DBQ Ok({}); a
 // 404 of another type ⇒ Client4xx for search and DBQ.
 TEST_F(QueryTest, MissingIndexIsNotFound)
 {
@@ -675,7 +675,7 @@ TEST_F(QueryTest, MissingIndexIsNotFound)
     EXPECT_EQ(queries(*node).size(), 6u) << "each 404 is final: one request per call";
 }
 
-// RF-27: every operation called from a runtime thread (a CPU-pool task and a network-loop task) ⇒ Reentrancy, no
+// Every operation called from a runtime thread (a CPU-pool task and a network-loop task) ⇒ Reentrancy, no
 // request.
 TEST_F(QueryTest, QueryFromRuntimeThreadIsReentrancy)
 {
@@ -729,7 +729,7 @@ TEST_F(QueryTest, QueryFromRuntimeThreadIsReentrancy)
     EXPECT_EQ(queries(*node).size(), 0u);
 }
 
-// I87: no wait outlives a close. (1) A 503 with a 10 s backoff: requestClose() ⇒ ClientClosed < 1 s. (2) A held
+// No wait outlives a close. (1) A 503 with a 10 s backoff: requestClose() ⇒ ClientClosed < 1 s. (2) A held
 // request: shutdown() (from the owner thread; the query runs on another) ⇒ Shutdown < 1 s. (3) A query with the
 // runtime stopped ⇒ Shutdown, no request. Mutant: neither requestClose() nor stopAndJoin() wakes the gate.
 TEST_F(QueryTest, QueryWakesOnCloseAndShutdown)
@@ -786,7 +786,7 @@ TEST_F(QueryTest, QueryWakesOnCloseAndShutdown)
     EXPECT_EQ(node->requestCount(), requestsBefore);
 }
 
-// I84: a 2xx body above maxResponseBytes / QUERY_DOM_FACTOR ⇒ ItemPermanent without parsing (queryStats.tooLarge);
+// A 2xx body above maxResponseBytes / QUERY_DOM_FACTOR ⇒ ItemPermanent without parsing (queryStats.tooLarge);
 // a valid body of exactly that size is Ok. Outcome::responseTooLarge marks it (and a body over maxResponseBytes on the
 // wire), never another ItemPermanent (an unparsable body) nor another final cause.
 TEST_F(QueryTest, QueryResponseCap)
@@ -842,8 +842,8 @@ TEST_F(QueryTest, QueryResponseCap)
     EXPECT_FALSE(bad.responseTooLarge);
 }
 
-// I87: unsafe or missing index names (also "." and "..", which libcurl collapses, and "_all") ⇒ InvalidArgument naming
-// the field, no request; pit() validates its indices the same way (E4b).
+// unsafe or missing index names (also "." and "..", which libcurl collapses, and "_all") ⇒ InvalidArgument naming
+// the field, no request; pit() validates its indices the same way.
 TEST_F(QueryTest, QueryRejectsUnsafeIndex)
 {
     const auto node = fake();

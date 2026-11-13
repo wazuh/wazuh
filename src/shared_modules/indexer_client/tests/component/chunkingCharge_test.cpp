@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-E11b-1 (D88): the consumers' estimate of an op's charge (indexer_client/chunking.hpp) is never below what the
+// The consumers' estimate of an op's charge (indexer_client/chunking.hpp) is never below what the
 // library actually charges for it. Each op is added alone to a Group on the programmable sink, the bucket's charge
 // read, and the Group abandoned. Mutants: a frame bound below the encoder's, the escaping or the reserve left out, the
 // versioned document counted once.

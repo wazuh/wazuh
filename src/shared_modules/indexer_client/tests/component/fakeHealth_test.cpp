@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Self-tests of the fake's health helpers (plan 18, E2b step 4): each healthRules.hpp helper answers the probe path
+// Self-tests of the fake's health helpers: each healthRules.hpp helper answers the probe path
 // with the exact status and body, rules swap while serving, a held probe waits for releaseHeld() and the probe
 // counters see only `GET /_cluster/health`. Driven by cpp-httplib's own client; no runtime involved.
 

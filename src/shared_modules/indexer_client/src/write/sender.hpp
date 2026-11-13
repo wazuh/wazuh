@@ -13,21 +13,20 @@
 #ifndef _INDEXER_CLIENT_WRITE_SENDER_HPP
 #define _INDEXER_CLIENT_WRITE_SENDER_HPP
 
-// The bulk sender (stage E3b-2, plan 18 I68): the production BatchSink. NORMATIVE — the plan points here for the
-// detail.
+// The bulk sender: the production BatchSink. NORMATIVE.
 //
 // State per node, under the sender's mutex: inFlight, notBefore, pace, Down (mirrored from NodeSet::onTransition,
 // initially Down), and request/latency counters. Lock order: the NodeSet's mutex may take the sender's (the filter of
 // NodeSet::choose); the sender never calls NodeSet, Bucket, WritePath, Scheduler or Transport with its mutex held, and
 // never drops OpState/TicketState references under it.
 //
-// Limiter (stage E5a, plan 18 I98), per node under the same mutex: window (real, [1, nodeWindowMax], starts at
-// nodeWindowMax, I96; a Down -> Available transition keeps it), bulkTarget (bytes, 0 = uncapped, the start),
+// Limiter, per node under the same mutex: window (real, [1, nodeWindowMax], starts at
+// nodeWindowMax; a Down -> Available transition keeps it), bulkTarget (bytes, 0 = uncapped, the start),
 // nextSendAt, cleanSends, lastDecreaseAt, lastSentAt, lastBatchBytes and a ring of the last 32 timings.total of the
 // HTTP responses (429 included) of requests sent after lastDecreaseAt (a request in flight at a decrease never refills
 // the ring).
 //   usable(node, now) = !down ∧ notBefore <= now ∧ nextSendAt <= now ∧ inFlight < ⌊window⌋ — the ONE predicate of
-//     capacity(), the choose filter and wakePinned (D47).
+//     capacity(), the choose filter and wakePinned.
 //   capacity(): Σ over the usable nodes of ⌊window⌋ − inFlight, or 1 for a node with pace > 0 (one send per interval).
 //   batchLimit(): the smallest capped bulkTarget among the usable nodes (0 = none); the scheduler passes it to
 //     Bucket::slice as `cap` (never applied to the first op of a batch).
@@ -41,13 +40,13 @@
 //     batch's bytes (lastBatchBytes for the hook), lastDecreaseAt = now; a latency decrease also empties the ring, so
 //     a spike costs one halving: the next p95 sees only requests sent after it.
 //     Counted per origin (decreases429, decreasesThrottled, decreasesLatency). Never on item rejections nor on
-//     transport failures (those are Down, CA-13).
+//     transport failures (those are Down).
 //   Increase: a 2xx with sentAt > lastDecreaseAt, latency < latencyTarget and no decrease in the same completion (the
 //     decrease is evaluated first) ⇒ window += 1 / window (cap nodeWindowMax) and, when capped,
 //     bulkTarget += max(bulkMinBytes, bulkTarget / 4); reaching BULK_TARGET_UNCAPPED makes it 0 again.
 //   413 (Split): besides the split, bulkTarget = min(bulkTarget or ∞, bytes / 2); the window and the decrease counters
 //     are untouched.
-//   Queries never take a window slot (I95, D50).
+//   Queries never take a window slot.
 //
 // dispatch(batch), loop 0: NodeSet::choose(usable) and inFlight++ before
 // leaving loop 0; no node ⇒ the Down mirror refreshed from the NodeSet (the hook may still be on its way, and a stale
@@ -83,21 +82,21 @@
 //   FailBatch  every op Failed(cause, httpStatus, reason).
 //   Items      classifyItems(body, n, &reason): nullopt ⇒ requeue {true, Backoff} with lastError {Server5xx, the 2xx
 //              status, that reason}; per item:
-//              Ok / NotFound ⇒ Ok with its outcome; Conflict ⇒ by the op's effective policy (OpState::conflictRetry,
-//              E3c-1 I73): Success ⇒ Ok keeping 409 and the type, Retry ⇒ requeue {true, Backoff} with lastError
+//              Ok / NotFound ⇒ Ok with its outcome; Conflict ⇒ by the op's effective policy (OpState::conflictRetry):
+//              Success ⇒ Ok keeping 409 and the type, Retry ⇒ requeue {true, Backoff} with lastError
 //              {VersionConflict, 409, type, reason}; item Retry ⇒ requeue {true, Backoff} with the item's error; both
 //              kinds of requeue in one call for the batch; Permanent ⇒ Failed(ItemPermanent, status, type, reason).
 // A 2xx of a request sent after the node's burst marker counts a clean send; paceRelaxAfter clean sends halve
 // the pace (cleanSends = 0) and a pace below paceInitial becomes 0. A 2xx NEVER shortens a notBefore or a nextSendAt in
 // force. RequeueResult.exhausted ⇒
 // Failed(RetryExhausted) with the op's last error; RequeueResult.closed ⇒ Dropped(sweepCause). One scheduler wake-up
-// per completion (E6a, I109): the buckets a requeue asks to notify (RequeueResult.notify) and the pinned buckets
+// per completion: the buckets a requeue asks to notify (RequeueResult.notify) and the pinned buckets
 // waiting for the freed slot are collected and announced with a single Scheduler::notifyAll(buckets) in the
 // completion's ready(). The one exception: a NodeSet::report() that transitions the node (Throttled, Failover) runs
 // the NodeSet hook, whose refreshMirror() posts its own wake (needed for Down -> usable), so that completion posts
 // twice.
 //
-// Ordered buckets and cancellation (E3c-2, I79/I80; the bucket side is in bucket.hpp):
+// Ordered buckets and cancellation (the bucket side is in bucket.hpp):
 //   - Assembly: the pool task first removes from the Batch (ops and bytes) every op whose `cancelled` is set, resolving
 //     each Dropped(Cancelled) (seams::beforeAssembly() runs just before this check); an emptied batch gives its slot
 //     back (inFlight--, sinkReady) and returns without a submit. No op of a cancelled tag is sent after cancel().
@@ -107,7 +106,7 @@
 //     or its notBefore timer fires) the sender calls Bucket::pinnedNodeUsable(node, now) for each recorded bucket and
 //     Scheduler::notify when it says so. With pinUntil <= now any node is admitted; the ops' pin is cleared and
 //     Bucket::countAmbiguousFailover(ops) runs.
-//     [E3c-2 step 4 precisions] The pinned node is "usable" per usable(node, now) of the Limiter block (the choose
+//     Precisions: the pinned node is "usable" per usable(node, now) of the Limiter block (the choose
 //     filter's predicate), so a completion or a released slot also wakes pinnedWaiting (a full window would otherwise
 //     wait until pinUntil). The bucket is recorded before the requeue and the node re-checked
 //     after it, with the mirror refreshed. A batch sent to its pinned node inside the window keeps its pin (a second
@@ -117,14 +116,14 @@
 //   - Pin at completion: Failover with mayHaveSent in an ordered bucket ⇒ requeue {mayHaveSent, Now, Pin::Set, node,
 //     now + RuntimeConfig.ambiguousRetryWindow}; a Failover without it and "no usable node" ⇒ Pin::Keep; every
 //     completion with an HTTP response ⇒ Pin::Clear. Unordered buckets ignore the pin. A Tls failure with mayHaveSent
-//     is a Failover and pins too (D38: a misconfigured mTLS node costs one window per batch before the failover).
+//     is a Failover and pins too (a misconfigured mTLS node costs one window per batch before the failover).
 //   - RequeueResult::cancelled ⇒ resolve Dropped(Cancelled) (also after an attempt that would have exhausted).
 //
 // Wake-ups: a loop-0 asio timer at the earliest notBefore / nextSendAt in force, armed by a post from a completion
 // (capturing the shared state and checking `stopped`, the Prober's pattern) or directly by dispatch() (loop 0), firing
 // sinkReady(); the NodeSet::onTransition hook (registered by start(),
 // which the runtime calls BEFORE prober->start()) mirrors Down and calls sinkReady() through a weak_ptr<WritePath>.
-// The mirror also copies NodeSet::notBefore (a 429 Retry-After seen by any path, I109b) into the slot's notBefore, read
+// The mirror also copies NodeSet::notBefore (a 429 Retry-After seen by any path) into the slot's notBefore, read
 // before the sender mutex (order NodeSet → sender), so a node parked by a query takes the sender's capacity to 0 and
 // the timer above wakes the scheduler when it expires.
 //
@@ -159,12 +158,12 @@ namespace indexer_client::detail
 
 namespace indexer_client::detail::write
 {
-    /// A bulk target at or above it is uncapped again (I98). The max of bulk_min_bytes stays below it (static_assert in
+    /// A bulk target at or above it is uncapped again. The max of bulk_min_bytes stays below it (static_assert in
     /// config/runtimeConfig.cpp).
     constexpr std::uint64_t BULK_TARGET_UNCAPPED = 64ull << 20;
-    /// Latency samples per node (I98).
+    /// Latency samples per node.
     constexpr std::size_t LATENCY_RING = 32;
-    /// Samples needed before the p95 decides (I98).
+    /// Samples needed before the p95 decides.
     constexpr std::size_t LATENCY_MIN_SAMPLES = 8;
 
     struct SenderNodeStats final
@@ -175,9 +174,9 @@ namespace indexer_client::detail::write
         std::optional<TimePoint> notBefore; ///< In force (later than now) only.
         Duration pace {Duration {0}};
         std::uint64_t requests {0};    ///< Completed bulk requests with an HTTP response (cause None; any status).
-        std::uint64_t totalMicros {0}; ///< Sum of those responses' HttpResult timings.total (E5's AIMD).
+        std::uint64_t totalMicros {0}; ///< Sum of those responses' HttpResult timings.total (the AIMD input).
         std::uint64_t failures {0};    ///< Completions without a response (timeout, connect, TLS, cancelled...).
-        // Limiter (E5a, I98).
+        // Limiter.
         double window {0};                   ///< Real AIMD window; ⌊window⌋ requests may be in flight.
         std::uint64_t bulkTarget {0};        ///< Bytes; 0 = uncapped.
         std::optional<TimePoint> nextSendAt; ///< In force (later than now) only.
@@ -187,7 +186,7 @@ namespace indexer_client::detail::write
         std::uint64_t decreasesLatency {0};
         std::uint64_t increases {0};
         std::uint64_t paceRelaxed {0};
-        // E5c (metrics.hpp NodeMetrics).
+        // (metrics.hpp NodeMetrics)
         std::uint64_t throttled {0}; ///< Request-level 429 answers of the node.
         std::uint64_t server5xx {0}; ///< HTTP answers with a 5xx status.
         LatencyHistogram latency;    ///< timings.total of every HTTP answer.

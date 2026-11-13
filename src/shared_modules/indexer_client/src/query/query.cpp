@@ -35,7 +35,7 @@
 #include "transport/transport.hpp"
 #include "write/response.hpp"
 
-// The query engine (stage E4a). NORMATIVE contract: query.hpp (I87 execution, clocks, verdicts, wake-up; I88 routes).
+// The query engine. NORMATIVE contract: query.hpp (execution, clocks, verdicts, wake-up, routes).
 
 namespace indexer_client::detail::query
 {
@@ -47,7 +47,7 @@ namespace indexer_client::detail::query
         std::atomic<std::uint64_t> g_unavailable {0};
         std::atomic<std::uint64_t> g_tooLarge {0};
         std::atomic<std::uint64_t> g_conflictRetries {0};
-        /// D48 (metrics.hpp QUERIES): body bytes of the HttpResults delivered to the engine and not yet returned.
+        /// (metrics.hpp QUERIES) Body bytes of the HttpResults delivered to the engine and not yet returned.
         std::atomic<std::uint64_t> g_responseBytesInFlight {0};
         std::atomic<std::uint64_t> g_peakResponseBytesInFlight {0};
 
@@ -116,7 +116,7 @@ namespace indexer_client::detail::query
         struct AttemptState final
         {
             std::optional<HttpResult> result;
-            bool abandoned {false}; ///< The engine stopped waiting: the callback delivers the result as Late (E4b).
+            bool abandoned {false}; ///< The engine stopped waiting: the callback delivers the result as Late.
         };
 
         /// The last failure seen, for "deadline expired, last cause: ..." and RetryExhausted.
@@ -138,7 +138,7 @@ namespace indexer_client::detail::query
             }
         };
 
-        /// One I82 series: its attempts, its 429 count (the throttle exponent) and the time of its first attempt.
+        /// One retry series: its attempts, its 429 count (the throttle exponent) and the time of its first attempt.
         struct Series final
         {
             std::uint32_t attempts {0};
@@ -234,7 +234,7 @@ namespace indexer_client::detail::query
             return out;
         }
 
-        /// "/<indices><route>[?p1&p2...]"; without indices, "<route>[?...]" (route starts with '/'; E4b's PIT routes).
+        /// "/<indices><route>[?p1&p2...]"; without indices, "<route>[?...]" (route starts with '/'; the PIT routes).
         std::string
         targetImpl(const std::string& indices, std::string_view route, const std::vector<std::string>& params)
         {
@@ -311,8 +311,8 @@ namespace indexer_client::detail::query
             return backoffDelay(policy, conflicts, 0.0);
         }
 
-        /// The I87 loop of one page: attempts, the three clocks, the I82 verdicts and the I86 conflict budget.
-        /// Reusable by E4b (PIT create, delete and search build their RouteSpec and classifier).
+        /// The loop of one page: attempts, the three clocks, the verdicts and the conflict budget.
+        /// Reused by the PIT (create, delete and search build their RouteSpec and classifier).
         Outcome<QueryResponse> executeImpl(const std::shared_ptr<ClientState>& client,
                                            const QueryOptions& options,
                                            Deadline deadline,
@@ -322,7 +322,7 @@ namespace indexer_client::detail::query
         {
             auto& gate = *client->queryGate;
             const auto& retry = options.retry;
-            // The page's clock starts at its first attempt (I87): until then only the Deadline bounds the call.
+            // The page's clock starts at its first attempt: until then only the Deadline bounds the call.
             std::optional<TimePoint> pageEnd;
             TimePoint limit = deadline;
             const Duration fullBudget = std::min(client->requestTimeout, options.pageDeadline);
@@ -332,7 +332,7 @@ namespace indexer_client::detail::query
             LastCause last;
             std::uint64_t attemptNo = 0;
 
-            // E4b hooks (engine.hpp): the observer sees every admitted attempt once; never called under the gate.
+            // The PIT hooks (engine.hpp): the observer sees every admitted attempt once; never called under the gate.
             const auto notify = [&](AttemptEvent::Kind kind, const HttpResult* result)
             {
                 if (hooks.observer)
@@ -416,7 +416,7 @@ namespace indexer_client::detail::query
                     {
                         last.set(Cause::Unavailable, 0, "no usable node");
                     }
-                    // I109: a node parked by a 429 Retry-After (not Down) ends this wait when its notBefore passes;
+                    // A node parked by a 429 Retry-After (not Down) ends this wait when its notBefore passes;
                     // without one the poll is today's. Either way `limit` bounds it (pageEnd is not set yet).
                     const auto parked = nodes->earliestNotBefore();
                     nodes.reset();
@@ -536,7 +536,7 @@ namespace indexer_client::detail::query
                     return expired();
                 }
                 const HttpResult& r = *result;
-                // D48: from the delivery to the engine until this iteration ends (the response is returned or the
+                // From the delivery to the engine until this iteration ends (the response is returned or the
                 // loop goes on); the classification and its DOM happen meanwhile.
                 const ResponseBytesInFlight inFlight(r.body.size());
 
@@ -594,7 +594,7 @@ namespace indexer_client::detail::query
                             }
                             g_conflictRetries.fetch_add(1, std::memory_order_relaxed);
                             sleepOnGate(*client, gate, std::min(addSaturated(now(), conflictDelay(conflicts)), limit));
-                            series = Series {}; // I86: a conflict retry opens a fresh I82 series.
+                            series = Series {}; // A conflict retry opens a fresh retry series.
                             continue;
                         }
                         case QueryVerdict::Retry:
@@ -857,7 +857,7 @@ namespace indexer_client::detail::query
             }
 
         private:
-            /// I87 steps 1-3: Reentrancy, then validation (InvalidArgument), then the client and its runtime.
+            /// Steps 1-3: Reentrancy, then validation (InvalidArgument), then the client and its runtime.
             template<class T>
             std::optional<Outcome<T>>
             admit(const QueryOptions& options, std::optional<std::string> invalid, const char* operation) const

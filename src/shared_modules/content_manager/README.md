@@ -97,7 +97,7 @@ positive are rejected with `std::invalid_argument`.
 A failure reaches the cycle as a `std::runtime_error` carrying the library's cause; so does a search
 response without `hits`. A response over the client's size cap is the subclass
 `content_manager::ResponseTooLargeError` (`contentIndexer.hpp`), typed by the library's
-`Outcome::responseTooLarge` rather than by the reason's text. The cap depends on the call (I229):
+`Outcome::responseTooLarge` rather than by the reason's text. The cap depends on the call:
 `openPit` asks for `PitOptions::wholeResponseCap`, so the **content pages** (`search` on a PIT) are
 capped by `max_response_bytes` itself (64 MiB by default) — single CVE5 documents of the CTI feed
 reach ~17 MB (`CVE-2016-10243`), over the plain query cap; the pre-flight probe (`searchIndex`)

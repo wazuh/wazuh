@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Confirmable groups (stage E3c-1, plan 18 I74): the contract is group.hpp. groupMutex is a leaf: every call into a
+// Confirmable groups: the contract is group.hpp. groupMutex is a leaf: every call into a
 // bucket, the scheduler, WritePath or the budget happens after it is dropped.
 
 #include "write/group.hpp"
@@ -56,7 +56,7 @@ namespace indexer_client::detail::write
 {
     namespace
     {
-        /// The fixed reason of a refused add (D42): never a consumer string.
+        /// The fixed reason of a refused add: never a consumer string.
         const char* refusalReason(Cause cause)
         {
             switch (cause)
@@ -153,7 +153,7 @@ namespace indexer_client::detail::write
             return refuse(*group, Cause::Unavailable, refusalReason(Cause::Unavailable));
         }
 
-        // The effective conflict policy (I73), exactly as submit.
+        // The effective conflict policy, exactly as submit.
         const ConflictPolicy effective = op.onConflict ? *op.onConflict : bucket->spec().onConflict;
         auto outcome = encode(std::move(op), effective, bucket->spec().trustedBodies, &path->heads());
         if (!outcome.ok())
@@ -180,14 +180,14 @@ namespace indexer_client::detail::write
         auto state = std::make_shared<OpState>();
         state->payload = payload;
         state->head = std::move(outcome.value.head);
-        state->cachedHead = outcome.value.cachedHead; // E6e (D): the write path's line, if any.
+        state->cachedHead = outcome.value.cachedHead; // The write path's line, if any.
         state->body = std::move(outcome.value.body);
         state->reserveCharged = true;
         state->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
         state->tag = std::move(tag);
         state->hasKey = hasKey;
         state->keyHash = keyHash;
-        state->owner = bucket.get(); // E6e (D): for the owner check only (issue 15).
+        state->owner = bucket.get(); // For the owner check only.
         state->group = group;
 
         std::lock_guard<std::mutex> lock(group->groupMutex);
@@ -272,7 +272,7 @@ namespace indexer_client::detail::write
         const bool notify = bucket->enqueueGroup(ops, reserved, &closedAtEnqueue);
         if (const auto& closed = closedAtEnqueue; closed)
         {
-            // I99 (N2), the reservation→append window only a group has (add() reserves, commit() appends): refused,
+            // The reservation→append window only a group has (add() reserves, commit() appends): refused,
             // in the bucket's custody but not queued; only this group's ops are resolved, the rest keeps draining.
             for (const auto& op : ops)
             {

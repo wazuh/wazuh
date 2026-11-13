@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * Test corresponding to the wazuh-modulesd signal handler and shutdown sequence (plan 18, E7a)
+ * Test corresponding to the wazuh-modulesd signal handler and shutdown sequence
  */
 
 #ifndef _GNU_SOURCE
@@ -473,7 +473,7 @@ static void *cleanup_thread(void *arg) {
 }
 
 // Only the owner (main) thread shuts the runtime down: an exit() from any other thread leaves it to the process
-// teardown (D71). The children and the PID file are handled either way.
+// teardown. The children and the PID file are handled either way.
 static void cleanup_shutdowns_only_on_main_thread(void **state) {
     (void)state;
     pthread_t other;
@@ -506,7 +506,7 @@ static void unknown_signal_logs(void **state) {
     assert_int_equal(stop_calls, 0);
 }
 
-// The flag must be up during the grace wait (wm_fim_query_json() and modulesSync() read it there, #40335),
+// The flag must be up during the grace wait (wm_fim_query_json() and modulesSync() read it there),
 // and the stop() callbacks must still run after the wait.
 static void flag_up_during_grace(void **state) {
     (void)state;

@@ -388,7 +388,7 @@ TEST_F(ContentRegistrationTest, AnInvalidSpecIsRefusedAtRegistration)
 
 TEST_F(ContentRegistrationTest, AnInvalidKeepAliveIsRefusedAtRegistration)
 {
-    // D84: OpenSearch refuses `5M` at the first PIT; the registration refuses it at once, naming the value.
+    // OpenSearch refuses `5M` at the first PIT; the registration refuses it at once, naming the value.
     auto broken = spec();
     broken.source.pitKeepAlive = "5M";
     try
@@ -409,7 +409,7 @@ TEST_F(ContentRegistrationTest, AnInvalidKeepAliveIsRefusedAtRegistration)
 
 TEST_F(ContentRegistrationTest, ARegistrationWithoutTheHostsIndexerIsRefused)
 {
-    // The library never opens a connection of its own (D1).
+    // The library never opens a connection of its own.
     EXPECT_THROW((ContentRegister {"no.indexer", spec(), m_sink, nullptr, m_tokens}), std::invalid_argument);
 }
 

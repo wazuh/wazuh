@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_SEAMS_HPP
 #define _INDEXER_CLIENT_SEAMS_HPP
 
-// Test seams (I45b). In the production objects (the .so) every seam is an empty inline function and nothing of the
+// Test seams. In the production objects (the .so) every seam is an empty inline function and nothing of the
 // test machinery is compiled; with INDEXER_CLIENT_TESTING (the static library the component suite links) they call
 // the hooks of src/testing/seams.cpp. VisibilityTest checks that the .so carries none of them.
 
@@ -36,47 +36,47 @@ namespace indexer_client::detail::seams
     std::optional<int> openSocket();                                      ///< CURL_SOCKET_BAD forces a connect failure.
     void onRuntimeThreadStart(pid_t tid);                                 ///< Each runtime thread, at start.
     void onPostRejected();                                                ///< A post refused by a closed loop.
-    /// E3b-2: true makes the bulk sender treat its Transport::submit as refused (InvalidState) without submitting.
+    /// True makes the bulk sender treat its Transport::submit as refused (InvalidState) without submitting.
     bool refuseSubmit();
-    /// G-diff E3b-2: in a bulk completion, after the slot was released (may throw: the completion's fallback).
+    /// In a bulk completion, after the slot was released (may throw: the completion's fallback).
     void beforeCompletion();
-    /// G-diff E3b-2: in the bulk sender's NodeSet hook, before it refreshes the Down mirror (may block: mirror lag).
+    /// In the bulk sender's NodeSet hook, before it refreshes the Down mirror (may block: mirror lag).
     void beforeSenderMirror();
-    /// E3c-2: in the bulk sender's pool task, before it drops the cancelled ops and assembles the body.
+    /// In the bulk sender's pool task, before it drops the cancelled ops and assembles the body.
     void beforeAssembly();
-    /// E4a: replaces the DBQ/UBQ conflict-retry base (I86) in milliseconds; nullopt keeps CONFLICT_BASE.
+    /// Replaces the DBQ/UBQ conflict-retry base in milliseconds; nullopt keeps CONFLICT_BASE.
     std::optional<std::int64_t> queryConflictBaseMs();
-    /// G-diff E5b: in CallbackCompletion::run, under completionsMutex, between the cutoff comparison and the started
+    /// In CallbackCompletion::run, under completionsMutex, between the cutoff comparison and the started
     /// (or skipped) mark (may block: it holds the client's completionsMutex).
     void inCallbackGate();
-    /// G-diff E5b: in WritePath::resolve, right after the op's payload was released (it is no longer retained).
+    /// In WritePath::resolve, right after the op's payload was released (it is no longer retained).
     void afterPayloadReleased();
-    /// E6e (A): in WritePath::resolveBulk, before each chunk is settled (may throw: the claimed ops are settled all the
+    /// In WritePath::resolveBulk, before each chunk is settled (may throw: the claimed ops are settled all the
     /// same).
     void midBulkSettle();
-    /// E6e (B): in Bucket::stage, after the relaxed check of `closing` and before the stripe's mutex (may block).
+    /// In Bucket::stage, after the relaxed check of `closing` and before the stripe's mutex (may block).
     void beforeStagePush();
-    /// E6e (D116): in Bucket::stage, after a stripe's empty -> non-empty transition stored `oldest` and before the load
+    /// In Bucket::stage, after a stripe's empty -> non-empty transition stored `oldest` and before the load
     /// of the armed deadline, with the stripe's mutex held (may block; must not need that stripe).
     void beforeArmedDueLoad();
-    /// E6e (D116): on loop 0, in the scheduler's armTimer, after the bucket's nextDue was read and before the deadline
+    /// On loop 0, in the scheduler's armTimer, after the bucket's nextDue was read and before the deadline
     /// armed for it is published (may block loop 0).
     void beforePublishArmedDue();
-    /// E6e (B): in the stripe flush (Bucket::flushStripeLocked; the seam and its tests keep the plan's first name,
+    /// In the stripe flush (Bucket::flushStripeLocked; the seam and its tests keep its former name,
     /// admitBatch), before each op is admitted and once more before a DropNewest drop's
     /// interval keys are counted (after its counters moved), with the stripe's and the bucket's mutex held (may throw;
     /// must not block on the bucket).
     void midAdmitBatch();
-    /// E6e (A): in Bucket::settleBulk, before each op is counted, with the bucket's mutex held (may throw: the ops
+    /// In Bucket::settleBulk, before each op is counted, with the bucket's mutex held (may throw: the ops
     /// settled so far are released and the rest go back to resolveBulk's settlement; must not block on the bucket).
     void inSettleBulk();
-    /// Issue 15 (D64): bytes added to encode()'s precomputed line size (testing_hooks::setEncodeSizeSkew; 0 by
+    /// Bytes added to encode()'s precomputed line size (testing_hooks::setEncodeSizeSkew; 0 by
     /// default), so a case can break the size invariant on purpose.
     std::size_t encodeSizeSkew();
-    /// E6e (B): K, the stripes of a staging bucket, fixed by INDEXER_CLIENT_TEST_STRIPES (an integer 1-64, read once;
+    /// K, the stripes of a staging bucket, fixed by INDEXER_CLIENT_TEST_STRIPES (an integer 1-64, read once;
     /// anything else aborts the run); nullopt when unset or empty (the library's K).
     std::optional<std::size_t> stripeCount();
-    /// E11e: replaces the system CA stores loadTlsMaterial tries when no CA is configured (detail::systemCaStorePaths);
+    /// Replaces the system CA stores loadTlsMaterial tries when no CA is configured (detail::systemCaStorePaths);
     /// nullopt keeps the real list. Every https test without a configured CA sets it, so no test depends on the
     /// stores of the machine it runs on.
     std::optional<std::vector<std::string>> systemCaPaths();

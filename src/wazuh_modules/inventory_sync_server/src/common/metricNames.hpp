@@ -43,16 +43,16 @@ namespace invsync::metrics
     constexpr auto INDEXER_BULK_BYTES {"sync.indexer.bulk.bytes.total"};
     constexpr auto INDEXER_CONFLICT_RETRIES {"sync.indexer.conflict.retries"};
     constexpr auto INDEXER_CONFLICT_EXHAUSTED {"sync.indexer.conflict.exhausted"};
-    /// The process's indexer_client runtime (RuntimeRef::snapshot(), I168/D77): published by this module ONLY, once
+    /// The process's indexer_client runtime (RuntimeRef::snapshot()): published by this module ONLY, once
     /// per process (every consumer of the runtime shares them); the node family is `<prefix><i>.<field>`.
     constexpr auto INDEXER_CLIENT_RUNTIME_PREFIX {"indexer_client.runtime."};
     constexpr auto INDEXER_CLIENT_NODE_PREFIX {"indexer_client.node."};
     constexpr auto INDEXER_CLIENT_QUERY_PREFIX {"indexer_client.query."};
     constexpr auto INDEXER_CLIENT_PIT_PREFIX {"indexer_client.pit."};
-    /// + documents/exhausted/unavailable/other (failureMetric(), I140): one per failed session.
+    /// + documents/exhausted/unavailable/other (failureMetric()): one per failed session.
     constexpr auto BULK_FLUSH_FAILURES_PREFIX {"sync.bulk.flush.failures."};
     constexpr auto BULK_SESSIONS_FAILED {"sync.bulk.sessions.failed"};
-    /// The post-deletion sweep (I146, I146b, I146c): passes run, failed DBQ chunks, documents it found and deleted
+    /// The post-deletion sweep: passes run, failed DBQ chunks, documents it found and deleted
     /// (the residual a late write left behind), ids abandoned (stop() or a chunk that failed twice), ids withdrawn
     /// because a /config or /stats write for them was accepted (forget()).
     constexpr auto AGENT_DELETE_SWEEP_RUNS {"sync.agent_delete.sweep.runs"};

@@ -16,7 +16,7 @@ file(GLOB UNIT_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/unit/*.cpp)
 
 add_executable(indexer_client_utest ${UNIT_SRC_FILES})
 
-# The pure query classifiers (E4a, queryResponse_test) are hidden in the .so: the suite compiles their TU itself.
+# The pure query classifiers (queryResponse_test) are hidden in the .so: the suite compiles their TU itself.
 target_sources(indexer_client_utest PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../src/query/queryResponse.cpp)
 
 target_link_libraries(
@@ -45,8 +45,8 @@ target_compile_definitions(indexer_client_utest PRIVATE INDEXER_CLIENT_SO_PATH="
 add_test(NAME indexer_client_utest COMMAND indexer_client_utest)
 set_tests_properties(indexer_client_utest PROPERTIES LABELS indexer_client_utest)
 
-# Component suite (E2a-1): the transport and the fake over real sockets. It links the testing build of the library
-# (indexer_client_testing, with the seams) and never the .so, so the process holds a single runtime (I45b).
+# Component suite: the transport and the fake over real sockets. It links the testing build of the library
+# (indexer_client_testing, with the seams) and never the .so, so the process holds a single runtime.
 file(GLOB COMPONENT_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/component/*.cpp)
 
 add_executable(indexer_client_component_test ${COMPONENT_SRC_FILES})
@@ -64,16 +64,16 @@ target_link_libraries(
   Threads::Threads
   dl)
 
-# The fake's TLS/mTLS servers (E2a-2): cpp-httplib's SSLServer over the OpenSSL that libwazuhext exports (I44); only
+# The fake's TLS/mTLS servers: cpp-httplib's SSLServer over the OpenSSL that libwazuhext exports; only
 # this executable compiles them, so the unit suite never touches OpenSSL.
 target_compile_definitions(indexer_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 
-# zlib (transportGzip_test, E6b): the headers of the copy libwazuhext links, declared here rather than inherited.
+# zlib (transportGzip_test): the headers of the copy libwazuhext links, declared here rather than inherited.
 target_include_directories(
   indexer_client_component_test PRIVATE ${CMAKE_CURRENT_LIST_DIR}/fake ${CMAKE_CURRENT_LIST_DIR}/../src
                                         ${SRC_FOLDER}/external/cpp-httplib ${SRC_FOLDER}/external/zlib)
 
-# -rdynamic lets the test executable interpose getaddrinfo for the hung-resolver case (T20); the link map proves that
+# -rdynamic lets the test executable interpose getaddrinfo for the hung-resolver case; the link map proves that
 # no static copy of curl or OpenSSL entered the executable.
 target_link_options(indexer_client_component_test PRIVATE -rdynamic
                     "LINKER:-Map=${CMAKE_CURRENT_BINARY_DIR}/indexer_client_component_test.map")
@@ -81,7 +81,7 @@ target_link_options(indexer_client_component_test PRIVATE -rdynamic
 add_test(NAME indexer_client_component_test COMMAND indexer_client_component_test)
 set_tests_properties(indexer_client_component_test PROPERTIES LABELS indexer_client_component_test)
 
-# Suite against a real OpenSearch (plan 18, E6b, I110): skipped without INDEXER_CLIENT_OPENSEARCH_URL, failed without it
+# Suite against a real OpenSearch: skipped without INDEXER_CLIENT_OPENSEARCH_URL, failed without it
 # under GITHUB_ACTIONS. It links the public .so like the unit suite; fake/ only for testTimeScale.hpp, ../src only for
 # the constant Painless sources of write/encoding.hpp, cpp-httplib for the raw requests.
 file(GLOB OPENSEARCH_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/opensearch/*.cpp)

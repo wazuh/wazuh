@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The library's log sink (I56). loggerHelper.h's GLOBAL_LOG_FUNCTION has hidden visibility: every DSO defines its own,
+// The library's log sink. loggerHelper.h's GLOBAL_LOG_FUNCTION has hidden visibility: every DSO defines its own,
 // and this is the one of libindexer_client.so (and of the test build's static library). The process hands its log
 // function to setLogFunction(), the same one it gave the v1 connector library (removed in 5.x).
 

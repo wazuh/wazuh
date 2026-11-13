@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The indexer_client adapter against a REAL OpenSearch (E9, CA-E9-5, I110). Skipped unless INDEXER_URL names one
+// The indexer_client adapter against a REAL OpenSearch. Skipped unless INDEXER_URL names one
 // (e.g. http://127.0.0.1:9201, security disabled): the fake indexer cannot prove what the real PIT API does.
 
 #include "fakes/realIndexerFixture.hpp"
@@ -188,12 +188,12 @@ TEST(ContentIndexerClientAdapterReal, SlicesCoverOnce)
     EXPECT_TRUE(waitUntil([&] { return listedPits(http) <= pitsBefore; }, 10s)) << "the PIT is still listed";
 }
 
-// I229 against a real catalog (e.g. the CTI vulnerabilities index): the document CM_REAL_DOC_ID, larger than the query
-// cap (max_response_bytes / QUERY_DOM_FACTOR = 8 MiB by default) but within max_response_bytes, comes back from a
-// content page (a PIT the adapter opened), while the same lookup as a plain query fails with ResponseTooLargeError.
-// Read only. Skipped unless INDEXER_URL and CM_REAL_DOC_ID are set; INDEXER_USER/INDEXER_PASSWORD (default
-// admin/admin), INDEXER_CA (a PEM; "verify_certificates" false without it) and CM_REAL_INDEX (default
-// .wazuh-threatintel-vulnerabilities) are optional.
+// The whole-response cap of content pages against a real catalog (e.g. the CTI vulnerabilities index): the document
+// CM_REAL_DOC_ID, larger than the query cap (max_response_bytes / QUERY_DOM_FACTOR = 8 MiB by default) but within
+// max_response_bytes, comes back from a content page (a PIT the adapter opened), while the same lookup as a plain query
+// fails with ResponseTooLargeError. Read only. Skipped unless INDEXER_URL and CM_REAL_DOC_ID are set;
+// INDEXER_USER/INDEXER_PASSWORD (default admin/admin), INDEXER_CA (a PEM; "verify_certificates" false without it) and
+// CM_REAL_INDEX (default .wazuh-threatintel-vulnerabilities) are optional.
 TEST(ContentIndexerClientAdapterReal, LargeDocumentFromARealCatalog)
 {
     const char* url = std::getenv("INDEXER_URL");

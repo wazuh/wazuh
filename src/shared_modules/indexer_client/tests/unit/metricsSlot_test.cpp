@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-E11b-2 (D95): the pull-metrics slot invsync and VD share (indexer_client/metricsSlot.hpp). One Client::metrics()
+// The pull-metrics slot invsync and VD share (indexer_client/metricsSlot.hpp). One Client::metrics()
 // per TTL, buckets at 0 once the Client is released, the runtime's values without a Client, repoint() and the prefix
 // filter. Mutants: the TTL check dropped or inverted, a strong reference kept, the runtime read only with a Client, the
 // filter ignored, repoint() leaving the snapshot fresh.
@@ -98,7 +98,7 @@ TEST(MetricsSlotTest, RuntimeWithoutClient)
                                    snapshot.values.count(NETWORK_THREADS) == 1,
                                    snapshot.value(BULK_REQUESTS));
         });
-    EXPECT_TRUE(hasRuntime) << "the runtime is read without a Client (I168)";
+    EXPECT_TRUE(hasRuntime) << "the runtime is read without a Client";
     EXPECT_TRUE(hasValue) << "its names are published";
     EXPECT_EQ(0.0, bulk);
 

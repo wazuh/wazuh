@@ -23,7 +23,7 @@ from helpers import testtool
 CONFIG = json.loads((pathlib.Path(__file__).resolve().parent / "config.json").read_text())
 
 REQUEST_TIMEOUT_MS = 2000
-SWEEP_MARGIN_S = 5  # added to the request timeout by the module (I146b)
+SWEEP_MARGIN_S = 5  # added to the request timeout by the module
 WINDOW_S = REQUEST_TIMEOUT_MS / 1000 + SWEEP_MARGIN_S
 
 RESIDUAL = "sync.agent_delete.sweep.residual"

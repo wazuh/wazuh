@@ -141,7 +141,7 @@ TEST_F(EngineIndexerRuntimeTest, StartCreatesTheRuntimeAndTheClient)
 
     const auto client = runtime->client();
     ASSERT_NE(client, nullptr);
-    EXPECT_EQ(client->writer("events"), nullptr); // No buckets in E10a.
+    EXPECT_EQ(client->writer("events"), nullptr); // No buckets.
     ASSERT_TRUE(waitUntil([&client] { return client->health().anyAvailable(); }));
 
     // The probes carry the provider's credentials; the provider was asked once.
@@ -347,7 +347,7 @@ TEST_F(EngineIndexerRuntimeTest, FinishStopAloneKeepsTheStopBudget)
 }
 
 /****************************************************************************************
- * The `events` and `raw` buckets (E10b: I188, I194, I196, I197)
+ * The `events` and `raw` buckets
  ****************************************************************************************/
 
 namespace
@@ -390,9 +390,9 @@ TEST(EngineBucketSpecsTest, DefaultsBuildBothBuckets)
     EXPECT_EQ(raw.weight, 1U);
     for (const auto* spec : {&events, &raw})
     {
-        EXPECT_EQ(spec->quotaBytes, 64 * MIB); // The same quota for both (I188).
+        EXPECT_EQ(spec->quotaBytes, 64 * MIB); // The same quota for both.
         EXPECT_EQ(spec->overflow.kind, indexer_client::Overflow::Kind::DropNewest);
-        EXPECT_FALSE(spec->retry.maxAttempts.has_value()); // Unlimited retry (I6).
+        EXPECT_FALSE(spec->retry.maxAttempts.has_value()); // Unlimited retry.
         EXPECT_FALSE(spec->retry.maxDuration.has_value());
         EXPECT_EQ(spec->retry.cap, std::chrono::seconds {15});
         EXPECT_LE(spec->retry.base, spec->retry.cap);
@@ -606,7 +606,7 @@ TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
 
 TEST_F(EngineIndexerRuntimeTest, FinishStopDiscardsWhatIsQueued)
 {
-    // No drain (I186): the indexer holds every `_bulk`, so a stop that waited for the queue would sit out the whole
+    // No drain: the indexer holds every `_bulk`, so a stop that waited for the queue would sit out the whole
     // STOP_BUDGET. finishStop() gives the queue up at once instead, and the library's last summary says so per bucket.
     auto responder =
         std::make_shared<indexer_client::testing::BulkResponder>(indexer_client::testing::BulkScript::items().held());

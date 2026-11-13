@@ -10,10 +10,10 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Benchmark harness, v1 side (plan 18, E2c, I58): the v1 bulk transport alone (the v1 connector library, removed
+// Benchmark harness, v1 side: the v1 bulk transport alone (the v1 connector library, removed
 // in 5.x), HTTPRequest::post with the SINGLE handler (its indexerConnectorSyncImpl.hpp: RequestParametersStringView
 // + headers + ConfigurationParameters{timeout}), in a closed loop on the calling thread, against the in-process fake.
-// One run per invocation, printed as one CSV row (`ROW,` + the I58 columns).
+// One run per invocation, printed as one CSV row (`ROW,` + the columns).
 
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -47,7 +47,7 @@ namespace
 
     /// The headers the v2 puts on the wire, through the v1's own mechanism. Both ask for gzip: the v1 handler always
     /// adds `Accept-Encoding: gzip` (http-request/src/curlWrapper.hpp, CURLOPT_ACCEPT_ENCODING) and the v2 sets the
-    /// same option (I117). The bench fake never compresses, so the bytes on the wire do not change.
+    /// same option. The bench fake never compresses, so the bytes on the wire do not change.
     const std::unordered_set<std::string> NORMATIVE_HEADERS {"Content-Type: application/json"};
 
     int run(bench::Args& args)

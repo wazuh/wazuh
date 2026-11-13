@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Descriptors, connections and easy handles (plan-E2a-1 §Tests, lot B: D26 H8, D27 H2, the methods, RF-19).
+// Descriptors, connections and easy handles (and the methods).
 
 #include <dlfcn.h>
 #include <fcntl.h>
@@ -157,7 +157,7 @@ extern "C" int socketpair(int domain, int type, int protocol, int fds[2])
     return rc;
 }
 
-// Interposed: a curl descriptor must be closed by curl, once, while it is still open (H8).
+// Interposed: a curl descriptor must be closed by curl, once, while it is still open.
 extern "C" int close(int fd)
 {
     static const auto real = realFunction<int (*)(int)>("close");
@@ -190,7 +190,7 @@ extern "C" int close(int fd)
     return rc;
 }
 
-// D26 (H8): a descriptor curl registers without opening it through the transport (the multi's wake-up descriptor)
+// A descriptor curl registers without opening it through the transport (the multi's wake-up descriptor)
 // is watched while a transfer lives and, when curl stops wanting it, released: still open (curl owns it), its number
 // not free for reuse, and closed exactly once, by curl, at the multi's cleanup.
 TEST_F(TransportTest, ForeignDescriptorsReleasedNotClosed)
@@ -256,7 +256,7 @@ TEST_F(TransportTest, ForeignDescriptorsReleasedNotClosed)
     ::close(mine);
 }
 
-// D27 (H2): connections are kept alive and reused: 1 000 POSTs over one loop use at most
+// Connections are kept alive and reused: 1 000 POSTs over one loop use at most
 // CURLMOPT_MAX_HOST_CONNECTIONS (8) connections.
 TEST_F(TransportTest, KeepAliveReusesConnections)
 {
@@ -289,7 +289,7 @@ TEST_F(TransportTest, KeepAliveReusesConnections)
     std::cout << "[ INFO     ] " << REQUESTS << " POST over " << connections << " connections" << std::endl;
 }
 
-// E12 A5: bursts of CURLMOPT_MAX_HOST_CONNECTIONS (8) concurrent requests, each burst waited out before the next, keep
+// Bursts of CURLMOPT_MAX_HOST_CONNECTIONS (8) concurrent requests, each burst waited out before the next, keep
 // reusing the same connections. curl's default pool (4 x the transfers running) closed the extra ones as each burst
 // drained, so every burst opened (and over TLS handshook) new connections; CURLMOPT_MAXCONNECTS keeps them.
 TEST_F(TransportTest, BurstsReuseTheirConnections)
@@ -395,7 +395,7 @@ TEST_F(TransportTest, MethodAndBodyAfterReuse)
     EXPECT_EQ(fake.requestCount(), steps.size());
 }
 
-// RF-19, E2a-2: https is admitted (in any case) and opens its connection, the send is cancelled; ftp and PATCH are
+// https is admitted (in any case) and opens its connection, the send is cancelled; ftp and PATCH are
 // not admitted (InvalidArgument, no callback) and open no connection.
 TEST_F(TransportTest, HttpsAdmittedFtpNot)
 {
@@ -455,7 +455,7 @@ TEST_F(TransportTest, HttpsAdmittedFtpNot)
     EXPECT_EQ(stats.admitted, 2u);
 }
 
-// I60 (plan 18, E2c): `Expect` is left to curl, as the v1 does: a body over 1 MiB goes with `Expect: 100-continue` (the
+// `Expect` is left to curl, as the v1 does: a body over 1 MiB goes with `Expect: 100-continue` (the
 // node can refuse before the body), a small one without it; the whole body arrives either way.
 TEST_F(TransportTest, LargeBodyExpectsContinue)
 {
@@ -485,7 +485,7 @@ TEST_F(TransportTest, LargeBodyExpectsContinue)
     EXPECT_EQ(received[1].bodySize, large->size());
 }
 
-// I60: the node refuses a large bulk after `100 Continue` with 429 and Retry-After: the final response's status and
+// The node refuses a large bulk after `100 Continue` with 429 and Retry-After: the final response's status and
 // Retry-After win over the interim 1xx.
 TEST_F(TransportTest, LargeBodyRetryAfterAfterContinue)
 {

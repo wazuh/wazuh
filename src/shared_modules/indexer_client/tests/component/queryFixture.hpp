@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_COMPONENT_QUERY_FIXTURE_HPP
 #define _INDEXER_CLIENT_TESTS_COMPONENT_QUERY_FIXTURE_HPP
 
-// Shared by the query component suites (plan 18, plan-E4a §Tests): fakes that answer the health probe (green) plus
+// Shared by the query component suites: fakes that answer the health probe (green) plus
 // the case's rules, the runtime started on their hosts with the probe running (one round applied before the case),
 // a client without buckets and helpers over the recorded requests and detail::query::queryStats(). Time bounds go
 // through scaled(), the module's single scale (testTimeScale.hpp).
@@ -52,7 +52,7 @@ namespace query_component
     using indexer_client::testing::Rule;
     using NodeState = indexer_client::HealthView::NodeState;
 
-    /// A time bound of the plan («< 1 s», «+ margin»): the module's single scale (testTimeScale.hpp).
+    /// A time bound («< 1 s», «+ margin»): the module's single scale (testTimeScale.hpp).
     using indexer_client::testing::scaled;
 
     inline ic::TimePoint now()
@@ -130,7 +130,7 @@ namespace query_component
         return d;
     }
 
-    /// Fast I82 options for the cases: 10 ms base, 100 ms cap, no jitter.
+    /// Fast retry options for the cases: 10 ms base, 100 ms cap, no jitter.
     inline ic::QueryOptions fastOptions()
     {
         ic::QueryOptions options;
@@ -349,7 +349,7 @@ namespace query_component
     }
 } // namespace query_component
 
-/// The PIT suites (plan-E4b §Tests): QueryTest plus a fake whose PIT endpoints are a shared PitResponder.
+/// The PIT suites: QueryTest plus a fake whose PIT endpoints are a shared PitResponder.
 class PitTest : public QueryTest
 {
 protected:

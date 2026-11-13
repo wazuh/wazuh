@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_METRICS_SLOT_HPP
 #define _INDEXER_CLIENT_METRICS_SLOT_HPP
 
-// What a consumer's pull metrics read (D95, I140, I141b, I168): its Client WEAKLY, optionally the process's
+// What a consumer's pull metrics read: its Client WEAKLY, optionally the process's
 // RuntimeRef, and the last snapshot of both, refreshed at most once per `maxAge`. Header-only: nothing here is exported
 // by the library.
 
@@ -54,7 +54,7 @@ namespace indexer_client
      * @brief A pull-metrics source over a Client held weakly and an optional RuntimeRef.
      *
      * A scrape locks the Client only for one metrics() call, so it never keeps a closed Client alive; without a live
-     * Client its bucket values read 0, while the runtime's are still taken (they do not depend on a Client, I168). One
+     * Client its bucket values read 0, while the runtime's are still taken (they do not depend on a Client). One
      * refresh serves every read within `maxAge`, so one scrape of N metrics costs one metrics() and one snapshot().
      * Its own mutex: a scrape never contends with the consumer's lifecycle. Meant to be shared (shared_ptr) by the
      * consumer and every getter it registers.
@@ -132,7 +132,7 @@ namespace indexer_client
                 }
             };
 
-            // The runtime first: its values do not depend on a live Client (I168).
+            // The runtime first: its values do not depend on a live Client.
             if (m_runtime)
             {
                 m_snapshot.runtime = m_runtime->snapshot();

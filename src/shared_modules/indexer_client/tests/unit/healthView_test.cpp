@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-E11d-3 (D103): HealthView::noUsableAfterProbes(), the "every node probed, none usable" check the engine's remote
+// HealthView::noUsableAfterProbes(), the "every node probed, none usable" check the engine's remote
 // configuration read and the content manager's adapter share. Mutants: the empty check dropped, anyUsable() replaced by
 // anyAvailable(), an unprobed node skipped instead of ending the check, the separator or the order changed.
 

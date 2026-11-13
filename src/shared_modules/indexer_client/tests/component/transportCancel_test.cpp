@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// cancel(id) (plan-E2a-1 §Tests, lot A: the contract's cancel, D27 H3c, D22).
+// cancel(id) (the contract's cancel).
 
 #include <iostream>
 #include <limits>
@@ -264,7 +264,7 @@ TEST_F(TransportTest, CancelRacesAfterResolved)
     EXPECT_EQ(hooks::postsRejected(), hookBefore);
 }
 
-// D27 (H3c): cancelling a transfer to a server that accepted and never answers closes its connection at once.
+// Cancelling a transfer to a server that accepted and never answers closes its connection at once.
 TEST_F(TransportTest, CancelWhileServerSilent)
 {
     SilentServer silent;
@@ -301,7 +301,7 @@ TEST_F(TransportTest, CancelWhileServerSilent)
         << " ms after cancel()";
 }
 
-// D22: cancelling a POST whose 64 MiB body is stuck against a server that does not read: the upload had stopped
+// Cancelling a POST whose 64 MiB body is stuck against a server that does not read: the upload had stopped
 // short of the body, the connection closes at once, and the loop keeps serving another transfer meanwhile and after.
 TEST_F(TransportTest, CancelDuringStalledUpload)
 {
@@ -327,7 +327,7 @@ TEST_F(TransportTest, CancelDuringStalledUpload)
     ASSERT_TRUE(collector->waitKey(during.key, 10s));
     EXPECT_EQ(collector->result(during.key)->status, 200);
     // curl sends `Expect: 100-continue` and waits up to 1 s (CURLOPT_EXPECT_100_TIMEOUT_MS) for an answer the silent
-    // server never gives before it sends the body (I60); measured: the upload is stalled well before 1.5 s (scaled()).
+    // server never gives before it sends the body; measured: the upload is stalled well before 1.5 s (scaled()).
     std::this_thread::sleep_for(scaled(1500ms));
     EXPECT_EQ(collector->count(upload.key), 0);
     EXPECT_EQ(inFlight(*transport), 1u);

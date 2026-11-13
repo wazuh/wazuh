@@ -10,12 +10,12 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-E6e-5 (plan 18, stage E6e, D): no shared read-modify-write per op. The action lines of the kinds without `_id`
+// No shared read-modify-write per op. The action lines of the kinds without `_id`
 // live in the write path's HeadTable (append-only, 256 entries, never freed before the write path; past the cap an op
 // builds its own line) and the ops point at them; WritePath::resolve takes the bucket from its caller (OpState keeps
 // none). The lines outlive the producer thread and every reader (the pool's assembly during a shutdown, a group of a
-// dead path), and the dead-bucket branch of a group commit stays intact. ASAN gives the use-after-free verdict (paso 5
-// of the plan); without it each case checks what it can observe.
+// dead path), and the dead-bucket branch of a group commit stays intact. ASAN gives the use-after-free verdict;
+// without it each case checks what it can observe.
 
 #include <atomic>
 #include <condition_variable>
@@ -111,8 +111,8 @@ TEST_F(WriteEncoding, SharedHeadOutlivesProducerThread)
 }
 
 // 300 indices: the first 256 enter the table and are shared; the other 44 build their own line (no cache, no table
-// entry) with the same bytes; an index already in the table keeps hitting it, one beyond the cap never does. G-diff
-// E6e P2: the cap is per runtime lifetime, so a full table must cost no lock: past 256 entries a new index never takes
+// entry) with the same bytes; an index already in the table keeps hitting it, one beyond the cap never does.
+// The cap is per runtime lifetime, so a full table must cost no lock: past 256 entries a new index never takes
 // the append mutex (one take per entry stored, none after).
 TEST_F(WriteEncoding, HeadTableCapFallsBack)
 {
@@ -249,7 +249,7 @@ TEST_F(WriteEncoding, NoHeadReaderAfterRuntime)
 }
 
 // A group of shared-line ops whose client, writer and bucket die before the commit (the group alone keeps it): the
-// commit takes the dead-bucket branch (resolve with no bucket, D66b/D67b) — every op Dropped(ClientClosed), the payload
+// commit takes the dead-bucket branch (resolve with no bucket) — every op Dropped(ClientClosed), the payload
 // and `building` back at once, the reserves when the group state dies — and never touches the dead bucket.
 TEST_F(WriteGroup, CommitAfterBucketDied)
 {

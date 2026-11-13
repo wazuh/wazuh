@@ -49,7 +49,7 @@ namespace indexer_client
         Standalone
     };
 
-    /// Final status of an operation (RF-6).
+    /// Final status of an operation.
     enum class Status
     {
         Ok,
@@ -57,7 +57,7 @@ namespace indexer_client
         Dropped
     };
 
-    /// Single classification of every failure (RF-9) and of every API-level refusal.
+    /// Single classification of every failure and of every API-level refusal.
     enum class Cause
     {
         None,
@@ -96,7 +96,7 @@ namespace indexer_client
     /// Stable, lowercase name of a cause (logs, metrics labels and test diagnostics).
     INDEXER_CLIENT_API const char* toString(Cause cause) noexcept;
 
-    /// Per-item outcome of a write (RF-28).
+    /// Per-item outcome of a write.
     enum class ItemOutcome
     {
         None,
@@ -166,7 +166,7 @@ namespace indexer_client
         double jitter {0.5};
     };
 
-    /// What a bucket does when its quota (or the global cap) is full (RF-11).
+    /// What a bucket does when its quota (or the global cap) is full.
     struct Overflow final
     {
         enum class Kind
@@ -188,7 +188,7 @@ namespace indexer_client
         Duration maxAge {Duration {5000}};
     };
 
-    /// Treatment of HTTP 409 on `update` actions (I27).
+    /// Treatment of HTTP 409 on `update` actions.
     struct ConflictPolicy final
     {
         enum class Kind
@@ -200,7 +200,7 @@ namespace indexer_client
         std::uint32_t retryOnConflict {3};
     };
 
-    /// How a write replaces the stored document (RF-28, I28).
+    /// How a write replaces the stored document.
     struct WriteMode final
     {
         enum class Kind
@@ -212,7 +212,7 @@ namespace indexer_client
         std::vector<std::string> preservedPaths;
     };
 
-    /// One write (RF-4).
+    /// One write.
     struct Op final
     {
         enum class Kind
@@ -228,7 +228,7 @@ namespace indexer_client
         std::string id;
         std::string body; ///< Compact JSON without '\n'.
         std::string version;
-        /// Cancellation key, e.g. the agent id (RF-26); never sent to the indexer. At most 256 bytes, with no byte
+        /// Cancellation key, e.g. the agent id; never sent to the indexer. At most 256 bytes, with no byte
         /// below 0x20 nor 0x7f (otherwise the op is refused as an invalid argument); empty = no tag.
         /// IWriter::cancel(tag) drops the ops of its bucket with that tag; cancel("") is refused (InvalidArgument). See
         /// README § Cancellation.
@@ -251,7 +251,7 @@ namespace indexer_client
     /// bucket is valid only if `bulk.maxBytes + RESULT_RESERVE_BYTES <= quotaBytes`.
     constexpr std::uint64_t RESULT_RESERVE_BYTES = 2048;
 
-    /// A queue with its own policies, declared by a consumer (RF-2, I8).
+    /// A queue with its own policies, declared by a consumer.
     struct BucketSpec final
     {
         std::string name;
@@ -289,8 +289,7 @@ namespace indexer_client
 
     struct CursorQuery final
     {
-        nlohmann::json query = {
-            {"match_all", nlohmann::json::object()}}; ///< `{}` is a 400 in OpenSearch 3.6 (D60, I156).
+        nlohmann::json query = {{"match_all", nlohmann::json::object()}}; ///< `{}` is a 400 in OpenSearch 3.6.
         nlohmann::json sort = nlohmann::json::array();
         nlohmann::json source; ///< `_source` filter; null means "all".
         std::uint32_t pageSize {1000};
@@ -300,7 +299,7 @@ namespace indexer_client
     {
         Duration keepAlive {Duration {300000}};
         bool expandWildcardsAll {false};
-        /// I229: the pages of this PIT (Pit::search, PitSession::next) are capped by maxResponseBytes itself instead of
+        /// The pages of this PIT (Pit::search, PitSession::next) are capped by maxResponseBytes itself instead of
         /// maxResponseBytes / QUERY_DOM_FACTOR (8 MiB with the default 64 MiB), so one page may parse into a DOM
         /// several times maxResponseBytes. For content downloads (the content manager), whose single documents can
         /// exceed the query cap; every other query keeps it.
@@ -324,11 +323,11 @@ namespace indexer_client
         std::uint64_t generation {0};
         nlohmann::json hits = nlohmann::json::array();
         bool last {false};
-        /// hits.total.value of the cursor's first page (track_total_hits); empty on the following pages (I92).
+        /// hits.total.value of the cursor's first page (track_total_hits); empty on the following pages.
         std::optional<std::uint64_t> total;
     };
 
-    /// Indexer credentials (I42, I55): read by each process from its keystore and handed over through
+    /// Indexer credentials: read by each process from its keystore and handed over through
     /// IConfigSource::credentials(). Deliberately without operator<<: never streamed, logged or put in a reason.
     struct Credentials final
     {
@@ -353,10 +352,10 @@ namespace indexer_client
         std::vector<Node> nodes;
         bool clusterRed {false};
         /// Set while the last complete probe round failed for a local reason (TLS material curl refused, a local
-        /// curl error, a response over the cap): the runtime, not the nodes, is at fault (D36).
+        /// curl error, a response over the cap): the runtime, not the nodes, is at fault.
         std::optional<std::string> localFault;
 
-        /// At least one node Available: the strict aggregate (vulnerability scanner admission, I52-e).
+        /// At least one node Available: the strict aggregate (vulnerability scanner admission).
         bool anyAvailable() const
         {
             for (const auto& node : nodes)
@@ -369,7 +368,7 @@ namespace indexer_client
             return false;
         }
 
-        /// At least one node not Down (Available or Throttled): the lenient aggregate (inventory sync, I52-e).
+        /// At least one node not Down (Available or Throttled): the lenient aggregate (inventory sync).
         bool anyUsable() const
         {
             for (const auto& node : nodes)
@@ -382,7 +381,7 @@ namespace indexer_client
             return false;
         }
 
-        /// Why a call should not wait for a node (I190, I190b): every node already went through a probe round (Down
+        /// Why a call should not wait for a node: every node already went through a probe round (Down
         /// with a reason) and none is usable. Then "url: reason" of each node in order, joined by "; ". Nullopt with no
         /// node, with a usable one, or before the first probe round (a node is born Down with an empty reason).
         std::optional<std::string> noUsableAfterProbes() const
@@ -415,9 +414,9 @@ namespace indexer_client
         std::size_t callbacksInFlight {0}; ///< Callbacks started and not finished when awaitClosed returned.
         std::size_t droppedClientClosed {0};
         std::size_t droppedShutdown {0};
-        std::size_t callbacksSkipped {0}; ///< Completions past the cutoff: ticket completed, callback not called (E5b).
-        std::size_t callbackOverruns {0}; ///< Callbacks that took longer than callbackBudget (E5b).
-        /// Ops resolved after requestClose() that are not Dropped(ClientClosed) or Dropped(Shutdown) (E5b): the
+        std::size_t callbacksSkipped {0}; ///< Completions past the cutoff: ticket completed, callback not called.
+        std::size_t callbackOverruns {0}; ///< Callbacks that took longer than callbackBudget.
+        /// Ops resolved after requestClose() that are not Dropped(ClientClosed) or Dropped(Shutdown): the
         /// drain's own results (Ok, Failed, any other Dropped). Sweeps and refusals are only in the two counters above.
         std::size_t drained {0};
     };

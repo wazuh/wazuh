@@ -55,8 +55,8 @@ namespace
     }
 } // namespace
 
-// RNF-1: the library exports its API and nothing from its private dependencies: asio (ASIO_DISABLE_VISIBILITY +
-// -fvisibility=hidden), and libcurl, simdjson and OpenSSL once E2 links them (--exclude-libs,ALL).
+// The library exports its API and nothing from its private dependencies: asio (ASIO_DISABLE_VISIBILITY +
+// -fvisibility=hidden), and libcurl, simdjson and OpenSSL once the transport links them (--exclude-libs,ALL).
 TEST(VisibilityTest, ExportsApiAndNoAsio)
 {
     std::string output;
@@ -92,11 +92,11 @@ TEST(VisibilityTest, ExportsApiAndNoAsio)
         }
     }
     EXPECT_GT(startSymbols, 0u) << "indexer_client::RuntimeOwner::start is not exported";
-    EXPECT_GT(setLogFunctionSymbols, 0u) << "indexer_client::setLogFunction is not exported (I56)";
+    EXPECT_GT(setLogFunctionSymbols, 0u) << "indexer_client::setLogFunction is not exported";
     EXPECT_EQ(deniedLines, 0u);
 }
 
-// I45b: the .so is the production compilation, so not even its local symbols carry the test seams or the hooks. It
+// The .so is the production compilation, so not even its local symbols carry the test seams or the hooks. It
 // needs the symbol table: the CI's coverage and ASAN jobs build Release `-O3 -s` (src/CMakeLists.txt:52), whose .so
 // has none, so there the case is skipped; the TSAN job (Debug) and local Debug builds run it.
 TEST(VisibilityTest, NoTestOnlySymbols)
@@ -258,7 +258,7 @@ namespace
     }
 } // namespace
 
-// I56: the library logs through the function setLogFunction() gives it, with its tag; while a runtime runs the call is
+// The library logs through the function setLogFunction() gives it, with its tag; while a runtime runs the call is
 // ignored (the function stays) and counted as a usage error; after shutdown() it is accepted again.
 TEST(VisibilityTest, SetLogFunctionRoutesLogs)
 {

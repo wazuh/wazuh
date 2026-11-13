@@ -184,7 +184,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto skippedTrace = fmt::format("{} -> Success (skipped in test mode)", name);
 
-    // In test mode nothing is indexed (I183), so the stage builds without a connector (event processing off, I189)
+    // In test mode nothing is indexed, so the stage builds without a connector (event processing off)
     const auto isTestMode = buildCtx->isTestMode();
     auto wic = iConnector.lock();
     if (!wic && !isTestMode)

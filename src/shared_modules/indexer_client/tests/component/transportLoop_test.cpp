@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The network loop's own contracts (plan-E2a-1 §Tests, lot A: D27, D28): where callbacks run, the timer generation,
+// The network loop's own contracts where callbacks run, the timer generation,
 // a start that throws.
 
 #include <dlfcn.h>
@@ -55,7 +55,7 @@ extern "C" CURLMcode curl_multi_socket_action(CURLM* multi, curl_socket_t s, int
     return real(multi, s, evBitmask, runningHandles);
 }
 
-// D27: every result, whatever produced it, is delivered on a CPU-pool thread: a response, a refused connection, a
+// Every result, whatever produced it, is delivered on a CPU-pool thread: a response, a refused connection, a
 // cancellation, a start failure, a multi error and the stop's Shutdown.
 TEST_F(TransportTest, CallbacksRunOnPoolThreads)
 {
@@ -135,7 +135,7 @@ TEST_F(TransportTest, CallbacksRunOnPoolThreads)
         << "every kind of result was delivered";
 }
 
-// D27, D28: a timer handler whose wait had already completed when curl changed its timeout (an older generation) must
+// A timer handler whose wait had already completed when curl changed its timeout (an older generation) must
 // not call curl. Forced: a transfer with a short timeout is held by the server; the loop is kept busy past that
 // timeout, so the timer's completion is already queued when a cancel (queued behind it in the same busy spell) makes
 // curl drop the timeout. The seam counts the stale handlers; the interposed socket_action proves none reached curl.
@@ -214,7 +214,7 @@ TEST_F(TransportTest, StaleTimerNeverReachesCurl)
     fake.releaseHeld();
 }
 
-// D27: an exception thrown while starting (here, before curl_multi_add_handle) is not swallowed: the request gets
+// An exception thrown while starting (here, before curl_multi_add_handle) is not swallowed: the request gets
 // its single result, LocalError with curl code 2, and the loop keeps working.
 TEST_F(TransportTest, StartExceptionDeliversFailedInit)
 {

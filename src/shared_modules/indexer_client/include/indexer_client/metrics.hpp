@@ -13,9 +13,9 @@
 #ifndef _INDEXER_CLIENT_METRICS_HPP
 #define _INDEXER_CLIENT_METRICS_HPP
 
-// Metrics of the indexer client (stage E5c, plan 18 I100-I104). NORMATIVE — the plan points here for the detail.
+// Metrics of the indexer client. NORMATIVE.
 //
-// SCOPE (I101). Client::metrics() returns the buckets of that consumer (ClientMetrics); RuntimeRef::snapshot() returns
+// SCOPE. Client::metrics() returns the buckets of that consumer (ClientMetrics); RuntimeRef::snapshot() returns
 // the runtime, the nodes, the queries and the PITs (MetricsSnapshot) and no bucket. Neither blocks the hot path: they
 // read under the leaf mutexes the counters already live under, with no I/O. Lifetimes: buckets and nodes belong to the
 // runtime; QueryMetrics, PitMetrics and usageErrors are process-wide and never reset (one runtime per process in
@@ -31,7 +31,7 @@
 //   RetryCause   item_retryable, version_conflict, server_5xx, transport, other (ops requeued with a counted attempt,
 //                counted per op in Bucket::requeue from the op's last error).
 //
-// LATENCY (I103). LatencyHistogram keeps per-bucket counts: counts[i] counts samples with ms <= LATENCY_BOUNDS_MS[i]
+// LATENCY. LatencyHistogram keeps per-bucket counts: counts[i] counts samples with ms <= LATENCY_BOUNDS_MS[i]
 // and > the previous bound (counts[0]: ms <= 1); counts[16] counts the rest (inf). forEachMetric publishes them
 // CUMULATIVE: <prefix>.latency.le_1 … le_32768, le_inf, sum_micros, count. A sample is the HttpResult timings.total of
 // a bulk response with an HTTP answer.
@@ -40,11 +40,11 @@
 // resolution lost first-wins (WritePath::resolve returned false) or came back closed from Bucket::requeue. Ignore
 // verdicts (Cancelled, Shutdown) never count.
 //
-// QUERIES (D48). responseBytesInFlight = Σ body bytes of query HttpResults delivered to the query engine and not yet
+// QUERIES. responseBytesInFlight = Σ body bytes of query HttpResults delivered to the query engine and not yet
 // returned to the consumer (classification + DOM); peakResponseBytesInFlight is its process-wide maximum. There is no
-// global charge for them (I84): the gauge makes the question of D48 observable.
+// global charge for them: the gauge makes the memory that reads hold observable.
 //
-// CATALOG (I100). forEachMetric(m, visitor) calls visitor(name, kind, value) once per metric. Names are lowercase,
+// CATALOG. forEachMetric(m, visitor) calls visitor(name, kind, value) once per metric. Names are lowercase,
 // dotted, without labels (.claude/docs/metrics.md):
 //   indexer_client.bucket.<consumer>.<bucket>.<field>   (BucketMetrics of ClientMetrics)
 //   indexer_client.client.<consumer>.<field>            (ClientMetrics)
@@ -148,7 +148,7 @@ namespace indexer_client
         std::array<std::uint64_t, static_cast<std::size_t>(FailCause::Count)> failed {};
         std::array<std::uint64_t, static_cast<std::size_t>(RetryCause::Count)> retries {};
         std::uint64_t lateResults {0};
-        std::uint64_t retainedBytes {0}; ///< Payload charged: pending + retry lane + delivered (E10's queue size).
+        std::uint64_t retainedBytes {0}; ///< Payload charged: pending + retry lane + delivered (consumers' queue size).
         std::uint64_t charge {0};        ///< Everything charged: payload + result reserves + building groups.
         std::uint64_t quotaBytes {0};
         std::uint64_t bulkRequests {0};
@@ -185,7 +185,7 @@ namespace indexer_client
 
     struct QueryMetrics final
     {
-        std::uint64_t requests {0}; ///< Attempts sent (E4a queryStats()).
+        std::uint64_t requests {0}; ///< Attempts sent (queryStats()).
         std::uint64_t failovers {0};
         std::uint64_t throttles {0};
         std::uint64_t unavailable {0};
@@ -209,7 +209,7 @@ namespace indexer_client
         std::uint64_t refusedFull {0};
     };
 
-    /// Snapshot of the runtime (I20, I101). The first three fields are E1's.
+    /// Snapshot of the runtime. The first three fields are the runtime's thread and client counts.
     struct MetricsSnapshot final
     {
         std::uint32_t networkThreads {0};
@@ -222,8 +222,7 @@ namespace indexer_client
         PitMetrics pit;
         std::vector<NodeMetrics> nodes;
         std::uint64_t usageErrors {0};
-        /// The runtime's `request_timeout_ms`, echoed so a consumer can size waits that must outlast one request
-        /// (I150).
+        /// The runtime's `request_timeout_ms`, echoed so a consumer can size waits that must outlast one request.
         Duration requestTimeout {0};
     };
 
@@ -235,9 +234,9 @@ namespace indexer_client
 
     using MetricVisitor = std::function<void(std::string_view name, MetricKind kind, double value)>;
 
-    /// The catalog (I100): every metric of a client's buckets and its callback counters.
+    /// The catalog: every metric of a client's buckets and its callback counters.
     INDEXER_CLIENT_API void forEachMetric(const ClientMetrics& metrics, const MetricVisitor& visitor);
-    /// The catalog (I100): the runtime, its nodes, the queries and the PITs.
+    /// The catalog: the runtime, its nodes, the queries and the PITs.
     INDEXER_CLIENT_API void forEachMetric(const MetricsSnapshot& snapshot, const MetricVisitor& visitor);
     /// The sanitized form of a consumer or bucket name in the catalog.
     INDEXER_CLIENT_API std::string sanitizeMetricName(std::string_view name);

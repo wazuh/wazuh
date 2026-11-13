@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Retry-After (plan-E2a-1 §Tests, lot B: D27, D28): where it is parsed, and what the parser returns whatever the
+// Retry-After where it is parsed, and what the parser returns whatever the
 // process's global locale says.
 
 #include <ctime>
@@ -28,7 +28,7 @@ using indexer_client::testing::FakeIndexer;
 using indexer_client::testing::Rule;
 namespace hooks = indexer_client::testing_hooks;
 
-// D28: the Retry-After parse runs on the CPU pool. With one network loop and the parse held up, another transfer of
+// The Retry-After parse runs on the CPU pool. With one network loop and the parse held up, another transfer of
 // that same loop still completes.
 TEST_F(TransportTest, SlowRetryAfterParseKeepsLoop)
 {
@@ -148,7 +148,7 @@ namespace
     };
 } // namespace
 
-// D27: the parser's table on a fixed clock, with a global locale whose month names are wrong. delta-seconds (0, 120,
+// The parser's table on a fixed clock, with a global locale whose month names are wrong. delta-seconds (0, 120,
 // overflow → cap), the three HTTP-date forms, a past date → 0, malformed → nothing.
 TEST_F(TransportTest, RetryAfterTable)
 {

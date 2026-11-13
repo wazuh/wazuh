@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Driver of the stage benchmark (plan 18, E10b, I198): builder_stage_bench, already built in Release. Never builds.
+# Driver of the stage benchmark: builder_stage_bench, already built in Release. Never builds.
 #
 #   run.sh --bench PATH --out PREFIX [--cpus LIST] [--cpus-p8 LIST] [--runs N] [--events N] [--selfcheck]
 #
@@ -9,8 +9,8 @@
 # (default --cpus; both default none). --selfcheck: 1 run per row of 20000 events.
 # Writes PREFIX.csv (every row), PREFIX.log (provenance and every output) and PREFIX-summary.txt.
 # Exit: 0 all rows valid, 1 invalid rows or a failed run, 2 usage.
-# I208: the RNF-2 gate is the engine's end-to-end A/B (E12, RNF-3); this is a diagnostic. The v1 side and its pairs
-# were removed with the v1 library (E11d, I221).
+# The performance gate is the engine's end-to-end A/B; this is a diagnostic. The v1 side and its pairs
+# were removed with the v1 library.
 set -u
 
 usage() {

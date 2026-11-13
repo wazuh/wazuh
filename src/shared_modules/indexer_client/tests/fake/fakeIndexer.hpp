@@ -686,7 +686,7 @@ namespace indexer_client::testing
                 }
             }
             // A dynamic rule runs before the "received" event, so a waiter that then reads the responder's counters
-            // (BulkResponder::received(), answered()) sees this request (G-diff E3b-1 obj. 7).
+            // (BulkResponder::received(), answered()) sees this request.
             if (matched.dynamic)
             {
                 const auto dynamic = matched.dynamic; // the call may overwrite matched.dynamic itself

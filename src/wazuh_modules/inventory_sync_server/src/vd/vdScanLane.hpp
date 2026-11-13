@@ -119,10 +119,11 @@ namespace invsync::vd
     private:
         void workerLoop(std::size_t index);
         void respond(Item& item, int status, const std::string& body);
-        /// Answers @p item for an indexing failure by its cause alone (I135, failureResponse()).
+        /// Answers @p item for an indexing failure by its cause alone (failureResponse()).
         void respondConnectorFailure(Item& item, indexer::ConnectorError::Cause cause);
         /// After a failed indexing: waits (bounded) for a chunk @p connector abandoned on the wire, before the
-        /// agent is released; WARNs when it gives up (I139 across connectors, VD abandon() parity).
+        /// agent is released; WARNs when it gives up (one unresolved op per key across
+        /// connectors, VD abandon() parity).
         void settleAbandonedWrite(indexer::IIndexerConnectorSync& connector, const std::string& agentId);
         /// One vd.lane.time sample for @p item (no-op on an unstamped enqueuedAt). Split out of
         /// respond() so the one send that cannot go through it -- the feed-not-ready 503, which

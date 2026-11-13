@@ -146,7 +146,7 @@ TEST(MetricsEndpointTest, AnswersServiceUnavailableWhenTheManagerIsGone)
     EXPECT_EQ(503, responder->response().status);
 }
 
-// ---- The buckets' metrics through the module's real GET /metrics (CA-E7b-8, CA-E7c-6) ---------------------------
+// ---- The buckets' metrics through the module's real GET /metrics ---------------------------
 
 namespace
 {
@@ -262,7 +262,7 @@ namespace
 /**
  * With the real Client behind the module, GET /metrics publishes the 51 metrics of EACH of the two buckets by
  * pull -- `inventory` and `agent-state`, under the exact prefixes `indexer_client.bucket.inventory_sync_server.
- * {inventory,agent_state}.` -- plus the sync.indexer.* totals read from the `inventory` bucket (I140): after one
+ * {inventory,agent_state}.` -- plus the sync.indexer.* totals read from the `inventory` bucket: after one
  * session, one /stats and one deletion each bucket accepted its ops and `sync.indexer.bulk.requests` IS the
  * `inventory` bucket's `bulk_requests`. Each name is registered once; a restart rebuilds the Client, so its
  * counters read 0 again until traffic arrives, and nothing registers twice.
@@ -296,7 +296,7 @@ TEST(MetricsEndpointTest, PublishesBothBuckets)
     EXPECT_EQ(200, postStats(socketPath));
     EXPECT_EQ(200, deleteAgent(socketPath, "7"));
 
-    // One scrape is one Client::metrics() call and the snapshot is served for up to 250 ms (I141b).
+    // One scrape is one Client::metrics() call and the snapshot is served for up to 250 ms.
     std::this_thread::sleep_for(400ms);
     const auto document = scrape(socketPath);
     ASSERT_TRUE(document.is_object());
@@ -454,7 +454,7 @@ TEST(MetricsEndpointTest, ReportOfDeletedIdWithdrawsItsSweep)
 
 namespace
 {
-    /// The process-wide families of the catalog (RuntimeRef::snapshot()), which only this module publishes (I168).
+    /// The process-wide families of the catalog (RuntimeRef::snapshot()), which only this module publishes.
     std::vector<std::string> processNames(const indexer_client::RuntimeRef& ref)
     {
         std::vector<std::string> names;
@@ -476,7 +476,7 @@ namespace
 /**
  * GET /metrics publishes the process's runtime -- `indexer_client.{runtime,query,pit}.*` and
  * `indexer_client.node.<i>.*`
- * -- once each, read from RuntimeRef::snapshot() and not from the Client (I168): with the real Client, and with a
+ * -- once each, read from RuntimeRef::snapshot() and not from the Client: with the real Client, and with a
  * Client that publishes nothing of its own (the snapshot is taken before the no-Client early return), and across a
  * restart without registering anything twice. The node family is the runtime's one host, `node.0`.
  */

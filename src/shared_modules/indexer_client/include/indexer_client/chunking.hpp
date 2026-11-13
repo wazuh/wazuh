@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_CHUNKING_HPP
 #define _INDEXER_CLIENT_CHUNKING_HPP
 
-// Consumer-side helpers to cut writes into Groups by quota (D88, I137b, I165, I176b). Header-only: nothing here is
+// Consumer-side helpers to cut writes into Groups by quota. Header-only: nothing here is
 // exported by the library. The consumers keep their own staging machines (barriers, deadlines); only the arithmetic
 // they shared lives here.
 
@@ -72,7 +72,7 @@ namespace indexer_client
     }
 
     /**
-     * @brief What the library will charge for @p op (payload + the per-op result reserve), never less (I137b).
+     * @brief What the library will charge for @p op (payload + the per-op result reserve), never less.
      *
      * Delete: the action line alone. IndexVersionedScript: everything lives in the head, the document twice plus the
      * v1 script. Any other kind: action line + body + '\n' + the body's heap slack (taken as its whole capacity).

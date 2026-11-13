@@ -27,18 +27,17 @@ namespace invsync::indexer
 {
 
     /**
-     * @brief Builds the module's Client, with its `inventory` and `agent-state` buckets, on the process runtime (I130,
-     *        I144, I148).
+     * @brief Builds the module's Client, with its `inventory` and `agent-state` buckets, on the process runtime.
      *
      * `runtime` is the opaque `const indexer_client::RuntimeRef*` modulesd publishes in the C config
      * (`indexer_runtime`). The production factory throws when it is null or when RuntimeRef::client()
-     * refuses: that failure is the sync stage of the startup gate (I131). A test installs one that
+     * refuses: that failure is the sync stage of the startup gate. A test installs one that
      * returns a stand-in, so the gate's other stages keep their own fakes.
      */
     using IndexerClientFactory = std::function<std::shared_ptr<indexer_client::IClient>(
         const void* runtime, const std::vector<indexer_client::BucketSpec>& buckets)>;
 
-    /// Builds one worker's sync connector over the shared Client (I144).
+    /// Builds one worker's sync connector over the shared Client.
     using IndexerConnectorSyncFactory =
         std::function<std::unique_ptr<IIndexerConnectorSync>(std::shared_ptr<indexer_client::IClient> client,
                                                              const AdapterOptions& options,

@@ -2,8 +2,7 @@
 
 ## Purpose
 
-`indexer_client` is the shared library that replaced the v1 connector library (removed in 5.x; epic
-[wazuh/wazuh#39933](https://github.com/wazuh/wazuh/issues/39933)). It is built to serve the four
+`indexer_client` is the shared library that replaced the v1 connector library (removed in 5.x). It is built to serve the four
 consumers of the indexer, one consumer at a time, with:
 
 - one **runtime per process**, owned by a single `RuntimeOwner`;
@@ -15,7 +14,7 @@ consumers of the indexer, one consumer at a time, with:
 - metrics exposed as a snapshot;
 - typed configuration validated from one `IConfigSource`.
 
-**Status.** The library is complete for its consumers (the Inventory Sync Server, the Vulnerability Scanner and the engine): write admission, buckets and DRR scheduling over an internal curl [Transport](#transport-internal-e2a-1-and-e2a-2) (HTTP, HTTPS, credentials), the [node health probe](#node-health-e2b), the [response classifier and retry lane](#response-classification-and-retry-lane-e3b-1) driven by the [bulk sender](#bulk-sender-e3b-2) with its [per-node load control](#load-control-e5a), the [client close and shutdown](#closing-and-shutdown-e5b), the [metrics snapshot and catalog](#metrics-e5c), the [edge-triggered logging](#logging-e5c), the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets-e3c-2), [`cancel(tag)`](#cancellation-e3c-2), the [queries](#queries-e4a) and the [managed point in time](#point-in-time-e4b). `requestClose()` closes admission and the queued writes keep draining until `awaitClosed(deadline)`, which then resolves the rest and stops callbacks from starting. See [Known limits](#known-limits).
+**Status.** The library is complete for its consumers (the Inventory Sync Server, the Vulnerability Scanner and the engine): write admission, buckets and DRR scheduling over an internal curl [Transport](#transport-internal) (HTTP, HTTPS, credentials), the [node health probe](#node-health), the [response classifier and retry lane](#response-classification-and-retry-lane) driven by the [bulk sender](#bulk-sender) with its [per-node load control](#load-control), the [client close and shutdown](#closing-and-shutdown), the [metrics snapshot and catalog](#metrics), the [edge-triggered logging](#log-lines), the per-operation conflict policy, `ReplacePreserving`, confirmable groups, [`ordered` buckets](#ordered-buckets), [`cancel(tag)`](#cancellation), the [queries](#queries) and the [managed point in time](#point-in-time). `requestClose()` closes admission and the queued writes keep draining until `awaitClosed(deadline)`, which then resolves the rest and stops callbacks from starting. See [Known limits](#known-limits).
 The v1 connector library no longer exists in the tree; where this document says "the v1" it is that library, kept only as the
 reference the tests and benchmarks were written against.
 
@@ -40,11 +39,11 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `RetryPolicy`, `Overflow`, `BulkThresholds`, `ConflictPolicy`, `WriteMode` | Per-bucket / per-query policies |
 | | `Op`, `Callback` | One write (`Index`, `IndexAutoId`, `IndexDataStream`, `Delete`, `IndexVersionedScript`); completion callback that runs on the CPU pool |
 | | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered`, `onAmbiguous5xx`, `trustedBodies` (default `false`: the producer guarantees compact JSON without a raw `\n`, so the per-op `\n` search is skipped; a stray `\n` is then not caught locally: it fails that whole bulk with 400, or, when what follows it is a valid action line, injects an operation, the batch is requeued and every retry runs it again and duplicates each `IndexAutoId`/`IndexDataStream` of the batch; only for producers that guarantee compact JSON, see [Encoding per kind](#encoding-per-kind)) |
-| | `AmbiguousPolicy` | `Retry` (default) or `Fail`: what a bucket does with a `_bulk` answered 500, 502 or 504, or whose response went over `max_response_bytes` (see [Ambiguous 5xx](#ambiguous-5xx-e6a)) |
+| | `AmbiguousPolicy` | `Retry` (default) or `Fail`: what a bucket does with a `_bulk` answered 500, 502 or 504, or whose response went over `max_response_bytes` (see [Ambiguous 5xx](#ambiguous-5xx)) |
 | | `Slice`, `CursorQuery`, `PitOptions`, `DbqOptions`, `QueryOptions`, `PitPage` | Query and PIT parameters and page |
-| | `HealthView` | `nodes[]` (`url`, `state`, `reason`), `clusterRed`, `localFault`, `anyAvailable()`, `anyUsable()`; returned by `Client::health()` (see [Node health](#node-health-e2b)) |
+| | `HealthView` | `nodes[]` (`url`, `state`, `reason`), `clusterRed`, `localFault`, `anyAvailable()`, `anyUsable()`; returned by `Client::health()` (see [Node health](#node-health)) |
 | | `CloseReport` | Close accounting |
-| `metrics.hpp` | `MetricsSnapshot`, `ClientMetrics`, `BucketMetrics`, `NodeMetrics`, `QueryMetrics`, `PitMetrics`, `LatencyHistogram` | Typed snapshots of `RuntimeRef::snapshot()` and `Client::metrics()` (see [Metrics](#metrics-e5c)) |
+| `metrics.hpp` | `MetricsSnapshot`, `ClientMetrics`, `BucketMetrics`, `NodeMetrics`, `QueryMetrics`, `PitMetrics`, `LatencyHistogram` | Typed snapshots of `RuntimeRef::snapshot()` and `Client::metrics()` (see [Metrics](#metrics)) |
 | | `RejectCause`, `DropCause`, `FailCause`, `RetryCause`, `toString(...)` | The closed per-cause sets |
 | | `MetricKind`, `forEachMetric`, `sanitizeMetricName` | The catalog of canonical names |
 | `iConfigSource.hpp` | `IConfigSource` | The only way configuration and credentials reach the library |
@@ -58,22 +57,22 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | `client.hpp` | `Client` | A consumer's handle on the runtime; implements `IClient` |
 | | `IClient`, `IWriter`, `IQuery` | Abstract interfaces for consumers' mocks |
 | | `Ticket`, `GroupTicket`, `CancelTicket` | Handles on a pending write, a group of writes and a cancel; `ready()` and `wait(Deadline)` |
-| | `Submit` | Result of `submit`: `accepted`, `cause`, `reason` (why it was refused; `InvalidArgument` names the field first, D42), `ticket` |
-| | `Posted` | Result of `post` (I122): `accepted`, `cause`, `reason`; no ticket |
-| | `Group` | Confirmable group of writes: `add(Op)` reserves its quota at once, `commit()` enqueues all together; dropped without commit it releases its reservation; `lastAddReason()` (see [Groups](#groups-e3c-1)) |
-| | `Pit`, `PitSession` | Shared PIT handle (`cursor`, `search`, `generation`) and its cursors (`next`, `exhausted`); see [Point in time](#point-in-time-e4b) |
+| | `Submit` | Result of `submit`: `accepted`, `cause`, `reason` (why it was refused; `InvalidArgument` names the field first), `ticket` |
+| | `Posted` | Result of `post`: `accepted`, `cause`, `reason`; no ticket |
+| | `Group` | Confirmable group of writes: `add(Op)` reserves its quota at once, `commit()` enqueues all together; dropped without commit it releases its reservation; `lastAddReason()` (see [Groups](#groups)) |
+| | `Pit`, `PitSession` | Shared PIT handle (`cursor`, `search`, `generation`) and its cursors (`next`, `exhausted`); see [Point in time](#point-in-time) |
 
 **Write handles.** `Writer::submit` validates, encodes, charges and queues the operation (see
-[Write path](#write-path-e3a)); a refusal carries its `reason` (D42: `InvalidArgument` names the field first, as the internal
-reason of `encode` does; `QueueFull`, `PayloadTooLarge` and the rest carry their own). `Writer::post(Op)` (I122) is `submit` for a
+[Write path](#write-path)); a refusal carries its `reason` (`InvalidArgument` names the field first, as the internal
+reason of `encode` does; `QueueFull`, `PayloadTooLarge` and the rest carry their own). `Writer::post(Op)` is `submit` for a
 producer that never waits on a result (the engine): the same validation, admission, overflow policy and `Reentrancy`, but no
 `Ticket` and no callback, so it answers only `Posted{accepted, cause, reason}`. An accepted `post` has no per-operation result for
 its producer: its outcome is counted only in the bucket's snapshot and in the `CloseReport`, and in a `DropNewest` or `DropOldest`
 bucket it may still end `Dropped(QueueFull)` (dropped at once, or evicted later by a newer operation) without the producer knowing. `Writer::group()` returns a real
-[`Group`](#groups-e3c-1). `Writer::cancel(tag)` returns a [`CancelTicket`](#cancellation-e3c-2). `Client::writer(bucket)` returns the writer bound to that bucket of
-the client; once the runtime is gone it returns the E1 stub writer, which answers `Unavailable`.
+[`Group`](#groups). `Writer::cancel(tag)` returns a [`CancelTicket`](#cancellation). `Client::writer(bucket)` returns the writer bound to that bucket of
+the client; once the runtime is gone it returns a stub writer, which answers `Unavailable`.
 
-`CloseReport` (from `Client::awaitClosed`); the fields are described in [Closing and shutdown](#closing-and-shutdown-e5b):
+`CloseReport` (from `Client::awaitClosed`); the fields are described in [Closing and shutdown](#closing-and-shutdown):
 
 | Field | Meaning |
 |---|---|
@@ -122,24 +121,24 @@ RuntimeOwner::shutdown()                  owner thread, joins every runtime thre
 - **`shutdown()`** joins every runtime thread. A second call is a no-op (`Cause::None`). Taking a
   `RuntimeRef` from a previous runtime does not make it valid again after a restart.
 - **Exit without `shutdown()`.** A runtime that never went through `shutdown()` is joined during
-  static destruction, at `exit()`. In E1 its threads always leave, but from E2 on a thread blocked
+  static destruction, at `exit()`. A thread blocked
   in I/O or in a long callback can hang that `exit()`: the owner must call `shutdown()` before the
   process exits.
   Measured for a fatal `exit()` from any thread with a `Client` held in a static and a `_bulk` the
-  indexer never answers (E7c, D71): the process does not hang, but `~Client` first waits for its
+  indexer never answers: the process does not hang, but `~Client` first waits for its
   drain, `drain_ms − 2·callback_budget_ms` (about 9.6 s with the defaults), then the leftover
   transfer is cancelled and the runtime threads are joined in milliseconds. Each such static client
   adds its own wait.
 - **`requestClose()` / `awaitClosed(deadline)`.** `Client::requestClose()` never blocks and is
   valid from any thread; it closes admission and the queued writes keep draining. `Client::awaitClosed()` blocks and is for consumer
   threads only: it waits for the drain up to `deadline`, resolves what is left and returns a `CloseReport` (see
-  [Closing and shutdown](#closing-and-shutdown-e5b)). The `Client` destructor is `requestClose()` plus `awaitClosed()` with the
+  [Closing and shutdown](#closing-and-shutdown)). The `Client` destructor is `requestClose()` plus `awaitClosed()` with the
   shutdown deadline (or the default). After `requestClose()`, `writer()` and `query()` return `nullptr`: a closing client
   hands out no new handles. Destroying a `Client` from a runtime thread is a usage error: it is
   logged to stderr, counted (`detail::testing::usageErrors()`) and turned into a non-blocking
   `requestClose()` plus an immediate sweep; it never aborts, not even in debug builds. That path does not release the consumer
   name (only `awaitClosed()` does, or the client state's own destruction), so the name stays taken until the state dies.
-- **Internal errors never abort** (issue 15, D64). The manager's Release flags (`-O3 -s`, `src/CMakeLists.txt`) do not define
+- **Internal errors never abort.** The manager's Release flags (`-O3 -s`, `src/CMakeLists.txt`) do not define
   `NDEBUG`, so an `assert` would abort the packaged manager: the library has none. A broken internal invariant is logged at ERROR
   (`internal error (please report it): ...`), counted (`testing_hooks::internalErrors()`, test build only) and followed by its
   recovery: `encode()` finds the precomputed size of an operation's lines different from the encoded bytes → the operation is
@@ -188,7 +187,7 @@ and values are strict unsigned decimals (C uses `atoi`).
   does not match.
 
 The caller reads the file; the class only parses text. In the manager build there is one
-internal-options file: E7 (modulesd) passes exactly `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
+internal-options file: modulesd passes exactly `/etc/wazuh-manager/wazuh-manager-internal-options.conf`
 (`WAZUH_LDEFINES`, `src/shared/include/defs.h`). The defaults are `kSchema`'s, the same model the C
 side uses with `getDefine_Int_default()`: there is no default file to concatenate. The engine is
 expected to wrap its own `conf` in its own `IConfigSource`.
@@ -260,10 +259,10 @@ loops and the CPU pool runs its result callbacks; the test seams (`detail::testi
 `clients`. curl's own DNS resolver threads are auxiliary threads outside K + M; the transport sets
 `CURLMOPT_QUICK_EXIT` so they never block shutdown.
 
-## Transport (internal, E2a-1 and E2a-2)
+## Transport (internal)
 
-`detail::Transport` (`src/transport/transport.hpp`) is the HTTP layer the probe (E2b), the bulk
-path (E3b) and the queries (E4) build on. It is **not public API**: no installed header names it and
+`detail::Transport` (`src/transport/transport.hpp`) is the HTTP layer the probe, the bulk
+path and the queries build on. It is **not public API**: no installed header names it and
 neither asio nor curl types appear in it. `RuntimeOwner::start` creates it after the runtime threads
 exist; internal users reach it through `detail::runtimeTransport()`, a weak view that never keeps
 the runtime alive. The normative contract is the transport contract of the Indexer Client plan (outside the repository).
@@ -317,7 +316,7 @@ the runtime alive. The normative contract is the transport contract of the Index
 - **Response cap.** `max_response_bytes` is enforced only in the write callback
   (`curlLoop.cpp:772`), which sets the cap flag and fails the transfer; `HttpResult.body` is never
   larger than the cap. `CURLOPT_MAXFILESIZE_LARGE` is not used. The transport sets
-  `CURLOPT_ACCEPT_ENCODING "gzip"` (gzip only, I117; `curlLoop.cpp:295`); curl decompresses before the write callback, so
+  `CURLOPT_ACCEPT_ENCODING "gzip"` (gzip only; `curlLoop.cpp:295`); curl decompresses before the write callback, so
   `max_response_bytes` counts **decompressed** bytes (a gzip bomb yields `ResponseTooLarge`) and a corrupt gzip body (curl 61) is a
   `RecvError`, attributable to the node. Measured against OpenSearch 3.6.0: bulk errors 363 594 to 13 217 B, a page of 1 000 hits
   200 722 to 11 744 B.
@@ -327,7 +326,7 @@ the runtime alive. The normative contract is the transport contract of the Index
 - **Fixed options.** Per easy: `CURLOPT_PROTOCOLS_STR "http,https"`, `CURLOPT_NOSIGNAL`,
   `CURLOPT_PROXY ""` (never a proxy from the environment); `Expect` is left to curl (100-continue on bodies over 1 MiB,
   as the v1). Per multi:
-  `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant of E2a-1; the sender's window is the [limiter's](#load-control-e5a)),
+  `CURLMOPT_MAX_HOST_CONNECTIONS` = 8 (a constant; the sender's window is the [limiter's](#load-control)),
   `CURLMOPT_MAXCONNECTS` = configured hosts x 8 (curl's default pool, 4 x the transfers running, closed connections
   after every burst and the next burst reconnected; it caps idle connections, not transfers) and
   `CURLMOPT_QUICK_EXIT`. `curl_global_init` runs once (`std::call_once`).
@@ -338,7 +337,7 @@ the runtime alive. The normative contract is the transport contract of the Index
 
 ### TLS and credentials
 
-**TLS material (I48).** `RuntimeOwner::start` calls `loadTlsMaterial` (`src/transport/tlsMaterial.cpp`)
+**TLS material.** `RuntimeOwner::start` calls `loadTlsMaterial` (`src/transport/tlsMaterial.cpp`)
 before creating any thread, and does so **whenever the material is configured, whatever the hosts'
 scheme**: a typo in a path fails at start, not on the day `https` is used. A failure is
 `Cause::InvalidConfig`, names the path or the host, and creates no thread. What is required:
@@ -363,7 +362,7 @@ passed as `CAINFO_BLOB`, `SSLCERT_BLOB` and `SSLKEY_BLOB` with `CURL_BLOB_NOCOPY
 and no CA directory (`CAPATH` is null). The minimum protocol is TLS 1.2. The material is read only at
 start: **rotating a CA, certificate or key requires a restart**.
 
-**Verification policy (E11e, `ssl.verify_certificates`).** `loadTlsMaterial` also decides what curl
+**Verification policy (`ssl.verify_certificates`).** `loadTlsMaterial` also decides what curl
 verifies, with the v1's behaviour (http-request's `urlRequest.hpp`) so that an update from 5.0 keeps
 connecting:
 
@@ -385,7 +384,7 @@ connecting:
 - Tests replace the list of paths through the `systemCaPaths()` seam (`src/transport/seams.hpp`, not in
   the `.so`).
 
-**TLS causes (I54).** Added to the classification table:
+**TLS causes.** Added to the classification table:
 
 | curl code | `TransportCause` | `nodeAttributable` | Meaning |
 |---|---|---|---|
@@ -394,7 +393,7 @@ connecting:
 | 53, 54, 59, 66, 82, 83, 90, 91 | `TlsConfig` | no | Listed for completeness; unreachable with our options (no `SSLENGINE`, cipher list, `CRLFILE`, `ISSUERCERT`, pinned public key nor `VERIFYSTATUS`) |
 | 43 | `LocalError` | no | Stays generic |
 
-**Credentials (I55, I42).** `IConfigSource::credentials()` returns the `Credentials`; the process
+**Credentials.** `IConfigSource::credentials()` returns the `Credentials`; the process
 reads them from its own keystore, the library never does. They are **mandatory, also with `http`**:
 `start` copies them and fails with `InvalidConfig` (before any thread) when the user or the password
 is empty or `credentials()` throws. They travel on every request as `CURLOPT_USERNAME` and
@@ -406,7 +405,7 @@ dies and `KeyValueConfigSource` wipes its password copy in its destructor, but c
 copies of their own that the library cannot reach, the `Credentials` returned by `credentials()` are
 the caller's, and a moved-from string may keep stale bytes; do not rely on it as a guarantee.
 
-## Node health (E2b)
+## Node health
 
 The runtime knows at every moment which indexer nodes it can use. Each node is in one of three states
 (`HealthView::NodeState`): `Available`, `Throttled` (the node answered 429) or `Down`. In `view()` every node starts `Down`
@@ -414,7 +413,7 @@ until the first probe round says otherwise. The state lives in an internal `Node
 `Prober` (`src/health/prober.{hpp,cpp}`) and, later, by the data path.
 
 **The probe.** The `Prober` sends one `GET {host}/_cluster/health/wazuh-*,.wazuh-*` per configured node through the
-[Transport](#transport-internal-e2a-1-and-e2a-2), with `request.timeout` = `probe_timeout_ms`. The index expression
+[Transport](#transport-internal), with `request.timeout` = `probe_timeout_ms`. The index expression
 (`MANAGER_INDEX_PATTERN` in `src/health/prober.hpp`, not configurable) limits the answer to the indices the manager reads
 (`.wazuh-*`) and writes (`wazuh-*`; a wildcard resolves a data stream to its backing indices): a red index the manager does
 not use (an alerting or ISM index, a user's own) no longer marks every node `Down`, while a manager index that loses its
@@ -447,22 +446,22 @@ probe instead of answering from its stale copy of the cluster state. It works in
 `localFault` is set while the last complete round had a local result (the runtime, not the node, is at fault) and is cleared by
 the first complete round without one.
 
-**Passive signals.** `NodeSet::report(index, HttpResult)` is for the data path (the [bulk sender](#bulk-sender-e3b-2) calls it on a failover and on a 429; the queries and the PIT registry call it too). It applies at once,
+**Passive signals.** `NodeSet::report(index, HttpResult)` is for the data path (the [bulk sender](#bulk-sender) calls it on a failover and on a 429; the queries and the PIT registry call it too). It applies at once,
 outside the rounds, and can only degrade: a node-attributable failure sets `Down`; a 429 sets `Throttled` from `Available`. A
 passive success never promotes. A 429 that carries a `Retry-After` also **parks** the node, see below.
 
 **Selector.** `NodeSet::choose()` is round-robin among the `Available` nodes; a `Throttled` node is chosen only when none is
 `Available`; it returns nothing when every node is `Down`. A **parked** node (see below) is skipped in both passes. `choose(allowed)` applies the same order among the nodes the filter
-accepts; the filter runs under the `NodeSet` mutex (the bulk sender's takes its own, see [lock order](#bulk-sender-e3b-2)).
+accepts; the filter runs under the `NodeSet` mutex (the bulk sender's takes its own, see [lock order](#bulk-sender)).
 
-**Parking a node (E6a, I109, I109b).** Every `Node` has a `notBefore`. A 429 that carries a `Retry-After`, from **any** path (bulk, query,
+**Parking a node.** Every `Node` has a `notBefore`. A 429 that carries a `Retry-After`, from **any** path (bulk, query,
 PIT, and the probe round's own result), raises it to `now + Retry-After` with a `max`: it is only ever raised, never shortened, and the
 value is already capped by `retry_after_max_ms`. The node's state does not matter (a `Down` node keeps the wait for when the probe brings it
 back); the state transition of a 429 stays `Available` to `Throttled` only. While `notBefore > now` the node is parked: nothing is sent to it
 by anybody.
 
 - `NodeSet::choose` skips parked nodes before it runs the caller's filter.
-- The [bulk sender](#bulk-sender-e3b-2) mirrors the `NodeSet`'s `notBefore` into its own slot (`refreshMirror`, `max` with the pacing state it
+- The [bulk sender](#bulk-sender) mirrors the `NodeSet`'s `notBefore` into its own slot (`refreshMirror`, `max` with the pacing state it
   already holds) and arms its `notBefore` timer, so `capacity()` is 0 while the node is parked and the timer wakes the scheduler when it ends:
   loop 0 neither spins nor loses the wake-up.
 - A read (query or PIT creation) with **every not-`Down` node parked** waits for the first of them (`NodeSet::earliestNotBefore()`) within its
@@ -488,12 +487,11 @@ by anybody.
 `Prober::stop()` sets a flag, posts the timer cancellation to loop 0 and waits for it, so no round is armed and no probe is
 submitted after it returns.
 
-## Write path (E3a)
+## Write path
 
 `Writer::submit` validates and encodes the operation, charges its memory against the bucket's quota and the global cap, applies
 the bucket's overflow policy when there is no room, and queues it. A DRR scheduler on network loop 0 forms batches from the
-queues and hands them to an internal sink. The production sink is the [bulk sender](#bulk-sender-e3b-2) (in E3a it was a stub
-that resolved every operation `Failed(Unavailable)`). The code is in `src/write/` (`encoding`, `bucket`, `budget`, `scheduler`, `sink`,
+queues and hands them to an internal sink. The production sink is the [bulk sender](#bulk-sender). The code is in `src/write/` (`encoding`, `bucket`, `budget`, `scheduler`, `sink`,
 `writer`, `response`, `sender`); none of it is public API. Counters are reachable only through `detail::writeStats()`.
 
 ### Encoding per kind
@@ -501,7 +499,7 @@ that resolved every operation `Failed(Unavailable)`). The code is in `src/write/
 `encode(Op&&, const ConflictPolicy&, bool trustedBody = false, HeadTable* heads = nullptr)` (`src/write/encoding.hpp`, normative
 for the details below) runs in `submit`, `post` and in `Group::add`, on the producer's thread, once; those pass the bucket's
 `BucketSpec::trustedBodies` and the write path's `HeadTable`. The result is the operation's NDJSON lines (each ends in `\n`) as an
-`Encoded{head, cachedHead, body}` (I121, I125): on the wire the operation is `headView()` + `body` + `\n` (the `\n` only with a
+`Encoded{head, cachedHead, body}`: on the wire the operation is `headView()` + `body` + `\n` (the `\n` only with a
 body; `appendWire`), `wire()` is its exact size on the wire, and a retry re-sends them without re-encoding. `headView()` is the
 cached head when there is one, else `head`; the wire size, the charge, the batch builder and the sender all read the head through
 it.
@@ -509,8 +507,7 @@ it.
 - `Index` (`Replace`): `head` is the action line with its `\n`, built with an exact `reserve`; `body` is `op.body` itself, moved
   in with its buffer: the document is never copied nor re-reserved on the producer's thread.
 - `IndexAutoId`, `IndexDataStream`: `body` as above; the action line depends only on kind and index, so it is **shared**
-  (`cachedHead`, a plain pointer to a line of the write path's `HeadTable`; `head` stays empty; E6e removed the per-op reference
-  count). The table is append-only, holds at most 256 lines in fixed slots and lives as long as the write path, which outlives
+  (`cachedHead`, a plain pointer to a line of the write path's `HeadTable`; `head` stays empty). The table is append-only, holds at most 256 lines in fixed slots and lives as long as the write path, which outlives
   every reader of a line (the runtime joins its CPU pool first; a group of a dead path never reads its lines); past 256 an op
   builds its own `head`. The cap is per runtime lifetime (the table never shrinks): once 256 (kind, index) pairs were seen, an
   op of a new pair finds the table full without a lock and only builds its line, never taking the table's append mutex.
@@ -537,11 +534,11 @@ byte-for-byte the v1's (`indexerConnectorSyncImpl.hpp` of the deleted v1 library
 | `IndexVersionedScript` + `ReplacePreserving` | as above with `"<PRESERVE_VERSIONED_SOURCE>"` and `"params":{"doc_version":<version>,"paths":<P>,"doc":<body>}` |
 
 `<R>` is `,"retry_on_conflict":<n>` and appears only on the `update` actions (`IndexVersionedScript` and every `ReplacePreserving`
-line) and only when the effective [conflict policy](#conflict-policy-e3c-1) is `Retry`; with `Success` the line is the E3a one (v1
+line) and only when the effective [conflict policy](#conflict-policy) is `Retry`; with `Success` the line is the plain one (v1
 parity). An `index`, `create` or `delete` line never carries it (OpenSearch answers 400 to the whole request). `<P>` is the preserved
 paths in the given order, each an array of its segments, e.g. `[["case"],["a","b"]]`.
 
-**`ReplacePreserving` (I28, I71, I72).** It is admitted only for `Index` and `IndexVersionedScript`; with `Delete`, `IndexAutoId` or
+**`ReplacePreserving`.** It is admitted only for `Index` and `IndexVersionedScript`; with `Delete`, `IndexAutoId` or
 `IndexDataStream` the op is `InvalidArgument` (`mode: ...`). The document travels twice, as in `IndexVersionedScript`: once in
 `params.doc` and once as `upsert` (a missing document is created by running the script on the upsert). The two Painless sources are
 **constants** exported by `encoding.hpp` (`PRESERVE_SOURCE`, `PRESERVE_VERSIONED_SOURCE`): OpenSearch caches the compiled script per
@@ -554,12 +551,12 @@ source, so the paths travel in `params.paths`, never inside the source. Semantic
 4. every path that was present is restored, copying each intermediate map before the `put`: the stored value wins over the agent's
    at that path. An absent path leaves the agent's value (or nothing).
 
-**Caveat (D45).** The in-process fake indexer does not run Painless: the tests freeze the bytes of both shapes and check the
-outcomes the sender maps (`updated`, `noop`, `created`), but the preservation itself is proven only against a real OpenSearch, in E6.
+**Caveat.** The in-process fake indexer does not run Painless: the tests freeze the bytes of both shapes and check the
+outcomes the sender maps (`updated`, `noop`, `created`), but the preservation itself is proven only against a real OpenSearch.
 
 Validation failures are `Cause::InvalidArgument`, counted in the bucket (`invalidArgument`), and the op is not charged. The
 field is first in the reason (`index: ...`, `id: ...`, `version: ...`, `body: ...`, `mode: ...`,
-`onConflict.retryOnConflict: ...`), which `Submit::reason` and `Group::lastAddReason()` hand to the consumer (D42).
+`onConflict.retryOnConflict: ...`), which `Submit::reason` and `Group::lastAddReason()` hand to the consumer.
 
 | Field | Rule |
 |---|---|
@@ -567,11 +564,11 @@ field is first in the reason (`index: ...`, `id: ...`, `version: ...`, `body: ..
 | `id` | Required for `Index`, `Delete` and `IndexVersionedScript`; must be empty for `IndexAutoId` and `IndexDataStream`. Escaped as the v1 does: `"`, `\`, the short escapes and any other control character below 0x20 as `\u00XX` |
 | `version` | Only for `IndexVersionedScript`, where it must be a canonical integer in [0, `INT64_MAX`] (digits only, no leading zero); empty for every other kind |
 | `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete`. With `BucketSpec::trustedBodies` the `\n` search is skipped (the producer vouches for compact JSON; a stray `\n` breaks the NDJSON framing: if what follows is not a valid action line the indexer answers 400 to that whole bulk; if it is one, the indexer runs the injected operation and answers 2xx with one item more than operations, the whole batch is requeued `{true, Backoff}` and every retry runs the injected operation again and duplicates each `IndexAutoId`/`IndexDataStream` of the batch until `Failed(RetryExhausted)`. Only for producers that guarantee compact JSON — the engine escapes every `\n`) |
-| `mode` | `ReplacePreserving` only with `Index` or `IndexVersionedScript` (I72); `preservedPaths` non-empty only with `ReplacePreserving` |
+| `mode` | `ReplacePreserving` only with `Index` or `IndexVersionedScript`; `preservedPaths` non-empty only with `ReplacePreserving` |
 | `preservedPaths` | With `ReplacePreserving`: 1 to 16 paths; each 1 to 8 segments of 1 to 64 characters from `[A-Za-z0-9_@-]` (written dot-separated); no two equal and none a segment prefix of another; with `IndexVersionedScript` none may be `state`, `state.document_version` or below it (it would defeat the guard) |
-| `onConflict` | Optional per-operation [conflict policy](#conflict-policy-e3c-1); `Retry` needs `retryOnConflict` in 1 to 100 (`MAX_RETRY_ON_CONFLICT`) |
+| `onConflict` | Optional per-operation [conflict policy](#conflict-policy); `Retry` needs `retryOnConflict` in 1 to 100 (`MAX_RETRY_ON_CONFLICT`) |
 
-### Conflict policy (E3c-1)
+### Conflict policy
 
 A 409 on a `_bulk` item (`version_conflict_engine_exception`) is resolved by the **effective policy**: `Op::onConflict` when the
 operation sets it, otherwise the bucket's `BucketSpec::onConflict`. The choice is stored with the operation (`OpState::conflictRetry`)
@@ -579,17 +576,17 @@ when it is admitted.
 
 | Policy | A 409 item |
 |---|---|
-| `Success` | The op resolves `Ok` keeping the 409 and the error type (the E3a behaviour) |
+| `Success` | The op resolves `Ok` keeping the 409 and the error type (the default) |
 | `Retry` | The op is requeued with backoff on the retry lane, with `LastError {VersionConflict, 409, type, reason}`; when the bucket's retry budget runs out it resolves `Failed(RetryExhausted)` carrying that last error. The wire line also carries `retry_on_conflict` (update actions only, see [Encoding per kind](#encoding-per-kind)) |
 
 `retryOnConflict` must be 1 to 100 for a `Retry` policy, both in `Op::onConflict` (`InvalidArgument`, field
 `onConflict.retryOnConflict`) and in the bucket's spec (registration refuses it). `Retry` on `create`
 (`IndexDataStream`), `IndexAutoId` or `Index`/`Delete` is accepted but only changes how a 409 item is treated: for `create` the 409
-means "the document exists", so retrying it can never succeed and is useless. `ordered` buckets are described in [Ordered buckets](#ordered-buckets-e3c-2).
+means "the document exists", so retrying it can never succeed and is useless. `ordered` buckets are described in [Ordered buckets](#ordered-buckets).
 
-### Groups (E3c-1)
+### Groups
 
-`Writer::group()` returns a `Group` (RF-7, I70, I74; the normative detail is `src/write/group.hpp`). It lets a consumer reserve room
+`Writer::group()` returns a `Group` (the normative detail is `src/write/group.hpp`). It lets a consumer reserve room
 for a set of writes first and release them to the scheduler all together.
 
 - **States.** `Building` -> `Committed` -> `Done`, or `Building` -> `Abandoned`. A `Group` is single-owner and not thread-safe; two
@@ -600,7 +597,7 @@ for a set of writes first and release them to the scheduler all together.
   (above `bulk.maxBytes`, or the single charge above the quota or global cap), `GroupTooLarge` (what the group already holds plus
   this op would exceed the quota or the global cap; the group stays usable and can still be committed), `QueueFull`,
   `SubmitTimeout`, `Reentrancy`, the close cause, `Unavailable` (its client is gone; with the runtime shut down the add answers the
-  close cause). `DropNewest` and `DropOldest` behave like `Reject` for a group (I70): nothing is evicted and nothing is dropped.
+  close cause). `DropNewest` and `DropOldest` behave like `Reject` for a group: nothing is evicted and nothing is dropped.
   With `Block` the call waits for room like `submit`, except that it **never waits on a group in `Building`**: when the room is
   held by groups still being built (the bucket's or the global `building` charge) it returns `QueueFull` at once, so two half-built
   groups cannot deadlock each other.
@@ -622,15 +619,15 @@ for a set of writes first and release them to the scheduler all together.
 - **Statistics.** `BucketStats` adds `groupBuilding` (ops reserved by uncommitted groups), `groupAbandoned` and
   `rejectedGroupTooLarge` (counted under `submitted`). The invariant is now `accepted = resolved + retained + groupBuilding`.
 - **Reentrancy.** A `Block` `add` that would have to wait, and `GroupTicket::wait`, called from a runtime thread return `Reentrancy`.
-- **Cancellation.** `cancel(tag)` does not see groups in `Building` (their ops are outside the queue, I76); the ops of a committed
-  group are ordinary pending ops and `cancel` reaches them (see [Cancellation](#cancellation-e3c-2)).
+- **Cancellation.** `cancel(tag)` does not see groups in `Building` (their ops are outside the queue); the ops of a committed
+  group are ordinary pending ops and `cancel` reaches them (see [Cancellation](#cancellation)).
 
 ### Charge and quota
 
 Every accepted operation is charged `payload + RESULT_RESERVE` (`RESULT_RESERVE` = 2048, `src/write/bucket.hpp`) against its
 bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
 
-- **The payload (I124b)** is what the operation holds in the queue and in a batch: its **wire** bytes plus the heap slack of the
+- **The payload** is what the operation holds in the queue and in a batch: its **wire** bytes plus the heap slack of the
   moved-in body (`capacity - size` when the body lives on the heap; 0 for an empty body, a body in the small-string buffer, a
   `Delete` and the update kinds, whose `head` is reserved exactly). `Encoded::charge()` / `OpState::payload`. The rule: the
   **quota and the global cap** compare `payload + RESULT_RESERVE`; **`bulk.maxBytes`** (`PayloadTooLarge`), the bucket's
@@ -644,23 +641,21 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
 - **How the constant was measured.** `ResultReserveMeasured` replaces the global `operator new` of the test executable with an
   allocation counter (usable size of every block) and measures the heap an accepted operation keeps besides its lines in six
   phases: retained with a callback; resolved with its completion queued behind a busy pool and its batch still held (the worst
-  one); callback run with the `Ticket` alive; resolved without a callback; and, since E3b-2, requeued into the retry lane with its
+  one); callback run with the `Ticket` alive; resolved without a callback; and requeued into the retry lane with its
   last error at its caps (1138.6 B) and the composed case: requeued with its last error at its caps, sliced again, then resolved
   `Failed(ItemPermanent)` with an `OpResult` at its caps while its completion waits behind the busy pool (1396.7 B). The
   resolution frees the operation's last-error strings (`Bucket::releasePayload`), so a retried operation keeps no more than one
-  that was never requeued; with the strings kept (the G-diff mutant) the composed case measured 1992.7 B. E3a measured 1308.5 B
-  per operation in the worst phase (x 1.25 = 1636, rounded up to a multiple of 64: 1664); with the retry state of E3b-1 in
-  `OpState`, E3b-2 measured 1404.1 B (x 1.25 = 1755.1: 1792); with the tag, key and pin of E3c-2, an `ordered` operation with a
-  256-byte tag pinned in the retry lane measured 1555.2 B (x 1.25 = 1944.0: 1984; the resolution also frees the tag); with the
-  moved-in body and the shared action head of E6d in `OpState` (`body`, `sharedHead`), the same operation measured **1603.4 B**,
-  x 1.25 = 2004.3, rounded up to **2048**. The case is a regression guard, skipped under
+  that was never requeued; with the strings kept the composed case measured 1992.7 B. The worst phase of the plain write path measured 1308.5 B
+  per operation, 1404.1 B once the retry state was added to `OpState`; an `ordered` operation with a 256-byte tag pinned in the
+  retry lane measured 1555.2 B; with the moved-in body and the shared action head in `OpState` (`body`, `sharedHead`), the same
+  operation measures **1603.4 B**, x 1.25 = 2004.3, rounded up to a multiple of 64: **2048**. The case is a regression guard, skipped under
   ASAN/TSAN (they own `operator new`), and the constant is re-measured when the internal state grows.
 - **What it does not cover.** Only the library's state: a callback whose captures exceed `std::function`'s small buffer (the
   measurement uses an 8-byte capture) allocates consumer memory that is not charged. `IWriter::submit(Op op, ...)` takes the
   operation by value: `submit(std::move(op))` avoids a copy of the body before the encoding moves it. `maxAge` counts from the
   moment `submit` was called, so time blocked in `Block` counts toward it. The bulk sender's body of a request in flight is a
   fresh concatenation of the batch's lines while the operations keep theirs: up to `node_window_max x nodes x bulk.maxBytes` of
-  transient memory per runtime outside the quota. E5 decides between charging it and sending from the lines without the copy.
+  transient memory per runtime outside the quota. Whether to charge it or to send from the lines without the copy is an open choice.
 - **Global cap.** `GlobalBudget` reserves with a lock-free compare-and-swap loop (never add-then-roll-back, which would refuse
   other buckets spuriously). Buckets whose quotas add up to more than the cap compete for it, and the one that does not fit
   applies its overflow policy as if its own quota were full.
@@ -669,7 +664,7 @@ bucket's `quotaBytes` and against the runtime-wide `global_quota_bytes`.
 - **Registration rule.** `RuntimeRef::client` rejects a bucket (`InvalidArgument`, field named in `reason`) unless
   `bulk.maxBytes + RESULT_RESERVE <= quotaBytes` (`validateBucket`, `src/runtime/runtime.cpp`), together with the older
   `bulk.maxBytes <= quotaBytes <= global_quota_bytes`. So the largest admissible operation always fits an empty bucket.
-  `ordered = true` registers (E3c-2; there is no refusal left in `validateBucket`); `onConflict.kind = Retry` registers with
+  `ordered = true` registers (`validateBucket` has no refusal for it); `onConflict.kind = Retry` registers with
   `retryOnConflict` 1 to 100.
 
 ### Overflow policies
@@ -694,16 +689,16 @@ When the charge does not fit, the bucket's `Overflow` decides:
   `retained`, `charge` and `peakCharge` (`BucketStats`; `WriteStats` adds `globalCharge` and `globalCap`). Invariants:
   `submitted = accepted + rejectedQueueFull + rejectedClosed + submitTimeout + reentrancy + payloadTooLarge + invalidArgument + rejectedGroupTooLarge`
   and `accepted = resolved + retained + groupBuilding` (the last term is the ops of groups not committed yet, see
-  [Groups](#groups-e3c-1)). A drop is never silent: every `DropNewest` and each `DropOldest` eviction is counted and
+  [Groups](#groups)). A drop is never silent: every `DropNewest` and each `DropOldest` eviction is counted and
   resolved.
 - **Locks.** A bucket's mutex is a leaf: it is never held while posting, running a callback or destroying a ticket state, and
   the only other lock taken under it is the waiter registry's (itself a leaf).
 
-### Staged admission of `post` (E6e)
+### Staged admission of `post`
 
 A bucket with `Overflow::DropNewest` that is not `ordered` (the engine's `events` and `raw` buckets) admits the `post()`
-calls without a tag in batches (I208–I210). Everything else admits operation by operation as above: `submit()`, a group's
-`add()`, a `post()` with a tag (so `cancel(tag)` sees it, I80) and every `post()` on another policy or an ordered bucket.
+calls without a tag in batches. Everything else admits operation by operation as above: `submit()`, a group's
+`add()`, a `post()` with a tag (so `cancel(tag)` sees it) and every `post()` on another policy or an ordered bucket.
 
 - **Stripes.** The bucket has `K = max(1, min(64, 2 x hardware_concurrency()))` stripes; each producer thread always uses the
   same one. A staged `post()` takes only its stripe's mutex. The stripe is flushed with **one** take of the bucket's mutex
@@ -711,9 +706,9 @@ calls without a tag in batches (I208–I210). Everything else admits operation b
   `min(bulk.maxBytes, quotaBytes / (2K))`, when its oldest operation is `min(1 ms, bulk.maxAge)` old (the scheduler's pass on
   loop 0 flushes it whether or not the sink has capacity) and when the bucket closes. Each operation of a flush is admitted
   (or dropped) whole or not at all: a failure leaves it and the rest staged for the next flush. The quota edge lines a flush
-  crosses ([Logging (E5c)](#logging-e5c)) are written once the stripe's mutex is dropped too, by the thread that flushed
+  crosses ([Logging](#log-lines)) are written once the stripe's mutex is dropped too, by the thread that flushed
   it: the posting thread, loop 0 for a deadline flush, or the closing thread.
-- **Deadline wake-up (D116, I217).** Loop 0's timer, not the producer, flushes a stripe at its deadline
+- **Deadline wake-up.** Loop 0's timer, not the producer, flushes a stripe at its deadline
   (`oldest + min(1 ms, maxAge)`). On the empty → non-empty transition the stripe publishes `oldest` and notifies the scheduler
   only if that deadline is earlier than the one loop 0 last armed for the bucket (published after the timer is armed; unknown,
   so always notified, while a pass runs or when none is armed). Otherwise the pass at the armed deadline reads the stripe and
@@ -725,11 +720,11 @@ calls without a tag in batches (I208–I210). Everything else admits operation b
   invalidates the armed deadline at its start and then reads every stripe's `oldest` (when it computes the next deadline), so
   at least one of them sees the other's store. The component case `WriteLocalBatch.StageRacingPassArmsDeadline` races both
   orders through two seams.
-- **`Posted`.** A staged `post()` returns `accepted` at once: with `DropNewest` a full quota is accepted anyway (I182), and an
+- **`Posted`.** A staged `post()` returns `accepted` at once: with `DropNewest` a full quota is accepted anyway, and an
   overflow found at the flush is counted `droppedNewest` and resolved `Dropped(QueueFull)` as before. An operation that can
   never fit (`PayloadTooLarge`: wire above `bulk.maxBytes`, or payload + `RESULT_RESERVE` above the quota or the global cap)
   and any `post()` on a closing bucket are not staged: they are refused at once with today's cause and counters.
-- **Lag of the snapshot.** `submitted`, `accepted`, `charge`, `retained` and the metrics built from them (I195, I197) move
+- **Lag of the snapshot.** `submitted`, `accepted`, `charge`, `retained` and the metrics built from them move
   when a stripe is flushed: up to 64 operations per stripe, so up to `K x 64` per bucket, or `min(1 ms, maxAge)`, behind
   the `post()` calls.
 - **Memory outside the quota.** Staged operations are not charged: they are outside the bucket's quota and the global cap
@@ -746,7 +741,7 @@ calls without a tag in batches (I208–I210). Everything else admits operation b
   group. The bucket is unordered, so no ordering promise is broken.
 - **Bulk settlement.** A bulk's results are settled in chunks of `SETTLE_CHUNK` = 64 operations (= the operations of a full
   stripe), one take of the bucket's mutex each: a chunk holds it about as long as a stripe flush does, so producers flushing
-  stripes do not queue behind a settlement (with 512 a chunk held it ~50 µs and convoyed eight producers, I217). The price, one
+  stripes do not queue behind a settlement (with 512 a chunk held it ~50 µs and convoyed eight producers). The price, one
   take of the mutex and one release to the global cap per 64 operations, is 1/64 of settling operation by operation.
 
 ### Scheduler (DRR on loop 0)
@@ -755,14 +750,14 @@ One `Scheduler` per runtime, created after the loops exist. All its state (ring,
 from network loop 0, as the `Prober` does; other threads only append to a notification list and post a pass.
 
 - **Thresholds.** A bucket is eligible when its pending bytes reach `bulk.maxBytes`, its pending operations reach `bulk.maxDocs`
-  or its oldest pending operation is `bulk.maxAge` old, or its retry-lane head is due (`Bucket::eligible(now)`; see [the retry lane](#response-classification-and-retry-lane-e3b-1)).
+  or its oldest pending operation is `bulk.maxAge` old, or its retry-lane head is due (`Bucket::eligible(now)`; see [the retry lane](#response-classification-and-retry-lane)).
 - **Notifications.** `Bucket::admit` (and a group's `enqueueGroup`) tells the scheduler when the bucket goes from empty to non-empty or crosses `maxBytes` or `maxDocs`
   (`>=`), deduplicated by an atomic flag. Notifications posted while a pass is queued coalesce into that pass.
 - **`maxAge` timers.** Each bucket has an asio timer armed for its oldest pending operation plus `maxAge`, and re-armed after every
   pass. An expiry already due when the timer would be armed is not armed (it would spin while the sink has no capacity): the pass
   runs once more instead, when the sink has capacity; otherwise `sinkReady()` resumes the scheduler.
 - **The DRR loop.** Eligible buckets form a ring with a persistent cursor. On its turn a bucket's `credit` grows by
-  `weight x drr_quantum_bytes` and it emits batches while `credit > 0` and `sink.capacity() > 0` (I118). A batch takes whole
+  `weight x drr_quantum_bytes` and it emits batches while `credit > 0` and `sink.capacity() > 0`. A batch takes whole
   operations from the head, up to `bulk.maxBytes` (and the limiter's `batchLimit()`) and `bulk.maxDocs`, whatever the credit; the
   head always goes, so a document is never split. Each batch takes its bytes from the credit with no floor: the excess is a
   **debt** (a negative credit) that the next turns pay back before the bucket emits again. Admission refuses any document larger
@@ -770,11 +765,11 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
   is a bug: counted in `SchedulerStats::debtOverruns`, never aborted on). Over many turns each bucket's share of
   the bytes still follows its weight. The turn ends when the credit is `<= 0` (credit kept), when the bucket empties (a debt is
   kept, a positive credit drops to 0), when it falls below every threshold again (its timer brings it back) or, **after
-  `weight x DRR_MAX_BATCHES_PER_TURN` (8) batches, when another bucket of the ring is eligible** (I97b; scaled by the weight so
+  `weight x DRR_MAX_BATCHES_PER_TURN` (8) batches, when another bucket of the ring is eligible** (scaled by the weight so
   that the shares still follow the weights): the cursor moves on and the leftover credit is kept, capped at
   `weight x drr_quantum_bytes` (the next turn adds its quantum as usual); with no other eligible bucket the turn goes on. If the
   sink's capacity reaches 0 the cursor stays on the bucket and `sinkReady()` resumes the same turn without new credit.
-- **One wake per completion (E6a, I109).** A bulk completion posts the scheduler **once**: the notify of each of its requeues is deferred to
+- **One wake per completion.** A bulk completion posts the scheduler **once**: the notify of each of its requeues is deferred to
   the completion's final wake, together with the pinned buckets whose node is usable (`Scheduler::notifyAll(buckets)`, one post). Deferring
   costs nothing: every pass re-arms the timer of every known bucket, a `Backoff` requeue's due included.
 - **Fast-forward.** If a complete round emits nothing (every bucket of the ring has `credit <= 0`: a quantum small against the
@@ -787,8 +782,8 @@ from network loop 0, as the `Prober` does; other threads only append to a notifi
 `detail::write::BatchSink` (`src/write/sink.hpp`) is where batches go: `capacity()` (batches it accepts now; 0 stops the scheduler
 until `WritePath::sinkReady()`), `dispatch(Batch)` (on loop 0; each operation must be resolved exactly once through
 `WritePath::resolve`, from any thread) and `stop()` (afterwards no batch is accepted; what the sink still holds is resolved by the
-shutdown sweep). **Production: the [bulk sender](#bulk-sender-e3b-2)** (`BulkSink`), whose capacity is the free window of the usable
-nodes (each one's adaptive window, see [Load control](#load-control-e5a)); `batchLimit()` (default 0) is the smallest capped bulk target
+shutdown sweep). **Production: the [bulk sender](#bulk-sender)** (`BulkSink`), whose capacity is the free window of the usable
+nodes (each one's adaptive window, see [Load control](#load-control)); `batchLimit()` (default 0) is the smallest capped bulk target
 among the usable nodes, which the scheduler passes to `Bucket::slice` as `cap`. `WritePath::setSink` stops the sink it replaces; the bulk sender's transfers
 in flight are cancelled, and their batches go back to the retry lane with no attempt and wait for the new sink (no sweep follows
 outside a runtime stop; a closed bucket hands them back for `Dropped`). The component suites that need a programmable sink install
@@ -811,19 +806,18 @@ returns only what is still its own.
 
 ### Close and shutdown
 
-The close of a client and the runtime shutdown are described in [Closing and shutdown](#closing-and-shutdown-e5b). Before E5b
-`requestClose()` dropped the pending operations at once (E3a's stand-in, D43); it no longer does. `submit` and `post` reserve and
-queue under one take of the bucket's mutex (`Bucket::admit`, E6d), so there is no window between the reservation and the queue:
+The close of a client and the runtime shutdown are described in [Closing and shutdown](#closing-and-shutdown). `requestClose()` does not drop the pending operations. `submit` and `post` reserve and
+queue under one take of the bucket's mutex (`Bucket::admit`), so there is no window between the reservation and the queue:
 an operation is queued before the close or refused with its cause. Only a group keeps such a window (it reserves at `add()` and
 queues at `commit()`).
 
-### Response classification and retry lane (E3b-1)
+### Response classification and retry lane
 
-E3b-1 added the two pieces the bulk sender is built from: a pure **classifier** of a `_bulk` response and the bucket's **retry
-lane**. The [bulk sender](#bulk-sender-e3b-2) (E3b-2) is their only production caller (see [Build and tests](#build-and-tests) for
+The bulk sender is built from two pieces: a pure **classifier** of a `_bulk` response and the bucket's **retry
+lane**. The [bulk sender](#bulk-sender) is their only production caller (see [Build and tests](#build-and-tests) for
 the suites).
 
-**Classifier** (`src/write/response.{hpp,cpp}`). It returns verdicts and applies no policy; it names no bucket type, so E4 can reuse
+**Classifier** (`src/write/response.{hpp,cpp}`). It returns verdicts and applies no policy; it names no bucket type, so the queries reuse
 the request classifier. Two steps over one response:
 
 `classifyRequest(HttpResult, batchSize)` returns a `RequestOutcome{verdict, cause, httpStatus, reason, retryAfter, mayHaveSent}`:
@@ -835,23 +829,22 @@ the request classifier. Two steps over one response:
 | `Cancelled`, `Shutdown` | `Ignore` | The shutdown sweep resolves the operations |
 | 429 | `Throttled` | `Cause::Throttled`; `retryAfter` when the transport parsed one |
 | 413 | `Split` (more than one operation) | `Cause::PayloadTooLarge`; with one operation `FailBatch(PayloadTooLarge)` |
-| `ResponseTooLarge` | `Split` (more than one operation) | With one operation `FailBatch(ItemPermanent)`, reason `response over maxResponseBytes`; under any size the bucket's [`onAmbiguous5xx`](#ambiguous-5xx-e6a) `Fail` turns it into `Failed(Ambiguous)` (the node answered: the bulk may be applied) |
+| `ResponseTooLarge` | `Split` (more than one operation) | With one operation `FailBatch(ItemPermanent)`, reason `response over maxResponseBytes`; under any size the bucket's [`onAmbiguous5xx`](#ambiguous-5xx) `Fail` turns it into `Failed(Ambiguous)` (the node answered: the bulk may be applied) |
 | 408 | `Retry` | `TransportTimeout` |
-| 5xx | `Retry` | `Server5xx`; for 500, 502 and 504 the bucket's [`onAmbiguous5xx`](#ambiguous-5xx-e6a) may turn it into `Failed(Ambiguous)` |
+| 5xx | `Retry` | `Server5xx`; for 500, 502 and 504 the bucket's [`onAmbiguous5xx`](#ambiguous-5xx) may turn it into `Failed(Ambiguous)` |
 | 401, 403 | `Retry` | `Client4xx` (see the deviation below) |
 | 3xx (curl does not follow redirects) | `FailBatch` | `Client4xx`, reason `unexpected 3xx` |
 | any other 4xx, a request-level 409 included | `FailBatch` | `Client4xx` |
 | 2xx | `Items` | |
 | a status outside the table (1xx, 600 and above) | `Retry` | `Server5xx`, reason `unexpected status`: bounded by `maxAttempts` instead of dropped |
 
-**Deviation from RF-9 (and from design §4.5).** RF-9 says a 4xx is permanent; 401 and 403 are **retryable** here, because the node
-probe already marks the node `Down` for them and discarding data over credentials would be silent. The requirement and the design
-are amended when E3b-2 closes (the sender implements the retryable behaviour: `CredentialsErrorRetries`).
+**Deviation from "a 4xx is permanent".** 401 and 403 are **retryable** here, because the node
+probe already marks the node `Down` for them and discarding data over credentials would be silent (`CredentialsErrorRetries`).
 
-### Ambiguous 5xx (E6a)
+### Ambiguous 5xx
 
 A `_bulk` answered 500, 502 or 504 may have been **applied** by the indexer (a partial failure behind a gateway or a coordinating node).
-Resending it duplicates documents in an index without `_id` (data streams). `BucketSpec::onAmbiguous5xx` (I105; v1 parity: the async
+Resending it duplicates documents in an index without `_id` (data streams). `BucketSpec::onAmbiguous5xx` (v1 parity: the async
 connector never resent these) chooses per bucket:
 
 | Policy | A 500, 502 or 504 on `_bulk` | A `_bulk` response over `max_response_bytes` (`ResponseTooLarge`) |
@@ -864,13 +857,12 @@ connector never resent these) chooses per bucket:
   accounting, so no split is counted), so the choice lives in the bucket and not in the response table.
 - **A response over the cap is ambiguous too.** The node answered (`ResponseTooLarge` clears the ordered pin like any HTTP response) but the
   client stopped reading the body, so it cannot know which items were applied. Splitting it would resend every operation in halves: harmless
-  with an `_id` (`Retry` keeps doing it so that an oversized answer still makes progress), a duplicate without one (G-rama round 2 of plan 18,
-  `ResponseTooLargeFailPolicyNeverResent`). The WARN then names the cap instead of a status: `... got a response over max_response_bytes for
+  with an `_id` (`Retry` keeps doing it so that an oversized answer still makes progress), a duplicate without one (`ResponseTooLargeFailPolicyNeverResent`). The WARN then names the cap instead of a status: `... got a response over max_response_bytes for
   a bulk of <n> operations: ...`.
-- The operations count in `failed.ambiguous` (`FailCause::Ambiguous`, [Metrics](#metrics-e5c)); there is no separate counter. The new `Cause`
+- The operations count in `failed.ambiguous` (`FailCause::Ambiguous`, [Metrics](#metrics)); there is no separate counter. The new `Cause`
   is `ambiguous` (`toString(Cause::Ambiguous)`).
 - **One WARN per edge**: the first ambiguous failure of the bucket after a 2xx `_bulk` (or since the bucket was created) logs once; the next
-  2xx `_bulk` of the bucket re-arms it ([Logging](#logging-e5c)). A storm of 502 logs one line, not one per batch. The line's `<n>` is the
+  2xx `_bulk` of the bucket re-arms it ([Logging](#log-lines)). A storm of 502 logs one line, not one per batch. The line's `<n>` is the
   operations the completion resolved `Failed(Ambiguous)` (those another resolution won, e.g. a shutdown sweep, count as late results and not
   here); a bulk whose operations were all late logs nothing.
 - **Never resent, even on an internal failure.** The decision is taken before the completion's exception guard, so a completion that throws
@@ -881,7 +873,7 @@ connector never resent these) chooses per bucket:
   and `raw`) are the ones that choose `Fail`.
 
 `classifyItems(std::string& body, expected)` reads a 2xx body item by item and returns one `ItemResult{verdict, outcome, httpStatus,
-itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (E3b-2
+itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (the sender
 retries that with an attempt). `"errors":false` is never used to skip anything: **every item is classified**, so a success
 is always read from its own status. The position decides the match (item i is operation i); the item's key (`index`, `create`,
 `delete` or `update`) only matters for the `delete` rule. An item with no key, more than one key or no `status` is `Permanent` with
@@ -893,29 +885,29 @@ reason `malformed item`.
 | `delete`, 404, `result: not_found`, no `error` | `NotFound` | Idempotent success (`ItemOutcome::NotFound`) |
 | 404 with `index_not_found_exception`, any other 404 | `Permanent` | |
 | 429, 5xx, `cluster_block_exception`, `es_rejected_execution_exception` | `Retry` | |
-| 409 with `version_conflict_engine_exception` | `Conflict` | By the op's effective [conflict policy](#conflict-policy-e3c-1): `Success` ⇒ `Ok` keeping the 409 and the error type; `Retry` ⇒ requeued |
+| 409 with `version_conflict_engine_exception` | `Conflict` | By the op's effective [conflict policy](#conflict-policy): `Success` ⇒ `Ok` keeping the 409 and the error type; `Retry` ⇒ requeued |
 | 409 of another type, any other 4xx, a status outside the table | `Permanent` | |
 
 `itemErrorType` is truncated to 64 B and `reason` to 512 B (never inside a UTF-8 sequence); the `caused_by` error is appended to the
 `reason` as `; caused by <type>: <reason>`.
 
-**Parser memory (I65).** The parser is simdjson's *ondemand* one (no DOM), one per pool thread, and it is rebuilt after a parse
+**Parser memory.** The parser is simdjson's *ondemand* one (no DOM), one per pool thread, and it is rebuilt after a parse
 when its capacity is above **4 MiB**, so a single large response does not pin memory on a pool thread for the runtime's lifetime
 (`ParserMemoryBounded`). ondemand needs `SIMDJSON_PADDING` readable bytes after the body: the transport reserves
 `RESPONSE_PADDING` (64) bytes once, when a transfer completes and before the body moves into the `HttpResult`
 (`src/transport/curlLoop.cpp`), so `classifyItems` normally copies nothing; it only reserves them itself when a body arrives without
 (`std::string&` is mutable for that reason; the content never changes). `testing_hooks::parserCapacity()` exists in the test build only.
 
-**Risk D44.** Only simdjson's stage 2 (the header-side iteration: skipping, unescaping, number parsing) is compiled without
+**Risk.** Only simdjson's stage 2 (the header-side iteration: skipping, unescaping, number parsing) is compiled without
 `-march` and runs the scalar `fallback` code; stage 1 (structural indexing and UTF-8 validation) runs the archive's
-runtime-dispatched kernel (haswell, icelake, westmere). The 0.3 s per 8 MiB seen so far is a Debug (-O0) figure. Deferred to E5:
+runtime-dispatched kernel (haswell, icelake, westmere). The 0.3 s per 8 MiB seen so far is a Debug (-O0) figure. Still to do:
 measure big responses in Release with `bench --path client` before multiversioning `response.cpp` (which would only speed up
 stage 2) or moving to the dispatched DOM with a bounded parser.
 
-**Retry lane** (`src/write/bucket.{hpp,cpp}`, I66). `OpState` gains `firstAttempt` (set by the first `slice`), `notBefore`,
+**Retry lane** (`src/write/bucket.{hpp,cpp}`). `OpState` gains `firstAttempt` (set by the first `slice`), `notBefore`,
 `batchCap` (bytes, 0 = no cap) and the last error (`lastCause`, `lastHttpStatus`, `lastItemErrorType`, `lastReason`).
 `Bucket::requeue(ops, RequeueSpec, now)` moves delivered operations back, under one lock per call, and returns a
-`RequeueResult{notify, exhausted, closed}`. `RequeueSpec{countAttempt, delay, at, toHead, halve}` is what the [bulk sender](#bulk-sender-e3b-2) passes:
+`RequeueResult{notify, exhausted, closed}`. `RequeueSpec{countAttempt, delay, at, toHead, halve}` is what the [bulk sender](#bulk-sender) passes:
 
 | Use | `RequeueSpec` |
 |---|---|
@@ -939,18 +931,17 @@ stage 2) or moving to the dispatched DOM with a bounded parser.
   thresholds or a due lane head; `headBytes(now)` and `slice(now)` take the due lane first and then the pending queue (a
   batch may hold both); `empty()` means no pending operation and an empty lane; `nextDue(now)` is the minimum of the oldest
   pending operation plus `maxAge` and the lane head. A lane that is not yet due makes the bucket neither eligible nor stuck in the
-  ring (`LaneBeforePending`, through the real scheduler). The scheduler's `maxAge` timer is armed on `nextDue()` (E3b-2
-  removed `oldestPending()`, which had no caller left).
+  ring (`LaneBeforePending`, through the real scheduler). The scheduler's `maxAge` timer is armed on `nextDue()`.
 - **Close and sweep.** An operation requeued into a closed bucket is returned in `closed` (to resolve `Dropped(closedCause)`);
   `close()` returns the lane and then the pending operations; operations already `claimed` are skipped. The `exhausted` and `closed`
   ones stay in the delivered set until the caller resolves them, so the shutdown sweep still sees them. `notify` is set when the lane
   was empty or its head moved earlier.
-- **Quota and overflow.** The charge does not change while an operation sits in the lane (RF-12), and `DropOldest` evicts only
+- **Quota and overflow.** The charge does not change while an operation sits in the lane, and `DropOldest` evicts only
   pending operations, never one in the lane (`DropOldestSparesRetryLane`).
 
 The scheduler passes its `now` to `eligible`, `headBytes` and `slice`; that is the only change to its code.
 
-### Bulk sender (E3b-2)
+### Bulk sender
 
 `detail::write::BulkSink` (`src/write/sender.{hpp,cpp}`) is the production `BatchSink`. `src/write/sender.hpp` is the normative
 description; this section is the summary. It owns no thread: it runs on loop 0 (`dispatch`, the timer), on the CPU pool (assembly
@@ -958,7 +949,7 @@ and completions) and inside the transport's callbacks, and every task captures t
 
 **Per-node state** (under the sender's mutex, a leaf): `inFlight`, `notBefore`, `pace`, a mirror of the node's `Down` state (every
 node starts `Down`, like the `NodeSet`'s view; the `NodeSet::onTransition` hook keeps the mirror current), request and latency
-counters and the limiter's state (see [Load control](#load-control-e5a)). The window is adaptive: up to `node_window_max` bulk
+counters and the limiter's state (see [Load control](#load-control)). The window is adaptive: up to `node_window_max` bulk
 requests in flight per node (default 4). `capacity()` is the sum over the usable nodes of `⌊window⌋ - inFlight` (1 for a node with
 `pace > 0`); it reads only the sender's mutex, so the scheduler can ask it on every pass.
 
@@ -989,11 +980,11 @@ the wake still runs.
 | `Ignore` (`Shutdown`) | Nothing; the sweep resolves |
 | `Ignore` (`Cancelled`, the sender already stopped) | Requeue `{false, Now}` with last error `Cancelled`: after a `setSink` the batch waits for the new sink; during a runtime stop the bucket is closed and it ends `Dropped(Shutdown)` |
 | `Failover` | `NodeSet::report` (the node goes `Down`) and requeue `{mayHaveSent, Now}`: a failover whose request may not have left costs no attempt |
-| `Retry` | Requeue `{true, Backoff}`; a 500, 502 or 504 in a bucket with `onAmbiguous5xx = Fail` is resolved `Failed(Ambiguous)` instead (see [Ambiguous 5xx](#ambiguous-5xx-e6a)) |
+| `Retry` | Requeue `{true, Backoff}`; a 500, 502 or 504 in a bucket with `onAmbiguous5xx = Fail` is resolved `Failed(Ambiguous)` instead (see [Ambiguous 5xx](#ambiguous-5xx)) |
 | `Throttled` (429) | `NodeSet::report` (the node goes `Throttled`), raise the node's `notBefore`, requeue `{false, Now}` (see below) |
 | `Split` | Requeue `{false, Now, toHead, halve}`; a `ResponseTooLarge` in a bucket with `onAmbiguous5xx = Fail` is resolved `Failed(Ambiguous)` instead |
 | `FailBatch` | Every operation `Failed(cause, httpStatus, reason)` |
-| `Items` | `classifyItems`; per item `Ok`/`NotFound` resolve `Ok` with the item's outcome, `Conflict` follows the op's effective [conflict policy](#conflict-policy-e3c-1) (`Success`: `Ok` keeping 409 and the error type; `Retry`: requeue `{true, Backoff}` and, once exhausted, `Failed(RetryExhausted)`), `Retry` requeues `{true, Backoff}` (one call per batch), `Permanent` resolves `Failed(ItemPermanent)` with the item's status, type and reason |
+| `Items` | `classifyItems`; per item `Ok`/`NotFound` resolve `Ok` with the item's outcome, `Conflict` follows the op's effective [conflict policy](#conflict-policy) (`Success`: `Ok` keeping 409 and the error type; `Retry`: requeue `{true, Backoff}` and, once exhausted, `Failed(RetryExhausted)`), `Retry` requeues `{true, Backoff}` (one call per batch), `Permanent` resolves `Failed(ItemPermanent)` with the item's status, type and reason |
 
 An operation the requeue returns as `exhausted` resolves `Failed(RetryExhausted)` with its last error; one returned as `closed`
 resolves `Dropped` with the bucket's close cause (`ClientClosed` or `Shutdown`).
@@ -1002,15 +993,15 @@ resolves `Dropped` with the bucket's close cause (`ClientClosed` or `Shutdown`).
 `notBefore` in force is never shortened. `pace` starts at 0; a 429 sets it to `pace_initial_ms` and later ones double it, up to
 `retry_after_max_ms`, **but only for a 429 whose request left after the node's burst marker** (the last bulk 429 that doubled `pace`
 or raised `notBefore`; a park mirrored from a query, PIT or probe 429 never moves it), so one burst of the window doubles it once. A 2xx never shortens a `notBefore` in force; it relaxes `pace` only through the clean-send count described in
-[Load control](#load-control-e5a). The batch is requeued with no attempt counted and no delay, so it can go to another node while
+[Load control](#load-control). The batch is requeued with no attempt counted and no delay, so it can go to another node while
 the throttled one is quiet.
 
-**Wake-ups.** Every completion wakes the scheduler **once** (E6a, I109): the buckets its requeues asked for (`notify`) and the pinned buckets
+**Wake-ups.** Every completion wakes the scheduler **once**: the buckets its requeues asked for (`notify`) and the pinned buckets
 whose node is usable go in one `Scheduler::notifyAll(buckets)` post, which also does the work of `sinkReady()`. The one exception: a completion whose
 `NodeSet::report()` transitions the node (a `Throttled` or `Failover` verdict) also runs the `NodeSet` hook, and its `refreshMirror` posts its
 own wake (the one a `Down` → usable change needs), so that completion posts twice. The test oracle is `SchedulerStats::posts` (counted before coalescing). `refreshMirror` also mirrors the `NodeSet`'s
-[`notBefore`](#node-health-e2b) into the node's slot, so a node parked by a 429 from a query or a PIT is quiet for the sender too. A timer on
-loop 0, armed at the earliest `notBefore` or `nextSendAt` in force (see [Load control](#load-control-e5a)) by a post from a
+[`notBefore`](#node-health) into the node's slot, so a node parked by a 429 from a query or a PIT is quiet for the sender too. A timer on
+loop 0, armed at the earliest `notBefore` or `nextSendAt` in force (see [Load control](#load-control)) by a post from a
 completion that captures the shared state and checks `stopped` (the `Prober`'s pattern) or directly by `dispatch()` (already on
 loop 0), calls `sinkReady()` when it expires, so a node whose `notBefore` passed is used again without another `submit`. The
 `NodeSet::onTransition` hook mirrors the node's state and calls `sinkReady()` through a `weak_ptr<WritePath>`. `start()` registers
@@ -1028,7 +1019,7 @@ destructor counts a usage error only if its timer was armed and `stop()` never r
 `splits`, `throttled` (request-level 429), `retries` (requeues that count an attempt), `submitRefused`, `exhausted`, and per node
 `host`, `down`, `inFlight`, `notBefore` (only when in force), `pace`, `requests` and `totalMicros` (HTTP responses only, any status:
 their count and the sum of their `timings.total`) and `failures` (completions without a response: timeout, connection, TLS,
-cancellation), plus the limiter's fields listed in [Load control](#load-control-e5a).
+cancellation), plus the limiter's fields listed in [Load control](#load-control).
 
 **At-least-once, new against the v1.** The sender never drops an operation silently, and some situations that the v1 treated
 as success or failure now retry, so the indexer may see an operation more than once. Resolution is still exactly once.
@@ -1041,10 +1032,10 @@ as success or failure now retry, so the indexer may see an operation more than o
 | A failover with `mayHaveSent` false | Retried with no attempt counted |
 | 401, 403 | Retryable, not a failed batch (`CredentialsErrorRetries`) |
 
-### Ordered buckets (E3c-2)
+### Ordered buckets
 
-`BucketSpec::ordered = true` (I36, I75, I79) gives a bucket **send order per key**. The normative text is `src/write/bucket.hpp`
-(ORDERED BUCKETS) and `src/write/sender.hpp` (Ordered buckets and cancellation, D38); this section is the summary.
+`BucketSpec::ordered = true` gives a bucket **send order per key**. The normative text is `src/write/bucket.hpp`
+(ORDERED BUCKETS) and `src/write/sender.hpp` (Ordered buckets and cancellation); this section is the summary.
 
 **What is guaranteed, and what is not.** The library orders what it **sends**: an operation is never put on the wire before an
 earlier operation of the same key has a final outcome (from the indexer or a local drop) or, in the ambiguous case below, before the pin ended. It does
@@ -1060,8 +1051,8 @@ earlier operation of the same key has a final outcome (from the indexer or a loc
   whose key is already blocked (a key in the lane, one already taken into the batch or one of an operation skipped earlier in the scan) is
   skipped and keeps its place. The scan is bounded by what it **takes**, not by what it visits: it **stops** once the batch holds
   `bulk.maxDocs` operations, at the first takeable operation that does not fit (`maxBytes`, `batchCap`, the sink's `batchLimit()`; the DRR
-  credit never bounds a batch, I118), or at the end of the queue. Skipped operations leave in a later bulk, and one that is alone leaves by `maxAge`.
-- **Only the key is blocked (I75).** An operation in the retry lane (item `Retry`, a 409 under a `Retry` policy, backoff) blocks its own
+  credit never bounds a batch), or at the end of the queue. Skipped operations leave in a later bulk, and one that is alone leaves by `maxAge`.
+- **Only the key is blocked.** An operation in the retry lane (item `Retry`, a 409 under a `Retry` policy, backoff) blocks its own
   key and nothing else: operations of other keys keep flowing in the following bulks, and the successors of the key wait until it resolves.
   This holds whatever the number of blocked operations ahead: the eligibility check looks for the first takeable operation in the
   **whole** pending queue (a window of `bulk.maxDocs` entries would hide a key behind that many blocked operations until the blocked keys'
@@ -1073,8 +1064,8 @@ earlier operation of the same key has a final outcome (from the indexer or a loc
 - **No idle spin.** With nothing takeable `nextDue` is the `notBefore` of the lane head (not `now`), so loop 0 does not run in empty
   (`OrderedNoIdleSpin`).
 
-**Ambiguous state (D38).** A `Failover` with `mayHaveSent` (timeout, reset or TLS failure after the request left, see
-[Response classification](#response-classification-and-retry-lane-e3b-1)) means the node may already have applied the bulk. In an
+**Ambiguous state.** A `Failover` with `mayHaveSent` (timeout, reset or TLS failure after the request left, see
+[Response classification](#response-classification-and-retry-lane)) means the node may already have applied the bulk. In an
 ordered bucket the sender does not fail over at once: it requeues the batch with a **pin** `{node, until = now + ambiguous_retry_window_ms}`
 (default 30 s, see [Configuration](#configuration)) and the same pin for every operation of the batch (a batch already pinned keeps its
 `until`). The window therefore bounds the time pinned from the **first** ambiguous failure: with `request_timeout_ms >=
@@ -1091,7 +1082,7 @@ ambiguous_retry_window_ms` (the defaults), a second timeout of the retry on its 
 - Every completion with an HTTP response removes the pin (`ResponseTooLarge` included: the node answered). A failure **before** sending
   (`mayHaveSent` false, for example connection refused) does not pin: failover at once as in an unordered bucket
   (`OrderedFailureBeforeSendFailsOverAtOnce`). Unordered buckets ignore the pin.
-- **D38 (TLS).** A TLS failure with `mayHaveSent` is a `Failover` and pins like any other: an indexer node with a wrong mTLS setup costs
+- **TLS.** A TLS failure with `mayHaveSent` is a `Failover` and pins like any other: an indexer node with a wrong mTLS setup costs
   one ambiguous window per batch in an ordered bucket before the counted failover. This is the written behaviour; it has no test of its own.
 - **Counters** (`BucketStats`): `orderedAmbiguous` counts operations pinned (per operation and per pin), `orderedAmbiguousFailover`
   operations sent to another node once the window ended (counted at dispatch, so a batch the pool task then drops still counts).
@@ -1100,17 +1091,17 @@ ambiguous_retry_window_ms` (the defaults), a second timeout of the retry on its 
 the final state of a key can be an older one. The library cannot close that window; the consumer mitigates it with its own sweep
 (inventory sync, with its `sync.agent_delete.sweep.residual` metric), which is outside this library.
 
-### Cancellation (E3c-2)
+### Cancellation
 
-`Writer::cancel(tag)` (I25, I76-I78, I80) returns a `CancelTicket` and never blocks (valid from any thread, runtime threads included).
+`Writer::cancel(tag)` returns a `CancelTicket` and never blocks (valid from any thread, runtime threads included).
 The normative text is `src/write/bucket.hpp` (CANCELLATION) and `src/write/sender.hpp`.
 
-- **Per bucket (I77).** `Op::tag` (for example the agent id, RF-26) is stored with the operation; `cancel` acts on the **writer's bucket**
+- **Per bucket.** `Op::tag` (for example the agent id) is stored with the operation; `cancel` acts on the **writer's bucket**
   only, not on the whole client. The tag is never part of the wire lines.
 - **What it reaches.** Pending operations and the retry lane (removed and resolved `Dropped(Cancelled)` at once, also the ops of a
   **committed** group, which are ordinary pending ones), and operations already **in flight**, which are marked. A group in `Building` is not
-  reached (I76: its operations are outside the queue until `commit`).
-- **In flight (I78).** A marked operation is never requeued: if its bulk fails or would retry or exhaust, it resolves `Dropped(Cancelled)`
+  reached (its operations are outside the queue until `commit`).
+- **In flight.** A marked operation is never requeued: if its bulk fails or would retry or exhaust, it resolves `Dropped(Cancelled)`
   (the cancellation wins, `RequeueResult::cancelled`); if its bulk **succeeds**, it resolves as the indexer answered, so `Ok` stays `Ok`.
 - **0 sends after `cancel`.** Before assembling a body the sender's pool task removes the marked operations from the batch (operations and
   bytes, so item *i* still matches operation *i*) and resolves them `Dropped(Cancelled)`; a batch left empty gives its slot back and sends
@@ -1120,15 +1111,15 @@ The normative text is `src/write/bucket.hpp` (CANCELLATION) and `src/write/sende
   `Reentrancy`. A second `cancel` of the same tag registers its own waiter; operations of the tag submitted **after** the cancel are not
   counted. A bucket destroyed with waiters fails them `ClientClosed`.
 - **A valid tag** is at most 256 bytes (`MAX_TAG_SIZE`) with no control character (bytes below 0x20 or 0x7f). On `submit` and
-  `Group::add` an invalid tag is `InvalidArgument` (`tag: ...`, never echoing the tag, D42); an **empty** tag means "no tag" and is
+  `Group::add` an invalid tag is `InvalidArgument` (`tag: ...`, never echoing the tag); an **empty** tag means "no tag" and is
   accepted there, but `cancel("")` is refused `InvalidArgument` because it would match every untagged operation.
 - **Counter.** `BucketStats::cancelled` counts the operations resolved `Dropped(Cancelled)`, and they are also in `resolvedDropped`; the
-  invariants of [Groups](#groups-e3c-1) are unchanged. Cancelling an ordered bucket tells the scheduler, because removing lane operations
+  invariants of [Groups](#groups) are unchanged. Cancelling an ordered bucket tells the scheduler, because removing lane operations
   can lift a key block or a pin.
 
-## Load control (E5a)
+## Load control
 
-The [bulk sender](#bulk-sender-e3b-2) limits its own load per node. Two independent mechanisms act on every node: an adaptive
+The [bulk sender](#bulk-sender) limits its own load per node. Two independent mechanisms act on every node: an adaptive
 **window and bulk-size target**, and **pacing**. `src/write/sender.hpp` (block "Limiter") is normative; this section is the summary.
 All the state is per node, under the sender's mutex. Options: `node_window_max`, `bulk_min_bytes`, `latency_target_ms`,
 `pace_initial_ms`, `pace_relax_after`, `retry_after_max_ms` and `drr_quantum_bytes` (see [Configuration](#configuration)).
@@ -1136,7 +1127,7 @@ All the state is per node, under the sender's mutex. Options: `node_window_max`,
 **A usable node** is one predicate, used by `capacity()`, the filter of `choose` and the wake-up of pinned batches:
 `!down and notBefore <= now and nextSendAt <= now and inFlight < floor(window)`.
 
-**Window.** A real number in [1, `node_window_max`] per node (AIMD). It **starts at `node_window_max`** (I96) and:
+**Window.** A real number in [1, `node_window_max`] per node (AIMD). It **starts at `node_window_max`** and:
 
 - **halves** (`window = max(1, window / 2)`, once per burst) on a request-level 429, on a p95 of the node's latencies above
   `latency_target_ms`, or when the `NodeSet` moves the node to `Throttled`;
@@ -1182,24 +1173,24 @@ only if it was sent after the last decrease and no decrease happened in the same
 **What never moves the limiter.** Item-level rejections inside a 2xx (including items answered 429) and transport failures
 (timeout, connect, TLS, cancellation: those are `Down`, not load).
 
-**Queries** (I95): they never take a window slot (I95, D50), so a full bulk window does not delay a query.
+**Queries**: they never take a window slot, so a full bulk window does not delay a query.
 
-**`senderStats()`.** Per node, besides the fields of the [bulk sender](#bulk-sender-e3b-2): `window` (real), `bulkTarget` (0 =
+**`senderStats()`.** Per node, besides the fields of the [bulk sender](#bulk-sender): `window` (real), `bulkTarget` (0 =
 uncapped), `nextSendAt` (only when in force), `p95` (0 below 8 samples), `decreases429`, `decreasesThrottled`, `decreasesLatency`,
-`increases` and `paceRelaxed`. E5c publishes them as [metrics](#metrics-e5c) (`NodeMetrics`).
+`increases` and `paceRelaxed`. The [metrics](#metrics) publish them (`NodeMetrics`).
 
-## Closing and shutdown (E5b)
+## Closing and shutdown
 
 The normative text is the "Close" block of `src/write/writer.hpp`, the admission block of `src/write/bucket.hpp` and the close-order
 note of `include/indexer_client/client.hpp`; this section is the summary.
 
-**`requestClose()`** (D43) marks the client, wakes its queries and blocked producers (`ClientClosed`) and closes only the **admission**
+**`requestClose()`** marks the client, wakes its queries and blocked producers (`ClientClosed`) and closes only the **admission**
 of its buckets (`Bucket::closeAdmission`): later `submit` calls return `ClientClosed`, `writer()` and `query()` return `nullptr`.
 What is already queued is not dropped: `flushSeq = nextSeq - 1` makes every pending operation eligible now, as a `commit()` does, the
 scheduler is notified, and the buckets stay in the DRR ring and keep draining. A requeue retries as usual (only `Bucket::close()` hands
 operations back as closed). It never blocks and is valid from any thread. A `submit` or `post` racing the close either was queued
 before it (and drains) or is refused with `ClientClosed` (nothing charged, no ticket, no callback): `Bucket::admit` reserves and
-queues under one take of the bucket's mutex (E6d), so every `submit`/`post` that starts after `requestClose()` returns is refused.
+queues under one take of the bucket's mutex, so every `submit`/`post` that starts after `requestClose()` returns is refused.
 A group's `commit()` racing the close is the one window left: with the admission closed `enqueueGroup` takes custody of its
 operations without queuing them and the group resolves only those (`Dropped(ClientClosed)`); it never calls `close()`.
 
@@ -1214,7 +1205,7 @@ the cutoff to now again and returns the live counters (`callbacksSkipped`, `call
 | otherwise (short or past deadline) | `now + left / 2` | `now + 3 * left / 4` |
 
 1. **Drain.** It waits until the client's buckets retain nothing (pending, retry lane and delivered all at 0) or `drainEnd`. The drain
-   honours the node pace, `notBefore` and the bucket backoff (CA-24): it sends nothing earlier than a normal send would.
+   honours the node pace, `notBefore` and the bucket backoff: it sends nothing earlier than a normal send would.
 2. **Sweep at `drainEnd`.** The bucket is closed (`close(ClientClosed)`): what is still pending or in the retry lane resolves
    `Dropped(ClientClosed)`, what was delivered to the sink resolves `Dropped(Shutdown)` — except a delivered operation whose answer
    reaches the requeue between the close and the sweep's resolution of it: the bucket hands it back closed and it resolves
@@ -1246,7 +1237,7 @@ and `callbacksSkipped` grows. The contract for consumers: a consumer that needs 
 
 **Callback duration.** Every callback is timed; one longer than `callbackBudget` adds 1 to `callbackOverruns` and updates
 `ClientState::callbackMaxDurationMicros`. `callbackOverruns` is in the `CloseReport`; the maximum is only in `ClientState` (no
-`CloseReport` field, E5c publishes both ([metrics](#metrics-e5c) and the [overrun summary](#logging-e5c)). `Dropped(QueueFull)` has no field of its own.
+`CloseReport` field, the metrics publish both ([metrics](#metrics) and the [overrun summary](#log-lines)). `Dropped(QueueFull)` has no field of its own.
 
 **Destructor.** `~Client` on a consumer thread is `requestClose()` plus `awaitClosed()` with the shutdown deadline (or the default).
 On a runtime thread (also move-assignment over a live `Client` there) it keeps the pre-E5b behaviour: `requestClose()` plus the
@@ -1273,10 +1264,10 @@ RuntimeOwner::shutdown()
 What is queued drains until `awaitClosed`'s deadline minus twice `callbackBudget`; past it the rest is dropped and no callback starts
 (the `CloseReport` tells how many were skipped).
 
-## Queries (E4a)
+## Queries
 
 `Client::query()` returns the `IQuery` of the client: `search`, `searchAfter`, `deleteByQuery`, `updateByQuery` and `indexExists`
-and, since E4b, `pit()` (see [Point in time](#point-in-time-e4b)). The contract is the header `src/query/query.hpp` (normative); the pure response classifiers are in
+and `pit()` (see [Point in time](#point-in-time)). The contract is the header `src/query/query.hpp` (normative); the pure response classifiers are in
 `src/query/queryResponse.hpp`. Nothing there is public API.
 
 ### Execution model
@@ -1313,13 +1304,13 @@ The engine takes the transport and the `NodeSet` of the client's epoch (a null o
 calls `NodeSet::choose()` and submits `HttpRequest{url = host + route, timeout}`. It then waits on the runtime's `QueryGate` (one
 mutex and condition variable shared by the runtime and all its clients; the transport callback captures the attempt state by
 `shared_ptr`, so it may land after the engine returned). The result is reported to the `NodeSet` (passive signals, see
-[Node health](#node-health-e2b)) and classified by `classifyRequest(result, 1)` and then by the operation's classifier.
+[Node health](#node-health)) and classified by `classifyRequest(result, 1)` and then by the operation's classifier.
 
 With **no node to choose**, the engine waits `max(50 ms, min(retry.base, probeInterval))` and chooses again, without spending an
-attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node health](#node-health-e2b)), the wait ends at the first `notBefore` if that is sooner, so the read waits for that node within its deadline instead of `Unavailable`. It ends by `Deadline` (once the page has made its first attempt, also by the page deadline, or by `retry.maxDuration` with
+attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node health](#node-health)), the wait ends at the first `notBefore` if that is sooner, so the read waits for that node within its deadline instead of `Unavailable`. It ends by `Deadline` (once the page has made its first attempt, also by the page deadline, or by `retry.maxDuration` with
 `RetryExhausted`), never by a busy wait.
 
-### Retry (I82)
+### Retry
 
 | Verdict | Action |
 |---|---|
@@ -1330,14 +1321,14 @@ attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node 
 | Fail | Its own cause (see [Causes](#causes-of-a-query)) |
 | Conflict (DBQ/UBQ) | Its own budget, below |
 
-### Conflicts of `deleteByQuery` and `updateByQuery` (I86)
+### Conflicts of `deleteByQuery` and `updateByQuery`
 
 A 2xx whose `failures` are all `version_conflict_engine_exception` / 409, or with `version_conflicts > 0`, is a conflict. The budget is
 `CONFLICT_ATTEMPTS = 3` attempts with a wait of `CONFLICT_BASE = 3 s`, doubled up to `CONFLICT_CAP = 15 s`. Each conflict retry opens
-a **fresh I82 series** (independent clocks). Exhausted: `Failed(VersionConflict)` with the counts in `reason`. Any other `failures`
-entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is a Retry under I82.
+a **fresh retry series** (independent clocks). Exhausted: `Failed(VersionConflict)` with the counts in `reason`. Any other `failures`
+entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is a Retry under the retry rules.
 
-### Routes (I88)
+### Routes
 
 `QueryOptions.expandWildcardsAll` adds `expand_wildcards=all` to every route below, `HEAD` included. `DbqOptions.proceedOnConflicts`
 (default `true`) controls `conflicts=proceed` in `deleteByQuery`.
@@ -1349,7 +1340,7 @@ entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is 
 | `deleteByQuery(indices, query, dbq)` | `POST /<i1,i2>/_delete_by_query[?conflicts=proceed]` | `query` | The response | `index_not_found_exception`: `Ok({})`; any other: `Client4xx` |
 | `updateByQuery(indices, query)` | `POST /<i1,i2>/_update_by_query?conflicts=proceed` | `query` | The response | `index_not_found_exception`: `NotFound`; any other: `Client4xx` |
 | `indexExists(index)` | `HEAD /<index>` | none | `200`: `true` | `false` |
-| `pit(indices, pitOptions)` | `POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms` | none | A `Pit` handle | `index_not_found_exception`: `NotFound` (see [Point in time](#point-in-time-e4b)) |
+| `pit(indices, pitOptions)` | `POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms` | none | A `Pit` handle | `index_not_found_exception`: `NotFound` (see [Point in time](#point-in-time)) |
 
 ### `searchAfter`
 
@@ -1384,10 +1375,10 @@ reason `response over maxResponseBytes`) — also sets `Outcome::responseTooLarg
 tell it from the other `ItemPermanent` failures without parsing the reason (the content manager's paginator halves its page on it). An
 unparsable body leaves it false.
 
-**Whole cap for a PIT (I229).** A PIT opened with `PitOptions::wholeResponseCap` checks its pages (`Pit::search`, `PitSession::next`)
+**Whole cap for a PIT.** A PIT opened with `PitOptions::wholeResponseCap` checks its pages (`Pit::search`, `PitSession::next`)
 against `maxResponseBytes` itself, not `maxResponseBytes / QUERY_DOM_FACTOR` (`classifyPitSearch(..., wholeResponseCap)`); since the
 transport already stops reading at `maxResponseBytes`, the 2xx check never trips there and a page over it fails on the wire as above. Only
-the content manager asks for it, for the CTI content pages (one CVE5 document reaches ~17 MB); every other query keeps I84. A page near the
+the content manager asks for it, for the CTI content pages (one CVE5 document reaches ~17 MB); every other query keeps the standard cap. A page near the
 cap parses into a DOM up to `QUERY_DOM_FACTOR` times its size (the `responseBytesInFlight` gauge shows the wire bytes).
 
 ### Close and shutdown
@@ -1414,7 +1405,7 @@ request is made.
 | `search`/`updateByQuery` on a missing index (`index_not_found_exception`) | `NotFound` |
 | Any other 4xx (400, any other 404, ...) | `Client4xx` |
 | Unparsable 2xx, response over the cap, DBQ/UBQ `failures` that are not conflicts | `ItemPermanent` |
-| DBQ/UBQ conflicts after the I86 budget | `VersionConflict` |
+| DBQ/UBQ conflicts after the budget | `VersionConflict` |
 | Unsafe or empty index, empty list, invalid `retry` or `pageDeadline`, `searchAfter` without `sort` or `size`, `searchAfter` with an empty `page` (`page: must be callable`) | `InvalidArgument` |
 | Called from a runtime thread | `Reentrancy` |
 | The client closed (`requestClose()` or `awaitClosed()`), during or before the call | `ClientClosed` |
@@ -1424,14 +1415,14 @@ request is made.
 
 `detail::query::queryStats()` returns process-wide counters since the process started, never reset (they survive `shutdown()` +
 `start()`): `requests`, `failovers`, `throttles`, `unavailable`, `tooLarge` (responses the classifier refused for size) and
-`conflictRetries`. E5c publishes them as `indexer_client.query.*` ([metrics](#metrics-e5c)); they are process-wide and never reset.
+`conflictRetries`. They are published as `indexer_client.query.*` ([metrics](#metrics)); they are process-wide and never reset.
 
-## Point in time (E4b)
+## Point in time
 
 `IQuery::pit(indices, PitOptions, QueryOptions, deadline)` creates a managed PIT and returns a `Pit` handle; `Pit::cursor` and
 `Pit::search` read through it, and the library deletes it when the last handle goes. The contract is the header `src/query/pit.hpp`
 (normative); every PIT request runs through the same attempt loop as the queries (`execute()` in `src/query/engine.hpp`) with the
-`QueryOptions` given to `pit()`: the same [clocks, retry verdicts and wake-ups](#queries-e4a). Nothing there is public API.
+`QueryOptions` given to `pit()`: the same [clocks, retry verdicts and wake-ups](#queries). Nothing there is public API.
 
 ### Creation
 
@@ -1446,7 +1437,7 @@ defaults it to `true` and would create a PIT missing an unavailable shard, whose
 failure to show it (the pages' `allow_partial_search_results=false` only covers the shards the PIT holds). `expand_wildcards=all` is added when `PitOptions.expandWildcardsAll`
 or `QueryOptions.expandWildcardsAll` is set. `PitOptions.wholeResponseCap` (default false) is not sent: it sets the
 [response cap](#response-cap) of the PIT's pages. A 2xx needs a non-empty string `pit_id`, otherwise `Failed(ItemPermanent)`; a 404
-`index_not_found_exception` is `NotFound` (I85); the rest follows the [retry table](#retry-i82). A 2xx whose `_shards.failed` is
+`index_not_found_exception` is `NotFound`; the rest follows the [retry table](#retry). A 2xx whose `_shards.failed` is
 above 0 (a partial PIT the indexer created anyway) is never accepted: it is a **retry** under the same budget (reason
 `<status> partial PIT: <n> shards failed`), because an unavailable shard (a relocation, a restarting node) is usually transient, and
 the PIT it names exists, so the registry deletes it like a released one (below).
@@ -1475,7 +1466,7 @@ acquires again.
 
 `Pit` is copyable and `Pit`, its copies and every `PitSession` share one internal state: the current `pit_id`, `keepAlive`, the
 `generation` (a process-wide counter, `Pit::generation()`), the expired flag, the time of the last request, the `QueryOptions` of `pit()` and
-the indices. `cursor()`, `next()` and `search()` are safe from different threads (E9 pages up to 32 slices at once, one cursor each).
+the indices. `cursor()`, `next()` and `search()` are safe from different threads (a consumer may page up to 32 slices at once, one cursor each).
 **One `next()` at a time per cursor**: a `PitSession` and its copies are one sequence of pages, each continuing from the previous page's
 `search_after`, so a `next()` called while another one is in progress on the same cursor fails at once with `InvalidState` (`another
 next() is in progress on this cursor`) and sends nothing; it does not wait for the other page, which could outlast its `Deadline`.
@@ -1494,7 +1485,7 @@ with the body:
 | Member | Value |
 |---|---|
 | `size` | `CursorQuery.pageSize` |
-| `query` | `CursorQuery.query`; defaults to `{"match_all":{}}` (an empty query is a 400 in OpenSearch 3.6, D60) |
+| `query` | `CursorQuery.query`; defaults to `{"match_all":{}}` (an empty query is a 400 in OpenSearch 3.6) |
 | `sort` | `CursorQuery.sort`; empty means `[{"_shard_doc":"asc"}]` |
 | `_source` | `CursorQuery.source`, only when not null |
 | `slice` | `{id, max}` when a `Slice` was given |
@@ -1502,9 +1493,9 @@ with the body:
 | `search_after` | The `sort` of the previous page's last hit; absent on the cursor's first page, which sets `track_total_hits: true` instead |
 
 - **Tiebreaker.** The default `_shard_doc` is unique within a PIT. A `sort` of the consumer gets **no tiebreaker added**: if it is not
-  unique, hits that tie can be skipped or repeated across pages, and adding `_shard_doc` last is the consumer's job (E9 decides).
+  unique, hits that tie can be skipped or repeated across pages, and adding `_shard_doc` last is the consumer's job.
 - **`PitPage`.** `generation` (the PIT's, unique per process), `hits` (the `hits.hits` array), `last` and `total`. `total` is `hits.total.value` and is set
-  **only on the cursor's first page** (I92); later pages leave it empty.
+  **only on the cursor's first page**; later pages leave it empty.
 - **`last`** is true when the page has fewer hits than `pageSize`. `next()` after `last` returns `Ok` with an empty page, `last` set, and
   **sends nothing**; `exhausted()` tells it.
 - **Retries.** The body of a page is built once: a retried page repeats the same `pit` id and the same `search_after`.
@@ -1588,7 +1579,7 @@ read the live registry:
 | `expired`, `stale` | counters | PITs marked expired; results discarded after it |
 | `refusedFull` | counter | Creations refused by the cap |
 
-They are for the tests; E5 publishes `pit.open`, `pit.delete.pending`, `pit.delete.retries` and `pit.expired`.
+They are for the tests; the metrics publish `pit.open`, `pit.delete.pending`, `pit.delete.retries` and `pit.expired`.
 
 ### Causes of a PIT
 
@@ -1640,17 +1631,17 @@ unknown, so its first state is reported. Lines emitted by `src/health/nodeSet.cp
 | INFO | `Indexer client local fault cleared.` | `localFault` disappears |
 | WARN | `Every indexer node rejects the TLS handshake with the configured CA (curl <code>): if the indexer CA was rotated, update <indexer><ssl> and restart the manager.` | Every node is Down with cause `Tls`; once per episode |
 
-## Metrics (E5c)
+## Metrics
 
 The library publishes its counters as typed snapshots plus a **catalog** of canonical names; it registers nothing in `wazuh_metrics` or
-fastmetrics (the adapters are E7–E10). The contract is `include/indexer_client/metrics.hpp`.
+fastmetrics (the adapters live in the consumers). The contract is `include/indexer_client/metrics.hpp`.
 
-**Scope** (I101). Neither call blocks the hot path: they read, with no I/O, under the leaf mutexes the counters already live under.
+**Scope**. Neither call blocks the hot path: they read, with no I/O, under the leaf mutexes the counters already live under.
 
 | Call | Returns | Holds |
 |---|---|---|
 | `Client::metrics()` (also `IClient::metrics()`, mocked) | `ClientMetrics` | `consumer`, the `BucketMetrics` of **that consumer's** buckets, `callbacksSkipped`, `callbackOverruns`, `callbackMaxDurationMs`. A default-constructed or moved-from `Client` returns an empty `ClientMetrics` |
-| `RuntimeRef::snapshot()` | `MetricsSnapshot` | `networkThreads`, `cpuThreads`, `clients`, `globalCharge`, `globalQuotaBytes`, `retainedBytes`, `queries` (`QueryMetrics`), `pit` (`PitMetrics`), `nodes[]` (`NodeMetrics`), `usageErrors`, `requestTimeout` (the runtime's `request_timeout_ms`, I150, not a metric); **no bucket** |
+| `RuntimeRef::snapshot()` | `MetricsSnapshot` | `networkThreads`, `cpuThreads`, `clients`, `globalCharge`, `globalQuotaBytes`, `retainedBytes`, `queries` (`QueryMetrics`), `pit` (`PitMetrics`), `nodes[]` (`NodeMetrics`), `usageErrors`, `requestTimeout` (the runtime's `request_timeout_ms`, not a metric); **no bucket** |
 
 **Lifetimes.** Buckets and nodes belong to the runtime: they start at 0 with each `start()`. `QueryMetrics`, `PitMetrics` and `usageErrors`
 are process-wide and never reset (they survive `shutdown()` + `start()`; one runtime per process in production).
@@ -1661,12 +1652,12 @@ are process-wide and never reset (they survive `shutdown()` + `start()`; one run
 |---|---|
 | `RejectCause` | `queue_full`, `client_closed`, `shutdown`, `submit_timeout`, `reentrancy`, `payload_too_large`, `group_too_large`, `invalid_argument` (refusals of `submit` and of `Group::add`) |
 | `DropCause` | `queue_full` (`DropNewest` and `DropOldest` together), `client_closed`, `shutdown`, `cancelled` |
-| `FailCause` | `item_permanent`, `retry_exhausted`, `client_4xx`, `server_5xx`, `unavailable`, `invalid_state`, `ambiguous` (E6a: a `_bulk` answered 500/502/504, or whose response went over `max_response_bytes`, in a bucket with `onAmbiguous5xx = Fail`) |
+| `FailCause` | `item_permanent`, `retry_exhausted`, `client_4xx`, `server_5xx`, `unavailable`, `invalid_state`, `ambiguous` (a `_bulk` answered 500/502/504, or whose response went over `max_response_bytes`, in a bucket with `onAmbiguous5xx = Fail`) |
 | `RetryCause` | `item_retryable`, `version_conflict`, `server_5xx`, `transport`, `other`: operations requeued with a counted attempt, counted per operation in `Bucket::requeue` from its last error |
 
 `toString(RejectCause | DropCause | FailCause | RetryCause)` gives these names.
 
-**Latency** (I103). `LatencyHistogram` has 17 per-bucket counts (`counts[i]` counts samples whose milliseconds, rounded up, are `<= LATENCY_BOUNDS_MS[i]`
+**Latency**. `LatencyHistogram` has 17 per-bucket counts (`counts[i]` counts samples whose milliseconds, rounded up, are `<= LATENCY_BOUNDS_MS[i]`
 and above the previous bound; bounds 1, 2, 4 … 32768 ms; `counts[16]` is the rest), `sumMicros` and `count`. `forEachMetric` publishes it
 **cumulative**: `latency.le_1` … `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count`. A bucket's sample is
 `HttpResult.timings.total` of a bulk response that carried an HTTP answer.
@@ -1674,9 +1665,9 @@ and above the previous bound; bounds 1, 2, 4 … 32768 ms; `counts[16]` is the r
 **`lateResults`.** Operations of a completion **with an HTTP answer** (`Items` or `FailBatch` verdict) whose resolution lost first-wins
 (`WritePath::resolve` returned false) or came back closed from `Bucket::requeue`. `Ignore` verdicts (`Cancelled`, `Shutdown`) never count.
 
-**`responseBytesInFlight`** (D48). The sum of the body bytes of query `HttpResult`s delivered to the query engine and not yet returned to the
+**`responseBytesInFlight`**. The sum of the body bytes of query `HttpResult`s delivered to the query engine and not yet returned to the
 consumer (classification plus DOM); `peakResponseBytesInFlight` is its process-wide maximum. There is **no global charge** for query
-responses (I84): the gauge makes the D48 question observable instead of adding a cap.
+responses: the gauge makes the question observable instead of adding a cap.
 
 **Names.** Lowercase, dotted, no labels (`.claude/docs/metrics.md`). `<consumer>` and `<bucket>` are sanitized: lowercased, every character outside
 `[a-z0-9_]` becomes `_`, and a result that is empty or only `_` becomes `_` (`VD-Scanner` / `states.v2` give `vd_scanner` / `states_v2`; `---` gives `_`;
@@ -1701,7 +1692,7 @@ Counts per prefix: bucket 51, client 3, runtime 7, query 8, PIT 10, node 31. Sou
 | `failed.<cause>` (7) | counter | `failed[FailCause]` |
 | `retries.<cause>` (5) | counter | `retries[RetryCause]` |
 | `late_results` | counter | `lateResults` |
-| `retained_bytes` | gauge | `retainedBytes`: payload charged (pending + retry lane + delivered); what E10 maps to `indexer.queue.size` |
+| `retained_bytes` | gauge | `retainedBytes`: payload charged (pending + retry lane + delivered); what the consumers map to `indexer.queue.size` |
 | `charge_bytes` | gauge | `charge`: everything charged (payload, result reserves, building groups) |
 | `quota_bytes` | gauge | `quotaBytes` |
 | `bulk_requests` | counter | `bulkRequests` |
@@ -1770,12 +1761,12 @@ Counts per prefix: bucket 51, client 3, runtime 7, query 8, PIT 10, node 31. Sou
 - `bulk_requests` counts every bulk completion, whatever its outcome.
 - `failed.server_5xx` and `failed.invalid_state` are part of the closed set but no production path resolves an operation with those causes today (a 5xx is retried and ends `retry_exhausted`); only the component suite moves them, through its test sink.
 
-## Logging (E5c)
+## Log lines
 
-RF-16 asks for a log that is useful and bounded. Every line below is decided under the mutex that owns its state and **emitted after that mutex
+The log is meant to be useful and bounded. Every line below is decided under the mutex that owns its state and **emitted after that mutex
 is dropped** (the `NodeSet` `pending.lines` pattern), never under a bucket mutex or inside `GlobalBudget::tryReserve`. The quota-edge lines are
 written **by the submitting thread that crossed the edge**, once per crossing, when it leaves `Bucket::reserve()`/`reserveForGroup()` with no
-mutex held (the engine's submit thread included). A staged `post()` ([Staged admission of `post`](#staged-admission-of-post-e6e)) crosses
+mutex held (the engine's submit thread included). A staged `post()` ([Staged admission of `post`](#staged-admission-of-post)) crosses
 no edge itself: its edges are crossed when its stripe is flushed, and the thread that flushed it writes them once the stripe's and the bucket's
 mutexes are dropped: the posting thread that filled the stripe (64 operations or its byte limit), loop 0 for a deadline flush, or the closing
 thread for the seal. The summary's timer drains what is still pending, e.g. what a `Block` left behind. The **ambiguous** line is the exception: it is written by the **completion thread** (CPU pool) of the `_bulk`, once the bucket mutex is dropped. A throwing
@@ -1791,9 +1782,9 @@ compare-and-swap crossed the threshold claims the line with an `exchange`, so a 
 | WARN | `Indexer client bucket '<consumer>/<bucket>' has no room for new operations (<charge> of <quota> bytes charged): its overflow policy '<policy>' applies.` | The first admission **the bucket's own quota** refuses and resolves by overflow: a `QueueFull` refusal, `DropNewest`, a `DropOldest` eviction or a `Block` that has to wait. A refusal of the global cap logs the global line below, never this one |
 | WARN | `Indexer client global quota reached 80% (<charge> of <cap> bytes charged).` | The global charge crosses 0.8 × `global_quota_bytes` upwards |
 | WARN | `Indexer client global quota is full (<charge> of <cap> bytes charged): every bucket applies its overflow policy.` | The first admission the global cap refuses |
-| WARN | `Indexer client bucket '<consumer>/<bucket>' got an ambiguous HTTP <status> for a bulk of <n> operations: they failed without being resent (onAmbiguous5xx = fail); the indexer may have applied them.` — or, for a response over the cap, `... got a response over max_response_bytes for a bulk of <n> operations: ...` (same tail) | The first `Failed(Ambiguous)` of the bucket after a 2xx `_bulk` (or since its creation); re-armed by the next 2xx `_bulk`. See [Ambiguous 5xx](#ambiguous-5xx-e6a) |
+| WARN | `Indexer client bucket '<consumer>/<bucket>' got an ambiguous HTTP <status> for a bulk of <n> operations: they failed without being resent (onAmbiguous5xx = fail); the indexer may have applied them.` — or, for a response over the cap, `... got a response over max_response_bytes for a bulk of <n> operations: ...` (same tail) | The first `Failed(Ambiguous)` of the bucket after a 2xx `_bulk` (or since its creation); re-armed by the next 2xx `_bulk`. See [Ambiguous 5xx](#ambiguous-5xx) |
 
-**Periodic summary** (I102). A timer on network loop 0 fires every `log_summary_interval_ms` (1000 – 3600000, default 60000). `<n>` is the
+**Periodic summary**. A timer on network loop 0 fires every `log_summary_interval_ms` (1000 – 3600000, default 60000). `<n>` is the
 elapsed seconds since the previous summary, rounded up and never below 1. A bucket with no activity in the interval logs nothing; every bucket
 with activity logs its INFO line every interval (one line per minute per active bucket with the default).
 
@@ -1809,7 +1800,7 @@ The counting happens in `Bucket::countResolved` under the bucket mutex; the time
 keeps the summary alive) and the body releases its client references before it emits. The runtime's stop (`stopAndJoin`) disarms the summary
 and stops the timer **before** `writePath->stop()`, and emits the **last summary synchronously after** `writePath->stop()` and the PIT drain: the
 shutdown sweep's `Dropped(Shutdown)` and the PIT deletes the drain gives up are in it, for the buckets of every Client still registered then
-and of every Client closed **during the stop** (D133). The close order (`client.hpp`) has each consumer run `awaitClosed`, which releases its
+and of every Client closed **during the stop**. The close order (`client.hpp`) has each consumer run `awaitClosed`, which releases its
 name, before `RuntimeOwner::shutdown()`; modulesd's VD and Inventory Sync Server then drop their Client. So a Client whose name is released
 once the stop began (`beginShutdown` fixed the deadline, or `stopAndJoin` closed the admission) is kept by the runtime — its `ClientState` and
 buckets only; `awaitClosed` already fixed its callback cutoff — and summarized like a live one: its last lines carry what that close dropped
@@ -1834,7 +1825,7 @@ the indexer is the `itemErrorType` token, with control bytes replaced.
 Two header-only helpers in `include/indexer_client/` that the consumers share (inventory sync and the vulnerability scanner). Nothing in
 them is exported by the library (`INDEXER_CLIENT_API` is not applied): each consumer compiles its own copy.
 
-**`chunking.hpp`** (D88, I137b, I165, I176b) holds the arithmetic a consumer needs to cut a write into [Groups](#groups-e3c-1) that fit
+**`chunking.hpp`** holds the arithmetic a consumer needs to cut a write into [Groups](#groups) that fit
 the bucket's quota; the staging machines (barriers, deadlines) stay in the consumers.
 
 | Symbol | Meaning |
@@ -1844,16 +1835,16 @@ the bucket's quota; the staging machines (barriers, deadlines) stay in the consu
 | `escapedSizeBound(id)` | Upper bound of the `_id` once [escaped](#encoding-per-kind): 2 bytes for `"` and `\`, at most 6 for any other control character. |
 | `CHUNK_ACTION_FRAME_BYTES` (64), `CHUNK_VERSIONED_FRAME_BYTES` (512) | Upper bounds of the fixed bytes of an action line and of an `IndexVersionedScript` head (`src/write/encoding.cpp`); if the encoder grows past them, `estimateCharge` under-reports. |
 
-**`metricsSlot.hpp`** (D95, I140, I141b, I168) is the pull-metrics source of a consumer: `MetricsSlot(maxAge, prefixes)` holds its `Client`
+**`metricsSlot.hpp`** is the pull-metrics source of a consumer: `MetricsSlot(maxAge, prefixes)` holds its `Client`
 **weakly** (a scrape never keeps a closed `Client` alive; without a live one the bucket values read 0) and, optionally, the process's
-`RuntimeRef` (whose values do not depend on a `Client`, I168). One refresh serves every read within `maxAge`, so one scrape of N metrics
+`RuntimeRef` (whose values do not depend on a `Client`). One refresh serves every read within `maxAge`, so one scrape of N metrics
 costs one `metrics()` and one `snapshot()`; `repoint()` aims the slot at a new `Client` after a restart; `value(name)` and
 `read(fn)` return the metric (0 when absent or filtered out by `prefixes`). It has its own mutex, so a scrape never contends with the
 consumer's lifecycle; share it (`shared_ptr`) between the consumer and every getter it registers.
 
 ## Benchmark
 
-`bench/` (stage E2c) measures whether the v2 [transport](#transport-internal-e2a-1-and-e2a-2) is at least as fast as the v1 bulk
+`bench/` measures whether the v2 [transport](#transport-internal) is at least as fast as the v1 bulk
 path. It compares two executables over **the same in-process fake indexer** (`bench/benchFake.hpp`, cpp-httplib; it counts bytes,
 requests and connections and keeps no bodies) and **the same `libwazuhext.so`**, both in Release:
 
@@ -1891,7 +1882,7 @@ bench/run.sh --v1 <bench_v1> --v2 <bench_v2> --cpus 0,2,4,6 --out <prefix> [--se
 | `--wazuhext-sha256 SHA` | Refuse to measure when a binary maps another `libwazuhext` |
 
 Each binary takes `--mode plain|tls`, `--secs`, `--warmup`, `--pair`, `--fake-status`, `--print-headers` and `--csv-header`; the v1
-also `--headers normative|shipped`, the v2 `--c 1|2|4|8`, `--path transport|client` (`client`: [below](#client-path-and-submit-microbenchmark-e6c)) and
+also `--headers normative|shipped`, the v2 `--c 1|2|4|8`, `--path transport|client` (`client`: [below](#client-path-and-submit-microbenchmark)) and
 `--probe [--rounds N]`. Exit codes of `run.sh`: 0 ok, 1 an invalid informative row, a failed probe or a failed selfcheck (an invalid normative
 sample annuls its pair and counts through the reliability rule), 2 usage, 3 another `libwazuhext` loaded,
 4 host load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition, 6 a gate of `--suite submit` failed or had no valid pair.
@@ -1909,7 +1900,7 @@ sample annuls its pair and counts through the reliability rule), 2 usage, 3 anot
 - Affinity: v1, v2 and the fake share one fixed set of four physical P cores (one sibling each); every CSV row records the
   `cpus` and the `libwazuhext` sha256.
 - **Informative** runs, after the normative ones: v2 at c = 2, 4, 8 and the v1 as shipped, 20 s each, per mode.
-- The D37 probe (`--probe`): 50 consecutive probe rounds on a live TLS runtime, counting the connections they cost.
+- The probe (`--probe`): 50 consecutive probe rounds on a live TLS runtime, counting the connections they cost.
 
 **Output.** The CSV has one row per run (`mode,headers,side,c,pair,requests,bytes,secs,mib_s,req_ms_mean,xfer_ms_mean,
 connect_ms_sum,appconnect_ms_sum,thread_cpu,proc_cpu,cpus,wazuhext_sha256,errors,server_bytes,valid`). The summary has one
@@ -1917,18 +1908,18 @@ connect_ms_sum,appconnect_ms_sum,thread_cpu,proc_cpu,cpus,wazuhext_sha256,errors
 
 **Result.** The gate is a median v2/v1 ratio >= 0.95 at c = 1 in plain and TLS (the two normative rows of the summary); the rows at c = 2, 4, 8 and the v1 as shipped are informative. The numbers depend on the machine (CPU model, governor, pinned CPUs) and are not kept here: rerun the harness (`run.sh`, below) on the machine that matters.
 
-**D37 (probe cost).** With `CAINFO_BLOB` curl re-parses the CA bundle on every new TLS connection; the probe does not pay it
+**Probe cost.** With `CAINFO_BLOB` curl re-parses the CA bundle on every new TLS connection; the probe does not pay it
 repeatedly: `PROBE,connections=1,failures=0,appconnect_nonzero=0,rounds=50,applied=50,...`: 50 rounds over the one connection the
 runtime's start round opened (so even round 1 does no handshake; `connections` is the oracle). The rounds run back to back over a
-warm connection: the 10 s interval against an indexer that closes idle connections is E6's.
+warm connection: the 10 s interval against an indexer that closes idle connections is not covered here.
 
-### Client path and submit microbenchmark (E6c)
+### Client path and submit microbenchmark
 
 - **`indexer_client_bench_v2 --path client --c N`** measures the whole `Client`/bucket write path (buckets, DRR, limiter): one bucket
   (4 MiB bulks, 256 MiB quota, `Reject`) kept at N x 4 MiB of 1.5 KiB documents, refilled from the result callbacks. The fake runs in
   **items mode** (one `201` item per action line, so the classifier sees a complete answer). The row is valid when the bucket's
   delta of `bulkBytes` equals the bytes the fake received; `NOTE bulk_mean=` is the mean bulk size the fake saw.
-- **`indexer_client_bench_submit`** (RNF-2) times what a producer pays per event: `IWriter::post` (`--api post`, the default, on a
+- **`indexer_client_bench_submit`** times what a producer pays per event: `IWriter::post` (`--api post`, the default, on a
   bucket with `trustedBodies` as the engine uses it; it requires `--cb none`, otherwise exit 2) or `IWriter::submit` (`--api submit`)
   of an `IndexDataStream` op with its body moved in. P producers fire bursts of B = 1000 ops behind a barrier; between bursts one
   coordinator waits, off the clock, until the backlog (the bucket's `charge`) is below W = 16 MiB. The first 5 bursts are discarded.
@@ -1943,7 +1934,7 @@ warm connection: the 10 s interval against an indexer that closes idle connectio
 
 ### Finding: `Expect: 100-continue`
 
-The v2 used to suppress `Expect:`; the v1 as shipped let curl send `100-continue` on bodies over 1 MiB, and over TLS the v1 was faster than the v2. The cause was `Expect: 100-continue` (gzip did not matter), so the v2 now leaves `Expect` to curl (I60), which also lets a node reject (401/413/429) before the body. This was measured against the in-process fake only; a real indexer and network RTT may differ (one RTT per bulk). Reproduce with the transport benchmark (`run.sh`, above).
+The v2 used to suppress `Expect:`; the v1 as shipped let curl send `100-continue` on bodies over 1 MiB, and over TLS the v1 was faster than the v2. The cause was `Expect: 100-continue` (gzip did not matter), so the v2 now leaves `Expect` to curl, which also lets a node reject (401/413/429) before the body. This was measured against the in-process fake only; a real indexer and network RTT may differ (one RTT per bulk). Reproduce with the transport benchmark (`run.sh`, above).
 
 ## Linking
 
@@ -1958,7 +1949,7 @@ has `BUILD_RPATH $ORIGIN/../lib` so it finds `libwazuhext.so` in `${CMAKE_BINARY
 
 ## Build and tests
 
-The sources are compiled twice (I45b, the `indexer_client_objects` and `indexer_client_objects_testing` object libraries):
+The sources are compiled twice (the `indexer_client_objects` and `indexer_client_objects_testing` object libraries):
 
 | Target | Kind | Seams | Linked by |
 |---|---|---|---|
@@ -1982,7 +1973,7 @@ C++20-ism in a public header fails there first:
 | Suite | Target / ctest label | Covers |
 |---|---|---|
 | Unit | `indexer_client_utest` (`tests/unit/*.cpp`) | Config, key-value source, mocks, fake indexer, the query response classifiers (`queryResponse_test.cpp`), the public library (`VisibilityTest.SetLogFunctionRoutesLogs` covers the log setter) |
-| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path-e3a), below); the [queries](#queries-e4a) (`query_test.cpp`, `queryByQuery_test.cpp`, `queryDomFactor_test.cpp`); the [PIT](#point-in-time-e4b) (`pit_test.cpp`, `pitRegistry_test.cpp`) |
+| Component | `indexer_client_component_test` (`tests/component/*.cpp`) | The transport and the fake over real sockets, with the seams; `HealthTest` (probe, states, logs, stop order) and `FakeHealthTest` (the fake's `/_cluster/health` rules); `WriteTest` (the [write path](#write-path), below); the [queries](#queries) (`query_test.cpp`, `queryByQuery_test.cpp`, `queryDomFactor_test.cpp`); the [PIT](#point-in-time) (`pit_test.cpp`, `pitRegistry_test.cpp`) |
 
 ```bash
 cmake --build $WAZUH_REPO/src/build -j"$(nproc)" --target indexer_client_utest indexer_client_component_test
@@ -1990,18 +1981,18 @@ ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_utest
 ctest --test-dir $WAZUH_REPO/src/build -L indexer_client_component_test
 ```
 
-**`WriteTest` suites** (E3a, `tests/component/write*_test.cpp`, shared fixture `writeFixture.hpp`: a runtime, a programmable sink
+**`WriteTest` suites** (`tests/component/write*_test.cpp`, shared fixture `writeFixture.hpp`: a runtime, a programmable sink
 installed through `WritePath::setSink`, a callback result log). Every case ends with the charge and the retained operations at 0.
 
 | File | Cases |
 |---|---|
-| `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid`, `EncodingConflictRetryLine`, `EncodingPreservingShapes` (the frozen byte vectors E6 reuses), `EncodingPreservingRejects`, `SubmitCarriesReason`, `WriteInternalErrorTest.EncodeSizeMismatchRefusedNotAborted` (issue 15) |
-| `writeAdmission_test.cpp` | `ChargeIsWireBytesPlusReserve`, `GlobalCapAcrossBuckets`, `OverflowReject`, `OverflowBlockTimeout`, `OverflowDropNewest`, `OverflowDropOldest`, `OverflowBlockWakes`, `BlockedProducerWakesOnClose`, `NoDropWithoutCounter`, `BlockFromRuntimeThreadIsReentrancy`, `PayloadTooLargeAtSubmit`, `WriteInternalErrorTest.BucketDestroyedWithQueuedOpsCompletesThem` and `WriteInternalErrorTest.ForeignBucketResolutionLoggedNotAborted` (issue 15) |
+| `writeEncoding_test.cpp` | `EncodingPerKind`, `EncodingRejectsInvalid`, `EncodingConflictRetryLine`, `EncodingPreservingShapes` (the frozen byte vectors), `EncodingPreservingRejects`, `SubmitCarriesReason`, `WriteInternalErrorTest.EncodeSizeMismatchRefusedNotAborted` |
+| `writeAdmission_test.cpp` | `ChargeIsWireBytesPlusReserve`, `GlobalCapAcrossBuckets`, `OverflowReject`, `OverflowBlockTimeout`, `OverflowDropNewest`, `OverflowDropOldest`, `OverflowBlockWakes`, `BlockedProducerWakesOnClose`, `NoDropWithoutCounter`, `BlockFromRuntimeThreadIsReentrancy`, `PayloadTooLargeAtSubmit`, `WriteInternalErrorTest.BucketDestroyedWithQueuedOpsCompletesThem` and `WriteInternalErrorTest.ForeignBucketResolutionLoggedNotAborted` |
 | `writeScheduler_test.cpp` | `ThresholdsFormBatches`, `DrrNoStarvation`, `DrrShareByWeight`, `DocumentNeverSplitDebtCarries`, `ThreadsStayKPlusMWithBuckets`, `DrrTinyQuantumFastForwards`, `MaxAgeExpiringDuringAPassIsServed`, `DrrDebtBulkReachesMaxBytes`, `DrrDebtShareByWeight`, `DrrDebtKeptWhenEmpty` |
 | `writeClose_test.cpp` | `SubmitRacesClose`, `CloseAndShutdownResolveRetained`, `ShutdownWithHeldBatch`, `DefaultSinkIsTheBulkSender` |
 | `writeReserve_test.cpp` | `ResultReserveMeasured` (allocation counter, five phases; skipped under ASAN/TSAN) |
 
-**E3b-1 suites** (component, `tests/component/`; neither needs a real indexer):
+**Classifier and retry lane suites** (component, `tests/component/`; neither needs a real indexer):
 
 | File | Cases |
 |---|---|
@@ -2016,23 +2007,21 @@ answer (413, 429 with `Retry-After`, 5xx, 401), queue scripts, and hold an answe
 `FakeBulkResponderRender.ItemsWithoutHttp`).
 
 The unit suite also covers the registration rule (`BucketSpecTest.InvalidBulkMaxBytesPlusReserveAboveQuota`), the former refusal of
-`ordered = true` (superseded by E3c-2: `BucketSpecTest.OrderedRegisters` checks that `ordered` registers and that the other rules still apply; `BucketSpecTest.RetryConflictPolicyRegisters` and
-`BucketSpecTest.InvalidZeroRetryOnConflict` cover the `Retry` policy, which since E3c-1 registers) and the production sink through the public API
+`ordered = true` (`BucketSpecTest.OrderedRegisters` checks that `ordered` registers and that the other rules still apply; `BucketSpecTest.RetryConflictPolicyRegisters` and
+`BucketSpecTest.InvalidZeroRetryOnConflict` cover the `Retry` policy, which registers) and the production sink through the public API
 (`BucketSpecTest.WriterSubmitResolvesThroughTheSender`).
 
-**E3b-2 suites** (component, `tests/component/`; the real transport against in-process fake nodes). They use the fixture
+**Bulk sender suites** (component, `tests/component/`; the real transport against in-process fake nodes). They use the fixture
 `BulkTest` (`bulkFixture.hpp`, derived from `WriteTest`): one `Node` per host (a fake indexer with its `/_cluster/health` and a
 `BulkResponder` for `/_bulk`), `startOn(hosts, probeInterval, extra)` to start a runtime on them, `probeNow()`-based helpers to move
-a node's health on demand; `BulkScript::tooLargeAbove(k)` (`tests/fake/bulkResponder.hpp`) answers 413 above `k` operations. Three tests of
-E3a that assumed the `Unavailable` sink were adapted (`DefaultSinkIsTheBulkSender`, `ThreadsStayKPlusMWithBuckets`, the unit
-test above).
+a node's health on demand; `BulkScript::tooLargeAbove(k)` (`tests/fake/bulkResponder.hpp`) answers 413 above `k` operations. 
 
 | File | Cases |
 |---|---|
 | `bulkVerdicts_test.cpp` | `BulkBodyIsTheEncodedLines`, `ErrorsFalseStillPerItem`, `DeleteNotFoundIsOk`, `IndexNotFoundIsPermanent`, `MixedItems`, `EveryOpOneResult`, `LimitedRetryExhausts`, `UnlimitedSurvives5xx`, `PoisonDoesNotBlock`, `Split413`, `ResponseTooLargeSplits`, `Request429HonorsRetryAfterPerNode`, `Request429Paces`, `NotBeforeNeverShortenedBy2xx`, `Client4xxFailsBatch`, `CredentialsErrorRetries`, `UnreadableBodyRetries`, `PassiveReport429Throttled` |
 | `bulkWakeups_test.cpp` | `FailoverOnTransportError`, `WindowPerNode`, `SubmitRefusedRequeues`, `CompletionFreesWindow`, `NotBeforeExpiryWakesScheduler`, `NoUsableNodeWaitsThenSends`, `CloseClientWhileInFlightRetry`, `RetryLaneBeforePendingE2E`, `BackoffIsPerBucket`, `ShutdownCancelsInFlight`, `ShutdownRacesRequeue`, `StaleDownMirrorDoesNotSpin`, `SetSinkRequeuesCancelledInFlight`, `CompletionExceptionRequeues` |
 
-**E3c-1 suites** (component; the conflict and preservation cases use the fake `_bulk` responder, which does not run Painless, D45).
+**Conflict policy and preservation suites** (component; the conflict and preservation cases use the fake `_bulk` responder, which does not run Painless).
 
 | File | Cases |
 |---|---|
@@ -2040,15 +2029,15 @@ test above).
 | `writeGroup_test.cpp` | `GroupHundredOneRejected`, `TwoBuildingGroupsDoNotBlock`, `GroupAddWaitsForCommittedRoom`, `GroupAddTimesOut`, `AbandonedGroupReleases`, `GroupTooLarge`, `CommitFlushesNow`, `GroupItemRetryCompletesOnce`, `GroupAcrossSplit413`, `GroupDropPoliciesRejectLikeReject`, `GroupAfterCloseAndShutdown`, `GroupOutlivesRuntime`, `GroupReservesReturnedWhenBucketDies`, `EmptyCommit`, `GroupStatsInvariant`, `GroupLastAddReason` |
 | `writeReentrancy_test.cpp` | `CallbackBlockingCallsAreReentrancy` (`submit`, `Ticket::wait`, `GroupTicket::wait` and `Group::add` from a callback), `CallbackRequestCloseAndClientDestroy` |
 
-**E3c-2 suites** (component).
+**Ordered bucket and cancellation suites** (component).
 
 | File | Cases |
 |---|---|
 | `bulkOrdered_test.cpp` | `OrderedOneBulkInFlight`, `OrderedKeyOncePerBulk`, `OrderedItemRetryBlocksOnlyItsKey`, `OrderedBlockedPrefixBeyondMaxDocsDoesNotStallOtherKeys`, `OrderedTimeoutAfterApplyKeepsOrder`, `OrderedAmbiguousFailoverAfterWindow`, `OrderedFailureBeforeSendFailsOverAtOnce`, `OrderedNoIdleSpin`, `UnorderedUnchanged` |
 | `writeCancel_test.cpp` | `CancelPendingAndInFlight503`, `CancelInFlightOkStaysOk`, `CancelSlicedBeforeSubmitNotSent`, `CancelOtherTagsUntouched`, `CancelCommittedGroupOps`, `CancelIgnoresBuildingGroup`, `CancelTicketWaitsInFlightOnly`, `CancelFromCallbackReentrancy`, `TagValidation`, `CancelTwiceSameTag`, `CancelAfterTagReenqueued`, `CancelWakesOrderedBucket` |
-| `bulkFairness_test.cpp` | `ItemRejectionsDoNotStarveOtherBucket` (CA-3; about 21 s, about three times that under TSAN) |
+| `bulkFairness_test.cpp` | `ItemRejectionsDoNotStarveOtherBucket` (about 21 s, about three times that under TSAN) |
 
-**E5c suites** ([Metrics](#metrics-e5c), [Logging](#logging-e5c)).
+**Metrics and logging suites** ([Metrics](#metrics), [Logging](#log-lines)).
 
 | File | Covers |
 |---|---|
@@ -2056,17 +2045,17 @@ test above).
 | `tests/component/logSummary_test.cpp` (`logSummary_test`) | The quota edges and the periodic summary, through `flushLogSummary()` |
 | `tests/unit/metricsCatalog_test.cpp` (`metricsCatalog_test`) | `LatencyHistogram`, name sanitizing and the catalog |
 
-**E6a suites** (component; [Ambiguous 5xx](#ambiguous-5xx-e6a), [parking a node](#node-health-e2b), one wake per completion).
+**Ambiguous 5xx, parking and wake-up suites** (component; [Ambiguous 5xx](#ambiguous-5xx), [parking a node](#node-health), one wake per completion).
 
 | File | Covers |
 |---|---|
 | `bulkAmbiguous_test.cpp` | `onAmbiguous5xx`: `Fail` on 500, 502 and 504 (one send, `failed.ambiguous`, one WARN), 503 still retried, `Retry` unchanged, the WARN re-armed by a 2xx, a throwing completion that still never resends, a response over `max_response_bytes` (`Fail`: one send, never split; `Retry`: split as before) |
 | `nodeRetryAfter_test.cpp` | A `Retry-After` from a query, a bulk, a PIT or the probe parks the node; the sender neither spins nor loses the wake; reads wait for the first parked node; `notBefore` set in any state; a mirrored park keeps one pace doubling per 429 burst (`MirroredParkKeepsOnePaceDoublingPerBurst`). The PIT registry's DELETE waiting for a parked node is `pitRegistry_test.cpp` `DeleteWaitsForParkedNode` |
-| `rf9Matrix_test.cpp` | The RF-9 matrix, one parameterized row per case: `_bulk` statuses (500, 502, 503, 504 among them), items and transport failures, and the same for queries and PIT creation |
+| `errorMatrix_test.cpp` | The status matrix, one parameterized row per case: `_bulk` statuses (500, 502, 503, 504 among them), items and transport failures, and the same for queries and PIT creation |
 | `bulkWakeups_test.cpp` | Also `OneWakePerCompletion` (`SchedulerStats::posts`) |
 | `tests/unit/metricsCatalog_test.cpp` | `ReadmeMatchesCatalog` parses the per-prefix counts and the `failed.<cause>` row of this README |
 
-**E5b suite** (component, [Closing and shutdown](#closing-and-shutdown-e5b)).
+**Closing and shutdown suite** (component, [Closing and shutdown](#closing-and-shutdown)).
 
 | File | Cases |
 |---|---|
@@ -2082,17 +2071,17 @@ no other wake-up can rescue the one under test.
 before it builds the request; `testing_hooks::setRefuseSubmit(hook)` installs a hook that makes it answer true, which `SubmitRefusedRequeues` uses to
 exercise the refused-submit path. The production build compiles it to `false`.
 
-**Seam `beforeAssembly`** (E3c-2, `src/transport/seams.hpp`). It runs in the sender's CPU-pool task just before the cancelled operations
+**Seam `beforeAssembly`** (`src/transport/seams.hpp`). It runs in the sender's CPU-pool task just before the cancelled operations
 are removed from the batch and the body is assembled (`testing_hooks::setBeforeAssembly`); a test calls `cancel(tag)` inside it to prove
 that nothing of the tag reaches the wire. The production build compiles it to nothing.
 
-**Seams `beforeCompletion` and `beforeSenderMirror`** (G-diff E3b-2, `src/transport/seams.hpp`). The first runs in every bulk
+**Seams `beforeCompletion` and `beforeSenderMirror`** (`src/transport/seams.hpp`). The first runs in every bulk
 completion after its slot was released (`testing_hooks::setBeforeCompletion`; a throwing hook exercises the completion's fallback,
 `CompletionExceptionRequeues`); the second runs in the sender's `NodeSet` hook before it refreshes the `Down` mirror
 (`testing_hooks::setBeforeSenderMirror`; a blocking hook reproduces the mirror lag, `StaleDownMirrorDoesNotSpin`). The production
 build compiles both to nothing.
 
-**Seams `afterPayloadReleased` and `inCallbackGate`** (G-diff E5b, `src/transport/seams.hpp`). The first runs in
+**Seams `afterPayloadReleased` and `inCallbackGate`** (`src/transport/seams.hpp`). The first runs in
 `WritePath::resolve` right after the operation's payload was released (`testing_hooks::setAfterPayloadReleased`; parking it proves
 the completion is already outstanding, `ResolutionOutstandingBeforeReleased`); the second runs in `CallbackCompletion::run` under
 `completionsMutex`, between the cutoff comparison and the started/skipped mark (`testing_hooks::setInCallbackGate`; parking it proves
@@ -2109,7 +2098,7 @@ Check each binary's mtime before trusting a PASSED. The component executable lin
 
 **Sanitizers.** Both suites run in a **sibling worktree**, not in the main tree (`$WAZUH_REPO/src/build`): the sanitizer flags
 rewrite `CMAKE_CXX_FLAGS_DEBUG` tree-wide and `libwazuhext.so` is written to `src/build/lib`, which
-would be clobbered (I47b). Configure it outside the main tree with `-DCMAKE_BUILD_TYPE=Debug`
+would be clobbered. Configure it outside the main tree with `-DCMAKE_BUILD_TYPE=Debug`
 and, for TSAN, `-DTSANITIZE=ON`; for ASAN, the CI mechanism
 (`-DCMAKE_C_FLAGS`/`-DCMAKE_CXX_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"`,
 `.github/actions/build_target_cpp/action.yml`). Rebuild `wazuhext` there before each sanitized run, check
@@ -2118,7 +2107,7 @@ with `readelf -d` that it needs `libasan` only in the ASAN tree, and prove the i
 
 Layout of `tests/`: `unit/` (config schema, key-value source, mocks, fake indexer), `component/`
 (transport over real sockets), `mocks/` (gmock mocks of the public interfaces), `fake/`
-(in-process fake indexer; `fake/pitResponder.hpp` is the programmable PIT responder of the PIT suites). `spike/` holds the E0 measurement code and is not part of the targets.
+(in-process fake indexer; `fake/pitResponder.hpp` is the programmable PIT responder of the PIT suites). 
 
 ## Tests and CI
 
@@ -2142,11 +2131,11 @@ its 30 s default a PIT requested at 1 s would live 30 s — and no disk threshol
 outage case stop and start the first one with the runner's `docker`.
 
 **Time scale.** `tests/fake/testTimeScale.hpp`: `INDEXER_CLIENT_TEST_TIME_SCALE` is an integer 1-20 (empty means 1; an invalid value aborts), multiplied
-by 3 under TSAN; the variable is read on the first call. `scaled()` covers the limits that proved host-sensitive: the D35 margins of the transport
-suites, the latency cases of `bulkLimiter_test.cpp` (D57, the fake's latency and `latency_target_ms` scaled together), the query and close suites
+by 3 under TSAN; the variable is read on the first call. `scaled()` covers the limits that proved host-sensitive: the margins of the transport
+suites, the latency cases of `bulkLimiter_test.cpp` (the fake's latency and `latency_target_ms` scaled together), the query and close suites
 (`queryFixture.hpp`) and the windows the local CI reproduction caught (`LeastLoadedLoopWinsOverRoundRobin`, `SubmitRacesClose`). The other
 literal durations were not reviewed one by one: most are generous waits, and a few are race windows (`health_test.cpp`, `bulkOrdered_test.cpp`,
-`transportShutdown_test.cpp`) that passed every local run of the three jobs at 2 CPUs; a CI flake on any of them is scaled the same way (D35).
+`transportShutdown_test.cpp`) that passed every local run of the three jobs at 2 CPUs; a CI flake on any of them is scaled the same way.
 
 **Real-OpenSearch suite** (`tests/opensearch/`, `indexer_client_opensearch_test`; links the public `.so` and cpp-httplib for raw requests). Without
 a URL the suite SKIPs, except under `GITHUB_ACTIONS`, where it FAILs; a URL that does not answer within `scaled(120 s)` FAILs, once per run (later cases fail at once). Its indices are `ic-e6b-<case>-<pid>`; the global
@@ -2160,7 +2149,7 @@ Its suites:
 | `OpenSearchPit.*` | real expiry yields `PitExpired` on a 404 `search_context_missing_exception`, confirmed delete, slices with the same id |
 | `OpenSearchSizes.*`, `OpenSearchLoad.*` | informative measurements |
 | `OpenSearchHealth.RequireClusterFailsFast` | the require-cluster case fails fast |
-| `OpenSearchFailures.*`, `OpenSearchSettingGuard.*` | a document the strict mapping refuses, the shard limit, a missing index without auto-creation (D108); the cluster settings they change are restored |
+| `OpenSearchFailures.*`, `OpenSearchSettingGuard.*` | a document the strict mapping refuses, the shard limit, a missing index without auto-creation; the cluster settings they change are restored |
 | `OpenSearchPayloadLimit.BulkOverTheLimitIsSplitUntilEverythingLands` | issue 26, on the `INDEXER_CLIENT_OPENSEARCH_SMALL_URL` node: a group three times its `http.max_content_length` is split after the 413 until every operation is `Ok` (one document per operation, more than one bulk); one document over the limit ends `Failed(PayloadTooLarge)` with 413 and is not indexed |
 | `OpenSearchOutage.StoppedNodeLosesNothingAndDuplicatesNothing` | issue 27: `docker stop` of the `INDEXER_CLIENT_OPENSEARCH_CONTAINER` node. While it is down a submit returns at once and nothing resolves; a client closed then ends every operation `Dropped(ClientClosed)` without the node; after `docker start` the queued operations land, the documents indexed before are there, and resending every id leaves one document per id. The node is started again whatever the case does |
 
@@ -2180,12 +2169,12 @@ INDEXER_CLIENT_OPENSEARCH_URL=http://localhost:9211 INDEXER_CLIENT_OPENSEARCH_SM
   INDEXER_CLIENT_OPENSEARCH_CONTAINER=ic-os-suite ctest --test-dir src/build -V -L indexer_client_opensearch_test
 ```
 
-**D54.** `latency_target_ms` stays at 2 s: against a real OpenSearch the bulks showed no latency-driven window reduction. The figures are not kept here; the `OpenSearchSizes.*` and `OpenSearchLoad.*` suites print them.
+**Latency target.** `latency_target_ms` stays at 2 s: against a real OpenSearch the bulks showed no latency-driven window reduction. The figures are not kept here; the `OpenSearchSizes.*` and `OpenSearchLoad.*` suites print them.
 
 ## Known limits
 
 - The library records no benchmark figures; the harnesses under `tests/` and the benchmark sections above reproduce them.
-- The [ordered ambiguous window](#ordered-buckets-e3c-2) cannot be closed by the library: the consumer's own sweep does (inventory sync, delete by query).
-- A `CursorQuery` left at its default `{}` gets a 400 from OpenSearch 3.6 (D60); an average bulk of about 1 MiB with `bulk.maxBytes` at 4 MiB is a known inefficiency against a real OpenSearch (D61).
+- The [ordered ambiguous window](#ordered-buckets) cannot be closed by the library: the consumer's own sweep does (inventory sync, delete by query).
+- A `CursorQuery` left at its default `{}` gets a 400 from OpenSearch 3.6; an average bulk of about 1 MiB with `bulk.maxBytes` at 4 MiB is a known inefficiency against a real OpenSearch.
 
 Nothing public calls the transport directly. Traffic is the health probe, the bulk sender's `POST /_bulk` and the queries.

@@ -25,7 +25,7 @@
 
 #include "runtime/runtimeInternal.hpp"
 
-// The health probe (plan 18, I57). The timer lives on network loop 0: it is created, armed, cancelled and destroyed
+// The health probe. The timer lives on network loop 0: it is created, armed, cancelled and destroyed
 // only by handlers running there. Handlers and probe callbacks capture the shared state by shared_ptr, never `this`.
 // A round is K probes (one per node); the last result applies the whole round to the NodeSet.
 

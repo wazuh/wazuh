@@ -465,7 +465,7 @@ TEST_F(InventorySyncServerModuleTest, TheRegisteredRoutesAreReachableOnTheModule
 
 /**
  * A write the Client refuses, or an indexer with no usable node, is a 503 the agent retries -- never the silent
- * 200 of the former async queue (I151). The log line that says why is throttled per process (one per 90 s per
+ * 200 of the former async queue. The log line that says why is throttled per process (one per 90 s per
  * cause), so whether an earlier test already spent it makes it unobservable here: not asserted.
  */
 TEST_F(InventorySyncServerModuleTest, StatsAndConfigAnswer503WhenTheClientRefusesOrNoNodeIsUsable)

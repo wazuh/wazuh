@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Admission against stop, and stop against itself (plan-E2a-1 §Tests, lot A: D26 H7 and H7b).
+// Admission against stop, and stop against itself.
 
 #include <dlfcn.h>
 
@@ -51,7 +51,7 @@ extern "C" CURLMcode curl_multi_cleanup(CURLM* multi)
     return real(multi);
 }
 
-// D26 (H7): submit ∥ stop. Four submitters are held in afterAdmissionCheck (registered, not yet posted) while the
+// submit ∥ stop. Four submitters are held in afterAdmissionCheck (registered, not yet posted) while the
 // runtime shuts down; four more keep submitting through the stop. Every admitted id gets exactly one result, every
 // refused one none; the race is proven by the held submitters' posts being refused by the closed loops.
 TEST_F(TransportTest, ExactlyOncePerAdmittedId)
@@ -198,7 +198,7 @@ TEST_F(TransportTest, ExactlyOncePerAdmittedId)
     }
 }
 
-// D26 (H7b): two concurrent stop() calls while loop 0 is pinned by a task: neither returns before the loop is free,
+// Two concurrent stop() calls while loop 0 is pinned by a task: neither returns before the loop is free,
 // both return true, the loops are torn down once (one curl_multi_cleanup per loop) and the transfers in flight are
 // resolved once each as Shutdown. RuntimeOwner::shutdown() afterwards is a third, idempotent stop.
 TEST_F(TransportTest, ConcurrentStopsJoinOnce)

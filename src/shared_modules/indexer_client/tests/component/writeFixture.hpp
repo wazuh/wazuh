@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_COMPONENT_WRITE_FIXTURE_HPP
 #define _INDEXER_CLIENT_TESTS_COMPONENT_WRITE_FIXTURE_HPP
 
-// Shared by the write component suites (plan 18, plan-E3a §Tests): the runtime fixture, a programmable sink installed
+// Shared by the write component suites: the runtime fixture, a programmable sink installed
 // through WritePath::setSink, a callback result log and op/spec builders. Every wait is bounded; every case ends with
 // the charge and the retained ops at 0 (checked in TearDown through the write path, which the fixture keeps alive).
 
@@ -92,7 +92,7 @@ namespace write_component
         void dispatch(wr::Batch batch) override
         {
             std::vector<std::shared_ptr<wr::OpState>> resolveNow;
-            std::shared_ptr<wr::Bucket> bucket = batch.bucket; // E6e (D): resolve() takes the op's bucket.
+            std::shared_ptr<wr::Bucket> bucket = batch.bucket; // resolve() takes the op's bucket.
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_capacity != UNLIMITED && m_capacity > 0)
@@ -310,7 +310,7 @@ namespace write_component
     };
 
     /// A JSON body of exactly `bytes` bytes (>= 8): {"p":"xxx..."}, built with an exact capacity (std::string(n, c)
-    /// allocates n) so that the charge of an op carrying it has no heap slack (I124b): every exact charge of the
+    /// allocates n) so that the charge of an op carrying it has no heap slack: every exact charge of the
     /// suites stays wire + RESULT_RESERVE.
     inline std::string body(std::size_t bytes)
     {
@@ -333,7 +333,7 @@ namespace write_component
         return op;
     }
 
-    /// The wire bytes of an encoded op or of an OpState (head + body + '\n', I121).
+    /// The wire bytes of an encoded op or of an OpState (head + body + '\n').
     inline std::string wireOf(const wr::Encoded& encoded)
     {
         std::string out;
@@ -355,9 +355,9 @@ namespace write_component
         return path;
     }
 
-    /// E6e (D): the bucket of an op a case holds without its batch: WritePath::resolve takes the bucket from its
+    /// The bucket of an op a case holds without its batch: WritePath::resolve takes the bucket from its
     /// caller, the op keeps no reference to it. Looked up among the case path's live buckets by OpState::owner, which
-    /// is never dereferenced (G-diff E6e P3-9: a dead owner is a test failure, not undefined behaviour).
+    /// is never dereferenced (a dead owner is a test failure, not undefined behaviour).
     inline std::shared_ptr<wr::Bucket> bucketOf(const wr::OpState& op)
     {
         if (op.owner == nullptr)
@@ -381,7 +381,7 @@ namespace write_component
         return encoded.value.wire();
     }
 
-    /// The charge of `op` without RESULT_RESERVE (I124b: wire + the heap slack of the body), on a copy of it. A copy's
+    /// The charge of `op` without RESULT_RESERVE (wire + the heap slack of the body), on a copy of it. A copy's
     /// body has an exact capacity: a case that needs an op's own slack builds that op and reads the bucket's charge.
     inline std::uint64_t chargeOf(const ic::Op& op)
     {
@@ -441,7 +441,7 @@ namespace write_component
         return out.str();
     }
 
-    /// The I62 invariants of one bucket, with the groups' terms of I74 (bucket.hpp): a GroupTooLarge add is a
+    /// The quota invariants of one bucket, with the groups' terms (bucket.hpp): a GroupTooLarge add is a
     /// refusal under `submitted`, and an op reserved by a group not committed yet is accepted but not retained.
     inline void expectInvariants(const wr::BucketStats& s)
     {
@@ -547,7 +547,7 @@ protected:
         return m_path->stats().globalCharge;
     }
 
-    /// I99 (D43): requestClose() only closes the admission and the buckets keep draining; through a TestSink that
+    /// requestClose() only closes the admission and the buckets keep draining; through a TestSink that
     /// holds, or has no capacity, nothing drains. A case that needs the close to resolve what is queued closes with a
     /// short deadline instead: at drainEnd (now + 600 ms for 1 s) the queued ops are Dropped(ClientClosed) and those
     /// the sink holds Dropped(Shutdown).
@@ -562,8 +562,8 @@ protected:
     std::shared_ptr<write_component::TestSink> m_sink;
 };
 
-/// Issue 15 (D64): the write cases that break an internal invariant on purpose. Every ERROR line of the library is kept
-/// (the log function is installed before the case starts its runtime, I56), and the case reads
+/// The write cases that break an internal invariant on purpose. Every ERROR line of the library is kept
+/// (the log function is installed before the case starts its runtime), and the case reads
 /// testing_hooks::internalErrors() around the broken invariant: logged and counted, never an abort.
 class WriteInternalErrorTest : public WriteTest
 {
@@ -595,7 +595,7 @@ protected:
     void TearDown() override
     {
         WriteTest::TearDown();
-        indexer_client::setLogFunction({}); // The runtime is down: valid again (I56).
+        indexer_client::setLogFunction({}); // The runtime is down: valid again.
     }
 
     /// ERROR lines containing `part`.

@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-23 against a real OpenSearch (D52): the bodies of an expired PIT, the delete at the end and slices sharing a PIT.
+// Against a real OpenSearch: the bodies of an expired PIT, the delete at the end and slices sharing a PIT.
 
 #include <algorithm>
 #include <iostream>
@@ -26,7 +26,7 @@ using namespace std::chrono_literals;
 namespace
 {
     // OpenSearch 3.6 refuses an empty query (400 "query malformed, empty clause found"); CursorQuery defaults to
-    // match_all since D60, and the cursors here still name it explicitly.
+    // match_all, and the cursors here still name it explicitly.
     const nlohmann::json MATCH_ALL = {{"match_all", nlohmann::json::object()}};
 
     /// Indexes `count` documents (raw bulk, refresh=true) with ids d0000…

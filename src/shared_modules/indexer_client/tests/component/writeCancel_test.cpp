@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Writer::cancel(tag) end to end (plan-E3c-2 §Tests, step 6b; CA-26, T11, I25, I76-I78, I80): the pending and lane
+// Writer::cancel(tag) end to end: the pending and lane
 // ops of the tag resolve Dropped(Cancelled) at once, the delivered ones are never sent again (also when cancel() lands
 // between the slice and the assembly of their bulk) and the ticket completes with the last of them; an op answered
 // with success stays Ok; other tags, other buckets and Building groups are untouched; the waiters' accounting (two
@@ -159,7 +159,7 @@ namespace
     }
 } // namespace
 
-// CA-26, T11: an ordered bucket (one bulk in flight) holds 1 000 pending ops of agent X while a bulk of X is in flight
+// An ordered bucket (one bulk in flight) holds 1 000 pending ops of agent X while a bulk of X is in flight
 // and comes back 503. cancel(X): the pending ones resolve Dropped(Cancelled) at once and the ticket waits; the 503
 // makes the in-flight op Dropped(Cancelled) too, at the requeue (never back to the lane, whose 30 s backoff would
 // keep the ticket waiting): 0 bulks after the cancel, every op Dropped(Cancelled), the ticket complete. Mutant: requeue
@@ -200,7 +200,7 @@ TEST_F(BulkTest, CancelPendingAndInFlight503)
     expectInvariants(s);
 }
 
-// I78: the same, but the bulk in flight is answered with success: its op stays Ok (it was applied) and the ticket
+// The same, but the bulk in flight is answered with success: its op stays Ok (it was applied) and the ticket
 // completes only after it; the pending ones are Dropped(Cancelled).
 TEST_F(BulkTest, CancelInFlightOkStaysOk)
 {
@@ -235,9 +235,10 @@ TEST_F(BulkTest, CancelInFlightOkStaysOk)
     expectInvariants(s);
 }
 
-// I80 (sender.hpp): cancel() lands between the slice and the assembly (the beforeAssembly seam holds the pool task).
+// cancel() lands (sender.hpp): between the slice and the assembly (the beforeAssembly seam holds the pool task).
 // (1) A batch of X (tag T) and Y (tag U): the body carries only Y; X ends Dropped(Cancelled) and the ticket completes
-// with it. (2) A batch of two ops of T2 only: no request at all, the slot back. Mutant: the assembly ignores the mark.
+// with it. (2) A batch of two ops of tag T2 only: no request at all, the slot back. Mutant: the assembly ignores the
+// mark.
 TEST_F(BulkTest, CancelSlicedBeforeSubmitNotSent)
 {
     const auto a = startNode();
@@ -284,7 +285,7 @@ TEST_F(BulkTest, CancelSlicedBeforeSubmitNotSent)
     expectInvariants(s);
 }
 
-// I80: cancel(A) removes only A's ops of its own bucket: B's, the untagged ones and another bucket's op of tag A go on
+// cancel(A) removes only A's ops of its own bucket: B's, the untagged ones and another bucket's op of tag A go on
 // and end Ok. With nothing of A delivered the ticket is ready at once.
 TEST_F(WriteTest, CancelOtherTagsUntouched)
 {
@@ -322,7 +323,7 @@ TEST_F(WriteTest, CancelOtherTagsUntouched)
     expectInvariants(stats("other"));
 }
 
-// I80: the ops of a committed group still queued are cancelled like any other: their slots end Dropped(Cancelled) and
+// The ops of a committed group still queued are cancelled like any other: their slots end Dropped(Cancelled) and
 // the GroupTicket completes once the rest of the group resolves.
 TEST_F(WriteTest, CancelCommittedGroupOps)
 {
@@ -355,7 +356,7 @@ TEST_F(WriteTest, CancelCommittedGroupOps)
     expectInvariants(s);
 }
 
-// I76: a group still Building is out of cancel()'s reach: its ops stay reserved (groupBuilding) and go out Ok once
+// A group still Building is out of cancel()'s reach: its ops stay reserved (groupBuilding) and go out Ok once
 // committed, while a plain pending op of the same tag is cancelled; the ticket is ready at once.
 TEST_F(WriteTest, CancelIgnoresBuildingGroup)
 {
@@ -389,9 +390,9 @@ TEST_F(WriteTest, CancelIgnoresBuildingGroup)
     expectInvariants(s);
 }
 
-// I80: the ticket waits only for the delivered ops of the tag. A tag with nothing queued, or with pending ops only, is
+// The ticket waits only for the delivered ops of the tag. A tag with nothing queued, or with pending ops only, is
 // ready at once; with one op delivered (held by the sink) it is ready only after that op resolves, which keeps its
-// own result (Ok, I78).
+// own result (Ok).
 TEST_F(WriteTest, CancelTicketWaitsInFlightOnly)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -427,7 +428,7 @@ TEST_F(WriteTest, CancelTicketWaitsInFlightOnly)
     expectInvariants(s);
 }
 
-// RF-27, I80: a callback (a runtime thread) calls cancel(), which never blocks, and waits on its ticket: Reentrancy at
+// A callback (a runtime thread) calls cancel(), which never blocks, and waits on its ticket: Reentrancy at
 // once. From the consumer thread the same ticket is a success and the pending op of the tag is Dropped(Cancelled).
 TEST_F(BulkTest, CancelFromCallbackReentrancy)
 {
@@ -468,7 +469,7 @@ TEST_F(BulkTest, CancelFromCallbackReentrancy)
     expectInvariants(stats("p"));
 }
 
-// I80, D42: Op::tag over 256 bytes or with a control byte is InvalidArgument (field `tag`) in submit and Group::add;
+// Op::tag over 256 bytes or with a control byte is InvalidArgument (field `tag`) in submit and Group::add;
 // 256 bytes is accepted. cancel() refuses the same tags and the empty one (it would match every untagged op), with a
 // ready ticket; a valid tag with nothing queued is a success.
 TEST_F(WriteTest, TagValidation)
@@ -512,7 +513,7 @@ TEST_F(WriteTest, TagValidation)
     expectInvariants(s);
 }
 
-// I80 accounting: two cancel() of one tag with two ops delivered register two waiters; neither completes while one op
+// Accounting: two cancel() of one tag with two ops delivered register two waiters; neither completes while one op
 // is unresolved, and both complete with the last one.
 TEST_F(WriteTest, CancelTwiceSameTag)
 {
@@ -542,7 +543,7 @@ TEST_F(WriteTest, CancelTwiceSameTag)
     expectInvariants(stats("b"));
 }
 
-// I80 accounting: an op of the tag enqueued (and delivered) after the cancel() is not the ticket's: the ticket
+// Accounting: an op of the tag enqueued (and delivered) after the cancel() is not the ticket's: the ticket
 // completes with the op that was delivered at the cancel while the later one is still held, which ends Ok on its own.
 TEST_F(WriteTest, CancelAfterTagReenqueued)
 {
@@ -574,7 +575,7 @@ TEST_F(WriteTest, CancelAfterTagReenqueued)
     expectInvariants(stats("b"));
 }
 
-// Finding 1 of step 3b (WriterImpl::cancel): an ordered bucket's op of key X and tag T waits a 30 s backoff in the
+// WriterImpl::cancel: an ordered bucket's op of key X and tag T waits a 30 s backoff in the
 // lane (429 item) and blocks a later op of X with tag U, so the scheduler's timer is armed at the lane head (30 s).
 // cancel(T) removes the lane op: the op of U leaves in < 1 s. Mutant: no Scheduler::notify in WriterImpl::cancel.
 TEST_F(BulkTest, CancelWakesOrderedBucket)

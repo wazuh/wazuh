@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// QUERY_DOM_FACTOR (plan-E4a §Tests: QueryDomFactorMeasured, I84): the live heap of the nlohmann DOM that
+// QUERY_DOM_FACTOR (QueryDomFactorMeasured): the live heap of the nlohmann DOM that
 // nlohmann::json::parse builds for a compact (dump()) response, per response byte, must fit in the constant for the
 // shapes the consumers read: an inventory_sync_server checksum page of 1000 hits (checksum.hash.sha1 and sort), a
 // vulnerability_scanner page of 1000 packages and the DBQ / UBQ answers. The heap is read from glibc (mallinfo2:
@@ -180,7 +180,7 @@ namespace
     }
 } // namespace
 
-// I84: every shape's DOM fits in QUERY_DOM_FACTOR x its bytes; the constant is ceil(max x 1.25) of these
+// Every shape's DOM fits in QUERY_DOM_FACTOR x its bytes; the constant is ceil(max x 1.25) of these
 // measurements (printed, so a change of nlohmann or of the allocator shows up here).
 TEST(QueryDomFactor, QueryDomFactorMeasured)
 {

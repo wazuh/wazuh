@@ -13,20 +13,20 @@
 #ifndef _INDEXER_CLIENT_PIT_HPP
 #define _INDEXER_CLIENT_PIT_HPP
 
-// Managed point in time (stage E4b, plan 18 I89-I93). NORMATIVE: the contract of IQuery::pit(), Pit, PitSession and
+// Managed point in time. NORMATIVE: the contract of IQuery::pit(), Pit, PitSession and
 // the PitRegistry; pit.cpp, pitRegistry.cpp and their tests follow it. Nothing here is public API.
 //
 // ENGINE. Every PIT request (create, page, search) runs through execute() (engine.hpp) with the QueryOptions given to
-// pit(): the same clocks, verdicts and wake-ups as the queries (I87, I82). The DELETE is the registry's (below).
+// pit(): the same clocks, verdicts and wake-ups as the queries. The DELETE is the registry's (below).
 //
 // CREATE (pit(indices, PitOptions, QueryOptions, deadline)). Reentrancy, then validation without a request
 // (InvalidArgument with the field: indices as the queries, keepAlive > 0, the QueryOptions checks), then
 // POST /<i1,i2>/_search/point_in_time?keep_alive=<ms>ms&allow_partial_pit_creation=false[&expand_wildcards=all], no
-// body. A 2xx needs a non-empty string `pit_id` (else ItemPermanent); a 404 index_not_found_exception ⇒ NotFound (I85).
+// body. A 2xx needs a non-empty string `pit_id` (else ItemPermanent); a 404 index_not_found_exception ⇒ NotFound.
 // A partial PIT is never accepted: the flag makes the indexer refuse one (its default is to create it), and a 2xx that
 // still reports _shards.failed > 0 is retried within the budget (an unavailable shard is usually transient) whose
 // PIT, since it exists, goes to PitRegistry::discard() to be deleted.
-// Slots (I89, I91): before every attempt preAttempt() takes one slot with PitRegistry::acquire() (none ⇒ the call
+// Slots: before every attempt preAttempt() takes one slot with PitRegistry::acquire() (none ⇒ the call
 // ends QueueFull "too many open PITs (N)", N = open + reserved + acquired, no request, refusedFull + 1). The
 // observer settles each attempt's slot:
 // Answered 2xx with an id ⇒ the slot becomes the PIT's (open); a refused 2xx naming a PIT (partial) ⇒ discard(): open,
@@ -40,18 +40,18 @@
 // STATE. PitState {id (renewable, under its mutex), keepAlive, generation (process-wide counter), expired (atomic),
 // lastUse, the QueryOptions of pit(), indices, client (shared_ptr: the consumer name stays reserved while a handle
 // lives), registry (weak)}. Pit and every PitSession share it; Pit is copyable; cursor(), next() and search() are safe
-// from different threads (E9 pages up to 32 slices at once, one cursor each). One next() at a time per cursor: a
-// cursor (and its copies) is one sequence of pages, each continuing from the previous one's search_after, so a next()
-// called while another is in progress on the same cursor ⇒ InvalidState "another next() is in progress on this
+// from different threads (a consumer may page up to 32 slices at once, one cursor each). One next() at a time per
+// cursor: a cursor (and its copies) is one sequence of pages, each continuing from the previous one's search_after, so
+// a next() called while another is in progress on the same cursor ⇒ InvalidState "another next() is in progress on this
 // cursor", at once and without a request. Different cursors, even of the same Pit and slice, never wait on each other.
 //
 // SEARCH (PitSession::next, Pit::search). POST /_search?allow_partial_search_results=false with
 // pit {id, keep_alive: <ms>ms} on every request (it renews the PIT), and:
 //   next()    size = pageSize, query, sort (empty ⇒ [{"_shard_doc":"asc"}]; a consumer sort gets no tiebreaker added:
-//             E9 decides), _source when not null, slice {id, max} when given, and search_after = the last hit's sort
-//             or, on the cursor's first page, track_total_hits: true ⇒ PitPage::total (I92). last = hits < pageSize;
-//             next() after last ⇒ Ok, empty page, last, no request. A retried page repeats the same body (same id
-//             and search_after): the body is built once per page. Invalid cursor parameters (slice.id >= max,
+//             the consumer decides), _source when not null, slice {id, max} when given, and search_after = the last
+//             hit's sort or, on the cursor's first page, track_total_hits: true ⇒ PitPage::total. last = hits <
+//             pageSize; next() after last ⇒ Ok, empty page, last, no request. A retried page repeats the same body
+//             (same id and search_after): the body is built once per page. Invalid cursor parameters (slice.id >= max,
 //             max < 2, pageSize == 0) ⇒ the first next() returns InvalidArgument with the field, no request.
 //   search()  the consumer's body with `pit` overwritten by {id, keep_alive}; nothing else touched.
 // A `pit_id` in a 2xx that differs from the current one replaces it (last arrival wins: every id of the same PIT
@@ -59,13 +59,13 @@
 // the last attempt that may have been sent was observed: an upper bound of the last real use, so the expiry clock of
 // the DELETE below is conservative.
 //
-// EXPIRY (k3-6, D52). A 404 whose error.type or any root_cause[].type is search_context_missing_exception, or a 2xx
+// EXPIRY (k3-6). A 404 whose error.type or any root_cause[].type is search_context_missing_exception, or a 2xx
 // with _shards.failed > 0 and that type in _shards.failures ⇒ expired = true and PitExpired. preAttempt() aborts any
 // attempt of an expired PIT with PitExpired (a cursor asleep in a backoff included) and every later next()/search()
 // returns PitExpired without a request. A 2xx that arrives when the PIT is already expired is discarded: PitExpired,
 // stale + 1. The library never recreates a PIT; the consumer restarts its whole query.
 //
-// LIFETIME AND DELETE (I90). When the last handle (Pit or PitSession) goes, PitState's hand-over (PitState::handoff)
+// LIFETIME AND DELETE. When the last handle (Pit or PitSession) goes, PitState's hand-over (PitState::handoff)
 // gives {id, keepAlive, lastUse} to PitRegistry::release() without blocking, on any thread; a PitState whose registry
 // is gone (runtime shut down) does nothing (keep_alive frees it). The registry sends DELETE /_search/point_in_time with
 // {"pit_id": id} through the transport (choose() for the node, callback on the pool) and classifies with
@@ -78,7 +78,7 @@
 // DELETE's timeout is min(requestTimeout, lastUse + keepAlive − now). Confirmed or expired frees the slot. Retries run
 // on a loop-0 timer; release() is idempotent per id.
 //
-// SHUTDOWN (G-plan obj. 3). RuntimeState::stopAndJoin calls drain(shutdownDeadline − min(DRAIN_STOP_MARGIN,
+// SHUTDOWN. RuntimeState::stopAndJoin calls drain(shutdownDeadline − min(DRAIN_STOP_MARGIN,
 // (shutdownDeadline − now) / 2)) before transport->stop() (a short deadline still leaves half of it to the deletes):
 // every pending delete is sent at once with timeout min(requestTimeout, drainEnd − now) and the call waits for them;
 // at drainEnd the rest are cancelled and counted expired. PITs whose handles are still alive are deleted too (the
@@ -89,7 +89,7 @@
 //
 // STATS (process-wide, never reset). open, reserved (lapsed reservations are purged on acquire() and on every
 // stats read), deletesPending (gauge), created, deletesConfirmed, deletesExpired, deleteRetries, expired, stale,
-// refusedFull. E5 publishes pit.open, pit.delete.pending, pit.delete.retries, pit.expired.
+// refusedFull. The metrics publish pit.open, pit.delete.pending, pit.delete.retries, pit.expired.
 
 #include <chrono>
 #include <cstdint>
@@ -119,7 +119,7 @@ namespace indexer_client::detail::query
     /// Text of the "no usable slot" refusal; the count is appended.
     constexpr const char* PIT_FULL = "too many open PITs";
 
-    /// E5c: bytes of a PIT id the log summary shows (an id is ~100+ bytes of base64; its head identifies it).
+    /// Bytes of a PIT id the log summary shows (an id is ~100+ bytes of base64; its head identifies it).
     constexpr std::size_t EXPIRED_ID_LOG_MAX = 16;
 
     struct PitStats final
@@ -154,12 +154,12 @@ namespace indexer_client::detail::query
         virtual bool acquire(std::uint64_t& occupied) = 0;
         /// Gives back a slot that never became a PIT.
         virtual void releaseSlot() = 0;
-        /// Turns an acquired slot into a reservation until `until` (a creation of unknown result, I91).
+        /// Turns an acquired slot into a reservation until `until` (a creation of unknown result).
         virtual void reserve(TimePoint until) = 0;
         /// Marks an acquired slot as an open PIT (created + 1) and remembers it for the shutdown drain; while or after
         /// draining, deletes it in the drain or counts it expired (SHUTDOWN).
         virtual void opened(const std::weak_ptr<PitState>& pit) = 0;
-        /// The last handle of an open PIT went: delete it (I90). Never blocks; idempotent per id.
+        /// The last handle of an open PIT went: delete it. Never blocks; idempotent per id.
         virtual void release(Pending pit) = 0;
         /// An acquired slot whose creation answered with a PIT the library refused (a partial one): it becomes an open
         /// PIT (created + 1, it does exist) and is released at once, so it is deleted like any other. Never blocks.
@@ -169,8 +169,8 @@ namespace indexer_client::detail::query
 
         virtual PitStats stats() = 0;
 
-        /// E5c (runtime/logSummary.hpp): the deletes given up (expired) since the previous call, with the first id
-        /// truncated to EXPIRED_ID_LOG_MAX bytes, for the log summary's WARN.
+        /// For the log summary (runtime/logSummary.hpp): the deletes given up (expired) since the previous call, with
+        /// the first id truncated to EXPIRED_ID_LOG_MAX bytes, for the log summary's WARN.
         struct ExpiredDeletes final
         {
             std::uint64_t count {0};

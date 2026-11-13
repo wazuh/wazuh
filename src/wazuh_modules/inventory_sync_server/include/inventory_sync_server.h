@@ -188,7 +188,7 @@ extern "C"
                                          ///< across the pipeline and the scan lane; over it -> 503.
                                          ///< Range 1..1024. <=0 -> 2.
 
-        /* ---- SYNC half tuning. Since E7b these feed the indexer_client `inventory` bucket
+        /* ---- SYNC half tuning. These feed the indexer_client `inventory` bucket
          *      (indexer/indexerClientSyncAdapter.hpp: inventoryBucketSpec(), budgets()):
          *      max_bulk_size stays the pipeline's group-commit threshold, connector_max_bulk_size is
          *      the bucket's bytes per _bulk, the retry fields its retry policy and the module's time
@@ -197,33 +197,33 @@ extern "C"
          *      real setting. ---- */
         int indexer_sync_max_bulk_size;           ///< Group-commit threshold of the pipeline, request
                                                   ///< bytes, before a batch is flushed. <=0 -> 10 MiB.
-        int indexer_sync_flush_interval_seconds;  ///< Accepted but ignored since E7b (the adapter has no
+        int indexer_sync_flush_interval_seconds;  ///< Accepted but ignored (the adapter has no
                                                   ///< timer flush); a non-default value is WARNed.
         int indexer_sync_max_retry_delay_seconds; ///< Ceiling of the `inventory` bucket's retry backoff
                                                   ///< (`retry.cap`). <=0 -> 15 s. modulesd enforces a
                                                   ///< minimum of 1 on the option.
 
-        /* ---- ASYNC half tuning. Since E7c these feed the indexer_client `agent-state` bucket of
+        /* ---- ASYNC half tuning. These feed the indexer_client `agent-state` bucket of
          *      POST /stats, POST /config and the deletion's by-id deletes
-         *      (indexer/indexerClientSyncAdapter.hpp: agentStateBucketSpec(); I149): bulk_max_bytes
+         *      (indexer/indexerClientSyncAdapter.hpp: agentStateBucketSpec()): bulk_max_bytes
          *      is the bucket's bytes per _bulk, max_retry_delay_seconds its retry cap and
          *      max_queue_bytes its quota; flush_interval_seconds, logger_queue_size and
          *      logger_threads are accepted but ignored (a WARN names them when not at their
          *      default). <=0 -> default. ---- */
         int indexer_async_bulk_max_bytes;          ///< `agent-state` bytes per _bulk (`bulk.maxBytes`),
                                                    ///< clipped to fit its quota. <=0 -> 4 MiB.
-        int indexer_async_flush_interval_seconds;  ///< Accepted but ignored since E7c; a non-default
+        int indexer_async_flush_interval_seconds;  ///< Accepted but ignored; a non-default
                                                    ///< value is WARNed.
         int indexer_async_max_retry_delay_seconds; ///< Ceiling of the `agent-state` bucket's retry
                                                    ///< backoff (`retry.cap`). <=0 -> 15 s.
                                                    ///< Same minimum-of-1 story as the sync one.
-        int indexer_async_logger_queue_size;       ///< Accepted but ignored since E7c; a non-default
+        int indexer_async_logger_queue_size;       ///< Accepted but ignored; a non-default
                                                    ///< value is WARNed.
-        int indexer_async_logger_threads;          ///< Accepted but ignored since E7c; a non-default
+        int indexer_async_logger_threads;          ///< Accepted but ignored; a non-default
                                                    ///< value is WARNed.
 
         /**
-         * @brief Quota of the `agent-state` bucket, bytes (I149, I149b, I149c).
+         * @brief Quota of the `agent-state` bucket, bytes.
          *
          * Maps to the bucket's `quotaBytes`, bounded by the runtime's global quota: at most a quarter
          * of it (what is left goes to `inventory`), at least one bulk plus its reserve, and at least
@@ -251,7 +251,7 @@ extern "C"
          * ssl.certificate_authorities[], plus ssl.certificate and ssl.key -- which a fixed-size
          * C struct cannot express without flattening it here and re-nesting it on the other side.
          *
-         * Since E7c the module only summarises it in a DEBUG line (counts, never values): its
+         * The module only summarises it in a DEBUG line (counts, never values): its
          * indexer_client Client takes hosts and ssl from the process runtime (`indexer_runtime`),
          * which modulesd builds from the same block. The field stays so the struct's layout, and
          * with it the ABI, does not change.
@@ -277,16 +277,16 @@ extern "C"
                                           ///< Range 0..1024. <=0 -> 256.
 
         /* ---- Per-request bound of the retired indexer connectors -- APPENDED, same ABI rule as
-         *      above. Accepted but ignored since E7b (sync) and E7c (async): the per-request timeout
+         *      above. Accepted but ignored: the per-request timeout
          *      is the process runtime's `wazuh_modules.indexer_client_request_timeout_ms`. A value
          *      other than the default (60) is WARNed once per start. ---- */
-        int indexer_sync_request_timeout_seconds;  ///< Ignored (I138). <=0 or 60 -> silent.
-        int indexer_async_request_timeout_seconds; ///< Ignored (I149). <=0 or 60 -> silent.
+        int indexer_sync_request_timeout_seconds;  ///< Ignored. <=0 or 60 -> silent.
+        int indexer_async_request_timeout_seconds; ///< Ignored. <=0 or 60 -> silent.
 
         /* ---- Health-monitor polling period of the retired indexer session -- APPENDED, same ABI
-         *      rule as above. Accepted but ignored since E7c: node health belongs to the process's
+         *      rule as above. Accepted but ignored: node health belongs to the process's
          *      indexer client runtime. A value other than the default (10) is WARNed once. ---- */
-        int indexer_monitoring_interval_seconds; ///< Ignored (I149). Range 1..3600. <=0 or 10 -> silent.
+        int indexer_monitoring_interval_seconds; ///< Ignored. Range 1..3600. <=0 or 10 -> silent.
 
         /* ---- Retry budget of the SYNC indexer connector -- APPENDED, same ABI rule as above.
          *      Bounds every retry loop of one operation by attempts and by wall-clock time;

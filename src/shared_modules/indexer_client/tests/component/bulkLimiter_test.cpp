@@ -10,14 +10,14 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The per-node limiter end to end (plan-E5a §Tests, step 6; the normative rules are in src/write/sender.hpp, I98): the
+// The per-node limiter end to end (the normative rules are in src/write/sender.hpp): the
 // AIMD window and the bulk target, the pace and its relaxation, the batch limit the scheduler passes to
-// Bucket::slice, the pinned batch against the real window (D47), queries outside the window (I95) and the default DRR
-// quantum with its cap of batches per turn (I97b). Every BulkLimiterTest case runs the production sink over the real
+// Bucket::slice, the pinned batch against the real window, queries outside the window and the default DRR
+// quantum with its cap of batches per turn. Every BulkLimiterTest case runs the production sink over the real
 // transport against one fake per node (bulkFixture.hpp); the probe interval is an hour, so health moves only with
 // probeNowAndWait(). The fake «limiter X» is a token bucket of depth B refilled continuously at X requests/s: a `_bulk`
-// request without a token gets a 429 without Retry-After. Time bounds of the plan are scaled(); the
-// `*Long` case runs in the normal build only (verificar.sh excludes it under the sanitizers). The BulkLimiterSliceTest
+// request without a token gets a 429 without Retry-After. Time bounds are scaled(); the
+// `*Long` case runs in the normal build only (the sanitizer runs exclude it). The BulkLimiterSliceTest
 // cases drive Bucket::slice directly with a chosen `cap` (the test sink holds every batch and has no capacity, so the
 // scheduler never slices). Every wait is bounded; every case ends with the charge and the retained ops at 0 (TearDown).
 
@@ -354,13 +354,13 @@ protected:
         return scheduler ? scheduler->stats().batches : 0;
     }
 
-    /// Prints one line of numbers for the plan's ledger (estado.md, «Números CA-24»).
+    /// Prints one line of numbers for the run log.
     static void report(const char* label,
                        std::size_t window,
                        const TokenLimiter::Window& w,
                        const wr::SenderNodeStats* final = nullptr)
     {
-        std::printf("[  CA-24   ] %s window %zu: requests %llu, 429 %llu%s%s\n",
+        std::printf("[  RATE    ] %s window %zu: requests %llu, 429 %llu%s%s\n",
                     label,
                     window,
                     static_cast<unsigned long long>(w.requests),
@@ -370,7 +370,7 @@ protected:
     }
 };
 
-// CA-24, T9: one node behind «limiter X» = 4 req/s with B = 4, sustained load, defaults but pace_initial_ms = 50. After
+// One node behind «limiter X» = 4 req/s with B = 4, sustained load, defaults but pace_initial_ms = 50. After
 // 60 s, each 10 s window carries <= X * 1.1 * 10 = 44 requests, fewer than 5 % of the measured requests are 429 and no
 // op fails. Mutant: the pace only after a 429 (no nextSendAt in the choose filter).
 TEST_F(BulkLimiterTest, RateConvergesBelowOneTransferLong)
@@ -408,8 +408,8 @@ TEST_F(BulkLimiterTest, RateConvergesBelowOneTransferLong)
     EXPECT_EQ(producer.dropped(), 0u);
 }
 
-// T9: limiter X = 4, B = 2, pace_relax_after = 5: after 15 s of warm-up, two 10 s windows of <= X * 1.1 * 10 = 44
-// requests each (10 s windows: the 429s of one burst do not crowd a short one, G-diff E5a obj. 5); then the limit is
+// Limiter X = 4, B = 2, pace_relax_after = 5: after 15 s of warm-up, two 10 s windows of <= X * 1.1 * 10 = 44
+// requests each (10 s windows: the 429s of one burst do not crowd a short one); then the limit is
 // lifted and the rate passes 3X (> 12 requests in one second) within 20 s. Mutant: no relaxation (the pace only grows).
 TEST_F(BulkLimiterTest, RateConvergesBelowOneTransfer)
 {
@@ -448,7 +448,7 @@ TEST_F(BulkLimiterTest, RateConvergesBelowOneTransfer)
             return true;
         },
         scaled(20000ms));
-    std::printf("[  CA-24   ] RateConvergesBelowOneTransfer recovery: > 3X after %lld ms; %s\n",
+    std::printf("[  RATE    ] RateConvergesBelowOneTransfer recovery: > 3X after %lld ms; %s\n",
                 static_cast<long long>(reached.count()),
                 describe(senderNode(0)).c_str());
     EXPECT_TRUE(fast) << "the rate never passed 3X once the limit was lifted: " << describe(senderNode(0));
@@ -457,8 +457,9 @@ TEST_F(BulkLimiterTest, RateConvergesBelowOneTransfer)
     EXPECT_EQ(producer.failed(), 0u);
 }
 
-// T9: limiter X = 4, B = 2, defaults: the 429s take the window to 1; the next success makes it 2 without a rebound:
-// the 5 s window that follows carries <= X * 1.1 * 5 = 22 requests. Mutant: a 2xx sets the pace to 0 (E3b's rule).
+// Limiter X = 4, B = 2, defaults: the 429s take the window to 1; the next success makes it 2 without a rebound:
+// the 5 s window that follows carries <= X * 1.1 * 5 = 22 requests. Mutant: a 2xx sets the pace to 0 (a 2xx never
+// zeroes the pace).
 TEST_F(BulkLimiterTest, NoReboundFromOneToTwo)
 {
     auto limiter = std::make_shared<TokenLimiter>(4.0, 2.0);
@@ -484,7 +485,7 @@ TEST_F(BulkLimiterTest, NoReboundFromOneToTwo)
     EXPECT_EQ(producer.failed(), 0u);
 }
 
-// T9: a node without pressure answers one 429 without Retry-After: the pace becomes paceInitial (300 ms); the throttled
+// A node without pressure answers one 429 without Retry-After: the pace becomes paceInitial (300 ms); the throttled
 // batch leaves again >= paceInitial later and the next batch, already queued, waits the nextSendAt of that send: it
 // arrives >= paceInitial and < paceInitial + 200 ms after it. Nothing else wakes the scheduler (maxAge 60 s, probe 1
 // h). Mutant: dispatch() does not arm the timer for nextSendAt.
@@ -515,7 +516,7 @@ TEST_F(BulkLimiterTest, FirstBare429StartsPace)
     EXPECT_LT(next, PACE + scaled(200ms)) << "nothing woke the scheduler at nextSendAt";
 }
 
-// CA-24: for 3 s every `_bulk` answers 200 with every item 429 (a full write queue): the items are retried, and the
+// For 3 s every `_bulk` answers 200 with every item 429 (a full write queue): the items are retried, and the
 // window stays at its maximum, the pace at 0 and the bulk target uncapped (item rejections never decrease). Mutant: an
 // item 429 treated as a request 429.
 TEST_F(BulkLimiterTest, ItemRejectsDoNotMoveWindow)
@@ -543,7 +544,7 @@ TEST_F(BulkLimiterTest, ItemRejectsDoNotMoveWindow)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 4u);
 }
 
-// CA-24: latency_target_ms = 50 and a fake that answers after 200 ms: the window falls to 1 and the bulk target to its
+// latency_target_ms = 50 and a fake that answers after 200 ms: the window falls to 1 and the bulk target to its
 // floor (bulk_min_bytes 4096), and the batches stay under the target; once the latency is gone the window is back at
 // its maximum and the target uncapped within 10 s.
 TEST_F(BulkLimiterTest, LatencyHalvesWindowAndBulk)
@@ -590,7 +591,7 @@ TEST_F(BulkLimiterTest, LatencyHalvesWindowAndBulk)
     EXPECT_EQ(producer.failed(), 0u);
 }
 
-// CA-24: latency_target_ms = 50; eight answers at 200 ms (the ring's minimum), then fast ones: one latency decrease,
+// latency_target_ms = 50; eight answers at 200 ms (the ring's minimum), then fast ones: one latency decrease,
 // the window at max / 2 before it recovers, and no second decrease from the same slow samples. Mutant: the ring is not
 // emptied by the decrease.
 TEST_F(BulkLimiterTest, LatencySpikeHalvesOnce)
@@ -627,7 +628,7 @@ TEST_F(BulkLimiterTest, LatencySpikeHalvesOnce)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 28u);
 }
 
-// CA-24 (G-diff E5a obj. 1): sixteen one-op batches queued at once, latency_target_ms = 50 and slow answers staged so
+// Sixteen one-op batches queued at once, latency_target_ms = 50 and slow answers staged so
 // that the window is full of slow requests when the ring reaches 8 samples: requests 1-4 answer after 200 ms, 5-7
 // after 300 ms, 8 after 600 ms (the 8th sample, the decrease) and 9-11, sent at ~500 ms by the completions of 5-7,
 // after 800 ms: they come back after the decrease. Then 12-16 answer at once. One latency decrease, the window at
@@ -680,7 +681,7 @@ TEST_F(BulkLimiterTest, LatencySpikeHalvesOnceUnderLoad)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), OPS);
 }
 
-// CA-24: four requests in flight (the whole window) come back 429 together from Available: one decrease (429), none
+// Four requests in flight (the whole window) come back 429 together from Available: one decrease (429), none
 // from the Throttled hook, the window at max / 2. Mutant: a decrease on every 429 (or in the hook).
 TEST_F(BulkLimiterTest, OneDecreasePerBurst)
 {
@@ -713,7 +714,7 @@ TEST_F(BulkLimiterTest, OneDecreasePerBurst)
     EXPECT_EQ(senderNode(0).decreases429, 1u);
 }
 
-// CA-24: the probe gets a 429 after a bulk left (sent after the last decrease): the Throttled hook decreases once; a
+// The probe gets a 429 after a bulk left (sent after the last decrease): the Throttled hook decreases once; a
 // second Throttled probe (no transition) and a new transition with no bulk sent since do not decrease again; a bulk
 // sent afterwards makes the next transition decrease.
 TEST_F(BulkLimiterTest, ProbeThrottledHalvesOnce)
@@ -755,7 +756,7 @@ TEST_F(BulkLimiterTest, ProbeThrottledHalvesOnce)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 2u);
 }
 
-// CA-24: limiter X = 4 (B = 4) for 20 s, then no limit. With the defaults the window is back at its maximum and the
+// Limiter X = 4 (B = 4) for 20 s, then no limit. With the defaults the window is back at its maximum and the
 // bulk target uncapped within 15 s, and the pace relaxed one step within 9 s; with pace_relax_after = 5 the pace is 0
 // within 20 s. Two runtimes, one after the other, against the same fake.
 TEST_F(BulkLimiterTest, RecoversToMaxWhen429Stop)
@@ -792,7 +793,7 @@ TEST_F(BulkLimiterTest, RecoversToMaxWhen429Stop)
             },
             scaled(15000ms));
         std::printf(
-            "[  CA-24   ] RecoversToMaxWhen429Stop defaults: limited {%s}; relaxed after %lld ms, max after "
+            "[  RATE    ] RecoversToMaxWhen429Stop defaults: limited {%s}; relaxed after %lld ms, max after "
             "%lld ms\n",
             describe(limited).c_str(),
             relaxedAfter
@@ -823,7 +824,7 @@ TEST_F(BulkLimiterTest, RecoversToMaxWhen429Stop)
         limiter->setEnabled(false);
         const auto lifted = Clock::now();
         const bool zero = eventually([] { return senderNode(0).pace.count() == 0; }, scaled(20000ms));
-        std::printf("[  CA-24   ] RecoversToMaxWhen429Stop pace_relax_after=5: limited {%s}; pace 0 after %lld ms\n",
+        std::printf("[  RATE    ] RecoversToMaxWhen429Stop pace_relax_after=5: limited {%s}; pace 0 after %lld ms\n",
                     describe(limited).c_str(),
                     static_cast<long long>(
                         std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - lifted).count()));
@@ -834,7 +835,7 @@ TEST_F(BulkLimiterTest, RecoversToMaxWhen429Stop)
     }
 }
 
-// I98: a 429 to a batch of N bytes caps the bulk target at N / 2 (bulk_min_bytes 1024); while every later answer is
+// A 429 to a batch of N bytes caps the bulk target at N / 2 (bulk_min_bytes 1024); while every later answer is
 // held (no completion moves the target) every batch is <= the target, the throttled batch's ops come back from the
 // retry lane in batches under it, and one op larger than the target leaves alone, the next op in a batch of its own.
 // Mutant: the cap applied to the first op too (the large op never leaves).
@@ -902,7 +903,7 @@ TEST_F(BulkLimiterTest, BatchLimitCapsSlices)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), first + 2);
 }
 
-// I98: a 413 to a 15-op batch of N bytes splits it and caps the bulk target at N / 2 without touching the window or the
+// A 413 to a 15-op batch of N bytes splits it and caps the bulk target at N / 2 without touching the window or the
 // decrease counters; while the answers are held, the halves and the next batch are <= N / 2.
 TEST_F(BulkLimiterTest, Payload413CapsTarget)
 {
@@ -951,7 +952,7 @@ TEST_F(BulkLimiterTest, Payload413CapsTarget)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 2 * OPS);
 }
 
-// D47: node_window_max = 4 and two 429 bursts bring A's window to 1 (no success moves it back: the answer that follows
+// node_window_max = 4 and two 429 bursts bring A's window to 1 (no success moves it back: the answer that follows
 // is slower than latency_target_ms); an ordered batch takes A's only slot, an unordered batch queues behind it, and the
 // ordered batch's answer is cut after A applied it (pinned to A, A Down). The probe brings A back: the unordered batch
 // takes A's only slot (held) and the pinned one waits. B then becomes usable, so the scheduler has capacity: the pinned
@@ -1062,7 +1063,7 @@ TEST_F(BulkLimiterTest, PinnedWaitsForTheRealWindow)
     EXPECT_EQ(stats("o").orderedAmbiguousFailover, 0u);
 }
 
-// I95: with A's window full (four bulks held), a search goes and comes back Ok, and the window's inFlight does not
+// With A's window full (four bulks held), a search goes and comes back Ok, and the window's inFlight does not
 // move.
 TEST_F(BulkLimiterTest, QueriesIgnoreWindow)
 {
@@ -1093,7 +1094,7 @@ TEST_F(BulkLimiterTest, QueriesIgnoreWindow)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), kWindowMax);
 }
 
-// I97b: two weight-1 buckets of ~2 KB one-op batches and the default DRR quantum (1 MiB), against a node that answers
+// Two weight-1 buckets of ~2 KB one-op batches and the default DRR quantum (1 MiB), against a node that answers
 // after 20 ms: the first bucket holds 300 batches, yet the second one's first batch leaves < 500 ms after it was queued
 // (without DRR_MAX_BATCHES_PER_TURN the 1 MiB quantum would keep the first bucket's turn for ~1.5 s).
 TEST_F(BulkLimiterTest, DefaultQuantumYieldsSoon)
@@ -1137,7 +1138,7 @@ TEST_F(BulkLimiterTest, DefaultQuantumYieldsSoon)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), FIRST + SECOND);
 }
 
-// I118 (CA-E6c-6, D61): one bucket with the default bulk thresholds (4 MiB, maxAge 2 s) and the default configuration
+// One bucket with the default bulk thresholds (4 MiB, maxAge 2 s) and the default configuration
 // (1 MiB quantum), 8 MiB of 2 KiB documents pending at once: the DRR credit decides whether a turn emits, not the batch
 // size, so the bodies reach bulk.maxBytes — at least two, the largest over 2 quanta, none over 4 MiB. Mutant: «slice
 // bounded by the credit» (every body <= quantum + one op).
@@ -1171,11 +1172,11 @@ TEST_F(BulkLimiterTest, DefaultBulkReachesMaxBytes)
         largest = std::max(largest, request.bodySize);
         EXPECT_LE(request.bodySize, maxBytes) << "a body over bulk.maxBytes";
     }
-    std::printf("[  I118    ] DefaultBulkReachesMaxBytes: %zu requests, largest %zu bytes\n", requests.size(), largest);
+    std::printf("[  BATCH   ] DefaultBulkReachesMaxBytes: %zu requests, largest %zu bytes\n", requests.size(), largest);
     EXPECT_GT(largest, 2 * quantum) << "the batches stayed within the DRR quantum";
 }
 
-// I97b (G-diff E5a obj. 2): two weight-1 buckets of one-op batches, node_window_max = 1 so the sender takes one batch
+// Two weight-1 buckets of one-op batches, node_window_max = 1 so the sender takes one batch
 // at a time and the dispatch order is the arrival order. A held batch of a third bucket fills the window while both are
 // queued (20 ops each), so both are in the DRR ring when it is released: the first bucket's turn ends after
 // weight x DRR_MAX_BATCHES_PER_TURN = 8 batches and the second one's first batch arrives before the first one's 9th;
@@ -1224,10 +1225,10 @@ TEST_F(BulkLimiterTest, TurnYieldsAfterMaxBatches)
         run = i > 0 && order[i] == order[i - 1] ? run + 1 : 1;
         EXPECT_LE(run, wr::DRR_MAX_BATCHES_PER_TURN) << "a turn over the cap at " << i << ": " << order;
     }
-    std::printf("[  I97b    ] TurnYieldsAfterMaxBatches order: %s\n", order.c_str());
+    std::printf("[  TURNS   ] TurnYieldsAfterMaxBatches order: %s\n", order.c_str());
 }
 
-/// Bucket::slice with a chosen cap (I98): the test sink holds every batch and has no capacity, so the scheduler never
+/// Bucket::slice with a chosen cap: the test sink holds every batch and has no capacity, so the scheduler never
 /// slices; the case submits, then drives slice() itself (as writeRetryLane_test.cpp).
 class BulkLimiterSliceTest : public WriteTest
 {
@@ -1281,7 +1282,7 @@ protected:
     }
 };
 
-// I98/I118: cap = 0 => only bulk.maxDocs/maxBytes bound the batch, the same as a cap no batch reaches.
+// cap = 0 => only bulk.maxDocs/maxBytes bound the batch, the same as a cap no batch reaches.
 TEST_F(BulkLimiterSliceTest, SliceCapZeroUnchanged)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -1311,7 +1312,7 @@ TEST_F(BulkLimiterSliceTest, SliceCapZeroUnchanged)
     ASSERT_TRUE(results->waitTotal(28));
 }
 
-// I98: an op larger than the cap at the head of the batch leaves alone (a document is never split), and the next op
+// An op larger than the cap at the head of the batch leaves alone (a document is never split), and the next op
 // does not join it; the ops after it are batched under the cap.
 TEST_F(BulkLimiterSliceTest, SliceFirstOpOverCapGoesAlone)
 {
@@ -1339,7 +1340,7 @@ TEST_F(BulkLimiterSliceTest, SliceFirstOpOverCapGoesAlone)
     ASSERT_TRUE(results->waitTotal(14));
 }
 
-// I98: the cap also bounds the batches taken from the retry lane (and a batch mixing the lane and the pending queue).
+// The cap also bounds the batches taken from the retry lane (and a batch mixing the lane and the pending queue).
 TEST_F(BulkLimiterSliceTest, SliceCapAppliesToRetryLane)
 {
     ASSERT_NO_FATAL_FAILURE(start());

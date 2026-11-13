@@ -228,7 +228,7 @@ TEST(StatsEndpointTest, IndexesUnderTheAuthenticatedAgentIdAsDocumentId)
 
 /**
  * The op is tagged with the agent too: that tag is what a whole-agent deletion's cancel(agent) drops while this
- * write is still pending in the `agent-state` bucket (RF-26, CA-E7c-1).
+ * write is still pending in the `agent-state` bucket.
  */
 TEST(StatsEndpointTest, PostAcceptedIs200WithIdAndTagTheAgent)
 {
@@ -535,7 +535,7 @@ TEST(StatsEndpointTest, HandlerDoesNotRetainTheRequest)
 
 /**
  * The indexer gate. With no node the client would use, the caller gets a 503 to retry rather than a 200 that
- * pretends the document was stored, and nothing is posted (I151).
+ * pretends the document was stored, and nothing is posted.
  */
 TEST(StatsEndpointTest, NoUsableNodeIs503)
 {
@@ -550,7 +550,7 @@ TEST(StatsEndpointTest, NoUsableNodeIs503)
 
 /**
  * A refused post is a 503, never a 200: the document was fine, the client did not admit the write. Before the
- * indexer client this was a silent 200 (the async queue dropped the write later), I151.
+ * indexer client this was a silent 200 (the async queue dropped the write later).
  */
 TEST(StatsEndpointTest, PostRefusedIs503)
 {

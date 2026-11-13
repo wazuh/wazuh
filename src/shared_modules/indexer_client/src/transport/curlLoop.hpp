@@ -54,7 +54,7 @@ namespace indexer_client::detail
         std::string response;
         std::optional<std::string> retryAfter; ///< Raw header of the last response; handed to resolve().
         bool capTripped {false};
-        bool mayHaveSent {false}; ///< CURLOPT_PREREQFUNCTION ran for this use of the easy (I36).
+        bool mayHaveSent {false}; ///< CURLOPT_PREREQFUNCTION ran for this use of the easy.
     };
 
     /// What the transport and its loops share. Captured by shared_ptr, never through a Transport pointer.
@@ -73,8 +73,8 @@ namespace indexer_client::detail
         /// Configured nodes (at least 1): sizes each multi's idle-connection pool (CURLMOPT_MAXCONNECTS).
         std::size_t hostCount;
         std::function<bool(std::function<void()>)> postToPool;
-        TlsMaterial tls;         ///< I48; set once before any loop runs, read-only afterwards.
-        Credentials credentials; ///< I55; set once before any loop runs, read-only afterwards.
+        TlsMaterial tls;         ///< Set once before any loop runs, read-only afterwards.
+        Credentials credentials; ///< Set once before any loop runs, read-only afterwards.
 
         std::mutex mutex; ///< Admission: guards `accepting`, `nextId`, `cursor` and `registry`.
         bool accepting {true};
@@ -82,7 +82,7 @@ namespace indexer_client::detail
         std::uint64_t cursor {0}; ///< Round-robin tie-break of the loop choice.
         std::unordered_map<std::uint64_t, std::shared_ptr<TransferState>> registry;
 
-        /// Admitted and not yet resolved, per loop (the balance criterion, I22c).
+        /// Admitted and not yet resolved, per loop (the balance criterion).
         std::unique_ptr<std::atomic<std::uint64_t>[]> assigned;
         std::unique_ptr<std::atomic<std::uint64_t>[]> completedPerLoop;
         std::atomic<std::uint64_t> admitted {0};

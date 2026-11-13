@@ -16,7 +16,7 @@
 
 #include "wmodules.h"
 #include "sym_load.h"
-/* Only the C typedefs of the library's API; modulesd never links it (I132). */
+/* Only the C typedefs of the library's API; modulesd never links it. */
 #include "wm_indexer_runtime_api.h"
 #ifdef __linux__
 #include <dlfcn.h>
@@ -38,7 +38,7 @@ static wmir_ref_fn wmir_ref_ptr = NULL;
 static wmir_begin_shutdown_fn wmir_begin_shutdown_ptr = NULL;
 static wmir_shutdown_fn wmir_shutdown_ptr = NULL;
 
-/* Loads libwm_indexer_runtime.so and its five symbols once (I132). Returns 0, or -1 after logging what is missing. */
+/* Loads libwm_indexer_runtime.so and its five symbols once. Returns 0, or -1 after logging what is missing. */
 static int wm_indexer_runtime_load(void)
 {
     void *handle;
@@ -80,7 +80,7 @@ static int wm_indexer_runtime_load(void)
     return 0;
 }
 
-/* Whole internal-options file. Absent => empty text, silently; unreadable => ERROR with the path and empty text (I133). */
+/* Whole internal-options file. Absent => empty text, silently; unreadable => ERROR with the path and empty text. */
 static char *wm_indexer_runtime_read_options(void)
 {
     const char *path = WAZUH_LDEFINES;

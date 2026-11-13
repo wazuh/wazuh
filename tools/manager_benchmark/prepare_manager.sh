@@ -59,7 +59,7 @@ set -euo pipefail
 # token. It edits the config in place (a .bak is written once) and restarts the
 # manager unless --no-restart is given.
 #
-# A/B sides (plan 18, E11c). The indexer A/B (ab_indexer.sh) runs the SAME manager home with
+# A/B sides. The indexer A/B (ab_indexer.sh) runs the SAME manager home with
 # two builds, the pre-v2 one ("v1") and the branch's ("v2"), each saved ONCE as a snapshot:
 #   <snapshots>/<side>/snapshot.tar           bin/ lib/ and framework/.../site-packages, whole
 #   <snapshots>/<side>/manifest.txt           the files in the tar, one per line
@@ -69,7 +69,7 @@ set -euo pipefail
 #                      this one does not (a partial swap segfaults: every artifact class or none),
 #                      unpack the whole tar, apply the side's internal-options (the snapshot's file
 #                      with the overrides of ab_options/<side>.conf: the same queue capacity on both
-#                      sides, I149/D70), run `wazuh-manager-conf validate`. The manager is left
+#                      sides), run `wazuh-manager-conf validate`. The manager is left
 #                      stopped for the enrollment preparation below, which restarts it; with
 #                      --side-only the restore itself restarts it and nothing else runs.
 #   --side-only        with --side: skip the enrollment preparation

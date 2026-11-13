@@ -8,10 +8,10 @@
  * Foundation.
  */
 
-// The `agent-state` bucket's ordering contract as the whole-agent deletion relies on it (I147, I147c, I147d,
-// I149; CA-E7c-3, CA-E7c-4), on a REAL runtime and the module's own bucket spec (`ordered`, Reject, unlimited
-// retry), served by the library's in-process fake indexer. The fake keeps no documents: every oracle is the order
-// and the content of the `_bulk` requests it received, and the answers it was scripted to give.
+// The `agent-state` bucket's ordering contract as the whole-agent deletion relies on it, on a REAL runtime and the
+// module's own bucket spec (`ordered`, Reject, unlimited retry), served by the library's in-process fake indexer. The
+// fake keeps no documents: every oracle is the order and the content of the `_bulk` requests it received, and the
+// answers it was scripted to give.
 #include "testRealIndexer.hpp"
 
 #include <gtest/gtest.h>

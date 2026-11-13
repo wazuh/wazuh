@@ -11,7 +11,7 @@ read the remote configuration needs, and the owner of the Engine's `indexer_clie
   metrics), every metric of the two buckets and the runtime's, published through fastmetrics by
   `registerIndexerMetrics()`.
 
-**One connection.** Writes and reads go through the Engine's `indexer_client` `Client` `analysisd` (since E10b; the
+**One connection.** Writes and reads go through the Engine's `indexer_client` `Client` `analysisd` (the
 v1 connector is no longer used here). The writes use its two buckets, `events` and `raw`; the reads
 are the remote configuration here and the content downloads of [`cmcontent`](../cmcontent/README.md), which the
 content manager makes through that same Client. An indexer outage is reported once.
@@ -94,7 +94,7 @@ second (one scrape of every indexer metric takes one snapshot):
 | Getter | Value |
 |---|---|
 | `getQueueSize()` | Σ `retainedBytes` of `events` and `raw` |
-| `getQueueUsagePercent()` | max(the fullest bucket, the shared budget) × 100, capped at 100 (I218): max over `events` and `raw` of `charge` / `quotaBytes`, and Σ `charge` / `queueCapacityBytes`. 100 = a bucket or the global budget is full, i.e. new events are dropped (`QueueFull` or `GlobalFull`): the second term only matters when 2 × quota > global (a quota of `0` or above half the global quota). A bucket with quota 0 is skipped; 0.0 with no capacity or once shut down |
+| `getQueueUsagePercent()` | max(the fullest bucket, the shared budget) × 100, capped at 100: max over `events` and `raw` of `charge` / `quotaBytes`, and Σ `charge` / `queueCapacityBytes`. 100 = a bucket or the global budget is full, i.e. new events are dropped (`QueueFull` or `GlobalFull`): the second term only matters when 2 × quota > global (a quota of `0` or above half the global quota). A bucket with quota 0 is skipped; 0.0 with no capacity or once shut down |
 | `getDroppedEvents()` | Σ `dropped` + `failed` + `rejected` (every cause) of both buckets, plus the events discarded after `shutdown()`; after it the bucket part is the last snapshot taken before it (up to `METRICS_TTL`, 1 s, older than the close; zeros if nothing read the metrics before), so what the runtime's stop drops later (`Dropped(Shutdown)`) is not in it |
 
 `getBucketMetric(name)` serves the library's catalog for the two buckets from that snapshot:
@@ -118,9 +118,9 @@ The operator catalog is in
 
 The snapshot lags the `index()` calls: the library stages the `post()` of each producer thread and admits it in
 batches (64 ops, ~1 ms, or the close), so `retainedBytes`, `charge` and the queue-full drops move up to 64 ops per
-stripe behind (I209); staged ops are outside the quota until then (at most `quotaBytes / 2` per bucket, `quotaBytes`
+stripe behind; staged ops are outside the quota until then (at most `quotaBytes / 2` per bucket, `quotaBytes`
 being the effective quota, see
-[Staged admission of `post`](../../../shared_modules/indexer_client/README.md#staged-admission-of-post-e6e)).
+[Staged admission of `post`](../../../shared_modules/indexer_client/README.md#staged-admission-of-post)).
 Worst case with the defaults: min(2 × 64 MiB, 256 MiB global) charged plus 2 × 32 MiB staged, about 192 MiB, against
 the single 64 MiB queue of the v1; with `indexer_queue_max_bytes` = 0 (quota = global), 256 + 2 × 128 = 512 MiB.
 
@@ -128,7 +128,7 @@ the single 64 MiB queue of the v1; with `indexer_queue_max_bytes` = 0 (quota = g
 
 `EngineIndexerRuntime` (`engineIndexerRuntime.hpp`) owns the process's `indexer_client` runtime and the one Client
 (`analysisd`). `start(process, source, options, warnings)` validates the configuration, builds the buckets, starts the
-runtime and creates the Client; `start(process, source)` (E10a) creates it without buckets and remains for tests.
+runtime and creates the Client; `start(process, source)` creates it without buckets and remains for tests.
 `runtime()` returns the `RuntimeRef` of a successful start (empty before), for the runtime's metrics; after
 `finishStop()` the reference is no longer valid and its snapshot keeps only the process-wide query and PIT counters. Every
 call must come from the thread that started it (the runtime's owner: the Engine's main thread). The stop is in two
@@ -139,11 +139,11 @@ phases that `main.cpp` places around the scheduler's stop:
 2. `finishStop()`, after the scheduler has stopped: joins the runtime (`RuntimeOwner::shutdown()`) with the Client still
    registered, then `awaitClosed` without a drain and releases the Client.
 
-Nothing waits for the queue to drain (I186, as the v1): `finishStop()` does not wait for the buckets, and what is still queued when the runtime closes is discarded. Between `beginStop()` (which closes the Client's admission) and `finishStop()` the library may still send what is already queued while the scheduler stops; the whole stop fits in 3 s. The discarded events are
+Nothing waits for the queue to drain (as the v1): `finishStop()` does not wait for the buckets, and what is still queued when the runtime closes is discarded. Between `beginStop()` (which closes the Client's admission) and `finishStop()` the library may still send what is already queued while the scheduler stops; the whole stop fits in 3 s. The discarded events are
 not counted in `getDroppedEvents()` (its bucket part is the snapshot from before `shutdown()`), but they are logged:
 the runtime's stop resolves them `Dropped(Shutdown)` and its last summary, which only sees the clients still registered
 (`awaitClosed` releases the consumer name, hence the order), emits the engine's buckets with them (`... unsuccessful
-operations in the last <n> s: shutdown=<count>.` and `... <count> dropped.`; D122, issue 37). `finishStop()` without a
+operations in the last <n> s: shutdown=<count>.` and `... <count> dropped.`). `finishStop()` without a
 previous `beginStop()` runs both phases; each phase runs once.
 
 ### Configuration
@@ -166,7 +166,7 @@ options file; otherwise it is unset and the library default applies. Standalone 
 enumerates the environment, so an unknown `WAZUH_INDEXER_CLIENT_*` variable is rejected like an unknown file key. The `<indexer>`
 section is the manager's (`hosts`, `ssl`); standalone builds it from `analysisd.indexer_hosts|ssl_*` (including `ssl_verify_certificates`) through the environment only.
 
-Two v1 keys feed their v2 equivalent when that one is not set (I192): `analysisd.indexer_request_timeout` (s) →
+Two v1 keys feed their v2 equivalent when that one is not set: `analysisd.indexer_request_timeout` (s) →
 `indexer_client_request_timeout_ms` and `analysisd.indexer_monitoring_interval` (s) → `indexer_client_probe_interval_ms`.
 "Set" means an environment variable or a file entry, never a `conf` default. Both set and different in ms is reported by
 `problem()` on the v2 key (the start fails); a v1 value of `0` leaves the v2 key unset and is reported once by `warnings()`
@@ -263,8 +263,8 @@ void registerIndexerMetrics(fastmetrics::IManager& manager,
   (same body as the v1: `match_all`, `size=1`, source `engine` only; unwrapping the v2 `hits`), extracts `_source.engine`,
   checks it is an object and returns it (for example `{ "index_raw_events": false }`, consumed by `confremote`). One
   attempt (`maxAttempts = 1`: the retry is the caller's), a page deadline of the runtime's `request_timeout_ms` and a call
-  deadline a margin above it. Once every node has been probed and none is usable it fails at once (I190, I190b); before
-  the first probe round it waits as I158b says. A null `query()` is `ClientClosed`, which throws like every other failure (it is
+  deadline a margin above it. Once every node has been probed and none is usable it fails at once; before
+  the first probe round it waits for a node to be probed, bounded by the probe deadline. A null `query()` is `ClientClosed`, which throws like every other failure (it is
   never read as "no config"); 0 or more than one hit, or no `_source.engine`, throw. Every failure is a
   `wiconnector::RemoteConfigError` (a `std::runtime_error`; callers catch `std::exception`), with the v1's messages; the
   "no usable node" check is `HealthView::noUsableAfterProbes()` of the client library, shared with the content manager.
@@ -274,7 +274,7 @@ void registerIndexerMetrics(fastmetrics::IManager& manager,
 | Target | Type | Alias | Links |
 |---|---|---|---|
 | `wIndexerConnector_iwIndexerConnector` | INTERFACE | `wIndexerConnector::iwIndexerConnector` | `base` |
-| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client`, `fastmetrics::ifastmetrics` (public); `keystore_core` (**private**, `Keystore::get`, D101) |
+| `wIndexerConnector_wIndexerConnector` | STATIC | `wIndexerConnector::wIndexerConnector` | `base`, `wIndexerConnector::iwIndexerConnector`, `indexer_client`, `fastmetrics::ifastmetrics` (public); `keystore_core` (**private**, `Keystore::get`) |
 | `wIndexerConnector_mocks` | INTERFACE | `wIndexerConnector::mocks` | `GTest::gmock`, `wIndexerConnector::iwIndexerConnector` (test builds only) |
 | `wIndexerConnector_utest` | Executable | — | `GTest::gtest_main`, `GTest::gmock`, `wIndexerConnector::wIndexerConnector`, `wIndexerConnector::mocks`, `fastmetrics::fastmetrics`; discovered tests hold the `rocks_db_lock` resource lock (test builds only) |
 

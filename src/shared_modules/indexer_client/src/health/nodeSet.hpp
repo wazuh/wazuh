@@ -13,10 +13,9 @@
 #ifndef _INDEXER_CLIENT_NODE_SET_HPP
 #define _INDEXER_CLIENT_NODE_SET_HPP
 
-// Node health (stage E2b, plan 18 I57). The NodeSet owns the state of every configured node; the Prober feeds it
-// complete probe rounds, the data path (E3b/E4) feeds it passive signals, the selector reads it. A 429 with
-// Retry-After from any path parks the node (notBefore) for every consumer (E6a, I109/I109b). Normative contract:
-// anexos/e2a-1/contrato-transport.md § Salud.
+// Node health. The NodeSet owns the state of every configured node; the Prober feeds it
+// complete probe rounds, the data path feeds it passive signals, the selector reads it. A 429 with
+// Retry-After from any path parks the node (notBefore) for every consumer.
 
 #include <cstddef>
 #include <cstdint>
@@ -55,30 +54,30 @@ namespace indexer_client::detail
 
         /// Passive signal from the data path, applied at once: a node-attributable failure ⇒ Down; 429 from
         /// Available ⇒ Throttled; anything else is ignored (a passive success never promotes). A 429 with retryAfter
-        /// (already capped at retryAfterMax) raises the node's notBefore to now + retryAfter in any state (E6a, I109).
+        /// (already capped at retryAfterMax) raises the node's notBefore to now + retryAfter in any state.
         void report(std::size_t index, const HttpResult& result);
 
         /// Round-robin among the Available nodes; a Throttled one only when none is Available; nullopt when all Down.
         /// A node whose notBefore is in force (> now) is skipped in both passes.
         std::optional<std::size_t> choose();
-        /// As choose(), among the nodes `allowed(index)` accepts (E3b-2: the sender's window and notBefore). The filter
+        /// As choose(), among the nodes `allowed(index)` accepts (the sender's window and notBefore). The filter
         /// runs under this NodeSet's mutex: it may take a leaf mutex (the sender's), never call back into the NodeSet.
         std::optional<std::size_t> choose(const std::function<bool(std::size_t)>& allowed);
 
-        /// The node's notBefore (I109b): set by any 429 with Retry-After (report() or a probe round), only ever raised;
-        /// in force while > now. A default TimePoint when none was ever set. The sender mirrors it (E6a step 4).
+        /// The node's notBefore: set by any 429 with Retry-After (report() or a probe round), only ever raised;
+        /// in force while > now. A default TimePoint when none was ever set. The sender mirrors it.
         TimePoint notBefore(std::size_t index) const;
         /// The earliest notBefore in force (> now) among the nodes that are not Down; nullopt when none is parked.
-        /// A reader with no node to choose waits until then, never past its own deadline (I109).
+        /// A reader with no node to choose waits until then, never past its own deadline.
         std::optional<TimePoint> earliestNotBefore() const;
 
         /// A copy, safe from any thread.
         HealthView view() const;
 
-        /// +1 per node transition (E3b waits on it).
+        /// +1 per node transition (the bulk sender waits on it).
         std::uint64_t generation() const;
 
-        /// Transitions of one node so far (E5 reads them).
+        /// Transitions of one node so far (the load control reads them).
         std::uint64_t transitions(std::size_t index) const;
 
         /// Registered once by the runtime before the first round; never changed afterwards.
@@ -102,10 +101,10 @@ namespace indexer_client::detail
             std::uint32_t permanentStreak {0};
             std::string reason;
             std::uint64_t transitions {0};
-            /// Cause of the node's last probe result or passive Down (the D39 «every node Down by Tls» episode).
+            /// Cause of the node's last probe result or passive Down (the «every node Down by Tls» episode).
             TransportCause lastCause {TransportCause::None};
             int lastCurlCode {0};
-            TimePoint notBefore {}; ///< Nothing is sent to the node before it (429 Retry-After, I109); only raised.
+            TimePoint notBefore {}; ///< Nothing is sent to the node before it (429 Retry-After); only raised.
         };
 
         /// Log lines and hook calls computed under the mutex, emitted after releasing it (defined in nodeSet.cpp).
@@ -127,7 +126,7 @@ namespace indexer_client::detail
         std::vector<Node> m_nodes;
         bool m_clusterRed {false};
         std::optional<std::string> m_localFault;
-        bool m_allTls {false}; ///< Inside an «every node Down by Tls» episode (D39 hint).
+        bool m_allTls {false}; ///< Inside an «every node Down by Tls» episode (a hint for the log).
         std::uint64_t m_generation {0};
         std::size_t m_next {0};
         TransitionHook m_hook;

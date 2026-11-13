@@ -52,7 +52,7 @@ namespace invsync::vd
             // Fenced means QUIESCED: whatever was already being applied must finish first. The
             // bound keeps a scan-length wait from stalling the whole fleet pass; on timeout the
             // fence comes off and the caller skips this agent. The wait goes in short slices so a
-            // scanner that is stopping (cancel raised) is not held for the whole bound (I177b):
+            // scanner that is stopping (cancel raised) is not held for the whole bound:
             // nothing notifies the registry's condition variable when cancel is raised.
             //
             // The caller's OWN scan-lane hold is not "in flight": an on-demand rescan reaches this
@@ -84,7 +84,7 @@ namespace invsync::vd
         }
 
     private:
-        /// Longest single wait between two looks at the caller's cancel flag (I177b).
+        /// Longest single wait between two looks at the caller's cancel flag.
         static constexpr std::chrono::milliseconds QUIESCE_SLICE {50};
 
         std::shared_ptr<AgentInFlightRegistry> m_registry;

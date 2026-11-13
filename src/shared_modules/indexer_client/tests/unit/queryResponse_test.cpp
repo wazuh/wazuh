@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// E4a 03 §4.16 / I84-I86: the pure query-response classifiers, without network; E4b (pit.hpp CREATE, EXPIRY): the
+// The pure query-response classifiers, without network, and (pit.hpp CREATE, EXPIRY) the
 // PIT creation and PIT search classifiers.
 
 #include <cstdint>
@@ -100,7 +100,7 @@ TEST(QueryResponseTest, Search200UnparsableIsItemPermanent)
 
 TEST(QueryResponseTest, ResponseCapIsBodyTimesDomFactor)
 {
-    // I84: size * QUERY_DOM_FACTOR > max ⇒ ItemPermanent without parsing (the body below is not even JSON).
+    // Size * QUERY_DOM_FACTOR > max ⇒ ItemPermanent without parsing (the body below is not even JSON).
     const std::uint64_t cap = 4096;
     const std::uint64_t fits = cap / QUERY_DOM_FACTOR;
 
@@ -158,7 +158,7 @@ TEST(QueryResponseTest, ByQuery200CleanIsOk)
 
 TEST(QueryResponseTest, ByQueryFailuresAreItemPermanent)
 {
-    // Also an update with conflicts=proceed (obj. 13(f)); the first failure is in the reason.
+    // Also an update with conflicts=proceed; the first failure is in the reason.
     for (const bool isDelete : {DBQ, UBQ})
     {
         for (const auto& failures :
@@ -177,7 +177,7 @@ TEST(QueryResponseTest, ByQueryFailuresAreItemPermanent)
 
 TEST(QueryResponseTest, ByQueryConflictOnlyFailuresAreConflict)
 {
-    // obj. 5: conflicts=abort answers 200 with 409 failures; they go to the I86 budget, not to ItemPermanent.
+    // Conflicts=abort answers 200 with 409 failures; they go to the retry budget, not to ItemPermanent.
     const std::string byStatus = R"({"index":"x","id":"3","status":409})";
     const std::string byType = R"({"index":"x","id":"4","cause":{"type":"version_conflict_engine_exception"}})";
     for (const bool isDelete : {DBQ, UBQ})
@@ -242,7 +242,7 @@ TEST(QueryResponseTest, Dbq404IndexNotFoundIsOkEmpty)
 
 TEST(QueryResponseTest, Dbq404WithoutTheTypeIsClient4xx)
 {
-    // obj. 4: only the missing index is "nothing to delete".
+    // Only the missing index is "nothing to delete".
     for (const char* body : {OTHER_404_BODY, ""})
     {
         const auto response = classifyByQuery(http(404, body), DBQ, MAX_BYTES);

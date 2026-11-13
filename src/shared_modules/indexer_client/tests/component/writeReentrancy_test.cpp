@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Re-entrancy from a real completion (plan-E3c-1 §Tests: T13, T18, CA-27; RF-27, I37): a callback run by the pool for
+// Re-entrancy from a real completion: a callback run by the pool for
 // an op the production sender wrote to a fake node calls back into the library. Every blocking call there is
 // Reentrancy at once; requestClose() never waits for the drain; destroying a Client is a counted usage error, with
 // no self-join and no deadlock while M callbacks do it at the same time. Every wait is bounded; every case ends with
@@ -93,7 +93,7 @@ namespace
     };
 } // namespace
 
-// T13, CA-27: from the callback of an op the sender wrote, with the "full" bucket's quota held by a Building group:
+// From the callback of an op the sender wrote, with the "full" bucket's quota held by a Building group:
 // submit with Block, Ticket::wait of a ticket made outside, GroupTicket::wait and Group::add with Block are all
 // Reentrancy at once (none sleeps on a quota or a result the runtime thread may be the one to produce). Mutant: the
 // onRuntimeThread check removed from reserveForGroup.
@@ -152,14 +152,14 @@ TEST_F(BulkTest, CallbackBlockingCallsAreReentrancy)
     // From this (consumer) thread the same tickets complete normally.
     ASSERT_TRUE(groupTicket.wait(in(5s)).ok());
     ASSERT_TRUE(submit.ticket.wait(in(5s)).ok());
-    c->requestClose(); // I99 (D43): the pending op drains (Ok); the Building groups are abandoned below.
+    c->requestClose(); // The pending op drains (Ok); the Building groups are abandoned below.
     const auto drained = ticket.wait(in(5s));
     ASSERT_TRUE(drained.ok()) << ic::toString(drained.cause);
     EXPECT_EQ(drained.value.status, ic::Status::Ok) << ic::toString(drained.value.cause);
 }
 
-// T18, I37: K = 1, M = 2, at most 8 ops pending. requestClose() from a callback of the same client returns in < 1 s
-// (it never waits for the drain the callback is part of) and its pending ops drain (Ok, I99/D43); two clients destroyed
+// K = 1, M = 2, at most 8 ops pending. requestClose() from a callback of the same client returns in < 1 s
+// (it never waits for the drain the callback is part of) and its pending ops drain (Ok); two clients destroyed
 // from two callbacks running at the same time (one per pool thread) are two usage errors, each destructor returns at
 // once (no self-join, no deadlock).
 TEST_F(BulkTest, CallbackRequestCloseAndClientDestroy)
@@ -191,7 +191,7 @@ TEST_F(BulkTest, CallbackRequestCloseAndClientDestroy)
     ASSERT_EQ(closeFuture.wait_for(5s), std::future_status::ready) << "requestClose() from a callback hung";
     EXPECT_LT(closeFuture.get(), 1s);
     ASSERT_TRUE(results->waitTotal(7));
-    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 7u) << "requestClose() drains (D43)";
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 7u) << "requestClose() drains";
     const auto report = closing->awaitClosed(in(5s));
     EXPECT_TRUE(report.ok()) << ic::toString(report.cause);
     EXPECT_EQ(report.value.droppedClientClosed, 0u);

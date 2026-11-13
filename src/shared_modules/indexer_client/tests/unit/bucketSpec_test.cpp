@@ -181,7 +181,7 @@ TEST_F(BucketSpecTest, InvalidBulkMaxBytesAboveQuota)
 
 TEST_F(BucketSpecTest, InvalidBulkMaxBytesPlusReserveAboveQuota)
 {
-    // I62: the largest admissible op (a whole bulk) plus its result reserve must fit in the quota.
+    // The largest admissible op (a whole bulk) plus its result reserve must fit in the quota.
     const auto reserve = std::to_string(detail::write::RESULT_RESERVE);
     auto spec = valid();
     spec.quotaBytes = 4096;
@@ -264,7 +264,7 @@ TEST_F(BucketSpecTest, InvalidZeroRetryOnConflict)
     expectRejected({spec}, field("onConflict.retryOnConflict must be > 0 with ConflictPolicy::Retry"));
 }
 
-// E3c-1 I73: ConflictPolicy::Retry registers with retryOnConflict in [1, MAX_RETRY_ON_CONFLICT] (both bounds; 0 is
+// ConflictPolicy::Retry registers with retryOnConflict in [1, MAX_RETRY_ON_CONFLICT] (both bounds; 0 is
 // InvalidZeroRetryOnConflict) and 101 is refused naming the field. Mutant: the cap check removed.
 TEST_F(BucketSpecTest, RetryConflictPolicyRegisters)
 {
@@ -288,7 +288,7 @@ TEST_F(BucketSpecTest, RetryConflictPolicyRegisters)
     EXPECT_EQ(refused.value, nullptr);
 }
 
-// E3c-2 (I79): the bulk sender honours `ordered`, so the refusal of E3b-2 (G-diff obj. 2) is lifted: an ordered bucket
+// The bulk sender honours `ordered`, so no refusal applies: an ordered bucket
 // registers and gets its writer, and every other rule still applies to it (an ordered spec with a bad field is
 // refused naming that field, and takes no consumer name).
 TEST_F(BucketSpecTest, OrderedRegisters)
@@ -344,7 +344,7 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
     // ordered = true registers (OrderedRegisters); Retry registers (RetryConflictPolicyRegisters).
     edge.onConflict.kind = ConflictPolicy::Kind::Success;
     edge.onConflict.retryOnConflict = 0;                             // retryOnConflict is ignored without Retry.
-    EXPECT_EQ(BucketSpec {}.onAmbiguous5xx, AmbiguousPolicy::Retry); // I105: the default keeps resending.
+    EXPECT_EQ(BucketSpec {}.onAmbiguous5xx, AmbiguousPolicy::Retry); // The default keeps resending.
     edge.onAmbiguous5xx = AmbiguousPolicy::Fail;
 
     auto result = m_ref.client("valid", {valid(), blocking, edge});
@@ -360,7 +360,7 @@ TEST_F(BucketSpecTest, ValidSpecAccepted)
 
 TEST_F(BucketSpecTest, WriterSubmitResolvesThroughTheSender)
 {
-    // E3b-2: the production sink is the bulk sender. A fake indexer (green health, every `_bulk` op created) replaces
+    // The production sink is the bulk sender. A fake indexer (green health, every `_bulk` op created) replaces
     // the fixture's unreachable host.
     auto bulk = std::make_shared<indexer_client::testing::BulkResponder>();
     indexer_client::testing::FakeIndexer fake;
@@ -407,7 +407,7 @@ TEST_F(BucketSpecTest, WriterSubmitResolvesThroughTheSender)
     ASSERT_EQ(bulk->received()[0].size(), 1u);
     EXPECT_EQ(bulk->received()[0][0].id, "1");
 
-    // E3c-1: a group's op goes through the same sender; its ticket completes with the item's result. E3c-2:
+    // A group's op goes through the same sender; its ticket completes with the item's result.
     // cancel(tag) reaches the bucket (nothing of the tag left: a ready success; the empty tag: InvalidArgument).
     auto group = writer->group();
     op.id = "2";

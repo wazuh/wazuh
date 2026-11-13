@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_BULK_FIXTURE_HPP
 #define _INDEXER_CLIENT_TESTS_BULK_FIXTURE_HPP
 
-// End-to-end fixture of the bulk sender (stage E3b-2): one fake per node answering `/_cluster/health` (green by
+// End-to-end fixture of the bulk sender: one fake per node answering `/_cluster/health` (green by
 // default) and `_bulk` through a BulkResponder, the runtime started on those hosts with the probe running, and the
 // WriteTest helpers (clients, buckets, stats, the drain check of the TearDown) on top. The production sink stays in
 // place.

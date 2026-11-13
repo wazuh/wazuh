@@ -16,7 +16,7 @@
 // Test-only (INDEXER_CLIENT_TESTING): installs the hooks behind detail::seams and reads the test registry. Each
 // setter replaces the previous hook; an empty function restores the default (no-op / identity). resetAll() is meant
 // for test fixtures' TearDown. A seam with no hook installed costs one acquire load of its slot's flag: it takes no
-// lock, so the seams on the hot paths add no synchronization between producers (G-diff E6e r2 P3-1).
+// lock, so the seams on the hot paths add no synchronization between producers.
 
 #include <cstddef>
 #include <cstdint>
@@ -35,43 +35,44 @@ namespace indexer_client::testing_hooks
     void setBeforeRetryAfterParse(std::function<void()> hook);
     void setOnTimerHandler(std::function<void(std::uint64_t, std::uint64_t)> hook);
     void setOpenSocket(std::function<std::optional<int>()> hook);
-    /// E3b-2: the bulk sender's submit is refused (InvalidState) while the hook returns true.
+    /// The bulk sender's submit is refused (InvalidState) while the hook returns true.
     void setRefuseSubmit(std::function<bool()> hook);
-    /// G-diff E3b-2: runs in every bulk completion after the slot was released; a throw exercises its fallback.
+    /// Runs in every bulk completion after the slot was released; a throw exercises its fallback.
     void setBeforeCompletion(std::function<void()> hook);
-    /// E3c-2: runs in the bulk sender's pool task before the cancelled ops are dropped and the body assembled.
+    /// Runs in the bulk sender's pool task before the cancelled ops are dropped and the body assembled.
     void setBeforeAssembly(std::function<void()> hook);
-    /// E4a: the DBQ/UBQ conflict-retry base (I86) in milliseconds; nullopt restores the v1 3 s.
+    /// The DBQ/UBQ conflict-retry base in milliseconds; nullopt restores the v1 3 s.
     void setQueryConflictBaseMs(std::optional<std::int64_t> milliseconds);
-    /// G-diff E3b-2: runs in the bulk sender's NodeSet hook before the Down mirror is refreshed; blocking delays it.
+    /// Runs in the bulk sender's NodeSet hook before the Down mirror is refreshed; blocking delays it.
     void setBeforeSenderMirror(std::function<void()> hook);
-    /// G-diff E5b: runs in every callback completion's cutoff gate, under the client's completionsMutex, between the
+    /// Runs in every callback completion's cutoff gate, under the client's completionsMutex, between the
     /// cutoff comparison and the started/skipped mark; blocking holds that mutex (awaitClosed waits for it).
     void setInCallbackGate(std::function<void()> hook);
-    /// G-diff E5b: runs in WritePath::resolve right after the op's payload was released (no lock held).
+    /// Runs in WritePath::resolve right after the op's payload was released (no lock held).
     void setAfterPayloadReleased(std::function<void()> hook);
-    /// E6e (A): runs in WritePath::resolveBulk before each chunk is settled; a throw exercises its RAII settlement.
+    /// Runs in WritePath::resolveBulk before each chunk is settled; a throw exercises its RAII settlement.
     void setMidBulkSettle(std::function<void()> hook);
-    /// E6e (A): runs in Bucket::settleBulk before each op is counted, under the bucket mutex; a throw exercises its
+    /// Runs in Bucket::settleBulk before each op is counted, under the bucket mutex; a throw exercises its
     /// catch and resolveBulk's per-op fallback.
     void setInSettleBulk(std::function<void()> hook);
-    /// E6e (B): runs in Bucket::stage between the relaxed check of `closing` and the stripe's mutex (PostRacingSeal).
+    /// Runs in Bucket::stage between the relaxed check of `closing` and the stripe's mutex (PostRacingSeal).
     void setBeforeStagePush(std::function<void()> hook);
-    /// E6e (D116): runs in Bucket::stage between a stripe's store of `oldest` (empty -> non-empty) and the load of the
+    /// Runs in Bucket::stage between a stripe's store of `oldest` (empty -> non-empty) and the load of the
     /// armed deadline, with that stripe's mutex held (a loop-0 pass may run meanwhile unless that stripe is due).
     void setBeforeArmedDueLoad(std::function<void()> hook);
-    /// E6e (D116): runs on loop 0 in the scheduler's armTimer, between the bucket's nextDue read and the publish of the
+    /// Runs on loop 0 in the scheduler's armTimer, between the bucket's nextDue read and the publish of the
     /// deadline armed for it; blocking holds loop 0 there.
     void setBeforePublishArmedDue(std::function<void()> hook);
-    /// E6e (B): runs in the stripe flush before each op is admitted and before a drop's interval keys, both mutexes
+    /// Runs in the stripe flush before each op is admitted and before a drop's interval keys, both mutexes
     /// held; a throw keeps that op and the rest staged, counted nowhere.
     void setMidAdmitBatch(std::function<void()> hook);
-    /// E11e: the system CA stores tried, in order, when no CA is configured; nullopt restores the real list.
+    /// The system CA stores tried, in order, when no CA is configured; nullopt restores the real list.
     void setSystemCaPaths(std::optional<std::vector<std::string>> paths);
-    /// E3b-1: capacity of the calling thread's bulk-response parser (0 before its first use); I65 caps it at 4 MiB.
+    /// Capacity of the calling thread's bulk-response parser (0 before its first use); the response classifier caps it
+    /// at 4 MiB.
     std::size_t parserCapacity();
     /// false makes RuntimeOwner::start create the NodeSet and the Prober without starting the probe (no round, no
-    /// timer; probeNow() still arms a single round): for the suites that count the transport's own traffic (E2a).
+    /// timer; probeNow() still arms a single round): for the suites that count the transport's own traffic.
     /// Read once per start(); resetAll() restores the default, true.
     void setProbeAutoStart(bool enabled);
     /// Clears every hook above and restores the probe's auto start.
@@ -84,9 +85,9 @@ namespace indexer_client::testing_hooks
     /// Posts refused because their loop had closed, since process start.
     std::uint64_t postsRejected();
 
-    /// Issue 15 (D64): internal invariants found broken (each logged at ERROR, none aborted), since process start.
+    /// Internal invariants found broken (each logged at ERROR, none aborted), since process start.
     std::uint64_t internalErrors();
-    /// Issue 15 (D64): added to encode()'s precomputed size of every line it builds (0 restores it), so a case can make
+    /// Added to encode()'s precomputed size of every line it builds (0 restores it), so a case can make
     /// that size and the encoded bytes disagree.
     void setEncodeSizeSkew(std::size_t bytes);
 } // namespace indexer_client::testing_hooks

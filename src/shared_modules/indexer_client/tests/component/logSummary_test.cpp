@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Edge-triggered and summarized logging (plan-E5c §Tests, CA-16, RF-16, I102, I104; contract runtime/logSummary.hpp):
+// Edge-triggered and summarized logging (contract runtime/logSummary.hpp):
 // a bounded summary of 10 000 failures, the quota edges with their hysteresis (per bucket and for the global cap), the
 // callback overruns, the timer and the final summary at shutdown, and the WARN of an abandoned PIT delete. Every
 // summary is forced with detail::testing::flushLogSummary() except where the timer itself is under test.
@@ -127,7 +127,7 @@ protected:
     void SetUp() override
     {
         WriteTest::SetUp();
-        indexer_client::setLogFunction(m_logs.function()); // Valid only while no runtime runs (I56).
+        indexer_client::setLogFunction(m_logs.function()); // Valid only while no runtime runs.
     }
 
     void TearDown() override
@@ -163,7 +163,7 @@ protected:
     }
 };
 
-// CA-16 (TenThousandFailedItemsBoundedLog †): 10 000 ops failed over 12 itemErrorTypes, each reason carrying a
+// TenThousandFailedItemsBoundedLog: 10 000 ops failed over 12 itemErrorTypes, each reason carrying a
 // document, between two flushLogSummary(): per bucket at most 2 lines at INFO or above (one WARN with 8 keys plus
 // `other`, one INFO with the totals), none with a document or a reason; one sample at DEBUG, truncated to 256 bytes.
 // Mutant: one line per key.
@@ -285,7 +285,7 @@ TEST_F(LogSummaryTest, SampleReasonControlBytesEscaped)
               R"(bad value [line one\nERROR forged line]\r\tend\x01\x7f\x00tail)");
 }
 
-// CA-16, obj. 1, N22 (QuotaEdgesWithHysteresis †): 85 % (WARN 80), 82 % (nothing), a submit refused QueueFull (WARN
+// QuotaEdgesWithHysteresis: 85 % (WARN 80), 82 % (nothing), a submit refused QueueFull (WARN
 // full), 95 % (nothing), a second refusal (nothing), 65 % (re-arm, nothing), 85 % (WARN 80 again), a refusal (WARN full
 // again: the full edge re-armed too); a QueueFull storm at a low charge logs a single full WARN. The same sequence for
 // the global cap with two buckets whose quotas each cover the cap: a refusal of the cap never fires a bucket's «no
@@ -348,7 +348,7 @@ TEST_F(LogSummaryTest, QuotaEdgesWithHysteresis)
         EXPECT_EQ(writer->submit(big()).cause, ic::Cause::QueueFull);
         EXPECT_EQ(m_logs.count(WARN, full), 2u) << "refused at 85 % after the re-arm";
 
-        // N22: a storm of refusals at 10 % never re-arms: one full WARN.
+        // A storm of refusals at 10 % never re-arms: one full WARN.
         auto storm = c->writer("s");
         ASSERT_NO_FATAL_FAILURE(submitN(*storm, 10));
         for (int i = 0; i < 5; ++i)
@@ -410,7 +410,7 @@ TEST_F(LogSummaryTest, QuotaEdgesWithHysteresis)
     }
 }
 
-// CA-16 (OverrunSummarized): 50 callbacks of twice the budget: one WARN for the client and the interval, with 50 and
+// OverrunSummarized: 50 callbacks of twice the budget: one WARN for the client and the interval, with 50 and
 // the slowest duration; none for a client without overruns, none in the next interval.
 TEST_F(LogSummaryTest, OverrunSummarized)
 {
@@ -450,7 +450,7 @@ TEST_F(LogSummaryTest, OverrunSummarized)
     EXPECT_EQ(m_logs.atLeast(WARN, "callbacks exceeded").size(), 1u) << "a delta per interval";
 }
 
-// CA-16 (SummaryTimerFiresAndFlushesAtStop): with log_summary_interval_ms = 1000 the timer summarizes within 3 s on its
+// SummaryTimerFiresAndFlushesAtStop: with log_summary_interval_ms = 1000 the timer summarizes within 3 s on its
 // own; three failures resolved and one op still unresolved at shutdown() are all summarized, the unresolved one by the
 // last summary (it runs after the shutdown sweep: `1 dropped`, key `shutdown`), and the seam is refused afterwards.
 // No clock premise: the timer may or may not run between the resolves and shutdown(), so the oracle adds the lines up.
@@ -513,7 +513,7 @@ TEST_F(LogSummaryTest, SummaryTimerFiresAndFlushesAtStop)
     EXPECT_FALSE(ic::detail::testing::flushLogSummary());
 }
 
-// D133 (ClosedDuringShutdownInLastSummary): the close order of modulesd (client.hpp: beginShutdown, then each consumer
+// ClosedDuringShutdownInLastSummary: the close order of modulesd (client.hpp: beginShutdown, then each consumer
 // requestClose()s, awaitClosed()s and drops its Client, then shutdown()) still puts what that close dropped in the last
 // summary: one op held by the sink (Dropped(Shutdown) by the sweep) and two still pending (Dropped(ClientClosed)). The
 // consumer name is released by awaitClosed as before (a new client may take it). Mutant: releaseClientName without the
@@ -570,7 +570,7 @@ protected:
     }
 };
 
-// I104 (PitAbandonedDeleteWarns): a PIT whose DELETE is confirmed logs nothing; one whose DELETE expires with the
+// PitAbandonedDeleteWarns: a PIT whose DELETE is confirmed logs nothing; one whose DELETE expires with the
 // indexer down (keep_alive 1 s, before the shutdown) logs one WARN with the id truncated to 16 bytes.
 TEST_F(LogSummaryPitTest, PitAbandonedDeleteWarns)
 {
@@ -617,7 +617,7 @@ TEST_F(LogSummaryPitTest, PitAbandonedDeleteWarns)
     EXPECT_EQ(m_logs.atLeast(WARN, gaveUp).size(), 1u) << "one line per expiry";
 }
 
-// Obj. 4 of the G-diff (PitDeleteGivenUpAtShutdownLogged): a PIT still open at shutdown() whose DELETE the indexer
+// PitDeleteGivenUpAtShutdownLogged: a PIT still open at shutdown() whose DELETE the indexer
 // holds; the drain gives it up at its end and the last summary, which runs after the drain, logs it.
 TEST_F(LogSummaryPitTest, PitDeleteGivenUpAtShutdownLogged)
 {

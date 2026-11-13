@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Credentials of the transport (plan 18, plan-E2a-2 §Tests: RF-19, I42, I55): read once through
+// Credentials of the transport: read once through
 // IConfigSource::credentials() in RuntimeOwner::start, copied, and sent on every request exactly as given.
 
 #include <map>
@@ -94,7 +94,7 @@ protected:
     void SetUp() override
     {
         indexer_client::testing_hooks::resetAll();
-        // The health probe would add its own requests to the traffic these cases count (E2b).
+        // The health probe would add its own requests to the traffic these cases count.
         indexer_client::testing_hooks::setProbeAutoStart(false);
     }
 
@@ -135,7 +135,7 @@ protected:
     }
 };
 
-// RF-19, I42: each runtime sends the pair its own source gave at start, exactly; a restart does not keep the old one.
+// Each runtime sends the pair its own source gave at start, exactly; a restart does not keep the old one.
 TEST_F(TransportCredentialsTest, CredentialsExactValueTwoPairs)
 {
     FakeIndexer fake;
@@ -161,7 +161,7 @@ TEST_F(TransportCredentialsTest, CredentialsExactValueTwoPairs)
     }
 }
 
-// I55: separate USERNAME/PASSWORD: a ':' and UTF-8 in the password arrive byte for byte (over https).
+// Separate USERNAME/PASSWORD: a ':' and UTF-8 in the password arrive byte for byte (over https).
 TEST_F(TransportCredentialsTest, CredentialsPasswordWithColonAndUtf8)
 {
     TlsMaterialFactory material;
@@ -183,7 +183,7 @@ TEST_F(TransportCredentialsTest, CredentialsPasswordWithColonAndUtf8)
     EXPECT_EQ(indexer_client::RuntimeOwner::shutdown(), indexer_client::Cause::None);
 }
 
-// I42: the runtime keeps its own copy; the source may be gone after start.
+// The runtime keeps its own copy; the source may be gone after start.
 TEST_F(TransportCredentialsTest, CredentialsSurviveSourceDestroyed)
 {
     FakeIndexer fake;

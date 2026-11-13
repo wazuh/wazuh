@@ -24,7 +24,7 @@ public:
     virtual void index(const std::string& data) = 0;
 
     /**
-     * @brief Index the raw event, moving it into the operation (no copy, I196).
+     * @brief Index the raw event, moving it into the operation (no copy).
      *
      * @param data The raw event (moved).
      */

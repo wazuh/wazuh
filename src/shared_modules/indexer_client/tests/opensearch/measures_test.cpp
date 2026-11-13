@@ -10,8 +10,8 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Informative measures against a real OpenSearch: response sizes with and without gzip (D41, P23), steady bulk latency
-// (D54, P24); and the fail-fast of the gate (RNF-5).
+// Informative measures against a real OpenSearch: response sizes with and without gzip, steady bulk latency
+// and the fail-fast of the gate.
 
 #include <atomic>
 #include <cmath>

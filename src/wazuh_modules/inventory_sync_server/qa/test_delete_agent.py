@@ -202,7 +202,7 @@ def test_a_report_in_flight_does_not_survive_the_deletion(client, cluster, index
 
 
 def test_delete_with_absent_indices(client, indexer, agent_id):
-    """CA-E7c-1/-2 against a real indexer: an agent that never reported has neither `wazuh-agent-config`
+    """Against a real indexer: an agent that never reported has neither `wazuh-agent-config`
     nor `wazuh-agent-stats`, so the by-id deletes answer an item `index_not_found_exception` -- which the
     deletion counts as success, like the by-query half's 404 -- and the route answers 200, not a 500 the
     dispatcher would retry forever. Repeating it is just as free, and it never creates the indices."""

@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_PROBER_HPP
 #define _INDEXER_CLIENT_PROBER_HPP
 
-// The health probe (stage E2b, plan 18 I57): one `GET {host}/_cluster/health/wazuh-*,.wazuh-*` per node and round,
+// The health probe: one `GET {host}/_cluster/health/wazuh-*,.wazuh-*` per node and round,
 // through the transport, armed by a timer that lives on network loop 0 and is touched only from that loop. A round is
 // applied to the NodeSet only once its K results are in; rounds never overlap. No asio type appears in this header.
 
@@ -85,7 +85,7 @@ namespace indexer_client::detail
                                               Duration timeout);
     };
 
-    /// The running runtime's NodeSet / Prober, or null. For internal users (E3b, E4) and the component tests.
+    /// The running runtime's NodeSet / Prober, or null. For internal users and the component tests.
     std::shared_ptr<NodeSet> runtimeNodeSet();
     std::shared_ptr<Prober> runtimeProber();
 

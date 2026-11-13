@@ -13,10 +13,9 @@
 #ifndef _INDEXER_CLIENT_WRITE_ENCODING_HPP
 #define _INDEXER_CLIENT_WRITE_ENCODING_HPP
 
-// Per-operation NDJSON encoding (stage E3a, plan 18 I61; E3c-1 I73 adds the conflict policy and ReplacePreserving). An
+// Per-operation NDJSON encoding (including the conflict policy and ReplacePreserving). An
 // operation is validated and encoded once, in submit (or Group::add), on the producer's thread; its exact wire size is
-// what the bucket charges (CA-12) and the bulk carries without re-encoding. Normative contract:
-// anexos/e2a-1/contrato-transport.md § Escritura; this header is normative for I73.
+// what the bucket charges and the bulk carries without re-encoding. This header is normative.
 
 #include <atomic>
 #include <cstddef>
@@ -33,25 +32,25 @@ namespace indexer_client::detail::write
     /// The v1 allowlist for index names (indexerConnectorSyncImpl.hpp:72-88; the v1 was removed in 5.x).
     bool isSafeIndexName(std::string_view index) noexcept;
 
-    /// Upper bound of ConflictPolicy::retryOnConflict (I73), for the op's policy and the bucket's.
+    /// Upper bound of ConflictPolicy::retryOnConflict, for the op's policy and the bucket's.
     constexpr std::uint32_t MAX_RETRY_ON_CONFLICT = 100;
 
-    /// Upper bound of Op::tag in bytes (E3c-2 I80). The tag is not part of the wire lines.
+    /// Upper bound of Op::tag in bytes. The tag is not part of the wire lines.
     constexpr std::size_t MAX_TAG_SIZE = 256;
 
-    /// The closed scripts of WriteMode::ReplacePreserving (I28, I73). Constant sources: OpenSearch caches a compiled
+    /// The closed scripts of WriteMode::ReplacePreserving. Constant sources: OpenSearch caches a compiled
     /// inline script per source (and rate-limits compilations), so the paths travel in `params.paths`, never in the
-    /// source. Exported for the frozen vectors of writeEncoding_test.cpp and for E6's run against a real OpenSearch
-    /// (D45). Semantics, in this order:
+    /// source. Exported for the frozen vectors of writeEncoding_test.cpp and for the run against a real OpenSearch.
+    /// Semantics, in this order:
     ///   1. (versioned only) the version guard of IndexVersionedScript first: an older doc_version ⇒ ctx.op = 'none'
-    ///      (noop, no WARN: #40180) and nothing else runs.
+    ///      (noop, no WARN) and nothing else runs.
     ///   2. Each path of params.paths is looked up in the stored ctx._source walking only through `instanceof Map` and
     ///      `containsKey`: a missing key or a non-Map intermediate means "absent"; the walk never throws.
     ///   3. ctx._source = new HashMap(params.doc): the agent's document replaces the stored one (fields it no longer
     ///      sends disappear); params.doc itself is never mutated.
     ///   4. Every present path is restored: each intermediate map on its way is copied (new HashMap of the existing
     ///      Map, or a new empty one when absent or not a Map) before the put, and the old value wins over the agent's
-    ///      at that path (user wins, #37845). An absent path leaves the agent's value (or nothing) in place.
+    ///      at that path (user wins). An absent path leaves the agent's value (or nothing) in place.
     ///   With scripted_upsert a missing document runs the script on the upsert (the same document): nothing is
     ///   restored that was not already there.
     inline constexpr std::string_view PRESERVE_SOURCE =
@@ -76,7 +75,7 @@ namespace indexer_client::detail::write
         "cur.put(p[last], k[1]); } "
         "} else { ctx.op = 'none' }";
 
-    /// E6e (D, I125): the action lines of the kinds without `_id` (IndexAutoId, IndexDataStream), which depend only on
+    /// The action lines of the kinds without `_id` (IndexAutoId, IndexDataStream), which depend only on
     /// kind and index, shared by every op of the write path that owns the table (WritePath::heads()). Append-only, at
     /// most CAPACITY entries in fixed slots (a line never moves and is never freed before the table: an op holds a
     /// plain pointer to it, no reference count). A full table refuses new entries and the op builds its own line. The
@@ -134,15 +133,15 @@ namespace indexer_client::detail::write
         std::atomic<std::uint64_t> m_appendLocks {0}; ///< Takes of m_appendMutex (written under it).
     };
 
-    /// The wire lines of one op (I121): the action line (and, for the update kinds and Delete, every line) in `head`
-    /// or, for IndexAutoId and IndexDataStream given a HeadTable, in `cachedHead` (E6d I125, E6e D: the table's line
+    /// The wire lines of one op: the action line (and, for the update kinds and Delete, every line) in `head`
+    /// or, for IndexAutoId and IndexDataStream given a HeadTable, in `cachedHead` (the table's line
     /// shared by every op of that kind and index; `head` then stays empty), and `body` the moved-in document of the
     /// kinds that carry it verbatim (empty otherwise). On the wire the op is headView() + `body` + '\n' (the '\n' only
     /// when `body` is not empty).
     struct Encoded final
     {
         std::string head;
-        const std::string* cachedHead {nullptr}; ///< A line of the HeadTable given to encode() (E6e D), or null.
+        const std::string* cachedHead {nullptr}; ///< A line of the HeadTable given to encode(), or null.
         std::string body;
 
         /// The cached head when there is one, else `head`. Every reader of the head goes through it.
@@ -151,7 +150,7 @@ namespace indexer_client::detail::write
             return cachedHead ? std::string_view(*cachedHead) : std::string_view(head);
         }
         std::uint64_t wire() const noexcept;
-        /// I124b: the bytes charged against the quota: wire() plus the heap slack of `body` (capacity - size when the
+        /// The bytes charged against the quota: wire() plus the heap slack of `body` (capacity - size when the
         /// body lives on the heap; 0 for an empty or SSO body). `head` is built with an exact reserve; a shared head
         /// counts in wire() of every op that carries it, never apart.
         std::uint64_t charge() const noexcept;
@@ -164,7 +163,7 @@ namespace indexer_client::detail::write
     void appendWire(std::string& out, std::string_view head, const std::string& body);
     void appendWire(std::string& out, const Encoded& encoded);
 
-    /// Validates `op` (RF-4, I61, I73) against its effective conflict policy (`op.onConflict` when set, else the
+    /// Validates `op` against its effective conflict policy (`op.onConflict` when set, else the
     /// bucket's; the caller resolves it) and returns its NDJSON lines, each ending in '\n': the action line and, for
     /// every kind but Delete, the body line. Byte for byte (appendWire of the result):
     ///   Index                {"index":{"_index":"<i>","_id":"<id>"}}\n<body>\n
@@ -186,15 +185,15 @@ namespace indexer_client::detail::write
     /// create or delete line with it is a 400 for the whole request); with Success the line is today's (v1 parity).
     /// <P> = the preserved paths in the given order, each as an array of its segments: [["case"],["a","b"]] (the
     /// segment alphabet needs no escaping). `_id` is escaped as the v1 escapes it. The result splits those bytes in
-    /// two (I121): for Index (Replace) `head` is the action line with its '\n' (built with an exact reserve); for
+    /// two: for Index (Replace) `head` is the action line with its '\n' (built with an exact reserve); for
     /// IndexAutoId and IndexDataStream, given a HeadTable, that line (it depends only on kind and index) is
-    /// `cachedHead`, taken from the per-thread cache over the table (E6d I125, E6e D; see below): on a hit (same table,
+    /// `cachedHead`, taken from the per-thread cache over the table (see below): on a hit (same table,
     /// kind, index equal byte for byte) neither isSafeIndexName runs nor a line is built; on a miss the index is
     /// validated as always and, once the op is valid, the line is found or interned (an invalid index never enters
     /// the table nor the cache). For those three kinds `body` is `op.body`
     /// itself, moved in with its buffer and capacity, never copied nor
     /// re-reserved; for the update kinds and Delete `head` holds every line (the update kinds copy the document twice,
-    /// which is their wire format, I71) and `body` is empty. On success `op.body` is left empty (moved from, or its
+    /// which is their wire format) and `body` is empty. On success `op.body` is left empty (moved from, or its
     /// memory freed for the update kinds); the rest of `op` is not consumed. Failures are Cause::InvalidArgument with
     /// the field first in `reason`
     /// ("index: ...", "id: ...", "version: ...", "body: ...", "mode: ...", "onConflict.retryOnConflict: ..."):
@@ -204,25 +203,25 @@ namespace indexer_client::detail::write
     ///     '\n' in it for the kinds with a body (the '\n' is not searched with `trustedBody`,
     ///     BucketSpec::trustedBodies: the producer guarantees compact JSON and a stray '\n' fails that bulk with 400),
     ///     a non-empty body for Delete;
-    ///   - `tag` (E3c-2 I80) longer than MAX_TAG_SIZE or with a byte below 0x20 or 0x7f ("tag: ...");
+    ///   - `tag` longer than MAX_TAG_SIZE or with a byte below 0x20 or 0x7f ("tag: ...");
     ///   - effective Retry with retryOnConflict 0 or > MAX_RETRY_ON_CONFLICT;
-    ///   - ReplacePreserving with a kind other than Index or IndexVersionedScript (I72); preservedPaths with Replace;
+    ///   - ReplacePreserving with a kind other than Index or IndexVersionedScript; preservedPaths with Replace;
     ///     with ReplacePreserving: 0 or more than 16 paths, a path of 0 or more than 8 segments, a segment empty,
     ///     longer than 64 or outside [A-Za-z0-9_@-], two equal paths or one a segment prefix of another, and with
     ///     IndexVersionedScript `state`, `state.document_version` or a path under it (it would defeat the guard).
     /// A per-op Retry on Index/IndexAutoId/IndexDataStream/Delete is accepted and only changes how a 409 item is
-    /// treated (futile for `create`: its 409 means "exists"). One failure is not the caller's (issue 15, D64):
+    /// treated (futile for `create`: its 409 means "exists"). One failure is not the caller's:
     /// InvalidState "internal error: ..." when the precomputed size and the encoded lines disagree (a library bug,
     /// logged at ERROR and counted by detail::internalError; the callers count it with the bucket's InvalidArgument
     /// refusals, as the op never entered the bucket). On failure `op` is untouched.
-    /// E6e (D): with `heads`, the line of IndexAutoId / IndexDataStream comes from that table through a per-thread
+    /// With `heads`, the line of IndexAutoId / IndexDataStream comes from that table through a per-thread
     /// cache of THREAD_CACHE entries keyed by (heads->generation(), kind, index) — a hit validates neither the index
     /// nor builds a line; a miss validates as always, then finds or interns the line in the table (a full table: the op
     /// keeps its own `head`) — and `cachedHead` points at it. Without `heads` every op builds its own `head`.
     Outcome<Encoded>
     encode(Op&& op, const ConflictPolicy& effective, bool trustedBody = false, HeadTable* heads = nullptr);
 
-    /// E6e (D): entries of the per-thread cache of encode() (engine workers alternate the raw and the events index,
+    /// Entries of the per-thread cache of encode() (engine workers alternate the raw and the events index,
     /// the latter templated per event).
     constexpr std::size_t THREAD_CACHE = 16;
 } // namespace indexer_client::detail::write

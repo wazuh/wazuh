@@ -34,7 +34,7 @@ namespace indexer_client
         struct ClientState;
     } // namespace detail
 
-    // Waits are always the library's own; from a runtime thread they return Cause::Reentrancy (RF-27).
+    // Waits are always the library's own; from a runtime thread they return Cause::Reentrancy.
 
     class INDEXER_CLIENT_API Ticket final
     {
@@ -76,18 +76,18 @@ namespace indexer_client
     {
         bool accepted {false};
         Cause cause {Cause::None};
-        std::string reason; ///< Why it was refused; InvalidArgument names the field first (D42).
+        std::string reason; ///< Why it was refused; InvalidArgument names the field first.
         Ticket ticket;
     };
 
-    /// What IWriter::post answers (I122): Submit without a ticket. An accepted op has no per-op result for its
+    /// What IWriter::post answers: Submit without a ticket. An accepted op has no per-op result for its
     /// producer; its final outcome is counted only in the bucket's snapshot and in CloseReport, and a DropNewest or
     /// DropOldest bucket may still resolve it Dropped(QueueFull) after `accepted` (see README § Public API).
     struct Posted final
     {
         bool accepted {false};
         Cause cause {Cause::None};
-        std::string reason; ///< Why it was refused; InvalidArgument names the field first (D42).
+        std::string reason; ///< Why it was refused; InvalidArgument names the field first.
     };
 
     class INDEXER_CLIENT_API Group final
@@ -102,7 +102,7 @@ namespace indexer_client
         ~Group(); ///< Without commit() the group is abandoned and its reservation released.
 
         /// Validates like Writer::submit and reserves the op's quota now with the bucket's overflow policy (DropNewest
-        /// and DropOldest behave like Reject, I70): None | InvalidArgument | PayloadTooLarge | GroupTooLarge |
+        /// and DropOldest behave like Reject): None | InvalidArgument | PayloadTooLarge | GroupTooLarge |
         /// QueueFull | SubmitTimeout | Reentrancy | ClientClosed | Shutdown | InvalidState (after commit()) |
         /// Unavailable (its client is gone; with the runtime shut down it answers the close cause). Not thread-safe.
         Cause add(Op op);
@@ -144,20 +144,20 @@ namespace indexer_client
         std::shared_ptr<detail::PitState> m_state;
     };
 
-    /// Abstract writer, for consumers' mocks (E7-E10).
+    /// Abstract writer, for consumers' mocks.
     class INDEXER_CLIENT_API IWriter
     {
     public:
         virtual ~IWriter() = default;
         virtual Submit submit(Op op, Callback cb = {}) = 0;
-        /// Fire-and-forget write for producers that never wait on a result (the engine, I120/I122): same validation,
+        /// Fire-and-forget write for producers that never wait on a result (the engine): same validation,
         /// admission, overflow and Reentrancy as submit, no Ticket and no callback.
         virtual Posted post(Op op) = 0;
         virtual Group group() = 0;
         virtual CancelTicket cancel(std::string_view tag) = 0;
     };
 
-    /// Abstract query interface, for consumers' mocks (E7-E10).
+    /// Abstract query interface, for consumers' mocks.
     class INDEXER_CLIENT_API IQuery
     {
     public:
@@ -185,7 +185,7 @@ namespace indexer_client
         virtual Outcome<bool> indexExists(std::string_view index, const QueryOptions& options, Deadline deadline) = 0;
     };
 
-    /// Abstract client, for consumers' mocks (E7-E10).
+    /// Abstract client, for consumers' mocks.
     class INDEXER_CLIENT_API IClient
     {
     public:
@@ -195,13 +195,13 @@ namespace indexer_client
         virtual HealthView health() const = 0;
         virtual void requestClose() = 0;
         virtual Outcome<CloseReport> awaitClosed(Deadline deadline) = 0;
-        /// The metrics of this consumer's buckets (I101, metrics.hpp); empty for an empty or moved-from client.
+        /// The metrics of this consumer's buckets (metrics.hpp); empty for an empty or moved-from client.
         virtual ClientMetrics metrics() const = 0;
     };
 
-    /// A consumer's handle on the process runtime (I37). Destruction = requestClose() + awaitClosed(shutdown deadline
+    /// A consumer's handle on the process runtime. Destruction = requestClose() + awaitClosed(shutdown deadline
     /// or the default); destroying it from a runtime thread is a usage error.
-    /// Close order of a process (E5b, I99): RuntimeOwner::beginShutdown(deadline) → each consumer's stop calls
+    /// Close order of a process: RuntimeOwner::beginShutdown(deadline) → each consumer's stop calls
     /// requestClose() first, joins its own threads, then awaitClosed(shutdownDeadline()) → RuntimeOwner::shutdown(),
     /// all on the owner thread. requestClose() only closes the admission: what is queued keeps draining until
     /// awaitClosed's deadline (minus twice callbackBudget); past it the rest is Dropped and no callback starts

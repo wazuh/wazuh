@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_WRITE_GROUP_HPP
 #define _INDEXER_CLIENT_WRITE_GROUP_HPP
 
-// Confirmable groups (stage E3c-1, plan 18 I74; RF-7, 03 §4.13). NORMATIVE — the plan points here for the detail.
+// Confirmable groups. NORMATIVE.
 //
 // States (GroupState::phase, under GroupState::groupMutex): Building → Committed → Done, or Building → Abandoned.
 // A Group is single-owner (not thread-safe); two groups may be built concurrently from different threads.
@@ -36,8 +36,8 @@
 // commit(): the first call only (else a ready ticket with InvalidState, as before). No op ⇒ Done at once, success with
 // an empty vector. Otherwise Committed: results.resize(n), remaining = n, then Bucket::enqueueGroup(ops, reservedBytes)
 // (one lock: out of `building`, a sequence number per op, flushSeq = the last, and a scheduler notification asked for
-// whatever the thresholds — the group leaves now, RF-7) and Scheduler::notify when it says so. A bucket closed by
-// then hands the ops back (I99, N2: the only reservation→append window left) and they resolve Dropped(cause) through
+// whatever the thresholds — the group leaves now) and Scheduler::notify when it says so. A bucket closed by
+// then hands the ops back (the only reservation→append window left) and they resolve Dropped(cause) through
 // WritePath::resolve. With the bucket gone (path alive) the global `building` and payload go back to the budget and
 // every op resolves Dropped(ClientClosed) through WritePath::resolve. The returned GroupTicket shares this GroupState.
 // A null state (a moved-from or default Group) yields a ready ticket with InvalidState ("empty group handle").
@@ -48,7 +48,7 @@
 // pool task (there is no callback). A requeued op (retry lane, split) is not resolved: the ticket waits for it.
 // Committed ops are ordinary pending ops (DropOldest may evict them; shutdown and close sweep them). Never resolve a
 // Building op through WritePath::resolve (its results vector is empty until commit: the result would be lost and the
-// ticket never complete); E3c-2's cancel(tag) must go through the abandon path or refuse Building groups.
+// ticket never complete); cancel(tag) must go through the abandon path or refuse Building groups.
 //
 // Reserves: payload is released per op by its resolution, as for submit. The reservesHeld × RESULT_RESERVE return
 // when the GroupState dies (last of Group, GroupTicket and the OpStates), through the weak path/bucket pair exactly
@@ -61,7 +61,7 @@
 // path nothing is returned (lifetime rule).
 //
 // Lock order: groupMutex is a leaf: never held while calling a bucket, the scheduler, WritePath or the budget, and
-// never taken under a bucket mutex. Re-entrancy (RF-27): a Block add from a runtime thread is Reentrancy
+// never taken under a bucket mutex. Re-entrancy: a Block add from a runtime thread is Reentrancy
 // (reserveForGroup); GroupTicket::wait from one is Reentrancy (tickets.cpp).
 
 #include <memory>

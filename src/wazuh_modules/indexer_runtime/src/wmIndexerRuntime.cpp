@@ -33,7 +33,7 @@
 
 namespace
 {
-    /// Tag of every line the library logs through modulesd (plan-E7a step 1).
+    /// Tag of every line the library logs through modulesd.
     constexpr const char* LOG_TAG = ARGV0 ":indexer-client";
 
     /// Same value as LOGLEVEL_ERROR (shared/include/defs.h), the level mtLoggingFunctionsWrapper logs as ERROR.
@@ -57,7 +57,7 @@ namespace
         va_end(args);
     }
 
-    /// The published RuntimeRef (I130). Heap-allocated and never deleted, on purpose: a module thread whose join
+    /// The published RuntimeRef. Heap-allocated and never deleted, on purpose: a module thread whose join
     /// expired in wm_shutdown_run() is still alive while exit() runs the static destructors, and may still call
     /// wmir_ref() or read the reference. A static object would be destroyed under it; this one stays readable and,
     /// after shutdown(), reports !valid().
@@ -75,7 +75,7 @@ namespace
         return credentials;
     }
 
-    /// Overwrites the string's bytes before clearing it (best effort, I55).
+    /// Overwrites the string's bytes before clearing it (best effort).
     void wipe(std::string& secret) noexcept
     {
         volatile char* bytes = secret.data();
@@ -255,7 +255,7 @@ extern "C"
 
             g_log.store(log);
 
-            // Only valid while no runtime runs (I56): installed before start().
+            // Only valid while no runtime runs: installed before start().
             if (log != nullptr)
             {
                 indexer_client::setLogFunction([log](const int level,
@@ -291,7 +291,7 @@ extern "C"
                 return -1;
             }
 
-            // KeyValueConfigSource takes its own copy and wipes it on destruction (I55); the local copy is wiped by
+            // KeyValueConfigSource takes its own copy and wipes it on destruction; the local copy is wiped by
             // the guard on every exit.
             auto source = indexer_client::KeyValueConfigSource::parse(s.optionsText, s.indexerJson, credentials);
             if (!source.ok())

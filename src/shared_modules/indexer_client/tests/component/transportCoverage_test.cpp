@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Coverage of the transport's small, deterministic corners (plan 18, E2a-1): cause names and attribution, admission
+// Coverage of the transport's small, deterministic corners: cause names and attribution, admission
 // refusals, the transport after stop, the Retry-After parser's rejection branches, request methods with and without a
 // body, and a Retry-After header too long to keep.
 
@@ -559,7 +559,7 @@ TEST(TransportCoverageTest, CurlCodeTable)
                       {CURLE_FAILED_INIT, false, TransportCause::LocalError},
                       {CURLE_OUT_OF_MEMORY, false, TransportCause::LocalError},
                       {CURLE_UNSUPPORTED_PROTOCOL, false, TransportCause::LocalError},
-                      // I54: the node's TLS (attributable) versus our own material (local).
+                      // The node's TLS (attributable) versus our own material (local).
                       {CURLE_SSL_CONNECT_ERROR, false, TransportCause::Tls},
                       {CURLE_PEER_FAILED_VERIFICATION, false, TransportCause::Tls},
                       {CURLE_PEER_FAILED_VERIFICATION, true, TransportCause::Tls},
@@ -581,7 +581,7 @@ TEST(TransportCoverageTest, CurlCodeTable)
         EXPECT_EQ(classifyCurlCode(row.code, row.capTripped), row.cause)
             << row.code << " cap=" << row.capTripped << " -> " << toString(classifyCurlCode(row.code, row.capTripped));
     }
-    // The numbers I54 names, pinned against curl's own constants.
+    // The curl error numbers behind the causes, pinned against curl's own constants.
     static_assert(CURLE_SSL_CONNECT_ERROR == 35 && CURLE_PEER_FAILED_VERIFICATION == 60 && CURLE_SSL_CLIENTCERT == 98);
     static_assert(CURLE_SSL_CERTPROBLEM == 58 && CURLE_SSL_CACERT_BADFILE == 77 && CURLE_SSL_ENGINE_NOTFOUND == 53 &&
                   CURLE_SSL_ENGINE_SETFAILED == 54 && CURLE_SSL_ENGINE_INITFAILED == 66 &&
@@ -653,7 +653,7 @@ TEST_F(TransportTest, LeastLoadedLoopWinsOverRoundRobin)
     FakeIndexer fake;
     Rule slow;
     slow.pathRegex = "/slow";
-    // D121: /slow is held until the test releases it, so it is in flight on loop 0 however long /b and /c take.
+    // /slow is held until the test releases it, so it is in flight on loop 0 however long /b and /c take.
     slow.hold = true;
     fake.addRule(slow);
     fake.start();

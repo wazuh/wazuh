@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The managed PIT end to end (plan 18, plan-E4b §Tests; contract: src/query/pit.hpp): creation, cursors with slice,
+// The managed PIT end to end (contract: src/query/pit.hpp): creation, cursors with slice,
 // Pit::search, retries, expiry and staleness over the real transport and the fake indexer's PitResponder. Oracles: the
 // recorded requests (method, path, query string, body), the Outcome (cause, reason), times and pitStats() deltas.
 // The registry's cases (slots, deletes, drain) are pitRegistry_test.cpp.
@@ -67,7 +67,7 @@ namespace
     }
 } // namespace
 
-// T7, CA-23: a 429 on page 3 is retried with the same pit.id and the same search_after (the same body); one creation;
+// A 429 on page 3 is retried with the same pit.id and the same search_after (the same body); one creation;
 // dropping the Pit deletes it once and open goes back to 0. Mutant: the retry re-reads search_after from the cursor
 // already advanced.
 TEST_F(PitTest, Pit429RetriesSamePage)
@@ -254,10 +254,10 @@ TEST_F(PitTest, TwoSlicesShareOnePit)
     EXPECT_EQ(d.deletesConfirmed, 1u);
 }
 
-// T19: slice 0 finished, slice 1 half way, slice 2 asleep in a 429's Retry-After (2 s). The fake expires the PIT: the
+// slice 0 finished, slice 1 half way, slice 2 asleep in a 429's Retry-After (2 s). The fake expires the PIT: the
 // next page of slice 1 ⇒ PitExpired (one 404); slice 2 wakes ⇒ PitExpired without a request; afterwards next() and
 // Pit::search ⇒ PitExpired without a request; expired + 1. Mutant: only the call that saw the expiry fails (it is not
-// recorded on the shared PIT). Two nodes share the PIT: the 429 parks the node that sent it for every caller (I109), so
+// recorded on the shared PIT). Two nodes share the PIT: the 429 parks the node that sent it for every caller, so
 // slice 1 sees the expiry on the other node while slice 2 sleeps.
 TEST_F(PitTest, PitExpiryReachesEveryCursor)
 {
@@ -333,7 +333,7 @@ TEST_F(PitTest, PitExpiryReachesEveryCursor)
     EXPECT_EQ(pitDelta(before, q::pitStats()).expired, 1u);
 }
 
-// T19, D52: a 200 whose _shards reports a failed shard of type search_context_missing_exception ⇒ PitExpired, never a
+// A 200 whose _shards reports a failed shard of type search_context_missing_exception ⇒ PitExpired, never a
 // page; every search URL carries allow_partial_search_results=false. Mutant: accept the partial 200 as a page.
 TEST_F(PitTest, PartialShardFailureIsNotAPage)
 {
@@ -376,7 +376,7 @@ TEST_F(PitTest, PartialShardFailureIsNotAPage)
     EXPECT_EQ(pitDelta(before, q::pitStats()).expired, 1u);
 }
 
-// I229: a PIT opened with PitOptions::wholeResponseCap takes pages up to maxResponseBytes (here 64000), not
+// A PIT opened with PitOptions::wholeResponseCap takes pages up to maxResponseBytes (here 64000), not
 // maxResponseBytes / QUERY_DOM_FACTOR (8000), on Pit::search and on its cursors; a PIT without it still refuses them
 // (ItemPermanent, responseTooLarge), and a page over maxResponseBytes is refused by both. Mutant: the classifier
 // ignores the option.
@@ -447,7 +447,7 @@ TEST_F(PitTest, WholeResponseCapPit)
     }
 }
 
-// T19: a page held by the fake is released after another cursor saw the expiry: that cursor gets PitExpired and
+// A page held by the fake is released after another cursor saw the expiry: that cursor gets PitExpired and
 // stale + 1. Mutant: accept the late page.
 TEST_F(PitTest, StaleGenerationDiscarded)
 {
@@ -455,7 +455,7 @@ TEST_F(PitTest, StaleGenerationDiscarded)
     pits->intercept(
         [](const PitRequestView& request, Rule& reply)
         {
-            // Slice 0's second page is answered (computed now, while the PIT lives) but held.
+            // slice 0's second page is answered (computed now, while the PIT lives) but held.
             if (request.call == PitCall::Search && request.body.is_object() && request.body.contains("slice") &&
                 request.body.at("slice").at("id") == 0 && request.body.contains("search_after"))
             {
@@ -491,7 +491,7 @@ TEST_F(PitTest, StaleGenerationDiscarded)
     EXPECT_EQ(d.expired, 1u);
 }
 
-// I90, obj. 4: keepAlive 1 s and a page every 600 ms for 3 s: never PitExpired (the fake expires a PIT by the
+// keepAlive 1 s and a page every 600 ms for 3 s: never PitExpired (the fake expires a PIT by the
 // keep_alive of its last request); every search carries pit.keep_alive. Mutant: no keep_alive in the searches.
 TEST_F(PitTest, KeepAliveRenewedByEachSearch)
 {
@@ -524,7 +524,7 @@ TEST_F(PitTest, KeepAliveRenewedByEachSearch)
     }
 }
 
-// I92: the first page carries track_total_hits: true and PitPage::total; the following ones search_after and no
+// The first page carries track_total_hits: true and PitPage::total; the following ones search_after and no
 // total; a short page is last; next() after last ⇒ Ok, empty, last, no request.
 TEST_F(PitTest, FirstPageCarriesTotal)
 {
@@ -618,7 +618,7 @@ TEST_F(PitTest, PitCreatePartialShardsRejectedAndDeleted)
     EXPECT_EQ(pits->alive(), 0u);
 }
 
-// I93: the request shapes. Creation: POST
+// The request shapes. Creation: POST
 // /a,b/_search/point_in_time?keep_alive=<ms>ms&allow_partial_pit_creation=false[&expand_wildcards=all], no body.
 // Search: POST /_search?allow_partial_search_results=false with pit {id, keep_alive}; an empty sort becomes
 // [{"_shard_doc":"asc"}] and a consumer sort is kept as given; Pit::search overwrites body.pit and keeps the rest; a
@@ -695,7 +695,7 @@ TEST_F(PitTest, PitRequestShapes)
     EXPECT_EQ(parsed(searches[3]).at("pit").at("id"), "pit-1-r1") << "the renewed id is used next";
 }
 
-// I93: invalid arguments ⇒ InvalidArgument naming the field and no request: keepAlive 0, index "a/b" (pit()); a
+// Invalid arguments ⇒ InvalidArgument naming the field and no request: keepAlive 0, index "a/b" (pit()); a
 // cursor with slice.id >= max, max 1 or pageSize 0 (its first next()).
 TEST_F(PitTest, PitRejectsBadArguments)
 {
@@ -736,7 +736,7 @@ TEST_F(PitTest, PitRejectsBadArguments)
     EXPECT_EQ(queries(*node).size(), 1u) << "only the valid creation";
 }
 
-// RF-27, I37: pit(), next() and search() from a runtime thread ⇒ Reentrancy; after requestClose() ⇒ ClientClosed;
+// pit(), next() and search() from a runtime thread ⇒ Reentrancy; after requestClose() ⇒ ClientClosed;
 // both without a request. A Pit that outlives the runtime is destroyed without a request (the shutdown drain already
 // deleted it) and answers Shutdown.
 TEST_F(PitTest, PitReentrancyAndClose)

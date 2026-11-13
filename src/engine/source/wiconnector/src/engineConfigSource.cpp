@@ -19,7 +19,7 @@ namespace
 constexpr std::string_view ENGINE_KEY_PREFIX {"analysisd."};
 constexpr std::string_view ENVIRONMENT_PREFIX {"WAZUH_"};
 
-/// A v1 key (seconds) that feeds its v2 equivalent (milliseconds) when the v2 key is not set (I192).
+/// A v1 key (seconds) that feeds its v2 equivalent (milliseconds) when the v2 key is not set.
 struct LegacyMapping
 {
     std::string_view v2Key;
@@ -142,7 +142,7 @@ std::optional<std::string> keyForEnvironmentName(std::string_view name)
     return key;
 }
 
-/// Environment first, then the internal options file (empty in standalone mode), else unset (I26, I191).
+/// Environment first, then the internal options file (empty in standalone mode), else unset.
 std::optional<std::string> lookupIn(const std::function<std::optional<std::string>(const std::string&)>& environment,
                                     const std::map<std::string, std::string>& fileOptions,
                                     std::string_view key)

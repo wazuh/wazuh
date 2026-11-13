@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Confirmable groups (plan-E3c-1 §Tests: CA-7, T17, I70, I74, D42; the contract is write/group.hpp): results in add
+// Confirmable groups (the contract is write/group.hpp): results in add
 // order once every op is resolved, reservations that never wait on a Building group, abandonment, GroupTooLarge, the
 // commit that flushes now, the overflow policies, close and shutdown, the empty commit and the counters. The WriteTest
 // cases run on the programmable sink (writeFixture.hpp); the BulkTest ones on the production sender against a fake
@@ -110,7 +110,7 @@ namespace
     }
 } // namespace
 
-// CA-7: a group of 100 ops in one `_bulk`; the fake rejects op 37 by mapping (400 mapper_parsing_exception) and answers
+// A group of 100 ops in one `_bulk`; the fake rejects op 37 by mapping (400 mapper_parsing_exception) and answers
 // the odd positions `updated`: 99 Ok and one Failed(ItemPermanent), each in its add position, once every op is
 // resolved. Mutant: the ticket completed before the last resolution.
 TEST_F(BulkTest, GroupHundredOneRejected)
@@ -165,7 +165,7 @@ TEST_F(BulkTest, GroupHundredOneRejected)
     expectInvariants(s);
 }
 
-// T17 (03 §4.13): two groups in Building from two threads, the quota for ~1.5 of them (3 charges; A holds 2, B 1). The
+// Two groups in Building from two threads, the quota for ~1.5 of them (3 charges; A holds 2, B 1). The
 // add that does not fit, from either, is QueueFull before blockTimeout/4 (the room is held by Building groups: never
 // waited on); once A is committed and resolved, B goes on. Mutant: waiting for a Building group (the building
 // condition removed).
@@ -247,7 +247,7 @@ TEST_F(WriteTest, TwoBuildingGroupsDoNotBlock)
     expectInvariants(s);
 }
 
-// G-diff E3c-1 obj. 2 (03 §4.13): a Block add waits for room held by ops already committed (not by a Building group).
+// A Block add waits for room held by ops already committed (not by a Building group).
 // Group A's 3 ops fill the quota and are committed and held by the sink; B's add from another thread is still waiting
 // after 200 ms (QueueFull would mean A's committed room was counted as Building), and gets in before blockTimeout/4
 // once A's ops resolve and its state dies. Mutants: heldByGroups always true; `m_building -= reserved` dropped from
@@ -300,7 +300,7 @@ TEST_F(WriteTest, GroupAddWaitsForCommittedRoom)
     expectInvariants(s);
 }
 
-// G-diff E3c-1 obj. 2: the other exit of the same wait: the committed room is never released, so B's add returns
+// The other exit of the same wait: the committed room is never released, so B's add returns
 // SubmitTimeout at blockTimeout (counted submitTimeout, nothing charged). Mutants: as GroupAddWaitsForCommittedRoom.
 TEST_F(WriteTest, GroupAddTimesOut)
 {
@@ -338,7 +338,7 @@ TEST_F(WriteTest, GroupAddTimesOut)
     ASSERT_TRUE(ticket->wait(in(5s)).ok());
 }
 
-// T17: a group destroyed without commit gives its whole reservation back at once: charge 0 (never wrapped), building 0
+// A group destroyed without commit gives its whole reservation back at once: charge 0 (never wrapped), building 0
 // (bucket and global), groupAbandoned and resolvedDropped counted, and a Block submit waiting for that room gets in.
 // Mutants: the reservation never returned; returned twice.
 TEST_F(WriteTest, AbandonedGroupReleases)
@@ -375,7 +375,7 @@ TEST_F(WriteTest, AbandonedGroupReleases)
     EXPECT_EQ(s.resolvedDropped, 2u);
     expectInvariants(s);
 
-    // The new op resolves Dropped(ClientClosed); its reserve goes with its Ticket (TearDown). I99: with no sink
+    // The new op resolves Dropped(ClientClosed); its reserve goes with its Ticket (TearDown). With no sink
     // capacity it stays queued until the sweep.
     sink->setCapacity(0);
     closeNow(*c);
@@ -386,7 +386,7 @@ TEST_F(WriteTest, AbandonedGroupReleases)
     expectInvariants(stats("b"));
 }
 
-// T17: what the group holds plus the next op above the quota is GroupTooLarge: nothing charged, counted
+// What the group holds plus the next op above the quota is GroupTooLarge: nothing charged, counted
 // rejectedGroupTooLarge (under `submitted`), the group goes on and its commit writes what was added. Mutants: the add
 // refused QueueFull; the add charged.
 TEST_F(WriteTest, GroupTooLarge)
@@ -422,7 +422,7 @@ TEST_F(WriteTest, GroupTooLarge)
     expectInvariants(s);
 }
 
-// I74 (RF-7): with maxAge 30 s, a high maxDocs and one plain op already pending, a group's commit makes the bucket
+// With maxAge 30 s, a high maxDocs and one plain op already pending, a group's commit makes the bucket
 // eligible now: one batch with the pending op and the group's leaves in < 1 s. Mutants: enqueueGroup asking for the
 // scheduler only when a threshold is crossed; no flushSeq.
 TEST_F(WriteTest, CommitFlushesNow)
@@ -451,7 +451,7 @@ TEST_F(WriteTest, CommitFlushesNow)
     expectInvariants(stats("b"));
 }
 
-// I74: an op of the group answered 409 under its own Retry policy, or 429 by item, goes back to the lane; the
+// An op of the group answered 409 under its own Retry policy, or 429 by item, goes back to the lane; the
 // GroupTicket waits for its resend (held by the fake: not ready meanwhile) and completes once, with every result in add
 // order. Mutant: the ticket completed when the batch is delivered (the requeued op counted as resolved).
 TEST_F(BulkTest, GroupItemRetryCompletesOnce)
@@ -510,7 +510,7 @@ TEST_F(BulkTest, GroupItemRetryCompletesOnce)
     expectInvariants(s);
 }
 
-// I74 (E3b-2 Split413): a group larger than what the node takes (413 above 2 ops) is split into halves until each is
+// Split413: a group larger than what the node takes (413 above 2 ops) is split into halves until each is
 // accepted; the ticket gets every result in add order (the fake answers op 3 `updated`, wherever its half lands).
 TEST_F(BulkTest, GroupAcrossSplit413)
 {
@@ -581,7 +581,7 @@ TEST_F(BulkTest, GroupAcrossSplit413)
     expectInvariants(stats("b"));
 }
 
-// I70: DropNewest and DropOldest buckets without room refuse a group's add QueueFull, like Reject: nothing is dropped
+// DropNewest and DropOldest buckets without room refuse a group's add QueueFull, like Reject: nothing is dropped
 // or evicted, the pending ops stay.
 TEST_F(WriteTest, GroupDropPoliciesRejectLikeReject)
 {
@@ -615,13 +615,13 @@ TEST_F(WriteTest, GroupDropPoliciesRejectLikeReject)
         expectInvariants(s);
         EXPECT_EQ(results->total(), 0u) << "nothing resolved";
     }
-    sink->setCapacity(0); // I99: the pending ops stay queued until the sweep.
+    sink->setCapacity(0); // The pending ops stay queued until the sweep.
     closeNow(*c);
     ASSERT_TRUE(results->waitTotal(4));
     EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), 4u);
 }
 
-// I74: an add after requestClose() is ClientClosed; a group built before the close and committed after it resolves
+// An add after requestClose() is ClientClosed; a group built before the close and committed after it resolves
 // every op Dropped(ClientClosed); after shutdown() the add is refused with the close cause and the commit drops
 // Dropped(Shutdown). Nothing stays charged.
 TEST_F(WriteTest, GroupAfterCloseAndShutdown)
@@ -666,7 +666,7 @@ TEST_F(WriteTest, GroupAfterCloseAndShutdown)
     expectInvariants(stats("b", "d"));
 }
 
-// G-diff E3c-1 obj. 1 (group.hpp, lifetime rule): a Group outlives RuntimeOwner::shutdown() while its Client lives and
+// Lifetime rule (group.hpp): a Group outlives RuntimeOwner::shutdown() while its Client lives and
 // no writer is held (the fixture lets go of the write path first, so the runtime owned it alone and its budget died
 // with it). The Building group's add is Shutdown, the committed-after-shutdown group resolves Dropped(Shutdown), and
 // both die without a bucket call. No sanitizer sees the old bug: make_shared keeps the WritePath's storage while a
@@ -705,7 +705,7 @@ TEST_F(WriteTest, GroupOutlivesRuntime)
     late.reset();
 }
 
-// G-diff E3c-1 obj. 5: the dead-bucket paths of the reserve ledger. A group is built, then its Client and writer die
+// The dead-bucket paths of the reserve ledger. A group is built, then its Client and writer die
 // with the Group alive (the bucket is gone, the write path is not): the whole reservation stays on the global budget;
 // the commit resolves every op Dropped(ClientClosed) and returns the payload and `building` at once, the reserves stay
 // with the shared group state and go back to the global budget (~GroupState with no bucket) when the ticket and the
@@ -756,7 +756,7 @@ TEST_F(WriteTest, GroupReservesReturnedWhenBucketDies)
     EXPECT_EQ(refused.reason, "empty group handle");
 }
 
-// I74: a commit without any accepted op is a ready success with an empty vector (also when every add was refused);
+// A commit without any accepted op is a ready success with an empty vector (also when every add was refused);
 // nothing is charged or sent and a second commit is InvalidState.
 TEST_F(WriteTest, EmptyCommit)
 {
@@ -787,7 +787,7 @@ TEST_F(WriteTest, EmptyCommit)
     expectInvariants(s);
 }
 
-// I74 (bucket.hpp): submitted = accepted + rejected* (+ invalidArgument) and accepted = resolved + retained +
+// Counters (bucket.hpp): submitted = accepted + rejected* (+ invalidArgument) and accepted = resolved + retained +
 // groupBuilding at every step of a group's life: adds, an InvalidArgument, a GroupTooLarge, the commit, the
 // resolution, and an abandoned group (groupAbandoned, resolvedDropped).
 TEST_F(WriteTest, GroupStatsInvariant)
@@ -844,7 +844,7 @@ TEST_F(WriteTest, GroupStatsInvariant)
     EXPECT_EQ(s.charge, 0u);
 }
 
-// D42: Group::lastAddReason() says why the last add was refused (InvalidArgument names the field first; QueueFull,
+// Group::lastAddReason() says why the last add was refused (InvalidArgument names the field first; QueueFull,
 // PayloadTooLarge, GroupTooLarge and InvalidState with a reason of their own) and is empty after an accepted add.
 TEST_F(WriteTest, GroupLastAddReason)
 {

@@ -59,8 +59,8 @@ namespace
         throw std::runtime_error {message};
     }
 
-    /// IContentIndexer over a host's indexer_client Client (I154). PITs are the library's: this adapter only maps the
-    /// opaque ContentPit id to its Pit handle; releasing the handle lets the library delete the PIT (I90).
+    /// IContentIndexer over a host's indexer_client Client. PITs are the library's: this adapter only maps the
+    /// opaque ContentPit id to its Pit handle; releasing the handle lets the library delete the PIT.
     class ClientIndexer final : public content_manager::IContentIndexer
     {
     public:
@@ -90,7 +90,7 @@ namespace
             indexer_client::PitOptions pitOptions;
             pitOptions.keepAlive = content_manager::detail::parseKeepAlive(keepAlive);
             pitOptions.expandWildcardsAll = expandWildcards;
-            // I229: content pages are capped by max_response_bytes, not by the query cap (max_response_bytes / 8): a
+            // Content pages are capped by max_response_bytes, not by the query cap (max_response_bytes / 8): a
             // single CVE5 of the CTI feed is ~17 MB. The paginator halves a page that is over even this cap.
             pitOptions.wholeResponseCap = true;
 
@@ -227,8 +227,8 @@ namespace
         }
 
         /// The deadline of one call. With no usable node it is cut to probeDeadline: the library waits for a node
-        /// without sending anything and returns its own cause (I158b). With failFastWithoutNode, once every node was
-        /// probed (a Down node with a reason) and none is usable, the call fails at once instead (I190, I190b).
+        /// without sending anything and returns its own cause. With failFastWithoutNode, once every node was
+        /// probed (a Down node with a reason) and none is usable, the call fails at once instead.
         indexer_client::Deadline deadline(std::chrono::milliseconds budget) const
         {
             const auto health = m_client->health();

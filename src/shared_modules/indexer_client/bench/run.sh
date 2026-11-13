@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
-# Benchmark driver (plan 18, E2c, I58): the v1 bulk transport (HTTPRequest::post, SINGLE) against the v2 transport,
+# Benchmark driver: the v1 bulk transport (HTTPRequest::post, SINGLE) against the v2 transport,
 # both already built in Release with -DINDEXER_CLIENT_BENCH=ON. Never builds anything.
 #
 #   run.sh --v1 PATH --v2 PATH --cpus LIST|none --out PREFIX [--selfcheck] [--fake-status N] [--wazuhext-sha256 SHA]
@@ -10,18 +10,18 @@
 # output). Normative (default), per mode plain and tls: 5 pairs v1 (normative headers) / v2 c = 1 of 20 s after a 3 s
 # warm-up, alternating which side goes first; ratio = median of the valid pairs' v2/v1 (>= 4 valid pairs). Unreliable
 # (v1 max/min > 1.03, IQR of the ratios > 0.04 or < 4 valid pairs) => repeated once; grey zone (median in
-# [0.94, 0.96)) => 7 pairs of 30 s. Then the informative runs (v2 c = 2/4/8, v1 as shipped) and the D37 probe (TLS).
+# [0.94, 0.96)) => 7 pairs of 30 s. Then the informative runs (v2 c = 2/4/8, v1 as shipped) and the probe (TLS).
 # --selfcheck: 2 s per side and mode plus the header check on the wire; exit 0 only when every sample is valid and
 # the headers match. Exit codes: 0 ok, 1 invalid sample / failed check, 2 usage, 3 another libwazuhext loaded, 4 host
 # load never fell to load1 <= 2, 5 a mode stayed unreliable after its repetition (the summary still says so).
 #
-# --suite submit (E6c, RNF-2, I119; E6d, I123; the transport suite above is the default and does not change): the
+# --suite submit (the transport suite above is the default and does not change): the
 # submit microbenchmark (indexer_client_bench_submit) of the v2 write path with two APIs (column `api` of the rows).
 # api=post: P = 1, 4, 8 x cb none (handover move). api=submit: P = 1, 4, 8 x cb none (move), P = 1 x cb noop and
-# P = 1 x handover view; E6e (D) adds api=post P = 1 and P = 8 with --indices 2 (the ops alternate between two indices,
+# P = 1 x handover view; a variant adds api=post P = 1 and P = 8 with --indices 2 (the ops alternate between two indices,
 # as the engine's raw and events). Per row 5 runs: median and IQR of ns_per_op and the median of cpu_ns_per_op. IQR >
 # 0.04 of the median or < 4 valid runs => the row is repeated once. There is no gate: the v1 side (and the ratio to it)
-# was removed with the v1 library (E11d, I221); the number measured with the v1 connector library is kept in the README. --cpus pins
+# was removed with the v1 library; the number measured with the v1 connector library is kept in the README. --cpus pins
 # every row, --cpus-p8 the P = 8 rows (default --cpus; both default none). --selfcheck: 1 run per row with --events
 # 20000; exit 0 only when every sample is valid.
 set -u
@@ -64,7 +64,7 @@ if [ "$SUITE" = submit ]; then HEADER_BIN=$SUBMIT; else HEADER_BIN=$V2; fi
 "$HEADER_BIN" --csv-header >"$CSV" || { echo "run.sh: $HEADER_BIN --csv-header failed" >&2; exit 2; }
 
 if [ "$CPUS" = none ]; then PIN=(); else PIN=(taskset -c "$CPUS"); fi
-# I58 values. The BENCH_* overrides exist only to exercise this script quickly; a measurement never sets them (they
+# The default values. The BENCH_* overrides exist only to exercise this script quickly; a measurement never sets them (they
 # are written to the log).
 WARMUP=${BENCH_WARMUP:-3}
 NORMATIVE_PAIRS=${BENCH_PAIRS:-5} NORMATIVE_SECS=${BENCH_SECS:-20} GREY_PAIRS=7 GREY_SECS=${BENCH_GREY_SECS:-30}
@@ -136,7 +136,7 @@ wait_load() { # wait_load <mode>: refuse to start a mode while load1 > LOAD_MAX 
   IDLE0=""; idle_mark "$1 (pre)"; sleep 2; idle_mark "$1: 2 s before the mode"
 }
 
-# ---- suite submit (E6c contract §3)
+# ---- suite submit
 if [ "$SUITE" = submit ]; then
   if [ "$CPUS_P8" = none ]; then PIN8=(); else PIN8=(taskset -c "$CPUS_P8"); fi
   # The BENCH_SUBMIT_* overrides exist only to exercise this script quickly (written to the log).
@@ -275,8 +275,8 @@ if [ $SELFCHECK -eq 1 ]; then
     run_side "selfcheck $mode v1 shipped" "$V1" --mode $mode --headers shipped --secs $SELFCHECK_SECS --warmup 1 \
       --fake-status "$FAKE_STATUS" --print-headers
     v1s=$VALID; h1s=$HDRS
-    # Normative: the same headers (name and value), both with Accept-Encoding: gzip (I117). Shipped: differs exactly in
-    # these names (DEFAULT_HEADERS sets Accept and Accept-Charset; both sides let curl add 100-continue, I60).
+    # Normative: the same headers (name and value), both with Accept-Encoding: gzip. Shipped: differs exactly in
+    # these names (DEFAULT_HEADERS sets Accept and Accept-Charset; both sides let curl add 100-continue).
     hn=fail; hs=fail
     [ -s "$h1" ] && cmp -s "$h1" "$h2" && grep -qx 'accept-encoding: gzip' "$h1" && grep -qx 'accept-encoding: gzip' "$h2" &&
       hn=pass
@@ -375,7 +375,7 @@ for mode in plain tls; do
   log "# informative $mode: load after $(cut -d' ' -f1-3 /proc/loadavg)"
 done
 
-log "# probe (D37): load before $(cut -d' ' -f1-3 /proc/loadavg)"
+log "# probe: load before $(cut -d' ' -f1-3 /proc/loadavg)"
 "${PIN[@]}" "$V2" --probe --mode tls >"$TMP/probe.out" 2>&1
 prc=$?
 { echo "## probe: $(basename "$V2") --probe --mode tls (exit $prc)"; cat "$TMP/probe.out"; } >>"$LOG"

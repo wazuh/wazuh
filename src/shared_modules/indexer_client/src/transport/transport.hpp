@@ -13,8 +13,8 @@
 #ifndef _INDEXER_CLIENT_TRANSPORT_HPP
 #define _INDEXER_CLIENT_TRANSPORT_HPP
 
-// Internal HTTP transport (stage E2a-1). Normative contract: plan 18, anexos/e2a-1/contrato-transport.md. The probe
-// (E2b), the bulk path (E3b) and the queries (E4) build on it; nothing here is public API. Neither asio nor curl types
+// Internal HTTP transport. The probe,
+// the bulk path and the queries build on it; nothing here is public API. Neither asio nor curl types
 // appear in this header.
 
 #include <chrono>
@@ -54,7 +54,7 @@ namespace indexer_client::detail
         Duration timeout {Duration {0}}; ///< 0 = RuntimeConfig.requestTimeout.
     };
 
-    /// Exhaustive classification of a finished transfer. E2a-2 adds Tls and TlsConfig.
+    /// Exhaustive classification of a finished transfer.
     enum class TransportCause
     {
         None,             ///< An HTTP response arrived (any status).
@@ -67,7 +67,7 @@ namespace indexer_client::detail
         LocalError,       ///< curl 2, 27, a curl_multi_socket_action error, a 23 without the cap flag, anything else.
         Cancelled,        ///< cancel(id) won the race.
         Shutdown,         ///< Resolved by stop().
-        Tls,              ///< curl 35, 60, 98: the node's handshake or certificate was not accepted (E2a-2, I54).
+        Tls,              ///< curl 35, 60, 98: the node's handshake or certificate was not accepted.
         TlsConfig         ///< curl 58, 77 (and 53, 54, 66, 83): local TLS material curl refused.
     };
 
@@ -95,7 +95,7 @@ namespace indexer_client::detail
         bool nodeAttributable {false};
         int curlCode {0};
         /// CURLOPT_PREREQFUNCTION ran: the connection was ready and the request was about to be written. Conservative
-        /// (true against a server that accepts and stays silent); reset on every use of an easy handle (I36).
+        /// (true against a server that accepts and stays silent); reset on every use of an easy handle.
         bool mayHaveSent {false};
         std::optional<Duration> retryAfter; ///< Parsed Retry-After, capped at RuntimeConfig.retryAfterMax.
         std::string body;                   ///< Never larger than RuntimeConfig.maxResponseBytes.
@@ -105,7 +105,7 @@ namespace indexer_client::detail
         std::uint64_t uploadedBytes {0};
     };
 
-    /// Spare capacity every HttpResult::body carries past its size (the bulk classifier parses in place, E3b-1 I65).
+    /// Spare capacity every HttpResult::body carries past its size (the bulk classifier parses in place).
     constexpr std::size_t RESPONSE_PADDING = 64;
 
     /// Runs on a CPU-pool thread (`ic-cpu-*`), exactly once per admitted request, never on a network thread.
@@ -169,8 +169,8 @@ namespace indexer_client::detail
         /// (1) closes admission, (2) removes every transfer from its multi and resolves it as Shutdown, (3) runs
         /// curl_multi_cleanup (CURLMOPT_QUICK_EXIT set) on each loop's own thread and waits for it. The runtime then
         /// joins the loops and drains the pool. Returns true when all of this finished within `deadline` (a measured
-        /// objective, not a cut-off; the consumer-callback budget is E5's). Called only by RuntimeOwner::shutdown and
-        /// by the runtime state's destructor.
+        /// objective, not a cut-off; the consumer-callback budget is the sender's). Called only by
+        /// RuntimeOwner::shutdown and by the runtime state's destructor.
         virtual bool stop(TimePoint deadline) = 0;
 
         virtual TransportStats stats() const = 0;

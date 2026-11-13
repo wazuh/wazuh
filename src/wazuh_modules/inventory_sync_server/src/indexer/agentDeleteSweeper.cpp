@@ -140,7 +140,7 @@ namespace invsync::indexer
             // The tick: the next pass is due one window after this one starts (`now`, set below; the max keeps an
             // idle tick on its fixed cadence). A pass that outlasts the window (each delete-by-query may take up to
             // the deletion budget) is followed by the next one as soon as it ends: pass STARTS are never less than a
-            // window apart (at most one pass per window, I146b).
+            // window apart (at most one pass per window).
             nextTick += m_window;
             const auto now = Clock::now();
             const auto ageNow = m_now ? m_now() : now; // `now` unless a test injected the age clock.
@@ -222,7 +222,7 @@ namespace invsync::indexer
                     std::string why;
                     try
                     {
-                        // No refresh (P21: the indexer role may lack indices:admin/refresh), conflicts proceed: a
+                        // No refresh (the indexer role may lack indices:admin/refresh), conflicts proceed: a
                         // document deleted meanwhile is not a failure. The default query retry policy applies.
                         const auto outcome = m_query->deleteByQuery({std::string {index}},
                                                                     body,

@@ -18,8 +18,8 @@
 
 #include "write/writer.hpp"
 
-// The production sink of stage E3a (plan 18 I63): there is no bulk sender yet (E3b), so every op of every batch is
-// resolved Failed(Unavailable) at once, which is what the E1 stub writer answered.
+// The sink used while no bulk sender is installed: every op of every batch is resolved
+// Failed(Unavailable) at once, which is what the stub writer answers.
 
 namespace indexer_client::detail::write
 {
@@ -54,7 +54,7 @@ namespace indexer_client::detail::write
                     OpResult result;
                     result.status = Status::Failed;
                     result.cause = Cause::Unavailable;
-                    result.reason = "no bulk sender yet (E3b)";
+                    result.reason = "no bulk sender installed";
                     path->resolve(batch.bucket, op, std::move(result));
                 }
             }

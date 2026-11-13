@@ -161,7 +161,7 @@ TEST(RuntimeConfigTest, OutOfRangeFails)
 
 TEST(RuntimeConfigTest, LogSummaryIntervalKey)
 {
-    // [1 000, 3 600 000] ms (I102): both bounds inclusive, one past each refused naming the key.
+    // [1 000, 3 600 000] ms: both bounds inclusive, one past each refused naming the key.
     expectInvalid(RecordingSource {{{key("log_summary_interval_ms"), "999"}}}, key("log_summary_interval_ms"));
     expectInvalid(RecordingSource {{{key("log_summary_interval_ms"), "3600001"}}}, key("log_summary_interval_ms"));
     for (const auto& [value, expected] : {std::pair {"1000", 1000}, std::pair {"3600000", 3600000}})

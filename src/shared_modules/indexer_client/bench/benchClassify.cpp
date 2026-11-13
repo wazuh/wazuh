@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// D44 (plan 18, E5c): throughput of classifyItems over synthetic 8 MiB `_bulk` bodies, to tell simdjson's stage 1
+// Throughput of classifyItems over synthetic 8 MiB `_bulk` bodies, to tell simdjson's stage 1
 // (structural indexes, measured alone with parser.iterate) from stage 2 (ondemand iteration, the rest). Release only.
 // Usage: indexer_client_bench_classify [--reps N] [--warmup N] [--mib N]
 

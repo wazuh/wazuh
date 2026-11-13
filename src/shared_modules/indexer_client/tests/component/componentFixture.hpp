@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_COMPONENT_FIXTURE_HPP
 #define _INDEXER_CLIENT_TESTS_COMPONENT_FIXTURE_HPP
 
-// Shared by the component suites of the transport (plan 18, plan-E2a-1 §Tests): the runtime fixture, a test-owned
+// Shared by the component suites of the transport: the runtime fixture, a test-owned
 // IConfigSource, the result collector and small helpers. Every wait is bounded; the state callbacks touch is held by
 // shared_ptr, so a test that gives up on a wait never leaves a callback writing into a dead frame.
 
@@ -477,7 +477,7 @@ protected:
     void SetUp() override
     {
         indexer_client::testing_hooks::resetAll();
-        // The health probe would add its own requests to the traffic these cases count (E2b).
+        // The health probe would add its own requests to the traffic these cases count.
         indexer_client::testing_hooks::setProbeAutoStart(false);
     }
 

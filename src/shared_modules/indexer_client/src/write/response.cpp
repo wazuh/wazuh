@@ -23,7 +23,7 @@
 #include "testing/hooks.hpp"
 #endif
 
-// I65: the request table over the HttpResult and the item table over a 2xx `_bulk` body, streamed with simdjson
+// The request table over the HttpResult and the item table over a 2xx `_bulk` body, streamed with simdjson
 // ondemand (no DOM, no simdjson exception: every call goes through its error codes). `errors` is never used to skip
 // anything: every item is classified, also under `"errors":false`.
 
@@ -191,7 +191,7 @@ namespace indexer_client::detail::write
             }
             else if (status == 401 || status == 403)
             {
-                // Deviation from RF-9 "4xx permanent" (I65): the probe marks the node; dropping data over credentials
+                // Deviation from "4xx is permanent": the probe marks the node; dropping data over credentials
                 // would be silent.
                 out.verdict = RequestVerdict::Retry;
                 out.cause = Cause::Client4xx;

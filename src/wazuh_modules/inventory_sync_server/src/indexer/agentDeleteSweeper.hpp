@@ -31,7 +31,7 @@ namespace invsync::indexer
 {
 
     /**
-     * @brief Best-effort sweep of AGENT_DELETION_SCOPE_BY_ID after an agent deletion (I36, I146, I146b, I146c).
+     * @brief Best-effort sweep of AGENT_DELETION_SCOPE_BY_ID after an agent deletion.
      *
      * The by-id deletes of a deletion ride the `agent-state` bucket, which is `ordered`: a delete is not sent before
      * the earlier ops of its key resolve. That still leaves one residual: cancel(agent) lifts the ambiguous-retry pin
@@ -39,10 +39,10 @@ namespace invsync::indexer
      * delete reached another one. This sweeper removes what such a late write left behind.
      *
      * The pipeline worker calls note() once a deletion's by-id deletes succeeded. A fixed tick runs at most one pass
-     * per `window` (= the runtime's request timeout + 5 s, I146b); a pass takes the ids whose note() is at least
+     * per `window` (= the runtime's request timeout + 5 s); a pass takes the ids whose note() is at least
      * `window` old, so each id waits between one and two windows. Each pass runs one delete-by-query PER INDEX (a
      * missing index does not void the other) with `terms` on `_id`, in chunks of at most MAX_IDS_PER_QUERY, without
-     * a refresh (P21: the indexer role may lack `indices:admin/refresh`). The documents a pass deletes are the
+     * a refresh (the indexer role may lack `indices:admin/refresh`). The documents a pass deletes are the
      * residual. A chunk that fails is retried once on the next pass and then dropped; nothing is swept when no id is
      * due. stop() wakes the thread, joins it and drops what is pending. Nothing here guarantees zero residue.
      *
@@ -73,7 +73,7 @@ namespace invsync::indexer
         /**
          * @param query The module Client's query handle, taken once.
          * @param window Minimum age of an id before it is swept, and the tick.
-         * @param deadline Deadline of each delete-by-query (the deletion budget, I146c).
+         * @param deadline Deadline of each delete-by-query (the deletion budget).
          * @param closing The module's closing flag; a pass stops between chunks once it is set.
          * @param now The clock that dates note() and judges an id's age (empty: steady_clock::now). The tick
          * cadence always follows steady_clock, so a test can set the ages without stalling the thread.

@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_FAKE_PIT_RESPONDER_HPP
 #define _INDEXER_CLIENT_TESTS_FAKE_PIT_RESPONDER_HPP
 
-// Point in time on the fake indexer (plan 18, E4b step 6). The responder keeps OpenSearch's PIT lifecycle over a
+// Point in time on the fake indexer. The responder keeps OpenSearch's PIT lifecycle over a
 // synthetic index of documents 1..N: `POST /<indices>/_search/point_in_time?keep_alive=<n>ms` creates a PIT (pit_id
 // "pit-<k>"), `POST /_search` with `pit {id, keep_alive}` serves a page (sorted by the document number, `sort: [k]`,
 // `slice {id, max}` keeps the documents with (k - 1) % max == id, `search_after: [k]` continues after k, `size`

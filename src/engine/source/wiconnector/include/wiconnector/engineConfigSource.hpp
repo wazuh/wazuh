@@ -15,18 +15,18 @@
 namespace wiconnector
 {
 
-/// Reads the indexer user and password (production: the keystore's `indexer` column, I191).
+/// Reads the indexer user and password (production: the keystore's `indexer` column).
 using CredentialsProvider = std::function<indexer_client::Credentials()>;
 
 /**
- * @brief The engine's configuration source for its indexer_client runtime (I26, I191, I192).
+ * @brief The engine's configuration source for its indexer_client runtime.
  *
  * Keys are the full names under `analysisd.indexer_client_` (the prefix the library expects for the engine, in
  * standalone too). Each key resolves from the environment first — `WAZUH_<key without "analysisd.", upper case>`,
  * the convention of the engine's `conf` — then, in manager mode only, from the internal options file; otherwise it is
  * unset and the library's default applies. In standalone mode the file is never read.
  *
- * Two v1 keys feed their v2 equivalent when that one is not set (I192): `analysisd.indexer_request_timeout`
+ * Two v1 keys feed their v2 equivalent when that one is not set: `analysisd.indexer_request_timeout`
  * (seconds) → `indexer_client_request_timeout_ms` and `analysisd.indexer_monitoring_interval` (seconds) →
  * `indexer_client_probe_interval_ms`. "Set" means an environment variable or a file entry, never a `conf` default.
  * Both set and different (in ms) is reported by problem() on the v2 key; a v1 value of 0 ("no limit") leaves the v2
@@ -68,7 +68,7 @@ private:
     std::function<std::vector<std::string>()> m_environmentNames;
 };
 
-/// The production credentials provider: `Keystore::get("indexer", "username"|"password")` (I191).
+/// The production credentials provider: `Keystore::get("indexer", "username"|"password")`.
 CredentialsProvider keystoreCredentials();
 
 } // namespace wiconnector

@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The bulk sender end to end (plan-E3b-2 §Tests, step 4b): failover, the per-node window, the submit refusal, the
+// The bulk sender end to end: failover, the per-node window, the submit refusal, the
 // wake-ups of the scheduler (completion, notBefore timer, health transition), the close of a client and the shutdown
 // with requests in flight. Every case runs the production sink over the real transport against one fake per node
 // (bulkFixture.hpp). In the wake-up cases nothing else may rescue them: buckets batch by maxDocs with maxAge = 60 s,
@@ -43,7 +43,7 @@ using namespace write_component;
 
 namespace
 {
-    const std::uint32_t kWindow = ic::RuntimeConfig {}.nodeWindowMax; // I96: the AIMD window starts at its cap.
+    const std::uint32_t kWindow = ic::RuntimeConfig {}.nodeWindowMax; // The AIMD window starts at its cap.
 } // namespace
 using bulk_component::BulkItem;
 using bulk_component::BulkScript;
@@ -144,7 +144,7 @@ namespace
     };
 } // namespace
 
-// CA-14: A is Available by the probe, then its fake stops: the batch that goes to A fails over to B with no loss, A is
+// A is Available by the probe, then its fake stops: the batch that goes to A fails over to B with no loss, A is
 // reported Down (passive) and takes nothing more; everything after goes to B. Mutant: the Failover verdict requeues
 // without reporting the node (the batch is retried on the same, still usable, node).
 TEST_F(BulkTest, FailoverOnTransportError)
@@ -184,7 +184,7 @@ TEST_F(BulkTest, FailoverOnTransportError)
     }
     EXPECT_EQ(wr::senderStats().failovers, 1u) << "nothing more went to A";
     EXPECT_EQ(b.bulk->opCount(), k) << "B wrote every op";
-    // G-diff E3b-2 obj. 9: the latency counters take HTTP responses only; the transport error is a failure.
+    // The latency counters take HTTP responses only; the transport error is a failure.
     EXPECT_EQ(senderNode(0).requests, 0u);
     EXPECT_EQ(senderNode(0).totalMicros, 0u);
     EXPECT_EQ(senderNode(0).failures, 1u);
@@ -193,7 +193,7 @@ TEST_F(BulkTest, FailoverOnTransportError)
     expectInvariants(stats("b"));
 }
 
-// I68: never more than node_window_max (4, the AIMD window starts at its cap, I96) requests in flight per node. Two
+// Never more than node_window_max (4, the AIMD window starts at its cap) requests in flight per node. Two
 // nodes whose `_bulk` answers are held, 12 one-op batches: 4 reach each node and no more during T; after the release
 // every op ends Ok and no sample of the sender ever shows more than 4 in flight on a node. Mutant: the window is
 // ignored (capacity and the node filter).
@@ -238,7 +238,7 @@ TEST_F(BulkTest, WindowPerNode)
     EXPECT_EQ(a.bulk->opCount() + b.bulk->opCount(), OPS);
 }
 
-// I68: a submit the transport refuses (seam refuseSubmit) gives its slot back and requeues the batch with an attempt
+// A submit the transport refuses (seam refuseSubmit) gives its slot back and requeues the batch with an attempt
 // and the reason; four refusals on one node (its whole window) still end with every op Ok and the window free. With
 // one attempt allowed the refusal is the op's last error. Mutant: the refusal keeps the slot.
 TEST_F(BulkTest, SubmitRefusedRequeues)
@@ -372,9 +372,9 @@ TEST_F(BulkTest, NoUsableNodeWaitsThenSends)
     EXPECT_EQ(a.bulk->opCount() + b.bulk->opCount(), OPS);
 }
 
-// I66, I99: requestClose() while a batch is in flight closes only the admission (D43): its answer (503) sends it back
+// requestClose() while a batch is in flight closes only the admission: its answer (503) sends it back
 // to retry and the drain writes it (Ok, exactly once, sent twice). Once the bucket is SWEPT (a Client destroyed on a
-// runtime thread, obj. 3) the same answer finds it closed, so the op ends Dropped(ClientClosed) exactly once and is
+// runtime thread) the same answer finds it closed, so the op ends Dropped(ClientClosed) exactly once and is
 // never sent again. Mutant: the closed ops of a requeue are not resolved.
 TEST_F(BulkTest, CloseClientWhileInFlightRetry)
 {
@@ -441,7 +441,7 @@ TEST_F(BulkTest, CloseClientWhileInFlightRetry)
     }
 }
 
-// I66: a retried op that comes due goes out before the pending ops: the batch after the retry takes the retry lane
+// A retried op that comes due goes out before the pending ops: the batch after the retry takes the retry lane
 // first and then the pending queue (one batch mixing both).
 TEST_F(BulkTest, RetryLaneBeforePendingE2E)
 {
@@ -475,7 +475,7 @@ TEST_F(BulkTest, RetryLaneBeforePendingE2E)
     }
 }
 
-// I66: a bucket whose op waits a 1.5 s backoff in its retry lane does not hold back another bucket: the other's ops
+// A bucket whose op waits a 1.5 s backoff in its retry lane does not hold back another bucket: the other's ops
 // are written at once while the first one's retry waits; then the retry goes out and ends Ok.
 TEST_F(BulkTest, BackoffIsPerBucket)
 {
@@ -505,7 +505,7 @@ TEST_F(BulkTest, BackoffIsPerBucket)
     EXPECT_EQ(a.bulk->answered(), 10u);
 }
 
-// I68: a batch held by the node and shutdown(): the transfer is cancelled, the op ends Dropped(Shutdown) exactly once
+// A batch held by the node and shutdown(): the transfer is cancelled, the op ends Dropped(Shutdown) exactly once
 // (callback and ticket), in < 2 s.
 TEST_F(BulkTest, ShutdownCancelsInFlight)
 {
@@ -540,7 +540,7 @@ TEST_F(BulkTest, ShutdownCancelsInFlight)
     expectInvariants(s);
 }
 
-// I68 (TSAN): completions that resolve and requeue race the shutdown sweep. (1) Deterministic: 8 batches of two ops
+// TSAN: completions that resolve and requeue race the shutdown sweep. (1) Deterministic: 8 batches of two ops
 // are answered (item 0 Ok, item 1 a retryable 429) while the CPU pool is blocked; the shutdown sweep resolves the 16
 // ops Dropped(Shutdown) first, then the late completions run: their Ok resolution and their requeue must both lose
 // (one result per op, the bucket counts 16 dropped and nothing else). Mutant: WritePath::resolve without the CAS.
@@ -647,7 +647,7 @@ TEST_F(BulkTest, ShutdownRacesRequeue)
     }
 }
 
-// G-diff E3b-2 obj. 4: the NodeSet hook that mirrors Down is held (seam), so the node is Down in the NodeSet but the
+// The NodeSet hook that mirrors Down is held (seam), so the node is Down in the NodeSet but the
 // sender's mirror still says usable. A batch dispatched in that window finds no node: dispatch refreshes the mirror
 // itself, capacity() drops to 0 and the scheduler stops instead of re-slicing the batch until the hook lands. The two
 // ops end Dropped(ClientClosed) when the client closes. Mutant: the no-node branch does not refresh the mirror.
@@ -710,14 +710,14 @@ TEST_F(BulkTest, StaleDownMirrorDoesNotSpin)
 
     gate->release();
     c->requestClose();
-    // I99: the node is still Down, so the drain cannot write them; awaitClosed's sweep (drainEnd = 600 ms) drops them.
-    EXPECT_FALSE(eventually([&] { return results->total() > 0; }, 200ms)) << "requestClose() swept (D43)";
+    // The node is still Down, so the drain cannot write them; awaitClosed's sweep (drainEnd = 600 ms) drops them.
+    EXPECT_FALSE(eventually([&] { return results->total() > 0; }, 200ms)) << "requestClose() swept";
     ASSERT_TRUE(c->awaitClosed(now() + 1s).ok());
     ASSERT_TRUE(results->waitTotal(2, 3s));
     EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), 2u);
 }
 
-// G-diff E3b-2 obj. 5: WritePath::setSink stops the bulk sender while a request is in flight; its cancelled
+// WritePath::setSink stops the bulk sender while a request is in flight; its cancelled
 // completion sends the batch back to the lane with no attempt, so the new sink gets it (outside a runtime stop no
 // sweep would resolve it). Mutant: a Cancelled completion stays Ignore.
 TEST_F(BulkTest, SetSinkRequeuesCancelledInFlight)
@@ -740,7 +740,7 @@ TEST_F(BulkTest, SetSinkRequeuesCancelledInFlight)
     a.fake->releaseHeld();
 }
 
-// G-diff E3b-2 obj. 6: a completion that throws after its slot was released (seam beforeCompletion) does not strand
+// A completion that throws after its slot was released (seam beforeCompletion) does not strand
 // the batch: it is requeued with an attempt and the reason, the window is free again and the op ends Ok; with one
 // attempt allowed the failure is the op's last error. Mutant: complete() without its exception guard.
 TEST_F(BulkTest, CompletionExceptionRequeues)
@@ -795,7 +795,7 @@ namespace
     }
 } // namespace
 
-// CA-E6a-3 (D56a, I109/I109b): one wake-up of the scheduler per completion. One node, its whole window (4) of one-op
+// One wake-up of the scheduler per completion. One node, its whole window (4) of one-op
 // batches answered 503 and held, then released: each completion requeues its batch (a 3 s backoff, so nothing is
 // resent meanwhile) and posts exactly once (SchedulerStats::posts, counted before coalescing: N completions = N). The
 // passes follow (runs <= N + 1, a secondary bound). Mutant: the requeue's notify plus notifyAll per completion (2N).

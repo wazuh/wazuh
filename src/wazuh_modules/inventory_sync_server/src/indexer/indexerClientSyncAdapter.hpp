@@ -29,7 +29,7 @@
 namespace invsync::indexer
 {
 
-    /// The consumer name invsync registers with the process runtime, and its two buckets (I148).
+    /// The consumer name invsync registers with the process runtime, and its two buckets.
     constexpr auto INDEXER_CLIENT_CONSUMER {"inventory_sync_server"};
     constexpr auto INVENTORY_BUCKET {"inventory"};
     constexpr auto AGENT_STATE_BUCKET {"agent-state"};
@@ -38,7 +38,8 @@ namespace invsync::indexer
     constexpr std::size_t RESULT_RESERVE_BYTES {2048};
 
     /**
-     * @brief `retry_on_conflict` of a versioned sync value's scripted `update` (5.0.0 #41191).
+     * @brief `retry_on_conflict` of a versioned sync value's scripted `update`: a concurrent
+     *        versioned upsert can hit a version conflict, so the update op retries on conflict.
      *
      * The update writes with the seq_no it read the document at, so a concurrent `_update_by_query` of the same
      * agent (a group or metadata session applied by another manager node) makes the item answer 409 and drop its
@@ -50,7 +51,7 @@ namespace invsync::indexer
     constexpr std::uint32_t UPDATE_RETRY_ON_CONFLICT {5};
 
     /**
-     * @brief Time budgets of the adapter's calls (I145, I145b).
+     * @brief Time budgets of the adapter's calls.
      *
      * `stateful` bounds a `/stateful` batch (from its first add) and each query of an Immediate
      * session: it stays under remoted's 20 s response window. `deletion` bounds the by-query of a
@@ -65,7 +66,7 @@ namespace invsync::indexer
     };
 
     /**
-     * @brief Budgets from the module's retry options (I145, I145b).
+     * @brief Budgets from the module's retry options.
      *
      * With d = `indexer_sync_max_retry_duration_seconds` (0 = no bound, < 0 = default 15 s):
      * stateful = clamp(d + 3 s, 5 s, 18 s) (18 s when d = 0); deletion = min(3·d + 25 s, 540 s)
@@ -74,17 +75,17 @@ namespace invsync::indexer
     Budgets budgets(const inventory_sync_server_config_t& config);
 
     /**
-     * @brief The `inventory` bucket (I138, I137b, I142b, I145b).
+     * @brief The `inventory` bucket.
      *
      * quotaBytes = clamp(max(64 MiB, bulk.maxBytes + RESULT_RESERVE_BYTES + 1 MiB), <= quotaBudget); when even
      * the budget cannot hold one bulk, bulk.maxBytes is clipped to fit and `warning` says so. bulk.maxBytes =
      * `indexer_sync_connector_max_bulk_size` (<= 0 -> 10 MiB, the v1 default); retry.maxAttempts =
      * `indexer_sync_max_retry_attempts` (0 -> unlimited, < 0 -> 5); retry.maxDuration = Budgets::statefulRetry;
      * retry.cap = `indexer_sync_max_retry_delay_seconds` (<= 0 -> 15 s); overflow Block with `blockTimeout`; 409
-     * Success; ambiguous 5xx Retry (I105); not ordered.
+     * Success; ambiguous 5xx Retry; not ordered.
      *
      * @param config Module configuration.
-     * @param quotaBudget What the runtime's `global_quota_bytes` leaves once `agent-state` took its quota (I149c):
+     * @param quotaBudget What the runtime's `global_quota_bytes` leaves once `agent-state` took its quota:
      *                    `snapshot().globalQuotaBytes − agentStateBucketSpec(...).quotaBytes`.
      * @param blockTimeout How long an add may wait for quota (2 s in production).
      * @param warning Set when bulk.maxBytes had to be clipped; may be null.
@@ -95,8 +96,7 @@ namespace invsync::indexer
                                                    std::string* warning = nullptr);
 
     /**
-     * @brief The `agent-state` bucket of POST /stats, POST /config and the deletion's by-id deletes (I148, I149,
-     *        I149b, I149c).
+     * @brief The `agent-state` bucket of POST /stats, POST /config and the deletion's by-id deletes.
      *
      * ordered; overflow Reject (503 to the agent); ambiguous 5xx Retry; 409 Success; retry without an attempt or a
      * duration bound (the v1 async queue buffered through outages too; the quota bounds it), cap =
@@ -111,11 +111,11 @@ namespace invsync::indexer
                                                     std::uint64_t globalQuotaBytes,
                                                     std::string* warning = nullptr);
 
-    /// Per-worker chunk cap: 0.8 · quota / (2 · lanes), lanes = pipeline + scan-lane workers (I137b, I145); shared
-    /// with VD in indexer_client/chunking.hpp (D88).
+    /// Per-worker chunk cap: 0.8 · quota / (2 · lanes), lanes = pipeline + scan-lane workers; shared
+    /// with VD in indexer_client/chunking.hpp.
     using indexer_client::chunkCap;
 
-    /// The seam's class of a library cause (I135); every indexer_client::Cause maps to exactly one.
+    /// The seam's class of a library cause; every indexer_client::Cause maps to exactly one.
     ConnectorError::Cause translateCause(indexer_client::Cause cause);
 
     struct AdapterOptions
@@ -131,16 +131,16 @@ namespace invsync::indexer
     };
 
     /**
-     * @brief IIndexerConnectorSync over indexer_client (E7b): one adapter per pipeline or scan-lane worker,
+     * @brief IIndexerConnectorSync over indexer_client: one adapter per pipeline or scan-lane worker,
      *        all sharing one Client and its `inventory` bucket.
      *
      * Staging adds to an open Group; a chunk is committed before the add that would pass `capBytes`; at most one
      * committed-or-abandoned chunk is unresolved per adapter besides the open one, and its results are harvested
-     * (ticket and Group dropped) before the next commit (I137b, I145). Two operations with the same (index, _id) are
-     * never unresolved at once (I139). An add refused by the library marks its session failed without throwing
-     * (I142). A batch's deadline starts at its first add; past it, or with `closing` set, the unresolved chunk is
-     * cancelled by tag without waiting and its sessions fail Unavailable (I142b, I145, I145b). By-query, update and
-     * search calls first wait for every pending write (D49). isAvailable() = health().anyUsable() (I52-e).
+     * (ticket and Group dropped) before the next commit. Two operations with the same (index, _id) are
+     * never unresolved at once. An add refused by the library marks its session failed without throwing.
+     *A batch's deadline starts at its first add; past it, or with `closing` set, the unresolved chunk is
+     * cancelled by tag without waiting and its sessions fail Unavailable. By-query, update and
+     * search calls first wait for every pending write. isAvailable() = health().anyUsable().
      *
      * Not thread-safe: each instance is driven by its one worker thread.
      */
@@ -148,7 +148,7 @@ namespace invsync::indexer
     {
     public:
         /**
-         * @param client The consumer's Client; writer(INVENTORY_BUCKET) and query() are taken here, once (I141b).
+         * @param client The consumer's Client; writer(INVENTORY_BUCKET) and query() are taken here, once.
          * @param options Cap, slices, budgets.
          * @param closing Set by the module's stop() before requestClose(); every wait returns when it flips.
          * @param tag This worker's cancellation tag (`w<i>` / `vd<i>`).

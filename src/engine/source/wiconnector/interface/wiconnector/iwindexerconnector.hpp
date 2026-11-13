@@ -17,7 +17,7 @@
 namespace wiconnector
 {
 
-/// The raw events' index: what goes there is written to the `raw` bucket, everything else to `events` (I193). The one
+/// The raw events' index: what goes there is written to the `raw` bucket, everything else to `events`. The one
 /// source of truth for both the raw event indexer and the connector's routing.
 constexpr std::string_view RAW_EVENTS_INDEX {"wazuh-events-raw-v5"};
 
@@ -36,8 +36,8 @@ public:
     /**
      * @brief Indexes the given data into the specified index.
      *
-     * Both are taken by value and moved into the operation, so a caller that moves them pays no copy (I193, I196).
-     * Never called concurrently with the implementation's shutdown (I196b).
+     * Both are taken by value and moved into the operation, so a caller that moves them pays no copy.
+     * Never called concurrently with the implementation's shutdown.
      *
      * @param index The name of the index where the data will be stored
      * @param data The data content to be indexed (compact JSON)
@@ -76,7 +76,7 @@ public:
 
     /**
      * @brief How full the fullest queue is: the bytes its queued operations hold against its quota, as a
-     *        percentage (I197, I218).
+     *        percentage.
      *
      * @return 0.0 to 100.0; 0.0 once shut down.
      */

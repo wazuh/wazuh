@@ -14,7 +14,7 @@
 # ab_report.py turns the series into docs/s during a drain and the time to drain.
 #
 # The two sides of an A/B must be probed with the SAME patterns, raw included in both or in
-# neither (obj. 20c).
+# neither.
 #
 # Usage:
 #   indexer_ingest_probe.sh --out FILE [--patterns "wazuh-events*,wazuh-states-*"]

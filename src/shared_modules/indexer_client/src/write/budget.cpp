@@ -39,7 +39,7 @@ namespace indexer_client::detail::write
 
     bool GlobalBudget::tryReserve(std::uint64_t bytes) noexcept
     {
-        // E5c: no line here (it runs under a bucket mutex); an edge is only claimed, emitPendingLogs() writes it.
+        // No line here (it runs under a bucket mutex); an edge is only claimed, emitPendingLogs() writes it.
         const auto refuse = [this](std::uint64_t charge)
         {
             if (m_armedFull.load(std::memory_order_relaxed) && m_armedFull.exchange(false))
@@ -106,7 +106,7 @@ namespace indexer_client::detail::write
         const auto before = m_charge.fetch_sub(bytes);
         if (before >= m_threshold70 && before - bytes < m_threshold70)
         {
-            // E5c: crossing 70 % downwards re-arms both edges (an edge, not a level).
+            // Crossing 70 % downwards re-arms both edges (an edge, not a level).
             m_armed80.store(true);
             m_armedFull.store(true);
         }

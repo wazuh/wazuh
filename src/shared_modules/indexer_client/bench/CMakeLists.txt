@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
-# Benchmark harness (plan 18, E2c): the v1 bulk transport (HTTPRequest::post, SINGLE) and the v2 transport over the same
-# in-process fake and the same libwazuhext (indexer_client_bench_v2 --path client: the whole Client/bucket path, E6c).
+# Benchmark harness: the v1 bulk transport (HTTPRequest::post, SINGLE) and the v2 transport over the same
+# in-process fake and the same libwazuhext (indexer_client_bench_v2 --path client: the whole Client/bucket path).
 # Built only with -DINDEXER_CLIENT_BENCH=ON, in Release. See README "Benchmark".
 
 set(HTTP_REQUEST_DIR ${SRC_FOLDER}/shared_modules/http-request)
@@ -26,7 +26,7 @@ target_compile_definitions(indexer_client_bench_v2 PRIVATE CPPHTTPLIB_OPENSSL_SU
 target_compile_features(indexer_client_bench_v2 PRIVATE cxx_std_17)
 target_link_libraries(indexer_client_bench_v2 PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
 
-# D44 (plan 18, E5c): times classifyItems (simdjson ondemand) over synthetic 8 MiB bodies; no fake, no libwazuhext needed beyond the objects.
+# Times classifyItems (simdjson ondemand) over synthetic 8 MiB bodies; no fake, no libwazuhext needed beyond the objects.
 add_executable(indexer_client_bench_classify benchClassify.cpp $<TARGET_OBJECTS:indexer_client_objects>)
 target_include_directories(
   indexer_client_bench_classify
@@ -36,8 +36,8 @@ target_compile_definitions(indexer_client_bench_classify PRIVATE ASIO_STANDALONE
 target_compile_features(indexer_client_bench_classify PRIVATE cxx_std_17)
 target_link_libraries(indexer_client_bench_classify PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
 
-# E6c (RNF-2, I119): the submit microbenchmark of the v2 write path (IWriter::post and IWriter::submit). The v1 side
-# (the v1 async connector) was removed with the v1 library (E11d, I221).
+# The submit microbenchmark of the v2 write path (IWriter::post and IWriter::submit). The v1 side
+# (the v1 async connector) was removed with the v1 library.
 add_executable(indexer_client_bench_submit benchSubmit.cpp $<TARGET_OBJECTS:indexer_client_objects>)
 target_include_directories(
   indexer_client_bench_submit
@@ -48,6 +48,6 @@ target_compile_definitions(indexer_client_bench_submit PRIVATE CPPHTTPLIB_OPENSS
 target_compile_features(indexer_client_bench_submit PRIVATE cxx_std_17)
 target_link_libraries(indexer_client_bench_submit PRIVATE wazuhext ext_asio Threads::Threads ${INDEXER_CLIENT_SIMDJSON})
 
-# D40 (plan 18, E6b): one target that builds the four harnesses (the CI bench job builds this one).
+# One target that builds the four harnesses (the CI bench job builds this one).
 add_custom_target(indexer_client_bench DEPENDS indexer_client_bench_v1 indexer_client_bench_v2
                                                indexer_client_bench_classify indexer_client_bench_submit)

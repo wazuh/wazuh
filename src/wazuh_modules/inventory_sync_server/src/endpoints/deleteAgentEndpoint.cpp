@@ -195,7 +195,7 @@ namespace invsync::endpoints::delete_agent
             item.session.agentId = agentId;
 
             // Only the enqueue happens here. Both halves of the deletion run on the agent's shard worker
-            // (SessionProcessor::executeDeleteAgent, I147c): the by-id deletes of AGENT_DELETION_SCOPE_BY_ID
+            // (SessionProcessor::executeDeleteAgent): the by-id deletes of AGENT_DELETION_SCOPE_BY_ID
             // on the `agent-state` bucket -- after cancel(agent) and ordered behind the agent's earlier
             // /stats and /config writes -- and the by-query over this cluster's `wazuh-states-*`. The
             // answer comes from the worker once both are done, so two deletions of one agent never

@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The periodic log summary (stage E5c, plan 18 I102/I104). Contract: runtime/logSummary.hpp. The quota edges live in
+// The periodic log summary. Contract: runtime/logSummary.hpp. The quota edges live in
 // write/bucket.cpp and write/budget.cpp; this file drains them too.
 
 #include "runtime/logSummary.hpp"

@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// HttpResult::mayHaveSent (plan-E2a-1 §Tests, lot B: I36). The flag is "CURLOPT_PREREQFUNCTION ran": the connection
+// HttpResult::mayHaveSent The flag is "CURLOPT_PREREQFUNCTION ran": the connection
 // was ready and the request was about to be written. It is not "bytes were uploaded" (a GET or a HEAD uploads no
 // body) and it is reset on every use of an easy handle.
 
@@ -97,7 +97,7 @@ TEST_F(TransportTest, MayHaveSentPostPartialTrue)
     const auto one =
         submitTo(*transport,
                  collector,
-                 // Past curl's 1 s wait for `100 Continue` (I60), so part of the body goes out before the timeout.
+                 // Past curl's 1 s wait for `100 Continue`, so part of the body goes out before the timeout.
                  request(HttpMethod::Post, stalled.baseUrl() + "/_bulk", body, indexer_client::Duration {2000}));
     ASSERT_TRUE(one.admission.admitted);
     ASSERT_TRUE(collector->waitKey(one.key, 10s));
@@ -110,7 +110,7 @@ TEST_F(TransportTest, MayHaveSentPostPartialTrue)
     stalled.resumeReading();
 }
 
-// I60: a body over 1 MiB waits for `100 Continue`; a timeout inside that wait (the silent server never answers) sent
+// A body over 1 MiB waits for `100 Continue`; a timeout inside that wait (the silent server never answers) sent
 // the headers but no body byte: Timeout, node-attributable, mayHaveSent (the request was ready to go), 0 bytes
 // uploaded.
 TEST_F(TransportTest, MayHaveSentPostDuringExpectWaitTrue)

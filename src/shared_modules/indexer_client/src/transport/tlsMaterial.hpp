@@ -13,8 +13,8 @@
 #ifndef _INDEXER_CLIENT_TLS_MATERIAL_HPP
 #define _INDEXER_CLIENT_TLS_MATERIAL_HPP
 
-// TLS material of <indexer>.ssl, read and validated once in RuntimeOwner::start (I48), and the verification policy
-// derived from it (plan 18 E11e: ssl.verify_certificates and the system CA store of the v1). Lives in TransportShared
+// TLS material of <indexer>.ssl, read and validated once in RuntimeOwner::start, and the verification policy
+// derived from it (ssl.verify_certificates and the system CA store of the v1). Lives in TransportShared
 // and is handed to curl as CURL_BLOB_NOCOPY blobs (the system store as a path), so it must outlive every multi of the
 // transport.
 
@@ -44,7 +44,7 @@ namespace indexer_client::detail
         std::string notice;
 
         TlsMaterial() = default;
-        /// Wipes the private key (I55, best effort) on every path, also when a constructor that took it by value
+        /// Wipes the private key (best effort) on every path, also when a constructor that took it by value
         /// throws before keeping it. Moves stay defaulted (a moved-from key is empty); copies are not needed.
         ~TlsMaterial();
         TlsMaterial(TlsMaterial&&) noexcept = default;
@@ -61,7 +61,7 @@ namespace indexer_client::detail
     /// The system CA stores the v1 tried, in its order (http-request's DEFAULT_CAINFO_PATHS, urlRequest.hpp).
     const std::vector<std::string>& systemCaStorePaths();
 
-    /// Reads and validates the configured material (I48), whatever the hosts' scheme, and derives the policy:
+    /// Reads and validates the configured material, whatever the hosts' scheme, and derives the policy:
     /// - every host is http or https (case-insensitive);
     /// - verify_certificates true and a CA configured: peer and host verified against it; no CA: the first path of
     ///   systemCaStorePaths() that exists (std::filesystem::status: only "not found" / "not a directory" mean absent;
@@ -79,7 +79,7 @@ namespace indexer_client::detail
     /// Failures are InvalidConfig naming the path or the host. Never throws.
     Outcome<TlsMaterial> loadTlsMaterial(const RuntimeConfig& config) noexcept;
 
-    /// OPENSSL_cleanse over the string's bytes, then clear() (best effort, I55: curl and OpenSSL keep their own
+    /// OPENSSL_cleanse over the string's bytes, then clear() (best effort: curl and OpenSSL keep their own
     /// copies).
     void cleanseString(std::string& text) noexcept;
 } // namespace indexer_client::detail

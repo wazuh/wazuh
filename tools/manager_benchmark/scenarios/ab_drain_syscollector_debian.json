@@ -1,6 +1,6 @@
 {
   "name": "ab_drain_syscollector_debian",
-  "description": "Indexer A/B drain scenario (inventory sync): 32 Debian agents each run a syscollector full_resync of 2,000 packages followed by a checksum reconcile. ab_indexer.sh pauses the indexer for a fixed time while the sessions are in flight and then resumes it, so the sessions the server retains wait for the indexer and then drain: sessions/s over the run is the capacity of the server's indexer sender. Retries are unbounded (max_attempts 0, cut only by drain_timeout) so a session the server sheds with 503 during the pause is re-sent like a real agent does, never abandoned (I227).",
+  "description": "Indexer A/B drain scenario (inventory sync): 32 Debian agents each run a syscollector full_resync of 2,000 packages followed by a checksum reconcile. ab_indexer.sh pauses the indexer for a fixed time while the sessions are in flight and then resumes it, so the sessions the server retains wait for the indexer and then drain: sessions/s over the run is the capacity of the server's indexer sender. Retries are unbounded (max_attempts 0, cut only by drain_timeout) so a session the server sheds with 503 during the pause is re-sent like a real agent does, never abandoned.",
   "mode": "uds",
   "defaults": {
     "module": "syscollector",

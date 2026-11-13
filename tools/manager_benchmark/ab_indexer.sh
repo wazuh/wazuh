@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# ab_indexer.sh — A/B of the manager's indexer sender: v1 (pre-v2) against v2 (RNF-3, plan 18 E11c).
+# ab_indexer.sh — A/B of the manager's indexer sender: v1 (pre-v2) against v2.
 #
 # For each scenario it runs the two builds in ABBA order (ABBA BAAB ... : the order bias of a
 # plain A,B,A,B cancels), N runs per side, after one warm-up run per side that is thrown away.
-# I204: v2 passes when the median ratio v2/v1 of the verdict metrics is >= 0.95 (ab_report.py).
+# v2 passes when the median ratio v2/v1 of the verdict metrics is >= 0.95 (ab_report.py).
 #
 # A side is a snapshot of one build's bin/ lib/ and site-packages plus its internal-options,
 # restored whole by `prepare_manager.sh --side` (save them first with --save-side). Labels:
@@ -27,7 +27,7 @@
 # (indexer_ingest_probe.sh, _count per pattern per second) running, then ab_report.py collect.
 #
 # The whole window holds an exclusive flock on AB_MEASURE_LOCK (default results_ab/measure.lock
-# next to this script; plan 18 uses /tmp/plan18-medida.lock), so nothing else builds or measures.
+# next to this script; set AB_MEASURE_LOCK to share one lock across worktrees), so nothing else builds or measures.
 # The lock is held by the `flock -o` process only: its descriptor is closed before this script runs
 # again under it, so the manager daemons a run restarts never inherit it (they outlive the campaign).
 #
@@ -46,7 +46,7 @@
 # (default and FLOOR 60 s: a lower value is raised to 60, because after an `unpause` the sender
 # legitimately idles for a node health probe (10 s), its backoff (up to 15 s) and the async flush
 # (20 s) before it writes again), OR --drain-timeout (the hard cap, 600 s: the run is then NOT a
-# valid measurement). There is no "expected total" end (I226): remoted answers part of the burst 503
+# valid measurement). There is no "expected total" end: remoted answers part of the burst 503
 # (not retried) and the ruleset may leave part of the sample unindexed, so no total is known ahead.
 # drain.json records how it ended ("drain_end": quiet|timeout, "docs_final"), what the manager
 # ACCEPTED from the sender ("events_sent", "events_accepted", "events_rejected_503": ab_report.py
@@ -324,7 +324,7 @@ wait_quiet() {  # patterns -> returns when the summed _count has not grown for Q
 
 PROBE_PID=""
 
-# (E12 A2) After a restore the run must start from a manager that is up and sees the indexer:
+# After a restore the run must start from a manager that is up and sees the indexer:
 # `wazuh-manager-control restart` returns before modulesd binds the inventory-sync socket, and v2's
 # inventory_sync can start "not reachable" and re-probe only 60 s later (its 503s reject the agent
 # deletions of the cleanup and, under a paused indexer, the socket appears ~8 s late). Wait, from the
@@ -349,7 +349,7 @@ wait_manager_ready() {  # log_mark
     echo "    ready: inventory_sync reachable and sockets up after $((SECONDS - t0)) s"
 }
 
-# (E12 A2) The DELETE of the agents is applied asynchronously by authd: a cleanup right after a
+# The DELETE of the agents is applied asynchronously by authd: a cleanup right after a
 # restart can answer "Deleted: N" and still list the agents. Retry until no bench-* is left.
 CLEANUP_TRIES="${AB_TEST_CLEANUP_TRIES:-6}"
 CLEANUP_SLEEP_S="${AB_TEST_CLEANUP_SLEEP_S:-10}"
@@ -428,7 +428,7 @@ run_one() {  # row side index position (e.g. 3/10)
     PROBE_PID=$!
     trap 'unpause_indexer; kill_probe' EXIT
     # The baseline: _stats/indexing's index_total is cumulative since the node started, so
-    # index_total_delta needs a sample taken BEFORE the pause and the sender (E12 A6).
+    # index_total_delta needs a sample taken BEFORE the pause and the sender.
     wait_probe_baseline "$dir/probe.csv" || { abort_run "$label"; return 1; }
 
     args=(--scenario "$SCRIPT_DIR/$file" --label "$label" --mode "$mode" --seed "$SEED")
@@ -488,7 +488,7 @@ with open(out, "w") as fh:
 # shellcheck disable=SC2317  # `exit` is reached when executed instead of sourced
 if [[ -n "${AB_SOURCE_ONLY:-}" ]]; then return 0 2>/dev/null || exit 0; fi
 
-# No default credential and no silent -k (P-9): a real campaign without them stops here, before the lock.
+# No default credential and no silent -k: a real campaign without them stops here, before the lock.
 if ! $DRY_RUN; then
     indexer_resolve_credentials || exit 1
     indexer_resolve_tls || exit 1
@@ -503,7 +503,7 @@ if ! $DRY_RUN && [[ -z "${AB_LOCKED:-}" ]]; then
         exit 0
     fi
     # -o: flock keeps the lock and closes its descriptor before running the child, so nothing the run
-    # starts (the manager daemons restarted by prepare_manager.sh --side) inherits it (I226).
+    # starts (the manager daemons restarted by prepare_manager.sh --side) inherits it.
     AB_LOCKED=1 exec flock -o "$AB_MEASURE_LOCK" "${BASH:-bash}" "$0" "${ORIG_ARGS[@]}" --locked
 fi
 
@@ -512,7 +512,7 @@ CAMPAIGN_ID="${AB_TEST_CAMPAIGN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-${RANDOM}${RANDOM
 total_runs=0
 $DRY_RUN && echo "[dry-run] nothing below touches the manager, the indexer, a container or the lock"
 echo "ab_indexer: ${#PLAN[@]} scenario(s), N=$N per side, warm-up $($WARMUP && echo yes || echo no), lock $AB_MEASURE_LOCK"
-echo "            snapshots $SNAPSHOTS, indexer container $CONTAINER, verdict: median v2/v1 >= 0.95 (I204)"
+echo "            snapshots $SNAPSHOTS, indexer container $CONTAINER, verdict: median v2/v1 >= 0.95"
 failed=0
 for row in "${PLAN[@]}"; do
     name="${row%%|*}"

@@ -46,7 +46,7 @@ extern "C"
         {
             // Defaults when modulesd passes no configuration. The copy carries every field, the
             // opaque `indexer_runtime` included: the RuntimeRef it points at is modulesd's and
-            // outlives the module (wm_indexer_runtime_ref(), I130).
+            // outlives the module (wm_indexer_runtime_ref()).
             inventory_sync_server_config_t config {};
             if (configuration)
             {

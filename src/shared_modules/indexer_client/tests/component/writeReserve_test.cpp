@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// RESULT_RESERVE (plan-E3a §Tests: ResultReserveMeasured, CA-12, I62): the heap an accepted op keeps besides its
+// RESULT_RESERVE (ResultReserveMeasured): the heap an accepted op keeps besides its
 // encoded lines, measured with an allocation counter, must fit in the constant. The counter replaces the global
 // operator new/delete of this executable; under ASAN/TSAN (which own the allocator) it is compiled out and the case
 // is skipped.
@@ -45,7 +45,7 @@ namespace
     /// Live heap bytes (usable size of every block) obtained through operator new, process-wide.
     std::atomic<std::int64_t> g_liveBytes {0};
 
-    /// E6d (CA-E6d-1, CA-E6d-4): calls to operator new and the bytes they asked for (not the live ones), counted only
+    /// Calls to operator new and the bytes they asked for (not the live ones), counted only
     /// on a thread whose AllocationWindow is open. Constant-initialized thread_locals: reading them allocates nothing.
     thread_local bool t_counting = false;
     thread_local std::uint64_t t_calls = 0;
@@ -198,17 +198,17 @@ namespace
     }
 } // namespace
 
-// CA-12: per accepted op, the heap kept besides its lines (OpState, TicketState, control blocks, the bucket's queue and
+// Per accepted op, the heap kept besides its lines (OpState, TicketState, control blocks, the bucket's queue and
 // delivered set, the callback, the completion queued on the pool with an OpResult at its caps, the result stored in
 // the ticket, the reserve handle) is <= RESULT_RESERVE. Phases: (1) retained with a callback; (2) resolved, its
 // completion queued behind a busy pool, the batch still held by the sink; (3) callback run, the Ticket still alive
 // (reported: with a callback the reserve is already released); (4) without a callback, resolved, the Ticket alive;
-// (5, E3b-2) with a callback, requeued into the retry lane with its LastError at its caps (the batch gone); (6, G-diff
-// E3b-2 obj. 1) the composed worst case: requeued with its LastError at its caps, sliced again, then resolved
-// Failed(ItemPermanent) with a capped OpResult while its completion waits behind a busy pool, the batch still held
-// (the resolution frees the op's last-error strings); (7, E3c-1) an op of a group, Building, then resolved with a
-// capped OpResult in its slot while the batches are still held; (8, E3c-2) an op of an ordered bucket with a tag at its
-// cap and its key: retained, then pinned in the lane with its LastError at its caps, then resolved from the lane.
+// (5) with a callback, requeued into the retry lane with its LastError at its caps (the batch gone); (6) the composed
+// worst case: requeued with its LastError at its caps, sliced again, then resolved Failed(ItemPermanent) with a capped
+// OpResult while its completion waits behind a busy pool, the batch still held (the resolution frees the op's
+// last-error strings); an op of a group, Building, then resolved with a capped OpResult in its slot while the batches
+// are still held; an op of an ordered bucket with a tag at its cap and its key: retained, then pinned in the lane with
+// its LastError at its caps, then resolved from the lane.
 TEST_F(WriteTest, ResultReserveMeasured)
 {
 #if !WRITE_RESERVE_COUNTER
@@ -218,7 +218,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     constexpr std::size_t PER_BATCH = 64;
     ASSERT_NO_FATAL_FAILURE(start(1, 1));
     auto sink = installSink();
-    // E3c-2: an ordered bucket whose single batch takes all N ops (one bulk in flight per ordered bucket).
+    // An ordered bucket whose single batch takes all N ops (one bulk in flight per ordered bucket).
     auto ordered = bucketSpec("o", 8u << 20, ic::Overflow::Kind::Reject, 1u << 20, N);
     ordered.ordered = true;
     auto c = client("c", {bucketSpec("b", 64u << 20, ic::Overflow::Kind::Reject, 1u << 20, PER_BATCH), ordered});
@@ -425,7 +425,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     batches.clear();
     bucket6.reset();
 
-    // (7, E3c-1) A group of N ops: (a) Building (the ops in the GroupState, charged, outside the queue); (b) committed,
+    // A group of N ops: (a) Building (the ops in the GroupState, charged, outside the queue); (b) committed,
     // sliced, every op resolved Failed(ItemPermanent) with a capped OpResult (its slot filled), the batches still held
     // (the group's own state, its result vector and the ticket's completion amortized over its ops).
     const auto base7 = liveBytes();
@@ -475,7 +475,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
     }
     ASSERT_TRUE(component::eventually([&] { return stats("b").charge == 0; }, 5s));
 
-    // (8, E3c-2) An ordered bucket: each op with a tag at its cap (OpState::tag) and its key (keyHash), (a) retained
+    // An ordered bucket: each op with a tag at its cap (OpState::tag) and its key (keyHash), (a) retained
     // with a callback, the batch held; (b) requeued into the lane with its LastError at its caps and pinned (the
     // ambiguous anchor), the batch gone; (c) resolved from the lane with a capped OpResult behind a busy pool.
     const std::size_t dispatchedBefore = sink->dispatched();
@@ -578,7 +578,7 @@ TEST_F(WriteTest, ResultReserveMeasured)
 #endif
 }
 
-// CA-E6d-1 (I121, I122): 1 024 post() of a 1 500 B body into a bucket that cannot form a batch: the producer thread
+// 1 024 post() of a 1 500 B body into a bucket that cannot form a batch: the producer thread
 // asks operator new for < 1 024 B per op (the body is moved, never copied: m1 makes it >= 1 500) in <= 2 calls per op
 // (the OpState and the head) + 64 in total (the bucket's queue). The ops are built before the window opens.
 TEST_F(WriteTest, PostBodyNotCopied)
@@ -611,7 +611,7 @@ TEST_F(WriteTest, PostBodyNotCopied)
     EXPECT_EQ(std::count(accepted.begin(), accepted.end(), 1), static_cast<std::ptrdiff_t>(WINDOW_OPS));
     EXPECT_EQ(stats("b").retained, WINDOW_OPS) << "the bucket formed a batch during the window";
     const double perOp = static_cast<double>(requested) / WINDOW_OPS;
-    std::printf("[  E6d     ] PostBodyNotCopied: %llu calls (%.2f per op), %llu bytes requested (%.1f per op)\n",
+    std::printf("[  ALLOC   ] PostBodyNotCopied: %llu calls (%.2f per op), %llu bytes requested (%.1f per op)\n",
                 static_cast<unsigned long long>(calls),
                 static_cast<double>(calls) / WINDOW_OPS,
                 static_cast<unsigned long long>(requested),
@@ -624,7 +624,7 @@ TEST_F(WriteTest, PostBodyNotCopied)
 #endif
 }
 
-// I125 (a): 1 024 post() of an IndexDataStream op of 1 500 B into one index, with the window and bucket of
+// 1 024 post() of an IndexDataStream op of 1 500 B into one index, with the window and bucket of
 // PostBodyNotCopied: the action line is the cached shared head, so the producer asks operator new for <= 1 call per op
 // (the OpState) + 64 in total (the bucket's queue and the first op's head). The ops are built before the window opens.
 TEST_F(WriteTest, PostSharedHeadSingleAllocation)
@@ -660,7 +660,7 @@ TEST_F(WriteTest, PostSharedHeadSingleAllocation)
     }
     EXPECT_EQ(std::count(accepted.begin(), accepted.end(), 1), static_cast<std::ptrdiff_t>(WINDOW_OPS));
     EXPECT_EQ(stats("b").retained, WINDOW_OPS) << "the bucket formed a batch during the window";
-    std::printf("[  E6d     ] PostSharedHeadSingleAllocation: %llu calls (%.2f per op), %llu bytes requested (%.1f per "
+    std::printf("[  ALLOC   ] PostSharedHeadSingleAllocation: %llu calls (%.2f per op), %llu bytes requested (%.1f per "
                 "op)\n",
                 static_cast<unsigned long long>(calls),
                 static_cast<double>(calls) / WINDOW_OPS,
@@ -673,8 +673,8 @@ TEST_F(WriteTest, PostSharedHeadSingleAllocation)
 #endif
 }
 
-// CA-E6d-4: submit() without a callback with the same window and ops: <= 3 operator new calls per op + 64 (E6c: 4 —
-// the lines, TicketState, ReserveHandle, OpState; E6d fuses the reserve handle into the TicketState and moves the
+// submit() without a callback with the same window and ops: <= 3 operator new calls per op + 64 (4 before the fusing:
+// the lines, TicketState, ReserveHandle, OpState; the reserve handle is now fused into the TicketState and moves the
 // body).
 TEST_F(WriteTest, SubmitAllocationsFused)
 {
@@ -709,7 +709,7 @@ TEST_F(WriteTest, SubmitAllocationsFused)
         ASSERT_TRUE(submit.accepted) << ic::toString(submit.cause);
     }
     EXPECT_EQ(stats("b").retained, WINDOW_OPS) << "the bucket formed a batch during the window";
-    std::printf("[  E6d     ] SubmitAllocationsFused: %llu calls (%.2f per op), %llu bytes requested (%.1f per op)\n",
+    std::printf("[  ALLOC   ] SubmitAllocationsFused: %llu calls (%.2f per op), %llu bytes requested (%.1f per op)\n",
                 static_cast<unsigned long long>(calls),
                 static_cast<double>(calls) / WINDOW_OPS,
                 static_cast<unsigned long long>(requested),
@@ -722,7 +722,7 @@ TEST_F(WriteTest, SubmitAllocationsFused)
 #endif
 }
 
-// CA-E6d-4 (I124b): the charge of a posted op is its wire size + the heap slack of its body + RESULT_RESERVE: a 1 500 B
+// The charge of a posted op is its wire size + the heap slack of its body + RESULT_RESERVE: a 1 500 B
 // body with reserve(3 000) charges wire + 1 500 + R; a Delete and an SSO body charge wire + R (so no exact charge of
 // the other suites changes). The sink receives the wire bytes only, and the charge returns to 0 at resolution. Mutant
 // m6: charge = wire.

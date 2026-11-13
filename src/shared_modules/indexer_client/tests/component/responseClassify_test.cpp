@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The `_bulk` response classifier (plan-E3b-1 §Tests: I65, RF-9, RF-28, T16, CA-4): the request table over an
+// The `_bulk` response classifier: the request table over an
 // HttpResult and the item table over the bodies the fake's `_bulk` responder renders the way OpenSearch does, plus the
 // transport's padding of a real response body.
 
@@ -168,9 +168,9 @@ namespace
     }
 } // namespace
 
-// I65, RF-9: every transport cause and every status of the request table gets its verdict and the op's lastCause;
+// Every transport cause and every status of the request table gets its verdict and the op's lastCause;
 // retryAfter, mayHaveSent and httpStatus travel unchanged. Includes Ignore, 3xx, 408, a request-level 409, 401/403
-// (retried: the deviation from RF-9) and 413 / ResponseTooLarge with one op and with several.
+// (retried, unlike the other 4xx) and 413 / ResponseTooLarge with one op and with several.
 TEST(ClassifyTest, ClassifyRequestMatrix)
 {
     using C = ic::Cause;
@@ -252,7 +252,7 @@ TEST(ClassifyTest, ClassifyRequestMatrix)
     }
 }
 
-// I65, T16, RF-28: every row of the item table, over the bodies the fake renders as OpenSearch does: the four keys,
+// Every row of the item table, over the bodies the fake renders as OpenSearch does: the four keys,
 // `outcome` from `result`, the retryable errors, the conflict, the permanent ones, and "malformed item" for an item
 // without a known key or without `status`. The same verdicts with `"errors":false` (never used to skip items).
 TEST(ClassifyTest, ClassifyItemsMatrix)
@@ -360,7 +360,7 @@ TEST(ClassifyTest, ClassifyItemsMatrix)
     expectItems(wr::classifyItems(body, 1), {{V::Ok, O::Created, 201, ""}}, body);
 }
 
-// CA-4: a delete of a missing document (404 `not_found` without `error`) is NotFound; a 404 with
+// A delete of a missing document (404 `not_found` without `error`) is NotFound; a 404 with
 // `index_not_found_exception` is Permanent, and so is a 404 `not_found` of a non-delete op.
 TEST(ClassifyTest, ClassifyDeleteNotFound)
 {
@@ -385,8 +385,8 @@ TEST(ClassifyTest, ClassifyDeleteNotFound)
     }
 }
 
-// I65: a 409 with version_conflict_engine_exception is a Conflict that keeps its status, type and reason (the bucket's
-// ConflictPolicy decides in E3b-2); a 409 of any other type, or without an error, is Permanent.
+// A 409 with version_conflict_engine_exception is a Conflict that keeps its status, type and reason (the bucket's
+// ConflictPolicy decides); a 409 of any other type, or without an error, is Permanent.
 TEST(ClassifyTest, ClassifyConflict)
 {
     BulkItem bare;
@@ -412,7 +412,7 @@ TEST(ClassifyTest, ClassifyConflict)
     }
 }
 
-// I65: an unreadable 2xx body, or one with an item too many or too few, is nullopt (E3b-2 retries it); a body without
+// An unreadable 2xx body, or one with an item too many or too few, is nullopt (the sender retries it); a body without
 // spare capacity (capacity() == size()) is still parsed, and its content is unchanged.
 TEST(ClassifyTest, ClassifyUnreadableOrMismatch)
 {
@@ -458,7 +458,7 @@ TEST(ClassifyTest, ClassifyUnreadableOrMismatch)
     EXPECT_EQ(tight, text);
 }
 
-// I65: `reason` stays within 512 bytes with `caused_by` appended (cut on a UTF-8 boundary), `itemErrorType` within
+// `reason` stays within 512 bytes with `caused_by` appended (cut on a UTF-8 boundary), `itemErrorType` within
 // 64; the request reason is bounded too.
 TEST(ClassifyTest, ClassifyReasonBounded)
 {
@@ -490,7 +490,7 @@ TEST(ClassifyTest, ClassifyReasonBounded)
     EXPECT_EQ(request.reason.rfind("HTTP 409: bbb", 0), 0U) << request.reason;
 }
 
-// I65: after an 8 MiB body the thread's parser is rebuilt (capacity <= 4 MiB); a small body leaves it alive.
+// After an 8 MiB body the thread's parser is rebuilt (capacity <= 4 MiB); a small body leaves it alive.
 TEST(ClassifyTest, ParserMemoryBounded)
 {
     std::string body = R"({"took":3,"errors":false,"items":[)";
@@ -522,7 +522,7 @@ namespace
     };
 } // namespace
 
-// I65: a response body handed over by the real transport carries RESPONSE_PADDING (>= 64) bytes of spare capacity,
+// A response body handed over by the real transport carries RESPONSE_PADDING (>= 64) bytes of spare capacity,
 // small or large, so the classifier parses it in place; and it classifies.
 TEST_F(ClassifyTransportTest, TransportBodyPadded)
 {
@@ -566,7 +566,7 @@ TEST_F(ClassifyTransportTest, TransportBodyPadded)
     }
 }
 
-// G-diff E3b-1 obj. 1: a rejected body says why, so E3b-2 can keep it as the ops' last error.
+// A rejected body says why, so the sender can keep it as the ops' last error.
 TEST(ClassifyTest, ClassifyItemsReason)
 {
     std::string reason;

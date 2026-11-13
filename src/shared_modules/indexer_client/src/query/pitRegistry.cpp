@@ -379,7 +379,7 @@ namespace indexer_client::detail::query
             }
 
             /// Frees one open slot and counts the delete's end. The caller removes the entry and notifies m_cv after
-            /// unlocking. E5c: an expired one also counts for the log summary, which keeps the first id.
+            /// unlocking. An expired one also counts for the log summary, which keeps the first id.
             void finishLocked(bool confirmed, const std::string& id)
             {
                 if (m_open > 0)
@@ -521,7 +521,7 @@ namespace indexer_client::detail::query
                 }
                 auto nodes = m_env.nodes.lock();
                 const auto node = nodes ? nodes->choose() : std::nullopt;
-                // I109: read before this registry's mutex (a leaf); a parked node shortens the NoNode retry below.
+                // Read before this registry's mutex (a leaf); a parked node shortens the NoNode retry below.
                 const auto parked = (!node && nodes) ? nodes->earliestNotBefore() : std::nullopt;
                 std::uint64_t token = 0;
                 {
@@ -633,7 +633,7 @@ namespace indexer_client::detail::query
             }
 
             /// Settles the current send of `id` (`token`); stale tokens are ignored. `floor` = Retry-After; `parked` =
-            /// NodeSet::earliestNotBefore() of a NoNode send (I109: retried when that node's wait ends, if sooner).
+            /// NodeSet::earliestNotBefore() of a NoNode send (retried when that node's wait ends, if sooner).
             void settle(const std::string& id,
                         std::uint64_t token,
                         Settle how,
@@ -705,7 +705,7 @@ namespace indexer_client::detail::query
             bool m_draining {false};
             bool m_drainDone {false};    ///< drain() gave up what was left: a later opened() counts it expired.
             TimePoint m_drainEnd;        ///< drain()'s end, set when m_draining is.
-            ExpiredDeletes m_expiredLog; ///< E5c: expired since the last takeExpiredDeletes().
+            ExpiredDeletes m_expiredLog; ///< Expired since the last takeExpiredDeletes().
         };
 
         std::mutex g_liveMutex;
