@@ -571,3 +571,105 @@ def _store_case_credential(kind: str, stored: list) -> None:
         subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
                         '-k', key], input=value, text=True, check=True, capture_output=True)
         stored.append(key)
+
+
+# --------------------------------------------------------------------------------------------
+# Remote references: Amazon ECR, public and private.
+# --------------------------------------------------------------------------------------------
+
+def replace_placeholder(node, placeholder: str, value: str) -> None:
+    """Replace every configuration value equal to ``placeholder``, wherever it is nested."""
+    if isinstance(node, dict):
+        for key, item in node.items():
+            if item == placeholder:
+                node[key] = value
+            else:
+                replace_placeholder(item, placeholder, value)
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            if item == placeholder:
+                node[index] = value
+            else:
+                replace_placeholder(item, placeholder, value)
+
+
+def _store_ecr_credential(kind: str, stored: list) -> None:
+    """Put the AWS key pair the case asks for into the agent store.
+
+    ``valid`` stores the pair the endpoint accepts, ``wrong_secret`` the right access key id
+    with another secret, ``unknown_key`` a pair the endpoint has never seen, ``missing`` none.
+    Each key is added to `stored` as soon as it is written, so a failure half way still leaves
+    the caller knowing what to remove.
+    """
+    from framework_module.registry import ECR_ACCESS_KEY_ID, ECR_KEYS, ECR_SECRET_ACCESS_KEY
+
+    pairs = {
+        'valid': (ECR_ACCESS_KEY_ID, ECR_SECRET_ACCESS_KEY),
+        'wrong_secret': (ECR_ACCESS_KEY_ID, 'NotTheSecretAccessKey/9876543210'),
+        'unknown_key': ('AKIDUNKNOWNTESTKEY', 'AnotherSecretAccessKey/1122334455'),
+    }
+
+    if kind not in pairs:
+        return
+
+    for key, value in zip(ECR_KEYS, pairs[kind]):
+        subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+                        '-k', key], input=value, text=True, check=True, capture_output=True)
+        stored.append(key)
+
+
+@pytest.fixture()
+def local_ecr_registry(request: pytest.FixtureRequest, test_metadata: dict, test_configuration: dict):
+    """Serve the configured reference from a local registry answering as an Amazon ECR host.
+
+    Which one is the case's ``flavor``: ``ecr-public`` answers as ``public.ecr.aws`` and
+    ``ecr-private`` as ``123456789012.dkr.ecr.us-east-1.amazonaws.com``, together with the AWS
+    API endpoint that issues its token and verifies the request signature. As for GHCR, this
+    needs root: it binds port 443, edits ``/etc/hosts`` and runs the agent's own keystore tool.
+
+    A case may also ask for a saved archive of the very same image (``archive: true``), so the
+    packages stored for the remote reference can be compared with the packages stored for the
+    archive.
+    """
+    from framework_module.registry import ALL_HOSTS, ECR_ACCESS_KEY_ID, ECR_SECRET_ACCESS_KEY, LocalRegistry
+
+    local = LocalRegistry(flavor=test_metadata['flavor'])
+    hosts = Path('/etc/hosts')
+    original_hosts = hosts.read_text()
+    stored = []
+
+    try:
+        packages = populate_registry(local, test_metadata['repository'], False, ['amd64'])
+
+        for name in test_metadata.get('extra_repositories', []):
+            populate_registry(local, name, False, ['amd64'])
+
+        if test_metadata['flavor'] == 'ecr-private':
+            local.aws_credential = (ECR_ACCESS_KEY_ID, ECR_SECRET_ACCESS_KEY)
+            local.expire_token_on_first_layer = test_metadata.get('expire_token_on_first_layer', False)
+
+        hosts.write_text(original_hosts + '\n127.0.0.1 %s\n' % ' '.join(ALL_HOSTS))
+
+        _point_ca_bundle_at(test_configuration, local.ca_certificate)
+
+        if test_metadata.get('archive'):
+            archive_path = os.path.join(LOCAL_IMAGES_ROOT, 'same-image.tar')
+            write_saved_archive(archive_path, [{DPKG_STATUS_PATH: dpkg_status(list(packages.items()))}],
+                                ref_name='alpine:same-image')
+            replace_placeholder(test_configuration, 'ARCHIVE_PATH', archive_path)
+
+        reset_module_database()
+        _store_ecr_credential(test_metadata.get('credential', 'none'), stored)
+
+        local.start()
+
+        yield local, packages
+    finally:
+        local.stop()
+        hosts.write_text(original_hosts)
+
+        for key in stored:
+            subprocess.run([f'{WAZUH_PATH}/bin/wazuh-agent-keystore', '-f', 'container_images',
+                            '-k', key, '-d'], capture_output=True)
+
+        shutil.rmtree(LOCAL_IMAGES_ROOT, ignore_errors=True)
