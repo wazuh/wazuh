@@ -24,7 +24,9 @@ def parse_yaml_to_documentation(parser: Parser):
 
     metadata = Metadata(
         parser.get_metadata()["description"],
-        parser.get_metadata()["keywords"])
+        parser.get_group(),
+        parser.get_fails_when(),
+        parser.get_metadata().get("deletes_arguments", []))
 
     arguments = {name: Argument(parser.get_types()[index], parser.get_sources()[index], parser.get_subset(
     )[index], parser.get_restrictions()[index], bool(arg_info.get("optional", False)),

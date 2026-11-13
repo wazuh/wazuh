@@ -24,7 +24,9 @@ with that value, and every member along its path must occur exactly once. Litera
 and `wazuh.agent.id` members at the root, and `agent.id` under `wazuh`, are rejected after name
 decoding, regardless of their values: these dotted names resolve to the same indexed identity path.
 Names with trailing dots along this path (including `wazuh.`, `agent.`, `id.` and dotted aliases
-with trailing dots) are rejected as well. Dotted names in unrelated paths remain accepted.
+with trailing dots) are rejected as well. So is any other dotted member name the indexer would
+expand into `wazuh.*`: a root member whose first segment is `wazuh` (`wazuh.cluster.name`) and any
+dotted name inside the root `wazuh` object, at any depth. Dotted names elsewhere remain accepted.
 Violations return 400 before enqueueing. The cache validates once per distinct (id, exact header bytes) pair.
 
 The socket is `0660 wazuh-manager`; the engine performs no peer-credential or JWT verification.
@@ -558,7 +560,7 @@ This behavior depends on the policy configuration:
 This makes the discarded-events decision part of pre-enrichment, before any configured enrichment is evaluated.
 
 > [!NOTE]
-> See the [helper functions reference](ref-helper-functions.md#discard_events) for the condition used to determine whether discarded events should continue in the pipeline.
+> See the [helper functions reference](ref-helper-functions.md#discard_event) for the condition used to determine whether discarded events should continue in the pipeline.
 
 ```mermaid
 flowchart TD
@@ -902,7 +904,7 @@ outputs:
         - wazuh-indexer:
             index: "wazuh-events-v5-unclassified"
 
-    - check: string_not_equal($wazuh.integration.category, "unclassified")
+    - check: string_ne($wazuh.integration.category, "unclassified")
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"
@@ -913,31 +915,21 @@ The routing logic uses a `first_of` block that evaluates two conditions in order
 1. If `index_unclassified_events` returns `true` — meaning the policy has unclassified-events indexing enabled
    **and** `wazuh.integration.category` equals `"unclassified"` — the event is sent to
    `wazuh-events-v5-unclassified`.
-2. If `string_not_equal` succeeds — meaning the category is not `"unclassified"` — the event is classified
+2. If `string_ne` succeeds — meaning the category is not `"unclassified"` — the event is classified
    and sent to the data stream corresponding to its integration category:
    `wazuh-events-v5-${wazuh.integration.category}`.
 
 If neither condition matches — the event is unclassified but the policy has unclassified-events indexing
 disabled — no output is selected and the event is **not indexed**.
 
-Since every event of a log source whose integration is disabled ends up unclassified, the engine reports
-these drops: when the policy of a space has `index_unclassified_events` disabled, the engine logs a WARNING
-at most once every 5 minutes per space (shared by all router workers), with the number of unclassified
-events dropped since the previous warning and up to 10 of their sources (`wazuh.protocol.location`). The first
-drop is reported immediately. Policies built in test mode (tester sessions, `/logtest`, policy validation)
-never warn. The [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric counts every
-unclassified event, indexed or not.
-
-The warning says the events were not indexed *as processed events*: raw indexing (`index_raw_events`) runs
-before the policy and the policy does not know whether it is enabled, so the warning fires either way, and with
-raw indexing enabled a raw copy of each event is still kept. Its advice to enable an integration applies only
-when one exists for the source; a custom log format may have none.
-
-Each listed source is cut to 128 bytes (on a UTF-8 character boundary) and its control characters are shown as
-`\xNN`, since the location is reported by the agent. Drops counted after a warning are reported with the next
-one, which needs another unclassified event once the interval has elapsed: if the source stops sending, or the
-route is deleted, the last count is only visible in the
-[`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric.
+The engine does not log these drops. Every unclassified event of production traffic, indexed or not, is counted
+in the [`space.<space>.events.unclassified`](#spacespaceeventsunclassified) metric (policies built in test mode do not
+move it). When the manager has indexer hosts configured, the master node collects the engine metrics of its own node
+and of its connected workers at startup and then every `metrics_frequency` (600 seconds by default and at least;
+`0` disables the collection) and indexes them into `wazuh-metrics-normalization` (a node that cannot be reached in a
+cycle is skipped until the next one); the Wazuh dashboard shows this one in the **Unclassified events** panel of
+**Server statistics → Normalization** and **Server statistics → Per-Space Metrics**. Without that publication the
+counter is still available from the engine's metrics, but the dashboard is not updated.
 
 ```mermaid
 flowchart TD
@@ -949,7 +941,7 @@ classDef skip fill:#9e9e9e,stroke-width:1px,color:#fff
 
 start["Output stage (indexer.yml)"]:::cond
 check1["index_unclassified_events($wazuh.integration.category)"]:::cond
-check2["string_not_equal($wazuh.integration.category, 'unclassified')"]:::cond
+check2["string_ne($wazuh.integration.category, 'unclassified')"]:::cond
 unclassified["wazuh-events-v5-unclassified"]:::yes
 classified["wazuh-events-v5-${wazuh.integration.category}"]:::alt
 dropped["Event not indexed"]:::skip
@@ -1332,7 +1324,7 @@ at most one `parse|<field>`; any other order, or a second parse, makes the asset
 
 **`outputs`** — An array of output operations that deliver the event to external destinations. Each element in the array can be:
 - A **direct output operation** (e.g. `wazuh-indexer:`, `file:`), executed unconditionally.
-- A **`first_of`** block: an ordered list of branches, each with an optional `check` condition and a `then` list of output operations. The first branch whose `check` passes executes its `then` and the remaining branches are skipped.
+- A **`first_of`** block: an ordered list of branches, each with a required `check` condition and a `then` list of output operations. A branch must have exactly these two keys, `check` first and `then` second; a missing, extra or reordered key fails the build of the output. The first branch whose `check` passes executes its `then` and the remaining branches are skipped.
 
 Cannot modify the event.
 
@@ -1395,14 +1387,14 @@ target_field: operation
 ```
 
 Where the operation can be:
-- **Literal Value**: A direct check or map operation depending on the stage it is defined. This can be any of the YAML native values (string, number, boolean, etc.).
+- **Literal Value**: A direct check or map operation depending on the stage it is defined. This can be any of the YAML native values (string, number, boolean, etc.). An integer above 2^63-1 written as a YAML value is read as a floating-point number; event fields and helper arguments keep 64-bit integers exact.
 - **Reference**: Denoted by $field_name, it performs a direct check or map operation using the referenced value.
 - **Helper Function**: Denoted by helper_name(args), it performs a check or map operation depending on the called helper.
 
 When building an asset, the process can fail if there is any operation that contains a:
 - **Syntax Error**: Errors in the target_field or operation syntax.
 - **Schema Validation Failure**: Errors such as mapping a boolean into a keyword field, which violates the schema validation rules.
-- **Semantic Error**: Incorrect usage, such as using a conditional helper in a map stage.
+- **Semantic Error**: Incorrect usage, such as using a check helper in a map stage.
 These errors will be notified when trying to upload the asset to the catalog.
 
 ### Execution Graph Summary
@@ -1453,38 +1445,36 @@ There are two intrinsic operations which do not require additional syntax:
 
 All other operations are accessed through the helper functions.
 
-The syntax for calling a helper function is `helper_name(args…)`. They can be used in both check operations and map operations. Helper functions are classified into three categories:
-- **Conditionals**: Used in check operations to test complex conditions.
-- **Transformational**: Used in map operations to transform data.
-- **Mapping**: A subset of transformational operations scoped to modifying only the target field.
+The syntax for calling a helper function is `helper_name(args…)`. Helper functions come in two categories, named after the stage that uses them:
+- **Check helpers**: used in `check` stages — in the checklist form or inside a conditional expression — and in `first_of` branches. They test a condition on the target field: the operation succeeds when the condition holds and fails otherwise, and the event is never modified.
+- **Map helpers**: used in `map` operations. They compute a value for the target field; some of them instead read the target field and modify it in place (for example `array_append`, `trim`, `merge` or `delete`).
 
-Check the [helper standard library](ref-helper-functions.md) for a complete list of available helper functions.
+The complete list of helpers, grouped by topic, is in the [helper functions reference](ref-helper-functions.md). Their names follow one convention:
 
-#### Condition Helpers
-When using conditional helpers, the syntax is:
+- Names are `snake_case` English words; the only abbreviations are `ip`, `ipv4`, `ipv6`, `cidr`, `json`, `xml`, `csv`, `dsv`, `kv`, `kvdb`, `regex`, `uri`, `fqdn`, `sha1`, `hex`, `iana`, `asn`, `epoch`, `int`, `bool` and the comparison operators `eq`, `ne`, `gt`, `gte`, `lt`, `lte`.
+- A check helper reads as a sentence about the target field: `exists($f)`, `contains($f, 'x')`, `one_of($f, [...])`, `is_key_of($f, $table)`, `in_kvdb($f, 'db')`, `in_cidr($f, '10.0.0.0/8')`, `is_string($f)`. A negated check puts `not` right before the verb: `not_exists`, `is_not_string`, `not_in_kvdb`, `regex_not_match`.
+- Typed comparisons are `string_` or `number_` followed by `eq`, `ne`, `gt`, `gte`, `lt` or `lte`. `number_*` compares two integers exactly and switches to double only when a floating-point number is involved. `==` and `one_of` compare JSON values instead: `2` equals `2.0` there as well, but an unsigned 64-bit integer and the negative integer with the same bit pattern compare equal, so use `number_eq` for exact integers. For a literal value prefer the operators (`$f >= 5`), the helpers are for comparing two fields.
+- A check over several values says how many must be present: `array_contains_all`, `array_contains_any`, `array_contains_none`. A map helper that takes several references fails when one is missing (`array_append`, `array_append_unique`, `concat`); its `_any` variant (`array_append_any`, `array_append_unique_any`, `concat_any`) uses the references that resolve and fails when none does; a literal never counts, and a call without any reference is rejected when the asset is built.
+- A helper that produces a value is named after what it produces: `to_int`, `parse_json`, `hex_to_int`, `epoch_to_date`, `now`, `geoip`, `asn`, `sha1`, `community_id`, `syslog_facility`, `iana_protocol_number`. A helper that modifies the event is a verb: `delete`, `rename`, `merge`, `replace`, `split`, `trim`, `lookup`, `snake_case_keys`, `discard_event`.
+- An option is a trailing quoted word, not a separate helper: `merge($src, 'deep')`, `lookup_merge($table, $key, 'deep')`, `kvdb_lookup_merge('db', $key, 'deep')`, `to_int($n, 'round')`, `parse_xml($s, 'windows')`, `array_to_object($arr, 'Name', 'Value', 'raw_keys')`.
+
+#### Check helpers
+When using a check helper, the syntax is:
 ```yaml
-target_field: condition_helper(args)
+target_field: check_helper(args)
 ```
 
-The helper will always test a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails.
+The helper always tests a condition on *target_field*. If the condition passes, the operation succeeds; otherwise, it fails. A negated helper (`is_not_string`, `not_in_kvdb`, `regex_not_match`, `string_ne`, ...) is also false when *target_field* is missing or has the wrong type: it is not the same as `NOT helper(...)`. The one exception is `not_exists`, the exact complement of `exists`, which is true when the field is missing.
 
-#### Mapping Helpers
-When using mapping helpers, the syntax is:
+#### Map helpers
+When using a map helper, the syntax is:
 ```yaml
 target_field: map_helper(args)
 ```
 
-The helper will always map the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
+The helper maps the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
 
-#### Transform Helpers
-When using transformational helpers, the syntax is:
-```yaml
-target_field: transform_helper(args)
-```
-
-The helper will transform the *target_field* if the operation succeeds. If the operation fails, the *target_field* remains unchanged.
-
-A transformational helper may fail due to implicit conditions, such as expecting a specific type for the target field, missing a reference passed as an argument, etc.
+Some map helpers do not compute a value from their arguments alone: they read the current value of *target_field* and modify it in place. `array_append` and `array_append_any` add elements to the array stored in the target, `trim` removes characters from the string stored in it, `merge` merges another object into it, `rename` and `delete` move or remove it, and so on; the reference entry of each helper states whether it works in place. Such a helper also fails when the target does not have the type it expects (for example `array_append` on a field that holds a string), on top of the reasons any map helper may fail for: a missing reference passed as an argument, an argument of the wrong type, etc.
 
 ***It is important to understand that every operation can succeed or fail, and this is the foundation for defining the operation graph.***
 
@@ -1543,7 +1533,9 @@ Where op is any of the following:
 
 When using any operator other than `==`, only string or number values are allowed.
 
-When using the default map or filter functions for string operations, values are parsed according to standard YAML
+`==` compares the field with the value whatever its type (the value may also be a reference). Every other operator desugars to the typed comparison helper selected by the type of the value: `string_<op>` for a string and `number_<op>` for a number, where `<op>` is `ne` (`!=`), `lt` (`<`), `lte` (`<=`), `gt` (`>`) or `gte` (`>=`) — `check: $event.severity > 3` is `number_gt($event.severity, 3)`. The same helpers, together with `string_eq` and `number_eq`, are the form to use when the right side is a reference (`number_gt($a, $b)`).
+
+When using the default map or check operations for string values, values are parsed according to standard YAML
 (or JSON) types. If a value is a string and begins with the reference symbol `$`, it is treated as a potential
 reference. If the reference is invalid the operation building fails.
 ```yaml
@@ -1563,7 +1555,7 @@ check: $http.request.method == "GET"
 check: $event.severity > 3
 
 # Example 3: Using a helper function in check
-check: ip_cidr_match($source.ip, '192.168.0.0', '24')
+check: in_cidr($source.ip, '192.168.0.0/24')
 
 ```
 
@@ -1720,7 +1712,7 @@ This pattern is useful when the event already contains a code and you want to en
 ```yaml
 normalize:
   - map:
-      - event: kvdb_get_merge('event_defaults_by_code', $event.code)
+      - event: kvdb_lookup_merge('event_defaults_by_code', $event.code)
 ```
 
 If `event.code` is `http`, the value stored under `content.http` is merged into `event`.
@@ -1731,21 +1723,20 @@ This pattern is useful for allowlists, blocklists, or IoC-style checks.
 
 ```yaml
 check:
-  - source.ip: kvdb_match('known_malicious_ips')
+  - source.ip: in_kvdb('known_malicious_ips')
 ```
 
 The check succeeds only if the current value of `source.ip` exists as a key in the KVDB.
 
 #### Available helper functions
 
-The KVDB helper reference includes functions for direct lookups, array lookups, merges, recursive merges, membership checks, and bitmask decoding:
+The KVDB helper reference includes functions for direct lookups, lookups of several keys at once, merges (shallow, or recursive with the optional `deep` mode), membership checks, and bitmask decoding:
 
-- [`kvdb_get`](ref-helper-functions.md#kvdb_get)
-- [`kvdb_get_array`](ref-helper-functions.md#kvdb_get_array)
-- [`kvdb_get_merge`](ref-helper-functions.md#kvdb_get_merge)
-- [`kvdb_get_merge_recursive`](ref-helper-functions.md#kvdb_get_merge_recursive)
-- [`kvdb_match`](ref-helper-functions.md#kvdb_match)
-- [`kvdb_not_match`](ref-helper-functions.md#kvdb_not_match)
+- [`kvdb_lookup`](ref-helper-functions.md#kvdb_lookup)
+- [`kvdb_lookup_append`](ref-helper-functions.md#kvdb_lookup_append)
+- [`kvdb_lookup_merge`](ref-helper-functions.md#kvdb_lookup_merge) (with the optional `deep` mode)
+- [`in_kvdb`](ref-helper-functions.md#in_kvdb)
+- [`not_in_kvdb`](ref-helper-functions.md#not_in_kvdb)
 - [`kvdb_decode_bitmask`](ref-helper-functions.md#kvdb_decode_bitmask)
 
 Use this section as the conceptual overview of the asset itself, and refer to the helper reference for function-specific behavior and examples.
@@ -2129,7 +2120,7 @@ check: $event.category=="registry" AND $event.type=="change" AND ($registry.path
 ```
 
 ```yaml
-check: int_less($http.response.status_code, 400)
+check: number_lt($http.response.status_code, 400)
 ```
 
 ```yaml
@@ -2733,7 +2724,7 @@ Total number of unclassified events for a given space.
 ##### `space.<space>.events.discarded`
 
 Total number of events of a given space dropped by the discarded events filter in pre-enrichment: events a
-decoder marked with the `discard_events` helper while the policy's `index_discarded_events` is `false`. Events
+decoder marked with the `discard_event` helper while the policy's `index_discarded_events` is `false`. Events
 marked while it is `true` are indexed and not counted; events rejected by pre- or post-filters are counted only in
 the two metrics below.
 
@@ -2902,7 +2893,7 @@ applied and processed it:
 ```
 traces:
 [🟢] decoder/core-wazuh-message/0 -> success
-  ↳ @timestamp: get_date -> Success
+  ↳ @timestamp: now -> Success
 [🟢] decoder/integrations/0 -> success
   ↳ event.original: exists -> Success
   ↳ _tmp_json: parse_json($event.original) -> Success

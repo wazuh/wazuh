@@ -1,0 +1,198 @@
+# Name of the helper function
+name: parse_kv
+
+metadata:
+  description: |
+    Parses the input string as a list of key-value pairs and stores them as members of the target object.
+
+    Behavior:
+    - `separator` joins a key to its value and `delimiter` separates the pairs; both are literal strings of
+      one or more characters and must differ. `quote` and `escape` are literal single characters.
+    - The whole input must be a list of pairs with at least one pair. The text between quote characters is
+      one value even when it contains the separator or the delimiter, and an escaped quote is kept as a
+      literal character; unbalanced quotes fail.
+    - Every value is stored as a string with its outer quotes removed; an empty value becomes null.
+    - Keys lose their outer quotes; a key with dots creates nested objects (`a.b=1` gives
+      `{"a": {"b": "1"}}`); a key nested deeper than 256 levels fails; when a key is repeated the last
+      value wins.
+    - Keys are written as JSON Pointer tokens: `~0` and `~1` are the pointer escapes (the key `a~1b` maps to
+      the member `a/b`); a `~` followed by any other character, or at the end of the key, fails the parse.
+    - The resulting object replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - `separator` or `delimiter` is empty, or both are equal.
+    - `quote` or `escape` is not a single character.
+    - An option is not a literal string, or the number of arguments is not 5.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - `array_to_object` builds an object out of an array of key-value objects.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not entirely made of key-value pairs, or holds no pair.
+    - The quoting is not balanced, or a key is nested deeper than 256 levels.
+    - A key has a `~` not followed by `0` or `1`.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+  separator:
+    type: string
+    generate: string
+    source: value
+  delimiter:
+    type: string
+    generate: string
+    source: value
+  quote:
+    type: string
+    generate: string
+    source: value
+  escape:
+    type: string
+    generate: string
+    source: value
+
+skipped:
+  - success_cases # string generation is random
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      input: key1=value1 key2=value2 key3=value3
+      separator: "="
+      delimiter: " "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      key1: value1
+      key2: value2
+      key3: value3
+    description: Each pair becomes a member of the target object
+  - arguments:
+      input: "key1:value1"
+      separator: "="
+      delimiter: " "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: false
+    description: Fails when the input holds no pair with the given separator
+  - arguments:
+      input: "k1=v1 || k2=v2"
+      separator: "="
+      delimiter: " || "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      k1: v1
+      k2: v2
+    description: The delimiter may have several characters
+  - arguments:
+      input: "a::=x,b::=y"
+      separator: "::="
+      delimiter: ","
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      a: x
+      b: y
+    description: The separator may have several characters
+  - arguments:
+      input: "k1::=v1 || k2::=v2"
+      separator: "::="
+      delimiter: " || "
+      quote: "\""
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      k1: v1
+      k2: v2
+    description: Both tokens may have several characters
+  - arguments:
+      input: "k1='v 1' k2=v2"
+      separator: "="
+      delimiter: " "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      k1: v 1
+      k2: v2
+    description: A quoted value may contain the delimiter and loses its quotes
+  - arguments:
+      input: "k1= k2=v2"
+      separator: "="
+      delimiter: " "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      k1: null
+      k2: v2
+    description: An empty value is stored as null
+  - arguments:
+      input: "n=1 a.b=x"
+      separator: "="
+      delimiter: " "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      n: "1"
+      a:
+        b: x
+    description: Values are stored as strings and a dotted key creates nested objects
+  - arguments:
+      input: "a=b=c"
+      separator: "="
+      delimiter: "="
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: false
+    description: Rejected at build time because the separator and the delimiter are equal
+  - arguments:
+      input: "a~0b=1 c~1d=2"
+      separator: "="
+      delimiter: " "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      a~b: "1"
+      c/d: "2"
+    description: The JSON Pointer escapes ~0 and ~1 in a key map to ~ and /
+  - arguments:
+      input: "a~2=1 b=2"
+      separator: "="
+      delimiter: " "
+      quote: "'"
+      escape: "\\"
+    target_field: any_value
+    should_pass: false
+    description: Fails when a key has an invalid JSON Pointer escape

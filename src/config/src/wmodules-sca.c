@@ -362,6 +362,16 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_c
                         continue;
                     }
 
+#ifndef CLIENT
+                    /* The manager reads <sca> only to validate an agent's configuration (verify-agent-conf, run
+                     * when a group's agent.conf is saved). A policy path is resolved on the agent, against its own
+                     * installation: a policy distributed with the group lands in the agent's etc/shared/, which
+                     * does not exist on the manager. Resolving it here can only fail, or find an unrelated file. */
+                    (void)enabled;
+                    (void)policy_found;
+                    continue;
+#endif
+
                     /* full path resolution */
                     char relative_path[PATH_MAX] = {0};
                     char realpath_buffer[PATH_MAX] = {0};

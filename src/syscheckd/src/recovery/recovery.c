@@ -21,10 +21,6 @@
 #include "registry.h"
 #endif
 
-/* Recovery runs with the scan and realtime mutexes held, so each resync keeps the smaller
- * per-call block limit; the regular cycle sends whatever is left without them. */
-#define FIM_RECOVERY_MAX_BLOCKS_PER_SYNC 10
-
 /**
  * @brief Returns the sync index a FIM table is stored in, or NULL when the table has none.
  */
@@ -291,32 +287,16 @@ bool fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     }
 
     mdebug1("Persisted %d recovery items", item_count);
-    mdebug1("Starting recovery synchronization...");
 
     // Clean up items array
     cJSON_Delete(items);
 
-    // Synchronize
-    SyncModuleResult_t result = asp_sync_module_bounded(handle, MODE_DELTA, FIM_RECOVERY_MAX_BLOCKS_PER_SYNC);
-
-    if (result.success) {
-        minfo("Recovery of index '%s' completed.", recovery_index);
-    } else {
-        // The rows are queued, so the ordinary cycle delivers them; nothing about this table
-        // has to be redone.
-        // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
-        int reason_len = (int)strlen(result.failure_reason);
-        if (reason_len > 0 && result.failure_reason[reason_len - 1] == '.') {
-            reason_len--;
-        }
-        minfo("Recovery of index '%s' did not finish sending%s%.*s%s; the queued rows will be delivered by the next "
-              "regular synchronization.", recovery_index, reason_len > 0 ? " (" : "", reason_len,
-              result.failure_reason, reason_len > 0 ? ")" : "");
-    }
-
+    // No synchronization here: this runs with the scan and realtime mutexes held, and sending
+    // needs neither of them. The caller sends the queued rows once it has released them, with
+    // fim_recovery_sync_recovered_tables().
+    //
     // True from here on: the manager accepted the DataClean above and every row is queued, so
-    // a caller gating durable state on this is recording something the manager really saw. A
-    // failed final sync is not that -- the rows stay queued and the ordinary cycle drains them.
+    // a caller gating durable state on this is recording something the manager really saw.
     return true;
 }
 
@@ -329,7 +309,8 @@ static void fim_table_synced_key(const char* table_name, char* key, size_t key_s
     snprintf(key, key_size, "%s%s", FIM_TABLE_SYNCED_AGENT_ID_METADATA_PREFIX, table_name);
 }
 
-bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count, const OSList* directories_list) {
+bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
+                                   const OSList* directories_list, bool* recovered) {
     const long current_id = asp_get_agent_id();
 
     if (current_id == 0) {
@@ -416,6 +397,10 @@ bool fim_resync_on_agent_id_change(AgentSyncProtocolHandle* handle, char** table
             // manager holds data it never received -- so remember the failure for the end.
             any_failed = true;
         } else {
+            if (recovered) {
+                recovered[i] = true;
+            }
+
             // Stamp the integrity clock, so the checksum loop right after this does not clear and
             // resend the same table again.
             fim_db_update_last_sync_time_value(table_names[i], (int64_t)time(NULL));
@@ -539,7 +524,7 @@ static void fim_recovery_append_unchecked(char* list, size_t size, const char* i
 }
 
 void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
-                                       const OSList* directories_list, int64_t integrity_interval) {
+                                       const OSList* directories_list, int64_t integrity_interval, bool* recovered) {
     char interval[32];
     char retry_note[96];
     char* unchecked = NULL;
@@ -584,8 +569,11 @@ void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** t
             // other failure of this pass, the table still counts as checked, so it is not retried
             // until the next integrity_interval -- unless a shutdown cut it short: the mismatch is
             // confirmed, so the table is left unstamped and checked again after the restart.
-            if (!fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list, retry_note) &&
-                fim_shutdown_process_on()) {
+            if (fim_recovery_persist_table_and_resync(table_names[i], handle, directories_list, retry_note)) {
+                if (recovered) {
+                    recovered[i] = true;
+                }
+            } else if (fim_shutdown_process_on()) {
                 break;
             }
         }
@@ -601,4 +589,72 @@ void fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle, char** t
     }
 
     os_free(unchecked);
+}
+
+void fim_recovery_sync_recovered_tables(AgentSyncProtocolHandle* handle, char** table_names, int table_count,
+                                        const bool* recovered) {
+    bool any_recovered = false;
+
+    for (int i = 0; i < table_count && !any_recovered; i++) {
+        any_recovered = recovered[i];
+    }
+
+    if (!any_recovered) {
+        return;
+    }
+
+    if (fim_shutdown_process_on()) {
+        // The rows are already in the on-disk queue, so leaving them for a later cycle loses
+        // nothing.
+        for (int i = 0; i < table_count; i++) {
+            if (recovered[i]) {
+                minfo("Recovery of index '%s' interrupted: module is stopping. The queued entries will be sent by "
+                      "a later synchronization.", fim_recovery_sync_index(table_names[i]));
+            }
+        }
+        return;
+    }
+
+    mdebug1("Starting recovery synchronization...");
+
+    // One cycle for every recovered table: they share the same queue, so a sync per table would
+    // only send the same blocks in a different order. The cycle has the regular per-cycle block
+    // limit; a table bigger than that leaves the rest for the next synchronization.
+    SyncModuleResult_t result = asp_sync_module(handle, MODE_DELTA);
+
+    // Sync-protocol reasons are full sentences; drop the trailing period inside the parentheses.
+    int reason_len = (int)strlen(result.failure_reason);
+    if (reason_len > 0 && result.failure_reason[reason_len - 1] == '.') {
+        reason_len--;
+    }
+
+    for (int i = 0; i < table_count; i++) {
+        if (!recovered[i]) {
+            continue;
+        }
+
+        const char* index = fim_recovery_sync_index(table_names[i]);
+
+        if (result.stopped) {
+            // A stop either fails the session in progress or ends the cycle between two blocks. The
+            // latter reports success, because blocks were already sent, while rows are still
+            // queued, so neither "completed" message would be true. The rows stay on disk.
+            minfo("Recovery of index '%s' interrupted: module is stopping. The queued entries will be sent by "
+                  "a later synchronization.", index);
+        } else if (!result.success) {
+            // The rows are queued, so the ordinary cycle delivers them; nothing about this table
+            // has to be redone.
+            minfo("Recovery of index '%s' did not finish sending%s%.*s%s; the queued rows will be delivered by the "
+                  "next regular synchronization.", index, reason_len > 0 ? " (" : "", reason_len,
+                  result.failure_reason, reason_len > 0 ? ")" : "");
+        } else if (result.reached_block_limit) {
+            // The cycle stopped at its block limit, so the queue may still hold rows of this
+            // index. The flag covers the whole cycle, not each index, and a queue that ran dry
+            // with the very last block still sets it.
+            minfo("Recovery of index '%s' completed; some entries are still queued and will be sent in the next "
+                  "synchronization.", index);
+        } else {
+            minfo("Recovery of index '%s' completed.", index);
+        }
+    }
 }

@@ -26,13 +26,16 @@
 
 #include <zstd.h>
 
+#include <algorithm>
 #include <fstream>
+#include <functional>
 
 using ::testing::_;
 using ::testing::Contains;
 using ::testing::Invoke;
 using ::testing::Not;
 using ::testing::Return;
+using namespace std::chrono_literals;
 
 namespace
 {
@@ -393,6 +396,443 @@ TEST_F(RetrySenderTest, AuthGateEscalatesOnlyAfterTheRetryAlsoFails)
     EXPECT_FALSE(gate.paused()); // Retry recovered: no pause.
     guarded.send(makeSpec(), m_waiter, 1);
     EXPECT_TRUE(gate.paused()); // Retry also 401: paused.
+}
+
+/// An `unknown_agent` 401 is retried with the held credential within the gate's window before
+/// the AuthGate latches. The scripted waiter advances the fake clock, so these tests never sleep;
+/// with the jitter pinned to the ceiling a 7 s window waits 1, 2 and 4 s.
+class RetrySenderUnknownAgentTest : public RetrySenderTest
+{
+    protected:
+        using Delays = std::vector<std::chrono::milliseconds>;
+
+        RetrySenderUnknownAgentTest()
+            : m_gate(m_sink, std::bind(&RetrySenderUnknownAgentTest::onReenroll, this))
+            , m_guarded(m_performer, m_signer, m_clock, m_backoff, false, nullptr, &m_gate, {}, bound())
+        {
+            m_waiter.script({true, true, true, true, true, true, true, true});
+            m_waiter.bindClock(m_clock);
+        }
+
+        static std::chrono::milliseconds bound()
+        {
+            return 7000ms;
+        }
+
+        void onReenroll()
+        {
+            m_reenrollRequested++;
+        }
+
+        ::testing::NiceMock<MockCallbackSink> m_sink;
+        int m_reenrollRequested {0};
+        AuthGate m_gate;
+        RetrySender m_guarded;
+};
+
+TEST_F(RetrySenderUnknownAgentTest, TransientUnknownAgentRecoversWithinTheBoundWithoutLatching)
+{
+    // The first two 401s are the immediate one-shot retry; the next two are scheduled retries; the
+    // fifth request, after the last delay, is accepted.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_FALSE(m_gate.paused());
+    EXPECT_EQ(0, m_reenrollRequested);
+    EXPECT_EQ((Delays {1000ms, 2000ms, 4000ms}), m_waiter.requestedDelays());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, EveryRetryOfTheBoundIsFreshlySigned)
+{
+    std::vector<std::string> authorizations;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        authorizations.push_back(spec.headers.back());
+        m_clock.advance(std::chrono::seconds {1});
+        return authFail("unknown_agent");
+    }));
+
+    m_guarded.send(makeSpec(), m_waiter, 2);
+
+    // The same credential is held throughout: only the token's timestamp and jti move.
+    std::sort(authorizations.begin(), authorizations.end());
+    EXPECT_EQ(authorizations.end(), std::adjacent_find(authorizations.begin(), authorizations.end()));
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ExhaustedBoundLatchesAndRequestsReenrollmentOnce)
+{
+    // One-shot retry (2 requests) + one per schedule entry (3 requests), all still unknown_agent.
+    EXPECT_CALL(m_performer, perform(_)).Times(5).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_TRUE(m_gate.paused());
+    EXPECT_EQ(1, m_reenrollRequested);
+    EXPECT_EQ((Delays {1000ms, 2000ms, 4000ms}), m_waiter.requestedDelays());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, EachIncidentGetsTheWholeBoundAgainAfterASuccess)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    // First incident: recovers on the first scheduled retry.
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)))
+    // Second incident: starts over from the first delay and recovers after the last one.
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    EXPECT_EQ(OutcomeClass::Ok, m_guarded.send(makeSpec(), m_waiter, 2).outcome);
+    EXPECT_EQ(OutcomeClass::Ok, m_guarded.send(makeSpec(), m_waiter, 2).outcome);
+
+    EXPECT_FALSE(m_gate.paused());
+    EXPECT_EQ((Delays {1000ms, 1000ms, 2000ms, 4000ms}), m_waiter.requestedDelays());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ShutdownDuringTheBoundInterruptsWithoutLatching)
+{
+    m_waiter.script({false});
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::Interrupted, result.outcome);
+    EXPECT_FALSE(m_gate.paused());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ASingleAttemptSendStillRetriesWithinTheWindow)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 1);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_FALSE(m_gate.paused());
+    EXPECT_EQ((Delays {1000ms}), m_waiter.requestedDelays());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ADrainSendNeverWaits)
+{
+    // The drain on the stop path sends once with a waiter that is never stopped.
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 1, RetrySender::Mode::Drain);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_TRUE(m_waiter.requestedDelays().empty());
+    EXPECT_TRUE(m_gate.paused()); // No window open: latches as before.
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ADrainSendLeavesAnOpenWindowToItsOwner)
+{
+    m_waiter.script({false}); // The owner is interrupted with its window still open.
+    EXPECT_CALL(m_performer, perform(_)).Times(4).WillRepeatedly(Return(authFail("unknown_agent")));
+    m_guarded.send(makeSpec(), m_waiter, 2);
+    ASSERT_TRUE(m_gate.unknownAgentWindowOpen());
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 1, RetrySender::Mode::Drain);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_FALSE(m_gate.paused());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, AnEarlyWakeUpDoesNotShortenTheWait)
+{
+    // A sync session or notify_now wakes the waiter early; the retry must still wait its step.
+    class EarlyWaker final : public Waiter
+    {
+        public:
+            explicit EarlyWaker(FakeClock& clock)
+                : m_clock(clock)
+            {
+            }
+
+            bool waitFor(std::chrono::milliseconds timeout) override
+            {
+                m_clock.advance(std::min(timeout, std::chrono::milliseconds {100}));
+                return true;
+            }
+
+        private:
+            FakeClock& m_clock;
+    };
+
+    EarlyWaker waker {m_clock};
+    std::vector<int64_t> sentAtMs;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec&)
+    {
+        sentAtMs.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(
+                               m_clock.steadyNow().time_since_epoch()).count());
+        return authFail("unknown_agent");
+    }));
+
+    m_guarded.send(makeSpec(), waker, 2);
+
+    // Immediate one-shot retry, then 1, 2 and 4 s apart: the window ran out at 7 s.
+    EXPECT_EQ((std::vector<int64_t> {0, 0, 1000, 3000, 7000}), sentAtMs);
+    EXPECT_TRUE(m_gate.paused());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ATransportErrorLeavesTheWindowOpenForTheNextSend)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    // First send: the first retry meets a 502 and returns it; the window stays open.
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(response(TransportStatus::Ok, 502)))
+    // Second send rejoins the same window and runs out its remaining 6 s.
+    .WillRepeatedly(Return(authFail("unknown_agent")));
+
+    EXPECT_NE(OutcomeClass::AuthFail, m_guarded.send(makeSpec(), m_waiter, 1).outcome);
+    EXPECT_TRUE(m_gate.unknownAgentWindowOpen());
+    EXPECT_FALSE(m_gate.paused());
+
+    m_guarded.send(makeSpec(), m_waiter, 1);
+
+    EXPECT_TRUE(m_gate.paused());
+    EXPECT_EQ(1, m_reenrollRequested);
+    EXPECT_EQ((Delays {1000ms, 1000ms, 2000ms, 3000ms}), m_waiter.requestedDelays());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, RejoiningAWindowThatAlreadyRanOutEscalatesAtOnce)
+{
+    m_waiter.script({false}); // Leaves the window open, as a shutdown or a 5xx would.
+    EXPECT_CALL(m_performer, perform(_)).Times(4).WillRepeatedly(Return(authFail("unknown_agent")));
+    m_guarded.send(makeSpec(), m_waiter, 2);
+    m_clock.advance(bound());
+
+    m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_TRUE(m_gate.paused());
+    EXPECT_EQ(1, m_reenrollRequested);
+}
+
+TEST_F(RetrySenderUnknownAgentTest, AnUnknownAgentAfterABoundWithoutOneGetsAWholeWindow)
+{
+    m_waiter.script({false}); // Leaves the window open, as a shutdown or a 5xx would.
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(authFail("unknown_agent")));
+    m_guarded.send(makeSpec(), m_waiter, 2);
+    m_clock.advance(2 * bound()); // The worker was unreachable for longer than the window.
+
+    m_waiter.script({true, true, true, true});
+    m_guarded.send(makeSpec(), m_waiter, 2);
+
+    // The first wait is the interrupted one; then a new incident retries a whole window again.
+    EXPECT_EQ((Delays {1000ms, 1000ms, 2000ms, 4000ms}), m_waiter.requestedDelays());
+    EXPECT_TRUE(m_gate.paused());
+    EXPECT_EQ(1, m_reenrollRequested);
+}
+
+TEST_F(RetrySenderUnknownAgentTest, StepsGrowToTheCapAndTheLastOneEndsAtTheDeadline)
+{
+    RetrySender longWindow {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &m_gate, {}, 40000ms};
+    m_waiter.script({true, true, true, true, true, true, true, true});
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    longWindow.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ((Delays {1000ms, 2000ms, 4000ms, 8000ms, 15000ms, 10000ms}), m_waiter.requestedDelays());
+    EXPECT_TRUE(m_gate.paused());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, AnUnclassified401InsideTheWindowKeepsRetrying)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("a_class_from_the_future"))) // A proxy's 401, say.
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_FALSE(m_gate.paused());
+    EXPECT_EQ((Delays {1000ms, 2000ms}), m_waiter.requestedDelays());
+}
+
+/// Wakes once and runs `onWake` first, as another stream would while this one waits.
+class WakingWaiter final : public Waiter
+{
+    public:
+        WakingWaiter(FakeClock& clock, std::function<void()> onWake)
+            : m_clock(clock)
+            , m_onWake(std::move(onWake))
+        {
+        }
+
+        bool waitFor(std::chrono::milliseconds timeout) override
+        {
+            m_waits++;
+            m_onWake();
+            m_clock.advance(std::min(timeout, std::chrono::milliseconds {100}));
+            return true;
+        }
+
+        int m_waits {0};
+
+    private:
+        FakeClock& m_clock;
+        std::function<void()> m_onWake;
+};
+
+TEST_F(RetrySenderUnknownAgentTest, AWindowClosedElsewhereEndsTheWaitWithoutAnotherRequest)
+{
+    WakingWaiter waiter {m_clock, [this] { m_gate.closeUnknownAgentWindow(); }};
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    const auto result = m_guarded.send(makeSpec(), waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_EQ(1, waiter.m_waits);
+    EXPECT_FALSE(m_gate.paused());
+    EXPECT_EQ(0, m_reenrollRequested);
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ALatchElsewhereEndsTheWaitAtTheNextWakeUp)
+{
+    WakingWaiter waiter {m_clock, [this] { m_gate.reportAuthFailure(); }};
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    m_guarded.send(makeSpec(), waiter, 2);
+
+    EXPECT_EQ(1, waiter.m_waits);
+    EXPECT_EQ(1, m_reenrollRequested); // Fired once, by the other stream.
+}
+
+TEST_F(RetrySenderUnknownAgentTest, AnAcceptedRequestOnAnotherSenderClosesTheWindow)
+{
+    RetrySender sibling {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &m_gate, {}, bound()};
+    m_waiter.script({false});
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    m_guarded.send(makeSpec(), m_waiter, 2);
+    ASSERT_TRUE(m_gate.unknownAgentWindowOpen());
+
+    EXPECT_EQ(OutcomeClass::Ok, sibling.send(makeSpec(), m_waiter, 1).outcome);
+    EXPECT_FALSE(m_gate.unknownAgentWindowOpen());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, AZeroBoundLatchesAtOnce)
+{
+    RetrySender unbounded {m_performer, m_signer, m_clock, m_backoff, false, nullptr, &m_gate};
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+
+    unbounded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_TRUE(m_gate.paused());
+    EXPECT_TRUE(m_waiter.requestedDelays().empty());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, AnotherSendersLatchEndsTheBoundEarly)
+{
+    EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail("unknown_agent")));
+    m_gate.reportAuthFailure(); // A sibling stream ran its own schedule out first.
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_TRUE(m_waiter.requestedDelays().empty());
+    EXPECT_EQ(1, m_reenrollRequested); // Fired once, by the sibling.
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ALatchDuringAWaitEndsTheBoundWithoutAnotherRequest)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec&)
+    {
+        m_gate.reportAuthFailure(); // A sibling stream latches while this one is still in its bound.
+        return authFail("unknown_agent");
+    }));
+
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_EQ((Delays {1000ms, 2000ms}), m_waiter.requestedDelays());
+    EXPECT_EQ(1, m_reenrollRequested); // Fired once, by the sibling.
+}
+
+TEST_F(RetrySenderUnknownAgentTest, A415DuringTheBoundDisablesCompressionAndRetriesUncompressed)
+{
+    CompressionGate compression;
+    RetrySender compressing {m_performer, m_signer, m_clock, m_backoff, true, &compression, &m_gate, {}, bound()};
+
+    const std::string plain(200, 'a'); // Long enough to actually compress.
+    HttpRequestSpec spec = makeSpec();
+    spec.body = reinterpret_cast<const uint8_t*>(plain.data());
+    spec.bodyLength = plain.size();
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(response(TransportStatus::Ok, 415)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    const auto result = compressing.send(spec, m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_TRUE(compression.disabled());
+    EXPECT_FALSE(m_gate.paused());
+}
+
+TEST_F(RetrySenderUnknownAgentTest, OtherAuthFailureClassesNeverEnterTheBound)
+{
+    for (const auto* code :
+            {"stale_token",
+             "invalid_signature",
+             "invalid_request",
+             "enrollment_key_unavailable",
+             "token_unknown",
+             "token_expired",
+             "token_revoked"
+            })
+    {
+        EXPECT_CALL(m_performer, perform(_)).Times(2).WillRepeatedly(Return(authFail(code)));
+
+        const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+        EXPECT_EQ(OutcomeClass::AuthFail, result.outcome) << code;
+        EXPECT_FALSE(m_gate.paused()) << code;
+        EXPECT_TRUE(m_waiter.requestedDelays().empty()) << code;
+        ::testing::Mock::VerifyAndClearExpectations(&m_performer);
+    }
+}
+
+TEST_F(RetrySenderUnknownAgentTest, ABoundThatEndsOnAnotherClassReturnsItUnescalated)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("unknown_agent")))
+    .WillOnce(Return(authFail("invalid_signature")));
+
+    // The worker synced the key but the next 401 is now a different failure: not the identity's.
+    const auto result = m_guarded.send(makeSpec(), m_waiter, 2);
+
+    EXPECT_EQ(OutcomeClass::AuthFail, result.outcome);
+    EXPECT_FALSE(m_gate.paused());
 }
 
 /// #39064's whole point: a surviving 401 that is not `unknown_agent` keeps the identity. The

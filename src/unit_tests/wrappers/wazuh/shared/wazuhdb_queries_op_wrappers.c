@@ -26,13 +26,6 @@ cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int* sock)
     return mock_ptr_type(cJSON*);
 }
 
-int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int* sock)
-{
-    check_expected(status);
-
-    return mock_ptr_type(int*);
-}
-
 rb_tree* __wrap_wdb_get_all_agents_rbtree(__attribute__((unused)) int* sock)
 {
     return mock_ptr_type(rb_tree*);

@@ -43,6 +43,7 @@ TEST(ModuleConfigTest, DefaultsAppliedOnZeroFields)
     EXPECT_EQ(10u, typed.notifyIntervalS);
     EXPECT_EQ(60u, typed.rejectedRetryIntervalS);
     EXPECT_EQ(10000u, typed.requestTimeoutMs);
+    EXPECT_EQ(HC_DEFAULT_ENROLL_TIMEOUT_MS, typed.enrollTimeoutMs);
     EXPECT_EQ(90000u, typed.statefulTimeoutMs);
     EXPECT_EQ(1000u, typed.backoffBaseMs);
     EXPECT_EQ(60000u, typed.backoffCapMs);
@@ -73,6 +74,7 @@ TEST(ModuleConfigTest, ExplicitValuesAreKept)
     config.batch_size_bytes = 2048;
     config.notify_interval_s = 5;
     config.request_timeout_ms = 25000;
+    config.enroll_timeout_ms = 45000;
     config.stateful_timeout_ms = 300000;
     config.backoff_base_ms = 500;
     config.backoff_cap_ms = 30000;
@@ -86,6 +88,7 @@ TEST(ModuleConfigTest, ExplicitValuesAreKept)
     EXPECT_EQ(2048u, typed.batchSizeBytes);
     EXPECT_EQ(5u, typed.notifyIntervalS);
     EXPECT_EQ(25000u, typed.requestTimeoutMs);
+    EXPECT_EQ(45000u, typed.enrollTimeoutMs);
     EXPECT_EQ(300000u, typed.statefulTimeoutMs);
     EXPECT_EQ(500u, typed.backoffBaseMs);
     EXPECT_EQ(30000u, typed.backoffCapMs);

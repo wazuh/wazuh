@@ -1281,14 +1281,16 @@ class AbstractDatabaseBackend:
 class WazuhDBBackend(AbstractDatabaseBackend):
     """
     This class describes a wazuh db backend that executes database queries.
+
+    wazuh-db serves two databases: `global` (agents, groups) and `mitre`.
     """
 
-    def __init__(self, agent_id=None, query_format='agent', request_slice=500):
-        if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):
-            raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
-                                                 "Please check if the agent has connected to the manager")
+    QUERY_FORMATS = ('global', 'mitre')
 
-        self.agent_id = agent_id
+    def __init__(self, query_format, request_slice=500):
+        if query_format not in self.QUERY_FORMATS:
+            raise ValueError(f"Invalid wazuh-db query format '{query_format}': expected one of {self.QUERY_FORMATS}")
+
         self.query_format = query_format
         self.request_slice = request_slice
 
@@ -1333,14 +1335,7 @@ class WazuhDBBackend(AbstractDatabaseBackend):
 
     def _render_query(self, query):
         """Render query attending the format."""
-        if self.query_format == 'mitre':
-            return f'mitre sql {query}'
-        elif self.query_format == 'task':
-            return f'task sql {query}'
-        elif self.query_format == 'global':
-            return f'global sql {query}'
-        else:
-            return f'agent {self.agent_id} sql {query}'
+        return f'{self.query_format} sql {query}'
 
     def execute(self, query, request, count=False):
         """Execute SQL query through WazuhDB socket."""

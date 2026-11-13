@@ -69,6 +69,7 @@ Addresses the API listens on.
 - **Default value:** `['0.0.0.0', '::']`
 - **Allowed values:** List of IP addresses or host names. One socket is bound per address each entry
   resolves to (see [Startup and socket binding](architecture.md#startup-and-socket-binding)).
+- **Note:** An address this host cannot bind (not assigned to any of its interfaces, or a name that does not resolve) makes the API fail its start before it daemonizes: `wazuh-manager-control start` reports `wazuh-manager-apid did not start correctly.` and exits 1, and the reason is logged in `api.log`.
 
 ### port
 

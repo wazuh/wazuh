@@ -560,7 +560,9 @@ void * wm_command_main(wm_command_t * command) {
                     mterror(WM_COMMAND_LOGTAG, "Unable to send command event to queue.");
                 }
             #else
-                if (wm_sendmsg(usec, command->queue_fd, json_payload, extag, LOCALFILE_MQ) < 0) {
+                // modulesd stopping while the agent can't reach the manager is not an error.
+                if (wm_sendmsg_with_reconnect(usec, &command->queue_fd, json_payload, extag, LOCALFILE_MQ, WM_COMMAND_LOGTAG) < 0
+                    && !wm_shutdown_requested) {
                     mterror(WM_COMMAND_LOGTAG, "Unable to send command event to queue.");
                 }
             #endif

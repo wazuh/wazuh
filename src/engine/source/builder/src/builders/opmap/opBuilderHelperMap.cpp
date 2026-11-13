@@ -4,8 +4,11 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cerrno>
 #include <charconv>
 #include <chrono>
+#include <cmath>
+#include <cstdlib>
 #include <iterator>
 #include <numeric>
 #include <optional>
@@ -626,24 +629,38 @@ namespace builder::builders
 //*           String tranform                     *
 //*************************************************
 
-// field: +upcase/value|$ref
+// field: +uppercase/value|$ref
 MapOp opBuilderHelperStringUP(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     auto op = opBuilderHelperStringTransformation(opArgs, buildCtx, StringOperator::UP);
     return op;
 }
 
-// field: +downcase/value|$ref
+// field: +lowercase/value|$ref
 MapOp opBuilderHelperStringLO(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     auto op = opBuilderHelperStringTransformation(opArgs, buildCtx, StringOperator::LO);
     return op;
 }
 
-// field: +trim/[begin | end | both]/char
-TransformOp opBuilderHelperStringTrim(const Reference& targetField,
-                                      const std::vector<OpArg>& opArgs,
-                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
+namespace
+{
+
+enum class TrimSide
+{
+    START,
+    END,
+    BOTH
+};
+
+/**
+ * @brief Build the trim / trim_start / trim_end helpers: remove a set of characters (default: whitespace) from
+ * the chosen side(s) of the target string, in place.
+ */
+TransformOp trimBuilder(const Reference& targetField,
+                        const std::vector<OpArg>& opArgs,
+                        const std::shared_ptr<const IBuildCtx>& buildCtx,
+                        TrimSide side)
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
@@ -652,36 +669,22 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
 
-    // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 2);
-    // Parameter type check
-    builder::builders::utils::assertValue(opArgs);
+    // Assert expected number of parameters: the optional set of characters
+    builder::builders::utils::assertSize(opArgs, 0, 1);
 
-    // Get trim type
-    std::string trimParam;
-    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(trimParam) != json::RetGet::Success)
+    std::string trimChars {" \t\n\r\f\v"};
+    if (!opArgs.empty())
     {
-        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
-    }
-
-    const char trimType = trimParam == "begin" ? 's' : trimParam == "end" ? 'e' : trimParam == "both" ? 'b' : '\0';
-    if ('\0' == trimType)
-    {
-        throw std::runtime_error(
-            fmt::format("Expected parameter 1 to be 'begin', 'end' or 'both' but got '{}'", trimParam));
-    }
-
-    // get trim char
-    std::string trimChar;
-    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(trimChar) != json::RetGet::Success)
-    {
-        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                             std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
-    }
-    if (trimChar.size() != 1)
-    {
-        throw std::runtime_error(fmt::format("Expected parameter 2 to be a single character but got '{}'", trimChar));
+        builder::builders::utils::assertValue(opArgs, 0);
+        if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(trimChars) != json::RetGet::Success)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
+        if (trimChars.empty())
+        {
+            throw std::runtime_error("Expected parameter 1 to be a non-empty set of characters");
+        }
     }
 
     // Format name for the tracer
@@ -689,10 +692,8 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
 
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
     const std::string failureTrace1 {fmt::format(TRACE_TARGET_NOT_FOUND, name, targetField.dotPath())};
     const std::string failureTrace2 {fmt::format(TRACE_TARGET_TYPE_NOT_STRING, name, targetField.dotPath())};
-    const std::string failureTrace3 {fmt::format("[{}] -> Failure: Invalid trim type '{}'", name, trimType)};
 
     // Return Op
     return [=,
@@ -700,40 +701,21 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
             targetField = targetField.jsonPath(),
             targetFieldPP = json::PointerPath(targetField.jsonPath())](base::Event event) -> TransformResult
     {
-        // Get field value
-        if (!event->exists(targetField))
-        {
-            RETURN_FAILURE(isTestMode, event, failureTrace1);
-        }
-
-        std::string resolvedField;
-
-        // Check if field is a string
-        if (auto ret = event->getString(resolvedField, targetFieldPP); ret != json::RetGet::Success)
+        std::string strToTrim;
+        if (auto ret = event->getString(strToTrim, targetFieldPP); ret != json::RetGet::Success)
         {
             RETURN_FAILURE(isTestMode, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
-        // Get string
-        std::string strToTrim {resolvedField};
-
-        // Trim
-        switch (trimType)
+        if (side != TrimSide::END)
         {
-            case 's':
-                // Trim begin
-                strToTrim.erase(0, strToTrim.find_first_not_of(trimChar));
-                break;
-            case 'e':
-                // Trim end
-                strToTrim.erase(strToTrim.find_last_not_of(trimChar) + 1);
-                break;
-            case 'b':
-                // Trim both
-                strToTrim.erase(0, strToTrim.find_first_not_of(trimChar));
-                strToTrim.erase(strToTrim.find_last_not_of(trimChar) + 1);
-                break;
-            default: RETURN_FAILURE(isTestMode, event, failureTrace3); break;
+            const auto first = strToTrim.find_first_not_of(trimChars);
+            strToTrim.erase(0, first == std::string::npos ? strToTrim.size() : first);
+        }
+        if (side != TrimSide::START)
+        {
+            const auto last = strToTrim.find_last_not_of(trimChars);
+            strToTrim.erase(last == std::string::npos ? 0 : last + 1);
         }
 
         event->setString(strToTrim, targetField);
@@ -742,7 +724,33 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
     };
 }
 
-// field: +to_int/number/option
+} // namespace
+
+// field: trim(['chars'])
+TransformOp opBuilderHelperStringTrim(const Reference& targetField,
+                                      const std::vector<OpArg>& opArgs,
+                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return trimBuilder(targetField, opArgs, buildCtx, TrimSide::BOTH);
+}
+
+// field: trim_start(['chars'])
+TransformOp opBuilderHelperStringTrimStart(const Reference& targetField,
+                                           const std::vector<OpArg>& opArgs,
+                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return trimBuilder(targetField, opArgs, buildCtx, TrimSide::START);
+}
+
+// field: trim_end(['chars'])
+TransformOp opBuilderHelperStringTrimEnd(const Reference& targetField,
+                                         const std::vector<OpArg>& opArgs,
+                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    return trimBuilder(targetField, opArgs, buildCtx, TrimSide::END);
+}
+
+// field: to_int($value[, 'truncate'|'round'])
 MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
@@ -777,11 +785,13 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
     if (buildCtx->validator().hasField(ref->dotPath()))
     {
         auto sType = buildCtx->validator().getType(ref->dotPath());
-        if (typeToJType(sType) != json::Json::Type::Number)
+        const auto jType = typeToJType(sType);
+        if (jType != json::Json::Type::Number && jType != json::Json::Type::String)
         {
-            throw std::runtime_error(fmt::format("Expected number reference but got reference '{}' of type '{}'",
-                                                 ref->dotPath(),
-                                                 schemf::typeToStr(sType)));
+            throw std::runtime_error(
+                fmt::format("Expected number or string reference but got reference '{}' of type '{}'",
+                            ref->dotPath(),
+                            schemf::typeToStr(sType)));
         }
     }
 
@@ -791,43 +801,113 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
-    const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+    const std::string failureTrace2 {
+        fmt::format("{} -> Reference '{}' is not a number or a numeric string", name, ref->dotPath())};
+    const std::string failureTrace3 {
+        fmt::format("{} -> Reference '{}' is a number outside the 64-bit integer range", name, ref->dotPath())};
 
-    return [failureTrace1, failureTrace2, successTrace, op, ref, isTestMode = buildCtx->isTestMode()](
-               base::ConstEvent event) -> MapResult
+    // Cast a floating point value with the selected mode; a value outside the int64 range is rejected
+    const auto castDouble = [op](double value) -> std::optional<int64_t>
     {
-        auto object = event->getJson(ref->jsonPath());
-        if (!object.has_value())
+        const double integral = op == NumCastOperator::TRUNCATE ? std::trunc(value) : std::round(value);
+        if (!(integral >= -9223372036854775808.0 && integral < 9223372036854775808.0))
+        {
+            return std::nullopt;
+        }
+        return static_cast<int64_t>(integral);
+    };
+
+    // Parse a string holding a decimal integer or floating point number (the whole string must be the number)
+    const auto parseString = [castDouble](std::string_view str) -> std::optional<int64_t>
+    {
+        if (str.empty() || str.find_first_not_of("0123456789+-.eE") != std::string_view::npos)
+        {
+            return std::nullopt;
+        }
+
+        // One leading '+' is accepted (std::from_chars does not take it); a second sign is not
+        if (str.front() == '+')
+        {
+            str.remove_prefix(1);
+            if (str.empty() || str.front() == '+' || str.front() == '-')
+            {
+                return std::nullopt;
+            }
+        }
+
+        // Integer syntax: exact, and out of the int64 range is a failure, not a double
+        if (str.find_first_of(".eE") == std::string_view::npos)
+        {
+            int64_t asInt {};
+            const auto [intEnd, intErr] = std::from_chars(str.data(), str.data() + str.size(), asInt);
+            if (intErr != std::errc() || intEnd != str.data() + str.size())
+            {
+                return std::nullopt;
+            }
+            return asInt;
+        }
+
+        const std::string copy {str};
+        char* end = nullptr;
+        errno = 0;
+        const double asDouble = std::strtod(copy.c_str(), &end);
+        if (end != copy.c_str() + copy.size() || errno == ERANGE || !std::isfinite(asDouble))
+        {
+            return std::nullopt;
+        }
+
+        return castDouble(asDouble);
+    };
+
+    return [failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            successTrace,
+            castDouble,
+            parseString,
+            refPath = ref->jsonPath(),
+            isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
+    {
+        if (!event->exists(refPath))
         {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
         }
 
-        if (!object.value().isNumber())
+        std::optional<int64_t> res;
+        if (const auto asInt = event->getIntAsInt64(refPath); asInt.has_value())
         {
-            RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
+            res = asInt.value();
         }
-
-        int64_t res;
-        if (const auto val = object->getIntAsInt64(); val.has_value())
+        else if (const auto asDouble = event->getNumberAsDouble(refPath); asDouble.has_value())
         {
-            res = val.value();
-        }
-        else if (op == NumCastOperator::TRUNCATE)
-        {
-            res = static_cast<int64_t>(object->getFloat().value_or(object->getDouble().value()));
+            res = castDouble(asDouble.value());
         }
         else
         {
-            res = static_cast<int64_t>(std::round(object->getFloat().value_or(object->getDouble().value())));
+            std::string_view str;
+            if (event->getString(str, refPath) == json::RetGet::Success)
+            {
+                res = parseString(str);
+            }
+        }
+
+        if (!res.has_value())
+        {
+            // A JSON number that reached this point is an integer or a double outside the int64 range
+            if (event->isNumber(refPath))
+            {
+                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace3);
+            }
+            RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
         }
 
         json::Json result;
-        result.setInt64(res);
+        result.setInt64(res.value());
         RETURN_SUCCESS(isTestMode, result, successTrace);
     };
 }
 
-// field: +to_bool/$ref
+// field: to_bool($value)
 MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
@@ -841,11 +921,14 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
     if (buildCtx->validator().hasField(ref->dotPath()))
     {
         auto sType = buildCtx->validator().getType(ref->dotPath());
-        if (typeToJType(sType) != json::Json::Type::Number)
+        const auto jType = typeToJType(sType);
+        if (jType != json::Json::Type::Number && jType != json::Json::Type::String
+            && jType != json::Json::Type::Boolean)
         {
-            throw std::runtime_error(fmt::format("Expected number reference but got reference '{}' of type '{}'",
-                                                 ref->dotPath(),
-                                                 schemf::typeToStr(sType)));
+            throw std::runtime_error(
+                fmt::format("Expected boolean, number or string reference but got reference '{}' of type '{}'",
+                            ref->dotPath(),
+                            schemf::typeToStr(sType)));
         }
     }
 
@@ -855,39 +938,79 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
     // Tracing messages
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
     const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
-    const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+    const std::string failureTrace2 {fmt::format(
+        "{} -> Reference '{}' is not a boolean, a number or a 'true'/'false' string", name, ref->dotPath())};
 
-    return [failureTrace1, failureTrace2, successTrace, ref, isTestMode = buildCtx->isTestMode()](
+    return [failureTrace1, failureTrace2, successTrace, refPath = ref->jsonPath(), isTestMode = buildCtx->isTestMode()](
                base::ConstEvent event) -> MapResult
     {
-        const auto path = ref->jsonPath();
-        const auto numOpt = event->getNumberAsDouble(path);
-
-        if (!numOpt.has_value())
+        if (!event->exists(refPath))
         {
-            if (!event->getJson(path).has_value())
+            RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
+        }
+
+        std::optional<bool> value;
+        if (const auto boolOpt = event->getBool(refPath); boolOpt.has_value())
+        {
+            value = boolOpt.value();
+        }
+        else if (const auto numOpt = event->getNumberAsDouble(refPath); numOpt.has_value())
+        {
+            value = numOpt.value() != 0.0;
+        }
+        else
+        {
+            std::string_view str;
+            if (event->getString(str, refPath) == json::RetGet::Success)
             {
-                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1);
+                const auto equalsIgnoreCase = [](std::string_view a, std::string_view b)
+                {
+                    return a.size() == b.size()
+                           && std::equal(a.begin(),
+                                         a.end(),
+                                         b.begin(),
+                                         [](unsigned char x, unsigned char y)
+                                         { return std::tolower(x) == std::tolower(y); });
+                };
+
+                if (equalsIgnoreCase(str, "true"))
+                {
+                    value = true;
+                }
+                else if (equalsIgnoreCase(str, "false"))
+                {
+                    value = false;
+                }
             }
+        }
+
+        if (!value.has_value())
+        {
             RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
         }
 
-        const double numValue = numOpt.value();
         json::Json result;
-        result.setBool(numValue != 0.0);
-
+        result.setBool(value.value());
         RETURN_SUCCESS(isTestMode, result, successTrace);
     };
 }
 
-// field: +concat/string1|$ref1/string2|$ref2 -> atleastOne is False
-// field: +concat_any/string1|$ref1/string2|$ref2 -> atleastOne is True
+// field: concat(value1, value2, ...) -> atleastOne is false: a missing reference fails the operation
+// field: concat_any(value1, value2, ...) -> atleastOne is true: missing references are skipped; fails if no reference
+// resolves (a literal never counts, and a call without any reference is a build error)
 MapBuilder opBuilderHelperStringConcat(bool atleastOne)
 {
     return [atleastOne](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         // Assert expected number of parameters
         builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
+
+        // concat_any needs a reference that can resolve: a call made of literals only is a build error
+        if (atleastOne
+            && std::none_of(opArgs.begin(), opArgs.end(), [](const OpArg& arg) { return arg->isReference(); }))
+        {
+            throw std::runtime_error("Expected at least one reference argument; use 'concat' to join literals only");
+        }
 
         for (const auto& arg : opArgs)
         {
@@ -931,6 +1054,7 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
         return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
         {
             std::string result {};
+            bool anyResolved {false};
 
             for (const auto& arg : opArgs)
             {
@@ -954,6 +1078,8 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                         result.append(resolvedField);
                         continue;
                     }
+
+                    anyResolved = true;
 
                     // Get field value
                     if (event->isString(ref))
@@ -995,6 +1121,12 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                     result.append(value);
                 }
             }
+
+            if (atleastOne && !anyResolved)
+            {
+                RETURN_FAILURE(isTestMode, json::Json {}, failureTrace1 + "No reference could be resolved");
+            }
+
             json::Json resultJson;
             resultJson.setString(result);
             RETURN_SUCCESS(isTestMode, resultJson, successTrace);
@@ -1093,7 +1225,7 @@ namespace
 constexpr auto DECODE_BASE16_QUOTED_MODE = "quoted";
 
 /**
- * @brief Decode one value in the 'quoted' mode of decode_base16 (auditd EXECVE arguments).
+ * @brief Decode one value in the 'quoted' mode of decode_hex (auditd EXECVE arguments).
  *
  * auditd writes an argument between double quotes unless it contains a double quote, a byte below 0x21 or above 0x7E;
  * then it writes the bytes in upper-case hexadecimal without quotes. So a quoted value is text and only an unquoted
@@ -1122,7 +1254,7 @@ std::string decodeQuotedValue(std::string_view value)
 }
 } // namespace
 
-// field: decode_base16($<hex_reference>[, 'quoted'])
+// field: decode_hex($<hex_reference>[, 'quoted'])
 // Without the mode the reference must be a string of hexadecimal digits that decodes to ASCII.
 // With the 'quoted' mode the reference can be a string or an array, and each value is decoded by its quoting
 // (see decodeQuotedValue); the operation does not fail on the values.
@@ -1244,7 +1376,7 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
     };
 }
 
-// field: +hex_to_number/$ref
+// field: +hex_to_int/$ref
 MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
@@ -1301,7 +1433,7 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
     };
 }
 
-// field: +iana_protocol_name_to_number/$<protocol_name_reference>
+// field: +iana_protocol_number/$<protocol_name_reference>
 MapOp opBuilderHelperIanaProtocolNameToNumber(const std::vector<OpArg>& opArgs,
                                               const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -1351,7 +1483,7 @@ MapOp opBuilderHelperIanaProtocolNameToNumber(const std::vector<OpArg>& opArgs,
     };
 }
 
-// field: +iana_protocol_number_to_name/$<protocol_number_reference>
+// field: +iana_protocol_name/$<protocol_number_reference>
 MapOp opBuilderHelperIanaProtocolNumberToName(const std::vector<OpArg>& opArgs,
                                               const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -1439,7 +1571,7 @@ MapOp opBuilderHelperIanaProtocolNumberToName(const std::vector<OpArg>& opArgs,
     };
 }
 
-// field: +array_obj_to_mapkv/$<array_reference>
+// field: array_to_object($array, 'key_path', 'value_path', ['raw_keys'])
 MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     builder::builders::utils::assertSize(opArgs, 3, 4);
@@ -1471,10 +1603,15 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
             fmt::format("Failed to get the string value of parameter 2 got type '{}'", keyValue.typeName()));
     }
 
-    if (keyName.empty() || keyName.front() != '/')
+    if (keyName.empty())
     {
-        throw std::runtime_error("Key path cannot be an empty string and must start with '/' (JSON Pointer)");
+        throw std::runtime_error("Key path cannot be an empty string");
     }
+    if (keyName.front() == '/')
+    {
+        throw std::runtime_error("Key path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
+    const auto keyPointer = json::Json::formatJsonPath(keyName);
 
     builder::builders::utils::assertValue(opArgs, 2);
     const auto fieldValueJson = std::static_pointer_cast<Value>(opArgs[2])->value();
@@ -1489,21 +1626,29 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
         throw std::runtime_error(
             fmt::format("Failed to get the string value of parameter 3 got type '{}'", fieldValueJson.typeName()));
     }
-    if (fieldValue.empty() || fieldValue.front() != '/')
+    if (fieldValue.empty())
     {
-        throw std::runtime_error("Value path cannot be an empty string and must start with '/' (JSON Pointer)");
+        throw std::runtime_error("Value path cannot be an empty string");
     }
+    if (fieldValue.front() == '/')
+    {
+        throw std::runtime_error("Value path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
+    const auto valuePointer = json::Json::formatJsonPath(fieldValue);
 
+    // Optional 'raw_keys' mode: keep the keys verbatim instead of normalizing them to lowercase snake_case
     bool skipSerializer = false;
     if (opArgs.size() == 4)
     {
         builder::builders::utils::assertValue(opArgs, 3);
-        const auto valueFlag = std::static_pointer_cast<Value>(opArgs[3])->value().getBool();
-        if (!valueFlag.has_value())
+        std::string mode;
+        if (std::static_pointer_cast<Value>(opArgs[3])->value().getString(mode) != json::RetGet::Success
+            || mode != "raw_keys")
         {
-            throw std::runtime_error("Expected 'boolean' parameter for skipSerializer");
+            throw std::runtime_error(
+                fmt::format("Expected the literal 'raw_keys' as parameter 4 but got {}", opArgs[3]->str()));
         }
-        skipSerializer = valueFlag.value();
+        skipSerializer = true;
     }
 
     const auto normalizeStr = [](std::string_view in) -> std::string
@@ -1566,8 +1711,8 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
     const std::string failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
 
     return [normalizeStr,
-            keyNamePP = json::PointerPath(keyName),
-            fieldValue,
+            keyNamePP = json::PointerPath(keyPointer),
+            valuePointer,
             skipSerializer,
             traceName,
             successTrace,
@@ -1602,7 +1747,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
                     continue;
                 }
 
-                const auto valueOpt = fieldValue == "/" ? element.getJson() : element.getJson(fieldValue);
+                const auto valueOpt = valuePointer.empty() ? element.getJson() : element.getJson(valuePointer);
                 if (!valueOpt.has_value())
                 {
                     continue;
@@ -1636,7 +1781,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
     };
 }
 
-// field: +array_extract_key_obj/$<array_reference>
+// field: array_to_object_changes($array, 'key_path', 'new_value_path', 'old_value_path', ['raw_keys'])
 MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -1667,10 +1812,15 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
         throw std::runtime_error(
             fmt::format("Failed to get the string value of parameter 2 got type '{}'", keyValue.typeName()));
     }
-    if (keyName.empty() || keyName.front() != '/')
+    if (keyName.empty())
     {
-        throw std::runtime_error("Key path cannot be an empty string and must start with '/' (JSON Pointer)");
+        throw std::runtime_error("Key path cannot be an empty string");
     }
+    if (keyName.front() == '/')
+    {
+        throw std::runtime_error("Key path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
+    const auto keyPointer = json::Json::formatJsonPath(keyName);
 
     builder::builders::utils::assertValue(opArgs, 2);
     const auto newValueJson = std::static_pointer_cast<Value>(opArgs[2])->value();
@@ -1684,10 +1834,15 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
         throw std::runtime_error(
             fmt::format("Failed to get the string value of parameter 3 got type '{}'", newValueJson.typeName()));
     }
-    if (newValuePath.empty() || newValuePath.front() != '/')
+    if (newValuePath.empty())
     {
-        throw std::runtime_error("New value path cannot be an empty string and must start with '/' (JSON Pointer)");
+        throw std::runtime_error("New value path cannot be an empty string");
     }
+    if (newValuePath.front() == '/')
+    {
+        throw std::runtime_error("New value path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
+    const auto newValuePointer = json::Json::formatJsonPath(newValuePath);
 
     builder::builders::utils::assertValue(opArgs, 3);
     const auto oldValueJson = std::static_pointer_cast<Value>(opArgs[3])->value();
@@ -1701,21 +1856,29 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
         throw std::runtime_error(
             fmt::format("Failed to get the string value of parameter 4 got type '{}'", oldValueJson.typeName()));
     }
-    if (oldValuePath.empty() || oldValuePath.front() != '/')
+    if (oldValuePath.empty())
     {
-        throw std::runtime_error("Old value path cannot be an empty string and must start with '/' (JSON Pointer)");
+        throw std::runtime_error("Old value path cannot be an empty string");
     }
+    if (oldValuePath.front() == '/')
+    {
+        throw std::runtime_error("Old value path must be a dot path: a JSON pointer starting with '/' is not accepted");
+    }
+    const auto oldValuePointer = json::Json::formatJsonPath(oldValuePath);
 
+    // Optional 'raw_keys' mode: keep the keys verbatim instead of normalizing them to lowercase snake_case
     bool skipSerializer = false;
     if (opArgs.size() == 5)
     {
         builder::builders::utils::assertValue(opArgs, 4);
-        const auto valueFlag = std::static_pointer_cast<Value>(opArgs[4])->value().getBool();
-        if (!valueFlag.has_value())
+        std::string mode;
+        if (std::static_pointer_cast<Value>(opArgs[4])->value().getString(mode) != json::RetGet::Success
+            || mode != "raw_keys")
         {
-            throw std::runtime_error("Expected 'boolean' parameter for skipSerializer");
+            throw std::runtime_error(
+                fmt::format("Expected the literal 'raw_keys' as parameter 5 but got {}", opArgs[4]->str()));
         }
-        skipSerializer = valueFlag.value();
+        skipSerializer = true;
     }
 
     const auto normalizeStr = [](std::string_view in) -> std::string
@@ -1778,9 +1941,9 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
     const std::string failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
 
     return [normalizeStr,
-            keyNamePP = json::PointerPath(keyName),
-            newValuePath,
-            oldValuePath,
+            keyNamePP = json::PointerPath(keyPointer),
+            newValuePointer,
+            oldValuePointer,
             skipSerializer,
             traceName,
             successTrace,
@@ -1815,13 +1978,13 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                     continue;
                 }
 
-                const auto newValueOpt = newValuePath == "/" ? element.getJson() : element.getJson(newValuePath);
+                const auto newValueOpt = newValuePointer.empty() ? element.getJson() : element.getJson(newValuePointer);
                 if (!newValueOpt.has_value())
                 {
                     continue;
                 }
 
-                const auto oldValueOpt = oldValuePath == "/" ? element.getJson() : element.getJson(oldValuePath);
+                const auto oldValueOpt = oldValuePointer.empty() ? element.getJson() : element.getJson(oldValuePointer);
 
                 const std::string normalizedKey = skipSerializer ? keyStr : normalizeStr(std::string_view {keyStr});
                 if (normalizedKey.empty())
@@ -1833,7 +1996,7 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
 
                 const auto setValue = [&](std::string_view relPath, const json::Json& value)
                 {
-                    if (relPath == "/")
+                    if (relPath.empty())
                     {
                         result.set(basePath, value);
                     }
@@ -1843,7 +2006,7 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                     }
                 };
 
-                setValue(newValuePath, newValueOpt.value());
+                setValue(newValuePointer, newValueOpt.value());
                 if (oldValueOpt.has_value())
                 {
                     std::string oldValStr;
@@ -1851,7 +2014,7 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                                    && base::utils::string::trim(oldValStr).empty();
                     if (!skipOld)
                     {
-                        setValue(oldValuePath, *oldValueOpt);
+                        setValue(oldValuePointer, *oldValueOpt);
                     }
                 }
 
@@ -1966,7 +2129,7 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
 //*           Int tranform                        *
 //*************************************************
 
-// field: +to_string/<$ref1>/
+// field: to_string($value)
 MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
@@ -1981,7 +2144,8 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
     const std::string failureTrace2 {
         fmt::format(R"([{}] -> Failure: Reference '{}' not found: )", name, reference->dotPath())};
-    const std::string failureTrace3 {fmt::format(R"([{}] -> Failure: Parameter is not number: )", name)};
+    const std::string failureTrace3 {
+        fmt::format(R"([{}] -> Failure: Parameter is not a number, a boolean or a string: )", name)};
 
     // Function that implements the helper
     return [successTrace,
@@ -2002,6 +2166,14 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
         else if (event->isFloat(reference))
         {
             valueConverted = std::to_string(event->getFloat(reference).value());
+        }
+        else if (event->isBool(reference))
+        {
+            valueConverted = event->getBool(reference).value() ? "true" : "false";
+        }
+        else if (event->getString(valueConverted, reference) == json::RetGet::Success)
+        {
+            // A string is mapped as it is
         }
         else
         {
@@ -2230,92 +2402,20 @@ MapOp opBuilderHelperRegexExtractAll(const std::vector<OpArg>& opArgs, const std
     };
 }
 
-// field: +merge_recursive/$field
-TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
-                                            const std::vector<OpArg>& opArgs,
-                                            const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    // Check Allowed field
-    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
-    {
-        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
-    }
-
-    // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 1);
-    // Parameter type check
-    builder::builders::utils::assertRef(opArgs);
-
-    const auto name = buildCtx->context().opName;
-    const auto refField = *std::static_pointer_cast<Reference>(opArgs[0]);
-
-    // Tracing
-    const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace1 = fmt::format("{} -> Target field '{}' not found", name, targetField.dotPath());
-    const auto failureTrace2 = fmt::format("{} -> Source field '{}' not found", name, refField.dotPath());
-    const auto failureTrace3 = fmt::format("{} -> Field types do not match", name);
-    const auto failureTrace4 = fmt::format("{} -> Field types not supported", name);
-    const auto failureTrace5 = fmt::format(
-        "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
-
-    // Return Op
-    return [=,
-            isTestMode = buildCtx->isTestMode(),
-            targetField = targetField.jsonPath(),
-            targetFieldDotPath = targetField.dotPath(),
-            allowedFields = buildCtx->allowedFieldsPtr(),
-            fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
-    {
-        // Check target and reference field exists
-        if (!event->exists(targetField))
-        {
-            RETURN_FAILURE(isTestMode, event, failureTrace1);
-        }
-
-        if (!event->exists(fieldReference))
-        {
-            RETURN_FAILURE(isTestMode, event, failureTrace2);
-        }
-
-        // Check fields types
-        auto targetType = event->type(targetField);
-        if (targetType != event->type(fieldReference))
-        {
-            RETURN_FAILURE(isTestMode, event, failureTrace3);
-        }
-        if (targetType != json::Json::Type::Array && targetType != json::Json::Type::Object)
-        {
-            RETURN_FAILURE(isTestMode, event, failureTrace4);
-        }
-
-        if (targetType == json::Json::Type::Object)
-        {
-            auto ref = event->getJson(fieldReference).value();
-            auto fields = ref.getFields().value();
-            for (const auto& field : fields)
-            {
-                if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
-                {
-                    RETURN_FAILURE(isTestMode, event, failureTrace5)
-                }
-            }
-        }
-
-        // Merge
-        event->merge(json::RECURSIVE, fieldReference, targetField);
-
-        RETURN_SUCCESS(isTestMode, event, successTrace);
-    };
-}
-
-// event: +erase_custom_fields
+// .: delete_custom_fields()
 TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 0);
+
+    // Only the root can be the target: below the root the schema lookup would match bare key names
+    if (!targetField.jsonPath().empty())
+    {
+        throw std::runtime_error(fmt::format(
+            "delete_custom_fields can only be used with the root target field '.', got '{}'", targetField.dotPath()));
+    }
 
     const auto name = buildCtx->context().opName;
 
@@ -2339,7 +2439,7 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
     };
 }
 
-// event: +sanitize_fields
+// field: snake_case_keys(['deep'])
 TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
                                           const std::vector<OpArg>& opArgs,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -2347,20 +2447,8 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 0, 1);
 
-    // default operation
-    auto op = false;
-    if (opArgs.size() > 0)
-    {
-        builder::builders::utils::assertValue(opArgs, 0);
-
-        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isBool())
-        {
-            throw std::runtime_error(fmt::format("Expected 'bool' parameter but got type '{}'",
-                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
-        }
-
-        op = std::static_pointer_cast<Value>(opArgs[0])->value().getBool().value();
-    }
+    // Optional 'deep' mode: also rename the keys of nested objects
+    const bool op = utils::parseDeepMode(opArgs, 0);
 
     const auto name = buildCtx->context().opName;
 
@@ -2385,7 +2473,7 @@ TransformOp opBuilderHelperSanitizeFields(const Reference& targetField,
     };
 }
 
-// wazuh.space.event_discarded: +discard_events
+// wazuh.space.event_discarded: discard_event()
 TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
                                          const std::vector<OpArg>& opArgs,
                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -2394,7 +2482,7 @@ TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
 
     if (targetField.dotPath() != syntax::asset::discard::TARGET_FIELD)
     {
-        throw std::runtime_error(fmt::format("discard_events helper can only be used with target field '{}', got '{}'",
+        throw std::runtime_error(fmt::format("discard_event helper can only be used with target field '{}', got '{}'",
                                              syntax::asset::discard::TARGET_FIELD,
                                              targetField.dotPath()));
     }
@@ -2441,7 +2529,7 @@ TransformOp opBuilderHelperDiscardEvents(const Reference& targetField,
     };
 }
 
-// field: +split/$field/[,| | ...]
+// field: split($source, 'separator') -- sets the target to the array of parts
 TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -2469,9 +2557,9 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
         throw std::runtime_error(fmt::format("Failed to get the string value of parameter 2 got type '{}'",
                                              std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
     }
-    if (separator.size() != 1)
+    if (separator.empty())
     {
-        throw std::runtime_error(fmt::format("Separator must be a single character, got '{}'", separator));
+        throw std::runtime_error("Separator cannot be an empty string");
     }
 
     const auto ref = *std::static_pointer_cast<Reference>(opArgs[0]);
@@ -2497,8 +2585,7 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
             isTestMode = buildCtx->isTestMode(),
             targetField = targetField.jsonPath(),
             fieldReference = ref.jsonPath(),
-            fieldReferencePP = json::PointerPath(ref.jsonPath()),
-            separator = separator[0]](base::Event event) -> TransformResult
+            fieldReferencePP = json::PointerPath(ref.jsonPath())](base::Event event) -> TransformResult
     {
         // Check if reference exists
         if (!event->exists(fieldReference))
@@ -2511,17 +2598,33 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
             RETURN_FAILURE(isTestMode, event, failureTrace2);
         }
 
-        const auto splitted = base::utils::string::split(resolvedReference, separator);
-
-        for (const auto& value : splitted)
+        // Token rules: one leading separator is dropped, empty parts in the middle are kept and a trailing empty
+        // part is dropped
+        json::Json parts;
+        parts.setArray();
+        std::string_view rest {resolvedReference};
+        if (rest.substr(0, separator.size()) == separator)
         {
-            event->appendString(value, targetField);
+            rest.remove_prefix(separator.size());
         }
+        for (auto pos = rest.find(separator); pos != std::string_view::npos; pos = rest.find(separator))
+        {
+            parts.appendString(rest.substr(0, pos));
+            rest.remove_prefix(pos + separator.size());
+        }
+        if (!rest.empty())
+        {
+            parts.appendString(rest);
+        }
+
+        // The target is replaced by the array of parts
+        event->set(targetField, parts);
 
         RETURN_SUCCESS(isTestMode, event, successTrace);
     };
 }
 
+// field: merge($source[, 'deep'])
 TransformOp opBuilderHelperMerge(const Reference& targetField,
                                  const std::vector<OpArg>& opArgs,
                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -2533,10 +2636,24 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
 
-    // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 1);
+    // Assert expected number of parameters: the source reference plus the optional 'deep' mode
+    builder::builders::utils::assertSize(opArgs, 1, 2);
     // Parameter type check
-    builder::builders::utils::assertRef(opArgs);
+    builder::builders::utils::assertRef(opArgs, 0);
+    const bool recursive = utils::parseDeepMode(opArgs, 1);
+
+    // In deep mode a schema target must be an object (arrays are only merged through temporary fields)
+    if (recursive && buildCtx->validator().hasField(targetField.dotPath()))
+    {
+        const auto type = buildCtx->validator().getType(targetField.dotPath());
+        if (type != schemf::Type::OBJECT)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected 'object' target field for a deep merge but got '{}' of type '{}'",
+                            targetField.dotPath(),
+                            schemf::typeToStr(type)));
+        }
+    }
 
     const auto name = buildCtx->context().opName;
     const auto& refField = *std::static_pointer_cast<Reference>(opArgs[0]);
@@ -2549,6 +2666,7 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
     const auto failureTrace4 = fmt::format("{} -> Field types not supported", name);
     const auto failureTrace5 = fmt::format(
         "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
+    const auto failureTrace6 = fmt::format("{} -> Merge error: ", name);
 
     // Return Op
     return [=,
@@ -2593,8 +2711,18 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
             }
         }
 
-        // Merge
-        event->merge(json::NOT_RECURSIVE, fieldReference, targetField);
+        // The source is copied first: it may sit inside the target, which the merge grows. A conflict leaves the
+        // event untouched; on success the source field is deleted
+        const auto source = event->getJson(fieldReference).value();
+        try
+        {
+            utils::mergeIntoField(event, targetField, source, recursive);
+        }
+        catch (const std::exception& e)
+        {
+            RETURN_FAILURE(isTestMode, event, failureTrace6 + e.what());
+        }
+        event->erase(fieldReference);
 
         RETURN_SUCCESS(isTestMode, event, successTrace);
     };
@@ -3074,7 +3202,7 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
     };
 }
 
-// field: +syslog_extract_facility/$<log.syslog.priority>
+// field: +syslog_facility/$<log.syslog.priority>
 MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -3133,7 +3261,7 @@ MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
     };
 }
 
-// field: +syslog_extract_severity/$<log.syslog.priority>
+// field: +syslog_severity/$<log.syslog.priority>
 MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -3194,7 +3322,7 @@ MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
 //*              Time tranform                    *
 //*************************************************
 
-// field: + system_epoch
+// field: + now_epoch
 MapOp opBuilderHelperEpochTimeFromSystem(const std::vector<OpArg>& opArgs,
                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -3225,7 +3353,7 @@ MapOp opBuilderHelperEpochTimeFromSystem(const std::vector<OpArg>& opArgs,
     };
 }
 
-// field: +date_from_epoch/<$epoch_field_ref>|epoch_field
+// field: epoch_to_date($epoch_field_ref)
 MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -3426,7 +3554,7 @@ MapOp opBuilderHelperDateToEpochTime(const std::vector<OpArg>& opArgs, const std
     };
 }
 
-// field:  get_date
+// field: now()
 MapOp opBuilderHelperGetDate(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Check parameters
@@ -3519,8 +3647,7 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                           bool isMerge,
-                                           bool isRecursive)
+                                           bool isMerge)
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
@@ -3529,11 +3656,9 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
 
-    // TODO: add runtime validation
-    // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 2);
-    // Parameter type check
-    builder::builders::utils::assertRef(opArgs, 1);
+    // Assert expected number of parameters: (object, key) plus the optional 'deep' mode when merging
+    builder::builders::utils::assertSize(opArgs, 2, isMerge ? 3 : 2);
+    const bool recursive = isMerge && utils::parseDeepMode(opArgs, 2);
     if (opArgs[0]->isValue())
     {
         if (!std::static_pointer_cast<Value>(opArgs[0])->value().isObject())
@@ -3557,17 +3682,40 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         }
     }
 
-    const auto& keyRef = *std::static_pointer_cast<Reference>(opArgs[1]);
-    if (buildCtx->validator().hasField(keyRef.dotPath()))
+    // Key: a literal string or a reference to a string field
+    const bool keyIsLiteral = opArgs[1]->isValue();
+    std::string literalKey;
+    std::string keyRefJsonPath;
+    std::string keyDescription;
+    if (keyIsLiteral)
     {
-        auto jType = buildCtx->validator().getJsonType(keyRef.dotPath());
-
-        if (jType != json::Json::Type::String)
+        if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(literalKey) != json::RetGet::Success)
         {
-            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
-                                                 keyRef.dotPath(),
-                                                 json::Json::typeToStr(jType)));
+            throw std::runtime_error(fmt::format("Expected 'string' key parameter but got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
         }
+        if (literalKey.empty())
+        {
+            throw std::runtime_error("Expected a non-empty string as key parameter but got an empty one");
+        }
+        keyDescription = literalKey;
+    }
+    else
+    {
+        const auto& keyRef = *std::static_pointer_cast<Reference>(opArgs[1]);
+        if (buildCtx->validator().hasField(keyRef.dotPath()))
+        {
+            auto jType = buildCtx->validator().getJsonType(keyRef.dotPath());
+
+            if (jType != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                     keyRef.dotPath(),
+                                                     json::Json::typeToStr(jType)));
+            }
+        }
+        keyRefJsonPath = keyRef.jsonPath();
+        keyDescription = keyRef.dotPath();
     }
 
     if (isMerge && buildCtx->validator().hasField(targetField.dotPath()))
@@ -3594,8 +3742,8 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     // Tracing
     const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
-    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, keyRef.dotPath());
-    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, keyRef.dotPath());
+    const auto failureTrace1 = fmt::format("{} -> Key reference '{}' not found", name, keyDescription);
+    const auto failureTrace2 = fmt::format("{} -> Key reference '{}' is not a string", name, keyDescription);
     const auto failureTrace3 = fmt::format("{} -> Reference Object not found", name);
     const auto failureTrace4 = fmt::format("{} -> Reference Object has an invalid type", name);
     const auto failureTrace5 = fmt::format("{} -> Error retreiving key: ", name);
@@ -3617,16 +3765,20 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             targetFieldDotPath = targetField.dotPath(),
             allowedFields = buildCtx->allowedFieldsPtr(),
             parameter = opArgs[0],
-            key = keyRef.jsonPath(),
-            keyPP = json::PointerPath(keyRef.jsonPath())](base::Event event) -> TransformResult
+            keyPP = json::PointerPath(keyRefJsonPath)](base::Event event) -> TransformResult
     {
         std::string resolvedKey;
-        if (auto ret = event->getString(resolvedKey, keyPP); ret != json::RetGet::Success)
+        if (keyIsLiteral)
+        {
+            resolvedKey = literalKey;
+        }
+        else if (auto ret = event->getString(resolvedKey, keyPP); ret != json::RetGet::Success)
         {
             RETURN_FAILURE(isTestMode, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
-        auto pointerPath = json::Json::formatJsonPath(resolvedKey);
+        // The key is matched literally: a dot in it is part of the key, not a path separator
+        auto pointerPath = json::Json::formatJsonPath(resolvedKey, true);
 
         // Get object: the shared literal, or a per-event snapshot of the reference.
         const json::Json* resolvedObject = valueObject.get();
@@ -3694,9 +3846,13 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         }
         else
         {
+            if (!event->exists(targetField))
+            {
+                RETURN_FAILURE(isTestMode, event, failureTrace7 + "target field not found");
+            }
             try
             {
-                event->merge(isRecursive ? json::RECURSIVE : json::NOT_RECURSIVE, resolvedValue.value(), targetField);
+                utils::mergeIntoField(event, targetField, resolvedValue.value(), recursive);
             }
             catch (std::runtime_error& e)
             {
@@ -3708,7 +3864,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     };
 }
 
-// <field>: +get_key_in/$<definition_object>|$<object_reference>/$<key>
+// <field>: lookup($<definition_object>|$<object_reference>, key)
 TransformOp opBuilderHelperGetValue(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -3716,20 +3872,12 @@ TransformOp opBuilderHelperGetValue(const Reference& targetField,
     return opBuilderHelperGetValueGeneric(targetField, opArgs, buildCtx, false);
 }
 
-// <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
+// <field>: lookup_merge($<definition_object>|$<object_reference>, key[, 'deep'])
 TransformOp opBuilderHelperMergeValue(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     return opBuilderHelperGetValueGeneric(targetField, opArgs, buildCtx, true);
-}
-
-// <field>: +merge_recursive_key_in/$<definition_object>|$<object_reference>/$<key>
-TransformOp opBuilderHelperMergeRecursiveValue(const Reference& targetField,
-                                               const std::vector<OpArg>& opArgs,
-                                               const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    return opBuilderHelperGetValueGeneric(targetField, opArgs, buildCtx, true, true);
 }
 
 } // namespace builder::builders

@@ -548,10 +548,31 @@ if [ $1 = 0 ]; then
   # Initialize uninstallation permission variable
   UNINSTALL_VALIDATION_NEEDED=""
 
+  # Prints file $1 without its XML comments, which may span lines: a block an operator commented out,
+  # or an example in a group's agent.conf, must not count as configured.
+  strip_xml_comments() {
+    awk '
+      {
+        line = $0; out = ""
+        while (line != "") {
+          if (in_comment) {
+            end = index(line, "-->")
+            if (end == 0) { line = ""; break }
+            line = substr(line, end + 3); in_comment = 0
+          } else {
+            start = index(line, "<!--")
+            if (start == 0) { out = out line; break }
+            out = out substr(line, 1, start - 1); line = substr(line, start + 4); in_comment = 1
+          }
+        }
+        print out
+      }' "$1"
+  }
+
   # Function to extract package_uninstallation value from XML
   get_package_uninstallation_value() {
     local file_path="$1"
-    local value=$(sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' "$file_path" | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tr -d '\n')
+    local value=$(strip_xml_comments "$file_path" | sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tr -d '\n')
     echo "$value"
   }
 
@@ -660,6 +681,14 @@ if [ $1 = 0 ]; then
     service wazuh-agent stop > /dev/null 2>&1
   fi
   %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+
+  # The enable links are not owned by the package, so they would outlive it
+  if command -v systemctl > /dev/null 2>&1; then
+    systemctl --no-reload disable wazuh-agent.service > /dev/null 2>&1
+  fi
+  if command -v chkconfig > /dev/null 2>&1; then
+    chkconfig --del wazuh-agent > /dev/null 2>&1
+  fi
 
   # Remove the SELinux policy
   if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then

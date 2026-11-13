@@ -14,7 +14,6 @@
 
 int* __wrap_wdb_disconnect_agents(int keepalive, const char* sync_status, __attribute__((unused)) int* sock);
 cJSON* __wrap_wdb_get_agent_info(int id, __attribute__((unused)) int* sock);
-int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int* sock);
 rb_tree* __wrap_wdb_get_all_agents_rbtree(int* sock);
 int __wrap_wdb_update_agent_keepalive(int id,
                                       const char* connection_status,

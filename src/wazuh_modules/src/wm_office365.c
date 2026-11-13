@@ -108,9 +108,9 @@ STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_of
  * @param tenant_id Tenant ID to search
  * @param subscription_name Subscription name to search
  * @param error_msg Error message to send
- * @param queue_fd Socket ID
+ * @param queue_fd Socket ID, replaced if the queue has to be reopened
  */
-STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int queue_fd);
+STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int *queue_fd);
 
 /* Context definition */
 const wm_context WM_OFFICE365_CONTEXT = {
@@ -313,7 +313,8 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
     char end_time_str[80];
     struct tm tm_aux = { .tm_sec = 0 };
 
-    while (current_auth != NULL)
+    // A stopping modulesd sends nothing more: start no other window, whose bookmark would stay anyway.
+    while (current_auth != NULL && !wm_shutdown_requested)
     {
         next_auth = current_auth->next;
 
@@ -322,7 +323,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
         // Get access token
         if (!initial_scan || !office365_config->only_future_events) {
             if (access_token = wm_office365_get_access_token(current_auth, office365_config->curl_max_size, &error_msg), !access_token) {
-                wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id, NULL, error_msg, office365_config->queue_fd);
+                wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id, NULL, error_msg, &office365_config->queue_fd);
                 current_auth = next_auth;
                 os_free(error_msg);
                 continue;
@@ -338,7 +339,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
         next_subscription = NULL;
         current_subscription = office365_config->subscription;
 
-        while (current_subscription != NULL)
+        while (current_subscription != NULL && !wm_shutdown_requested)
         {
             next_subscription = current_subscription->next;
 
@@ -375,7 +376,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
             // Start subscription
             if (wm_office365_manage_subscription(current_subscription, current_auth->management_fqdn, current_auth->client_id, access_token, 1, office365_config->curl_max_size, &error_msg)) {
                 wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id,
-                    current_subscription->subscription_name, error_msg, office365_config->queue_fd);
+                    current_subscription->subscription_name, error_msg, &office365_config->queue_fd);
                 current_subscription = next_subscription;
                 os_free(error_msg);
                 continue;
@@ -395,7 +396,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
             }
             end_time = now;
 
-            while ((end_time - start_time) > 0) {
+            while ((end_time - start_time) > 0 && !wm_shutdown_requested) {
                 memset(start_time_str, '\0', 80);
                 gmtime_r(&start_time, &tm_aux);
                 strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
@@ -414,6 +415,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
 
                 scan_finished = 0;
                 fail = 0;
+                bool unsent = false;
 
                 while (!scan_finished) {
                     cJSON *blobs_array = NULL;
@@ -437,7 +439,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                                 if (logs_array = wm_office365_get_logs_from_blob(content->valuestring, access_token, office365_config->curl_max_size, &buffer_size_reached, &error_msg), logs_array) {
                                     int size_logs = cJSON_GetArraySize(logs_array);
 
-                                    for (int i = 0 ; i < size_logs ; i++) {
+                                    for (int i = 0 ; i < size_logs && !unsent ; i++) {
                                         cJSON *log = cJSON_GetArrayItem(logs_array, i);
 
                                         if (log) {
@@ -452,9 +454,18 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
 
                                             mtdebug2(WM_OFFICE365_LOGTAG, "Sending Office365 log: '%s'", payload);
 
-                                            if (wm_sendmsg(WM_OFFICE365_MSG_DELAY, office365_config->queue_fd,
-                                                payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ) < 0) {
-                                                mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                                            if (wm_sendmsg_with_reconnect(WM_OFFICE365_MSG_DELAY, &office365_config->queue_fd,
+                                                payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ, WM_OFFICE365_LOGTAG) < 0) {
+                                                // modulesd stopping while the agent can't reach the manager
+                                                // is not an error: the helper says so at debug.
+                                                if (!wm_shutdown_requested) {
+                                                    mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                                                }
+                                                // End the window and keep its bookmark, so a later scan
+                                                // fetches it again; not after a restart with
+                                                // only_future_events, which starts from the current time.
+                                                unsent = true;
+                                                scan_finished = 1;
                                             }
 
                                             os_free(payload);
@@ -501,9 +512,11 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                     os_free(next_page);
                 }
 
-                if (fail) {
+                if (unsent) {
+                    break;
+                } else if (fail) {
                     wm_office365_scan_failure_action(&office365_config->fails, current_auth->tenant_id,
-                        current_subscription->subscription_name, error_msg, office365_config->queue_fd);
+                        current_subscription->subscription_name, error_msg, &office365_config->queue_fd);
                     os_free(error_msg);
                     break;
                 } else {
@@ -797,7 +810,7 @@ STATIC wm_office365_fail* wm_office365_get_fail_by_tenant_and_subscription(wm_of
     return current;
 }
 
-STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int queue_fd) {
+STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, char* tenant_id, char* subscription_name, char *error_msg, int *queue_fd) {
     char *payload;
     wm_office365_fail *tenant_fail = NULL;
 
@@ -852,7 +865,9 @@ STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, 
 
             mtwarn(WM_OFFICE365_LOGTAG, "Sending Office365 internal message: '%s'", payload);
 
-            if (wm_sendmsg(WM_OFFICE365_MSG_DELAY, queue_fd, payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ) < 0) {
+            // modulesd stopping while the agent can't reach the manager is not an error.
+            if (wm_sendmsg_with_reconnect(WM_OFFICE365_MSG_DELAY, queue_fd, payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ, WM_OFFICE365_LOGTAG) < 0
+                && !wm_shutdown_requested) {
                 mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
             }
 

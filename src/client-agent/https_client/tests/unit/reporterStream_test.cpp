@@ -575,3 +575,27 @@ TEST_F(ReporterStreamTest, ForceConfigReportNowDuringInFlightSendIsNotLost)
     reporter.tick(m_waiter, true);
     EXPECT_EQ(2, m_collectors.m_configCalls);
 }
+
+TEST_F(ReporterStreamTest, ConfigReportRetriesAnUnknownAgent401BeforeTheGateLatches)
+{
+    // A /config on a worker that has not synced the new key yet must get the held-credential
+    // retries, not latch at once.
+    const auto config = makeConfig(false, true);
+    ReporterStream reporter
+    {
+        config, m_performer, m_signer, m_clock, m_random, m_authGate, m_compressionGate, m_cluster, m_collectors};
+    auto refused = response(TransportStatus::Ok, 401);
+    refused.body = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
+    m_waiter.script({true});
+    m_waiter.bindClock(m_clock);
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(refused))
+    .WillOnce(Return(refused))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
+
+    reporter.tick(m_waiter, true);
+
+    EXPECT_FALSE(m_authGate.paused());
+    EXPECT_EQ(1u, m_waiter.requestedDelays().size());
+}

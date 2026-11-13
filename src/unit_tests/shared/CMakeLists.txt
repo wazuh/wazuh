@@ -347,7 +347,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,strerror \
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")
-set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,getpwuid_r -Wl,--wrap,w_getgrgid \
+set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,rmdir -Wl,--wrap,getpid -Wl,--wrap,wreaddir -Wl,--wrap,getpwuid_r -Wl,--wrap,w_getgrgid \
                             -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,sysconf -Wl,--wrap,win_strerror -Wl,--wrap,wfopen ${DEBUG_OP_WRAPPERS}")
 if(${TARGET} STREQUAL "winagent")

@@ -285,6 +285,11 @@ def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = T
     bool
         True if path is correct. False otherwise.
     """
+    # A NUL byte names no file, and os.path.realpath() raises ValueError on it: refused here, so the format
+    # checkers built on this function answer 400 instead of letting the exception surface as a 500.
+    if "\0" in path:
+        return False
+
     # Protect path
     forbidden_paths = ["../", "..\\", "/..", "\\.."]
     if any([forbidden_path in path for forbidden_path in forbidden_paths]):

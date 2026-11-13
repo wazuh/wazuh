@@ -81,29 +81,85 @@ static void remove_systemd_pidfile(void)
     unlink(path);
 }
 
-/* The PID file is what tells wazuh-control that agentd started, and what lets it stop one that
- * is still retrying. Published once the token bootstrap is about to retry, since its retries can
- * outlast wazuh-control's start deadline; otherwise only after startup's own checks, so any exit
- * before that point still ends the start as "did not start" and never gets the other daemons
- * launched. */
-static void publish_pid_files(uid_t uid, gid_t gid)
+static pthread_mutex_t pid_publish_lock = PTHREAD_MUTEX_INITIALIZER;
+static bool pid_files_published = false;
+static bool token_bootstrap_finished = false;
+
+/* Published once an enrolling token bootstrap outlasts PID_PUBLISH_DELAY_S, because /enroll can run
+ * past wazuh-control's start deadline and a start that gives up would kill agentd mid-request;
+ * otherwise only after the startup checks, so an earlier exit still reads as "did not start". */
+/* Caller holds pid_publish_lock; returns -1 instead of exiting so the lock is never held across an
+ * exit. */
+static int publish_pid_files_locked(uid_t uid, gid_t gid)
 {
-    static bool published = false;
     char path[256];
 
-    if (published) {
-        return;
+    if (pid_files_published) {
+        return 0;
     }
 
     /* The name CreatePID() would give it, which is what wazuh-control looks for. */
     snprintf(path, sizeof(path), "%s/%s-%d.pid", OS_PIDFILE, ARGV0, (int)getpid());
 
     if (write_pid_file(path, uid, gid) < 0) {
-        merror_exit(PID_ERROR);
+        return -1;
     }
     write_systemd_pidfile(uid, gid);
     atexit(remove_systemd_pidfile);
-    published = true;
+    pid_files_published = true;
+
+    return 0;
+}
+
+static void publish_pid_files(uid_t uid, gid_t gid)
+{
+    w_mutex_lock(&pid_publish_lock);
+    const int rc = publish_pid_files_locked(uid, gid);
+    w_mutex_unlock(&pid_publish_lock);
+
+    if (rc < 0) {
+        merror_exit(PID_ERROR);
+    }
+}
+
+/* Well under wazuh-control's 40 s start budget (MAX_ITERATION), which also covers wazuh-execd,
+ * started first, and its one-second polling. */
+#define PID_PUBLISH_DELAY_S 25
+
+static uid_t pid_publish_uid;
+static gid_t pid_publish_gid;
+
+/* Publishes the PID files unless the bootstrap finishes first. The flag is read under the lock
+ * that publishing takes, so a result the main thread has already acted on is never overtaken. */
+static void *pid_publish_timer(__attribute__((unused)) void *arg)
+{
+    int rc = 0;
+
+    for (int waited = 0; waited < PID_PUBLISH_DELAY_S; waited++) {
+        bool done;
+
+        w_mutex_lock(&pid_publish_lock);
+        done = token_bootstrap_finished || pid_files_published;
+        w_mutex_unlock(&pid_publish_lock);
+
+        if (done) {
+            return NULL;
+        }
+        sleep(1);
+    }
+
+    w_mutex_lock(&pid_publish_lock);
+    if (!token_bootstrap_finished) {
+        rc = publish_pid_files_locked(pid_publish_uid, pid_publish_gid);
+    }
+    w_mutex_unlock(&pid_publish_lock);
+
+    /* Not merror_exit(): the main thread is mid-bootstrap, and its own publish retries the write. */
+    if (rc < 0) {
+        merror(PID_ERROR);
+    }
+
+    return NULL;
 }
 
 /* Start the agent daemon */
@@ -126,7 +182,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         goDaemon();
     }
 
-    /* Once the PID file is out, which can be while the bootstrap is still retrying, wazuh-control
+    /* Once the PID file is out, which can be while the bootstrap is still running, wazuh-control
      * reload can SIGUSR1 this process before the reload handler is installed below, and the
      * default action would kill it. Ignored rather than handled: there is nothing to reload yet,
      * and a flag left pending would release the startup gate ahead of the first configuration
@@ -161,6 +217,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     time_t token_pending_since = 0;
     w_token_bootstrap_result_t token_bootstrap_result;
 
+    if (w_agent_token_bootstrap_will_enroll()) {
+        pid_publish_uid = (uid_t)uid;
+        pid_publish_gid = (gid_t)gid;
+        w_create_thread(pid_publish_timer, NULL);
+    }
+
     while ((token_bootstrap_result =
                 w_token_bootstrap_bound_pending(w_agent_token_bootstrap(uid, gid), &token_pending_since,
                                                 w_get_monotonic_time())) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
@@ -171,6 +233,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         publish_pid_files((uid_t)uid, (gid_t)gid);
         sleep(token_bootstrap_delay);
     }
+
+    w_mutex_lock(&pid_publish_lock);
+    token_bootstrap_finished = true;
+    w_mutex_unlock(&pid_publish_lock);
 
     if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
         merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");

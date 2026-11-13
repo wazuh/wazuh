@@ -74,9 +74,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE,
     WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE_KEEPALIVE,
     WDB_STMT_GLOBAL_DELETE_AGENT,
-    WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
     WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
@@ -93,7 +91,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
-    WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND,
     WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET,
     WDB_STMT_GLOBAL_GROUP_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
@@ -109,7 +106,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
-    WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_AGENT_EXISTS,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
     WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
@@ -446,17 +442,6 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to get the groups integrity information in global.db.
- *
- * @param wdb The global struct database.
- * @param input String with 'hash'.
- * @param output Response of the query in JSON format.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_get_groups_integrity(wdb_t * wdb, char * input, char* output);
-
-/**
  * @brief Function to recalculate the agent group hash in global.db.
  *
  * @param wdb The global struct database.
@@ -546,17 +531,6 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the find agent request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String JSON with the agent name and ip.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the find group request.
  *
  * @param [in] wdb The global struct database.
@@ -577,17 +551,6 @@ int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the select group from belongs table request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent id in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
 /**
  *
@@ -719,17 +682,6 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output);
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char *input, char* output);
-
-/**
- * @brief Function to parse the reset agent connection status request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the 'sync_status'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
 
 /**
  * @brief Function to parse the get agents by connection status request.
@@ -1016,16 +968,6 @@ cJSON* wdb_global_select_agent_group(wdb_t *wdb, int id);
 int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
 
 /**
- * @brief Function to get an agent id using the agent name and register ip.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] name The agent name
- * @param [in] ip The agent ip
- * @return JSON with id on success. NULL on error.
- */
-cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
-
-/**
  * @brief Function to get a group id using the group name.
  *
  * @param [in] wdb The Global struct database.
@@ -1238,16 +1180,6 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
 wdbc_result wdb_global_set_agent_group_hash(wdb_t *wdb, int id, char* csv, char* hash);
 
 /**
- * @brief Verifies if at least one entry in the Global DB has the group_sync_status as "syncreq".
- *        If not, it compares a received hash that represents the group column against a calculated hash.
- *
- * @param wdb The Global struct database.
- * @param hash Received group column hash.
- * @return cJSON* Returns a cJSON object with the groups integrity status or NULL on error.
- */
-cJSON* wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
-
-/**
  * @brief Gets the maximum priority of the groups of an agent.
  *
  * @param [in] wdb The Global struct database.
@@ -1401,18 +1333,6 @@ int wdb_global_get_all_agents_context(wdb_t *wdb);
  * @retval -1 on error.
  */
 int wdb_global_agent_exists(wdb_t *wdb, int agent_id);
-
-/**
- * @brief Function to reset connection_status column of every agent (excluding the manager).
- *        If connection_status is pending or connected it will be changed to disconnected.
- *        If connection_status is disconnected or never_connected it will not be changed.
- *        It also set the 'sync_status' with the specified value.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] sync_status The value of sync_status.
- * @return 0 On success. -1 On error.
- */
-int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
 
 /**
  * @brief Function to get the id of every agent with a specific connection_status.

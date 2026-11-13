@@ -286,20 +286,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_select_agent_group_time(diff);
             }
-        } else if (strcmp(query, "find-agent") == 0) {
-            w_inc_global_agent_find_agent();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for find-agent.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_global_find_agent(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_agent_find_agent_time(diff);
-            }
         } else if (strcmp(query, "find-group") == 0) {
             w_inc_global_group_find_group();
             if (!next) {
@@ -327,20 +313,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_group_insert_agent_group_time(diff);
-            }
-        } else if (strcmp(query, "select-group-belong") == 0) {
-            w_inc_global_belongs_select_group_belong();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for select-group-belong.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_global_select_group_belong(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_belongs_select_group_belong_time(diff);
             }
         } else if (strcmp(query, "get-group-agents") == 0) {
             w_inc_global_belongs_get_group_agent();
@@ -426,20 +398,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_sync_agent_info_set_time(diff);
             }
-        } else if (strcmp(query, "get-groups-integrity") == 0) {
-            w_inc_global_agent_get_groups_integrity();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for get-groups-integrity.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_get_groups_integrity(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_agent_get_groups_integrity_time(diff);
-            }
         } else if (strcmp(query, "recalculate-agent-group-hashes") == 0) {
             w_inc_global_agent_recalculate_agent_group_hashes();
             gettimeofday(&begin, 0);
@@ -496,20 +454,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_get_agent_info_time(diff);
             }
-        } else if (strcmp(query, "reset-agents-connection") == 0) {
-            w_inc_global_agent_reset_agents_connection();
-            if (!next) {
-                mdebug1("Global DB Invalid DB query syntax for reset-agents-connection.");
-                mdebug2("Global DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                result = OS_INVALID;
-            } else {
-                gettimeofday(&begin, 0);
-                result = wdb_parse_reset_agents_connection(wdb, next, output);
-                gettimeofday(&end, 0);
-                timersub(&end, &begin, &diff);
-                w_inc_global_agent_reset_agents_connection_time(diff);
-            }
         } else if (strcmp(query, "get-agents-by-connection-status") == 0) {
             w_inc_global_agent_get_agents_by_connection_status();
             if (!next) {
@@ -539,56 +483,6 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_backup_time(diff);
             }
-        } else if (strcmp(query, "vacuum") == 0) {
-            w_inc_global_vacuum();
-            gettimeofday(&begin, 0);
-            if (wdb_commit2(wdb) < 0) {
-                mdebug1("Global DB Cannot end transaction.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
-                result = -1;
-            }
-
-            wdb_finalize_all_statements(wdb);
-
-            if (result != -1) {
-                if (wdb_vacuum(wdb) < 0) {
-                    mdebug1("Global DB Cannot vacuum database.");
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot vacuum database");
-                    result = -1;
-                } else {
-                    int fragmentation_after_vacuum;
-
-                    // save fragmentation after vacuum
-                    if (fragmentation_after_vacuum = wdb_get_db_state(wdb), fragmentation_after_vacuum == OS_INVALID) {
-                        mdebug1("Global DB Couldn't get fragmentation after vacuum for the database.");
-                        snprintf(output, OS_MAXSTR + 1, "err Vacuum performed, but couldn't get fragmentation information after vacuum");
-                        result = -1;
-                    } else {
-                        char str_vacuum_time[OS_SIZE_128] = { '\0' };
-                        char str_vacuum_value[OS_SIZE_128] = { '\0' };
-
-                        snprintf(str_vacuum_time, OS_SIZE_128, "%ld", time(0));
-                        snprintf(str_vacuum_value, OS_SIZE_128, "%d", fragmentation_after_vacuum);
-                        if (wdb_update_last_vacuum_data(wdb, str_vacuum_time, str_vacuum_value) != OS_SUCCESS) {
-                            mdebug1("Global DB Couldn't update last vacuum info for the database.");
-                            snprintf(output, OS_MAXSTR + 1, "err Vacuum performed, but last vacuum information couldn't be updated in the metadata table");
-                            result = -1;
-                        } else {
-                            cJSON *json_fragmentation = cJSON_CreateObject();
-                            cJSON_AddNumberToObject(json_fragmentation, "fragmentation_after_vacuum", fragmentation_after_vacuum);
-                            char *out = cJSON_PrintUnformatted(json_fragmentation);
-                            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-
-                            os_free(out);
-                            cJSON_Delete(json_fragmentation);
-                            result = 0;
-                        }
-                    }
-                }
-            }
-            gettimeofday(&end, 0);
-            timersub(&end, &begin, &diff);
-            w_inc_global_vacuum_time(diff);
         } else if (strcmp(query, "commit") == 0) {
             /* End the deferred transaction NOW instead of when wdb_commit_old() gets to it. The
              * caller is authd, which may only forget a journaled identity transition once the
@@ -606,29 +500,6 @@ int wdb_parse(char * input, char * output, int peer) {
             gettimeofday(&end, 0);
             timersub(&end, &begin, &diff);
             w_inc_global_commit_time(diff);
-        } else if (strcmp(query, "get_fragmentation") == 0) {
-            w_inc_global_get_fragmentation();
-            gettimeofday(&begin, 0);
-            int state = wdb_get_db_state(wdb);
-            int free_pages = wdb_get_db_free_pages_percentage(wdb);
-            if (state < 0 || free_pages < 0) {
-                mdebug1("Global DB Cannot get database fragmentation.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot get database fragmentation");
-                result = -1;
-            } else {
-                cJSON *json_fragmentation = cJSON_CreateObject();
-                cJSON_AddNumberToObject(json_fragmentation, "fragmentation", state);
-                cJSON_AddNumberToObject(json_fragmentation, "free_pages_percentage", free_pages);
-                char *out = cJSON_PrintUnformatted(json_fragmentation);
-                snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-
-                os_free(out);
-                cJSON_Delete(json_fragmentation);
-                result = 0;
-            }
-            gettimeofday(&end, 0);
-            timersub(&end, &begin, &diff);
-            w_inc_global_get_fragmentation_time(diff);
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("Global DB query error near: %s", query);
@@ -1109,52 +980,6 @@ int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output
     return OS_SUCCESS;
 }
 
-int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output) {
-    cJSON *agent_data = NULL;
-    const char *error = NULL;
-    cJSON *j_name = NULL;
-    cJSON *j_ip = NULL;
-    cJSON *j_id = NULL;
-    char *out = NULL;
-
-    agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
-    if (!agent_data) {
-        mdebug1("Global DB Invalid JSON syntax when finding agent id.");
-        mdebug2("Global DB JSON error near: %s", error);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-        return OS_INVALID;
-    } else {
-        j_name = cJSON_GetObjectItem(agent_data, "name");
-        j_ip = cJSON_GetObjectItem(agent_data, "ip");
-
-        if (cJSON_IsString(j_name) && cJSON_IsString(j_ip)) {
-            // Getting each field
-            char *name = j_name->valuestring;
-            char *ip = j_ip->valuestring;
-
-            if (j_id = wdb_global_find_agent(wdb, name, ip), !j_id) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                cJSON_Delete(agent_data);
-                return OS_INVALID;
-            }
-        } else {
-            mdebug1("Global DB Invalid JSON data when finding agent id.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
-            cJSON_Delete(agent_data);
-            return OS_INVALID;
-        }
-    }
-
-    out = cJSON_PrintUnformatted(j_id);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(j_id);
-    cJSON_Delete(agent_data);
-
-    return OS_SUCCESS;
-}
-
 int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output) {
     char *group_name = NULL;
     cJSON *group_id = NULL;
@@ -1188,25 +1013,6 @@ int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output
     }
 
     snprintf(output, OS_MAXSTR + 1, "ok");
-
-    return OS_SUCCESS;
-}
-
-int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output) {
-    int agent_id = atoi(input);
-    cJSON *agent_groups = NULL;
-
-    if (agent_groups = wdb_global_select_group_belong(wdb, agent_id), !agent_groups) {
-        mdebug1("Error getting agent groups information from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agent groups information from global.db.");
-        return OS_INVALID;
-    }
-
-    char *out = NULL;
-    out = cJSON_PrintUnformatted(agent_groups);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(agent_groups);
 
     return OS_SUCCESS;
 }
@@ -1488,37 +1294,6 @@ int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * outpu
     return OS_SUCCESS;
 }
 
-int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
-    int input_len = strlen(input);
-    if (input_len < OS_SHA1_HEXDIGEST_SIZE) {
-        mdebug1("Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
-                OS_SHA1_HEXDIGEST_SIZE,
-                input_len);
-        snprintf(output,
-                 OS_MAXSTR + 1,
-                 "err Hash hex-digest does not have the expected length. Expected (%d) got (%d)",
-                 OS_SHA1_HEXDIGEST_SIZE,
-                 input_len);
-        return OS_INVALID;
-    }
-
-    os_sha1 hash = {0};
-    strncpy(hash, input, OS_SHA1_HEXDIGEST_SIZE);
-
-    cJSON *j_result = wdb_global_get_groups_integrity(wdb, hash);
-    if (j_result == NULL) {
-        mdebug1("Error getting groups integrity information from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting groups integrity information from global.db.");
-        return OS_INVALID;
-    }
-
-    char* out = cJSON_PrintUnformatted(j_result);
-    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
-    os_free(out);
-    cJSON_Delete(j_result);
-    return OS_SUCCESS;
-}
-
 int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output) {
 
     if (OS_SUCCESS != wdb_global_recalculate_all_agent_groups_hash(wdb)) {
@@ -1668,17 +1443,6 @@ int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char* input, char* ou
     cJSON_Delete(result);
     os_free(out)
 
-    return OS_SUCCESS;
-}
-
-int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output) {
-    if (OS_SUCCESS != wdb_global_reset_agents_connection(wdb, input)) {
-        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
     return OS_SUCCESS;
 }
 

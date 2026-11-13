@@ -8,7 +8,9 @@
 
 """Unit tests for integration module."""
 
+import errno
 import json
+import socket
 import sys
 from os.path import join, dirname, realpath
 from unittest.mock import MagicMock
@@ -74,7 +76,7 @@ def test_WazuhGCloudIntegration_send_message(mock_socket):
     """Test if messages are sent to Wazuh queue socket."""
     integration = WazuhGCloudIntegration(logger=MagicMock())
     with integration.initialize_socket():
-        integration.send_msg(test_message)
+        assert integration.send_msg(test_message) is True
     mock_socket.return_value.send.assert_called_with(
         f'{WazuhGCloudIntegration.header}{test_message}'.encode(errors='replace'))
 
@@ -106,3 +108,47 @@ def test_WazuhGCloudIntegration_send_message_logs_warning_when_oversized(mock_so
         integration.send_msg('x' * (MAX_EVENT_SIZE + 1))
     mock_warning.assert_called_once()
     assert str(MAX_EVENT_SIZE) in mock_warning.call_args[0][0]
+
+
+@pytest.mark.parametrize('raised_exception', [
+    ConnectionRefusedError(errno.ECONNREFUSED, 'Connection refused'),
+    OSError(errno.ENOBUFS, 'No buffer space available'),
+])
+def test_WazuhGCloudIntegration_send_message_ko_not_skipped(raised_exception):
+    """Test send_message still aborts on socket errors other than a message too long for the socket."""
+    integration = WazuhGCloudIntegration(logger=MagicMock())
+    integration.socket = MagicMock()
+    integration.socket.send.side_effect = raised_exception
+    with pytest.raises(exceptions.WazuhIntegrationInternalError) as e:
+        integration.send_msg(test_message)
+    assert e.value.errcode == 3
+    integration.logger.error.assert_not_called()
+
+
+def test_WazuhGCloudIntegration_send_message_skips_message_too_long():
+    """Test send_message logs and skips an event the socket rejects as too long, instead of aborting."""
+    integration = WazuhGCloudIntegration(logger=MagicMock())
+    integration.socket = MagicMock()
+    integration.socket.send.side_effect = OSError(errno.EMSGSIZE, 'Message too long')
+    assert integration.send_msg(test_message) is False
+    integration.logger.error.assert_called_once()
+
+
+def test_WazuhGCloudIntegration_send_message_too_long_real_socket():
+    """Test the error a real datagram socket raises for an oversized event is the one send_message skips, and the
+    socket keeps working for the next event."""
+    integration = WazuhGCloudIntegration(logger=MagicMock())
+    sender, receiver = socket.socketpair(socket.AF_UNIX, socket.SOCK_DGRAM)
+    with sender, receiver:
+        # A small send buffer makes the overflow size independent of the host's net.core.wmem_default
+        sender.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4096)
+        receiver.setblocking(False)
+        integration.socket = sender
+
+        assert integration.send_msg('x' * sender.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)) is False
+        assert integration.send_msg(test_message) is True
+
+        assert receiver.recv(65536) == f'{WazuhGCloudIntegration.header}{test_message}'.encode()
+        with pytest.raises(BlockingIOError):
+            receiver.recv(65536)
+    integration.logger.error.assert_called_once()

@@ -32,6 +32,18 @@ No manager restart is needed.
 
 The default group is `default`; an agent enrolled without a group belongs to it.
 
+The `default` group's file, and the file every new group starts with
+(`/etc/wazuh-manager/shared/agent-template.conf`), hold an empty `<agent_config>` and a comment with
+examples to copy: collecting a log file, watching the users' download folders in real time (file
+integrity monitoring, which is what malware detection checks new files with), monitoring Docker, and
+turning on uninstall protection. The dashboard shows this file in **Agents management** > **Groups** >
+group > **Files** > **Edit group configuration**. Both are written at installation only when absent, so
+an upgrade keeps the template and every group's file as they are.
+
+The uninstall-protection example is described in words, not written as XML: the agent package's
+uninstaller reads `agent.conf` as text, and before 5.0 it did not skip comments, so a commented-out
+`<anti_tampering>` block would still take effect on older agents.
+
 ## Configuration format
 
 `agent.conf` uses the same XML elements as `ossec.conf`, wrapped in one or more `<agent_config>`
@@ -117,6 +129,7 @@ The agent's daemons read these sections from `agent.conf` (`read_main_elements()
 | `<gcp-pubsub>`, `<gcp-bucket>` | Google Cloud modules |
 | `<github>`, `<office365>`, `<ms-graph>` | Cloud log collection modules |
 | `<agent>` (or its 4.x spelling `<client>`) | Only its `<batch>` child (`<force_reconnect_interval>` is warned about and ignored); any other child is an error |
+| `<anti_tampering>` | Uninstall protection of Linux agents installed from a DEB or RPM package. Put it in an `<agent_config os="Linux">` block: Windows agents do not know the section, and an unscoped block makes the whole file invalid there. A value set here wins over the agent's local `ossec.conf`, both for the package's uninstaller and for what the agent reports (`GET /agents/{agent_id}/config/agent/anti_tampering`) |
 
 Sections that are read only from the agent's local `ossec.conf`:
 
@@ -124,8 +137,6 @@ Sections that are read only from the agent's local `ossec.conf`:
   `<repeated_offenders>`, `<allowlist>`) only from the local file, so an `<active-response>` block in
   `agent.conf` is accepted and ignored.
 - `<agent-upgrade>`: ignored in `agent.conf`.
-- `<anti_tampering>` (Unix agents): read from the local file only; ignored in `agent.conf`. Windows
-  agents do not know the section, so there it makes the file invalid.
 - `<logging>`: ignored in `agent.conf`.
 - `<cluster>`: ignored. `<client_buffer>` (4.x event buffering, replaced by `<agent><batch>`) is ignored
   with the info line `'client_buffer' is no longer used and will be ignored.`

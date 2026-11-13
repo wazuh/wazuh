@@ -23,7 +23,7 @@ module's own periodic cycle to retry after failures.
   transport layer (internal options `agent.https_stateful_attempts`, `agent.https_stateful_timeout`);
   the protocol layer only adds a 15-minute safety-net ceiling for a result that never arrives
 - **Byte-Capped Sessions**: Delta sessions are capped at `<agent><batch><size>` (1 MiB by default), except `Option::VDFIRST`/`Option::VDSYNC`; a single larger item is sent alone, and dropped after repeated failures
-- **Bounded Sync Cycles**: One delta sync cycle sends at most `agent.sync_max_blocks_per_cycle` sessions (50 by default); the rest stays queued for the next cycle. `Option::VDFIRST`/`Option::VDSYNC` fetch with no byte budget, so their first session already carries the whole queue. `synchronizeModuleBounded()` / `asp_sync_module_bounded()` lower the limit for one call
+- **Bounded Sync Cycles**: One delta sync cycle sends at most `agent.sync_max_blocks_per_cycle` sessions (50 by default); the rest stays queued for the next cycle. `Option::VDFIRST`/`Option::VDSYNC` fetch with no byte budget, so their first session already carries the whole queue. `SyncModuleResult::reachedBlockLimit` / `reached_block_limit` tells the caller the cycle stopped at that limit
 - **Multiple Sync Modes**: Delta, integrity check, metadata, and groups synchronization, plus `DataClean`
 
 ## Architecture Overview
@@ -43,7 +43,8 @@ Each internal module maintains its own instance of the Agent Sync Protocol with 
        │                 │                 │
 ┌──────▼──────┐   ┌──────▼──────┐   ┌──────▼──────┐
 │   SQLite    │   │   SQLite    │   │   SQLite    │
-│ fim_sync.db │   │ sca_sync.db │   │ sys_sync.db │
+│ fim_sync.db │   │ sca_sync.db │   │syscollector_│
+│             │   │             │   │  sync.db    │
 └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
        │                 │                 │
        └────────────┬────┴─────────────────┘
@@ -67,7 +68,8 @@ Each module instance:
 - Has its own Agent Sync Protocol instance
 - Maintains separate SQLite database for persistent storage
 - Manages its own synchronization sessions independently
-- Shares the same Message Queue infrastructure
+- Hands every session to `wazuh-agentd` over the same local `queue-sync` socket
+- Exceptions: agent-info's sync-protocol instance has no queue database (metadata, groups and integrity checks only), and Syscollector runs a second instance (`syscollector_vd`, `syscollector_vd_sync.db`) for vulnerability-detection data
 
 ## Documentation Structure
 

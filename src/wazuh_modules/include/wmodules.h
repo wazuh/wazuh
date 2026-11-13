@@ -224,6 +224,34 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, char loc, bool (*fn_prd)()) __attribute__((nonnull));
 
 /**
+ * @brief Send a message to the agent's queue with a specific delay, reopening DEFAULTQUEUE if the send fails.
+ *
+ * For the agent's modules: on the agent, wazuh-agentd binds DEFAULTQUEUE. While it can't reach the
+ * manager it holds its producers back, and the send waits. A failed send means it went away, and
+ * SendMSGAction() has closed the descriptor: the queue is reopened into @p queue, retrying every 5
+ * seconds until it is back, and the message is sent once more. Once modulesd starts shutting down, every
+ * wait ends. The message is still sent to an agent that can forward it, as on a reload, which keeps
+ * wazuh-agentd running, but not while the agent can't reach the manager, since a stopping agent may never
+ * forward it: the caller keeps it then. Callers that can fetch a message again, such as the modules that
+ * keep a bookmark, should stop sending themselves once modulesd stops. On Windows there is no socket to
+ * reopen: a failed send is returned as is.
+ *
+ * @p queue must not be shared with another thread unless the caller serializes the calls.
+ *
+ * @param usec Delay before the send, in microseconds.
+ * @param queue Descriptor to send through. Replaced by the reopened one after a failed send, and set
+ *              to -1 when the message could not be sent through it, since the old number may be reused.
+ * @param message Message to send.
+ * @param locmsg Location of the message.
+ * @param loc Queue identifier (e.g. LOCALFILE_MQ).
+ * @param tag Log tag of the calling module, for the reconnection message.
+ * @return 0 if the message was sent, -1 if not (modulesd shutting down while the agent can't reach the
+ *         manager, or the resend failed). A message SendMSGAction() drops without a socket error, a NULL
+ *         or malformed one or one the busy socket can't take, still returns 0.
+ */
+int wm_sendmsg_with_reconnect(int usec, int *queue, const char *message, const char *locmsg, char loc, const char *tag) __attribute__((nonnull(2, 4, 6)));
+
+/**
  Check the binary which executes a command has the specified hash.
  Returns:
      1 if the binary matches with the specified digest, 0 if not.

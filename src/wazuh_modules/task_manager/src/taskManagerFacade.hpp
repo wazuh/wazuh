@@ -376,6 +376,7 @@ namespace task_manager
             upgrade::HttpWpkRepository::Options repositoryOptions;
             repositoryOptions.downloadTimeout =
                 std::chrono::milliseconds {valueOr(config.upgrade_download_timeout, 45000)};
+            repositoryOptions.userAgent = upgrade::HttpWpkRepository::userAgentFor(config.manager_version);
             m_wpkRepository = std::make_unique<upgrade::HttpWpkRepository>(repositoryOptions);
 
             if (!m_wpkRepository->hasCaBundle())

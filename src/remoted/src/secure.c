@@ -872,10 +872,24 @@ void HandleSecure()
     // Create com request thread
     w_create_thread(remcom_main, NULL);
 
-    // Reset all the agents' connection status in Wazuh DB
-    // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
-    if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
-        mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+    // Disconnect the agents that have been silent past <agents_disconnection_time>, as the disconnection
+    // sweep would, so a manager that was down for longer does not report them active until the sweep's
+    // next run. Only those: on a master, global.db holds every agent of the cluster, and one served by a
+    // worker that stayed up keeps its keepalive current through the worker's agent-info sync. Resetting
+    // every agent here, as this did, reported the whole fleet disconnected after a master restart -- and
+    // indexed it so in the first metrics snapshot -- until each agent's next keepalive reached the master.
+    // An agent this node served comes back with its next notify; one that does not is the sweep's, like
+    // any other agent that goes silent. The local database only: each node runs this for itself, so no
+    // synchronization is required.
+    {
+        int *disconnected = wdb_disconnect_agents((int)(time(NULL) - logr.global.agents_disconnection_time),
+                                                  "synced", NULL);
+        if (disconnected == NULL) {
+            mwarn("Unable to disconnect the agents silent for longer than the disconnection time. Their status "
+                  "may stay 'active' until the next disconnection sweep.");
+        }
+        os_free(disconnected);
+    }
 
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {

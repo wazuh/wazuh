@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 class Metadata:
-    def __init__(self, description: str, keywords: list):
+    def __init__(self, description: str, group: str, fails_when: list, deletes_arguments: list = None):
         self.description = description
-        self.keywords = keywords
+        self.group = group
+        self.fails_when = fails_when
+        self.deletes_arguments = deletes_arguments or []
 
 
 class Argument:
@@ -53,7 +55,9 @@ class Documentation:
         self.is_variadic = is_variadic
 
         self.description = metadata.description
-        self.keywords = metadata.keywords
+        self.group = metadata.group
+        self.fails_when = metadata.fails_when
+        self.deletes_arguments = metadata.deletes_arguments
 
         self.arguments = arguments
         self.output = output

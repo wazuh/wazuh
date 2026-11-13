@@ -2591,6 +2591,102 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     }
 }
 
+static void runPortsDuplicatedScan(const bool portsAll, const std::vector<std::string>& expectedPorts)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(testing::AnyNumber());
+
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                   R"([{"file_inode":10,"source_ip":"127.0.0.1","source_port":631,"process_pid":0,"process_name":"cupsd","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0},
+                                                                       {"file_inode":10,"source_ip":"127.0.0.1","source_port":631,"process_pid":0,"process_name":"cupsd-dup","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0},
+                                                                       {"file_inode":11,"source_ip":"10.0.0.1","source_port":22,"process_pid":0,"process_name":"sshd","network_transport":"tcp","destination_ip":"10.0.0.2","destination_port":5000,"host_network_ingress_queue":0,"interface_state":"established","host_network_egress_queue":0},
+                                                                       {"file_inode":11,"source_ip":"10.0.0.1","source_port":22,"process_pid":0,"process_name":"sshd-dup","network_transport":"tcp","destination_ip":"10.0.0.2","destination_port":5000,"host_network_ingress_queue":0,"interface_state":"established","host_network_egress_queue":0},
+                                                                       {"file_inode":20,"source_ip":"127.0.0.53","source_port":53,"process_pid":0,"process_name":"resolved","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0},
+                                                                       {"file_inode":20,"source_ip":"127.0.0.53","source_port":53,"process_pid":0,"process_name":"resolved-dup","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0},
+                                                                       {"file_inode":21,"source_ip":"0.0.0.0","source_port":5353,"process_pid":0,"process_name":"avahi","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0}])")));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            const auto delta = nlohmann::json::parse(data);
+
+            if (delta.at("collector") == "dbsync_ports")
+            {
+                const auto& port = delta.at("data");
+                wrapper.callbackMock(port.at("event").at("type").get<std::string>() + ":" +
+                                     port.at("network").at("transport").get<std::string>() + ":" +
+                                     std::to_string(port.at("source").at("port").get<int>()) + ":" +
+                                     port.at("process").at("name").get<std::string>());
+            }
+        }
+    };
+
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {}
+    };
+
+    for (const auto& expected : expectedPorts)
+    {
+        EXPECT_CALL(wrapper, callbackMock(expected)).Times(1);
+    }
+
+    std::promise<void> portsScanned;
+    std::once_flag portsScannedOnce;
+    std::function<void(const modules_log_level_t, const std::string&)> logCallback
+    {
+        [&portsScanned, &portsScannedOnce](const modules_log_level_t /*level*/, const std::string & log)
+        {
+            if (log == "Ending ports scan")
+            {
+                std::call_once(portsScannedOnce, [&portsScanned]()
+                {
+                    portsScanned.set_value();
+                });
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData, &callbackDataPersist, &logCallback, portsAll]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          callbackDataPersist,
+                                          logCallback,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, portsAll, false, false, false, false, false, false, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    const auto scanResult {portsScanned.get_future().wait_for(std::chrono::seconds{30})};
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    ASSERT_EQ(std::future_status::ready, scanResult);
+}
+
+TEST_F(SyscollectorImpTest, PortsDuplicated)
+{
+    runPortsDuplicatedScan(false, {"created:tcp:631:cupsd", "created:udp:53:resolved", "created:udp:5353:avahi"});
+}
+
+TEST_F(SyscollectorImpTest, PortsAllDuplicated)
+{
+    runPortsDuplicatedScan(true, {"created:tcp:631:cupsd", "created:tcp:22:sshd", "created:udp:53:resolved", "created:udp:5353:avahi"});
+}
+
 TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};

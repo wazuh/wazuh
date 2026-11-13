@@ -234,6 +234,72 @@ TEST_F(AgentMetadataCacheTest, GetOrParse_ManagerAgentId_Accepted)
     EXPECT_EQ(cache.size(), 1);
 }
 
+// A dotted member name stays a literal sibling of the nested identity through the merge, and the
+// indexer expands it into a second value of a wazuh.* field. Each header below carries a valid nested
+// id plus such a name outside the identity path itself.
+TEST_F(AgentMetadataCacheTest, GetOrParse_DottedMemberName_Throws)
+{
+    const std::vector<std::string> headers {
+        R"({"wazuh":{"agent":{"id":"001"}},"wazuh.cluster.name":"other"})",
+        R"({"wazuh":{"agent":{"id":"001"}},"wazuh.agent.name":"other"})",
+        R"({"wazuh":{"agent":{"id":"001"},"agent.name":"other"}})",
+        R"({"wazuh":{"agent":{"id":"001","host":{"os":{"x.y":"z"}}}}})",
+        R"({"wazuh":{"agent":{"id":"001","groups":[{"a.b":1}]}}})",
+        "{\"wazuh\":{\"agent\":{\"id\":\"001\"},\"x\\u0000.y\":1}}",
+        R"({"wazuh":{"agent":{"id":"001"}},"wazuh.":"x"})",
+    };
+    for (const auto& header : headers)
+    {
+        EXPECT_THROW(cache.getOrParse("001", header), IdentityError) << header;
+    }
+    EXPECT_EQ(cache.size(), 0);
+}
+
+TEST_F(AgentMetadataCacheTest, GetOrParse_DottedMemberName_Message)
+{
+    try
+    {
+        cache.getOrParse("001", R"({"wazuh":{"agent":{"id":"001"}},"wazuh.cluster.name":"other"})");
+        FAIL() << "Expected IdentityError";
+    }
+    catch (const IdentityError& e)
+    {
+        EXPECT_STREQ(e.what(), "AgentMetadataCache: dotted header member names must not reach wazuh.*");
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, GetOrParse_DottedNamesOutsideWazuh_Accepted)
+{
+    // A dotted name expands only below the object that holds it, so these cannot land on wazuh.*. The
+    // root name "wazuh\u0000x" is a 7-character name, not `wazuh`: compared by length, its subtree is
+    // not walked. The cached header must keep every one of these members as sent.
+    auto result = cache.getOrParse("001",
+                                   "{\"wazuh\":{\"agent\":{\"id\":\"001\"}},\"x.y\":1,\"wazuhx.agent.id\":\"002\","
+                                   "\"labels\":{\"a.b\":\"c\"},\"wazuh\\u0000x\":{\"a.b\":1}}");
+
+    ASSERT_NE(result.first, nullptr);
+    EXPECT_EQ(result.second, Op::Inserted);
+    const auto stored = result.first->str();
+    for (const auto* member :
+         {R"("x.y":1)", R"("wazuhx.agent.id":"002")", R"("labels":{"a.b":"c"})", R"("wazuh\u0000x":{"a.b":1})"})
+    {
+        EXPECT_NE(stored.find(member), std::string::npos) << member << " missing from " << stored;
+    }
+}
+
+TEST_F(AgentMetadataCacheTest, GetOrParse_DotsInValues_Accepted)
+{
+    // Only member names are expanded by the indexer; dotted values are ordinary data.
+    auto result = cache.getOrParse(
+        "001", R"({"wazuh":{"agent":{"id":"001","version":"v5.0.0","host":{"hostname":"web.example.com"}}}})");
+
+    ASSERT_NE(result.first, nullptr);
+    std::string_view hostname;
+    ASSERT_EQ(result.first->getString(hostname, "/wazuh/agent/host/hostname"), json::RetGet::Success);
+    EXPECT_EQ(hostname, "web.example.com");
+    EXPECT_EQ(result.second, Op::Inserted);
+}
+
 TEST_F(AgentMetadataCacheTest, EvictStale_RemovesExpiredEntries)
 {
     FakeClock fakeClock;
@@ -674,12 +740,10 @@ TEST_F(AgentMetadataCacheTest, RejectsDottedIdentityAliasesBeforeAdmission)
     }
 }
 
-TEST_F(AgentMetadataCacheTest, AcceptsDottedMetadataOutsideTheIdentityPath)
+TEST_F(AgentMetadataCacheTest, AcceptsDottedMetadataOutsideWazuh)
 {
-    const std::string header =
-        R"({"wazuh":{"agent":{"id":"001","id\u0000x":"002"},"agent.name":"label","agent.identifier":"002"},)"
-        R"("wazuh.agent.name":"label","wazuh.agent.identifier":"002","wazuh.agent.id\u0000x":"002",)"
-        R"("metadata":{"wazuh.agent.id":"002","wazuh":{"agent":{"id":"002"}}}})";
+    const std::string header = R"({"wazuh":{"agent":{"id":"001","id\u0000x":"002"}},"wazuhx.agent.id":"002",)"
+                               R"("metadata":{"wazuh.agent.id":"002","wazuh":{"agent":{"id":"002"}}}})";
     const auto first = cache.getOrParse("001", header);
     EXPECT_EQ(first.second, Op::Inserted);
     EXPECT_EQ(cache.getOrParse("001", header).second, Op::Retrieved);

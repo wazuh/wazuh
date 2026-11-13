@@ -38,12 +38,20 @@ IntegrityCheckResult_t __wrap_fim_recovery_check_if_full_sync_required(char* tab
 bool __wrap_fim_recovery_integrity_interval_has_elapsed(char* table_name, int64_t integrity_interval);
 
 /**
- * @brief Wrapper for fim_recovery_run_integrity_checks
+ * @brief Wrapper for fim_recovery_run_integrity_checks. Marks no table as recovered unless
+ *        __wrap_fim_recovery_run_integrity_checks_recover_first_table(true) was called before.
  */
 void __wrap_fim_recovery_run_integrity_checks(AgentSyncProtocolHandle* handle,
                                               char** table_names,
                                               int table_count,
                                               const OSList* directories_list,
-                                              int64_t integrity_interval);
+                                              int64_t integrity_interval,
+                                              bool* recovered);
+
+/**
+ * @brief Makes __wrap_fim_recovery_run_integrity_checks mark the first table as recovered, as a
+ *        real pass that queued a recovery would.
+ */
+void __wrap_fim_recovery_run_integrity_checks_recover_first_table(bool enable);
 
 #endif

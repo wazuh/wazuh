@@ -1,0 +1,101 @@
+# Name of the helper function
+name: parse_xml
+
+metadata:
+  description: |
+    Parses the input XML document into an object and stores it in the target field.
+
+    Behavior:
+    - Each element becomes a member named after it: its text goes to `#text`, each attribute to `@<name>`,
+      an element with neither text nor attributes becomes `{}`, and repeated sibling elements become an
+      array of objects. Every value is a string; a document nested deeper than 256 levels fails.
+    - With the `windows` mode (Windows Event Log XML): the `Event` element is skipped and its children are
+      placed at its level, `<Data Name="X">v</Data>` becomes the member `X` of its parent, and a `Data`
+      element without `Name` is appended to a string array in its parent.
+    - The resulting object replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - `mode` is not the literal `windows`, or more than 2 arguments are given.
+    - The target field is a schema field that is not an object.
+
+    Notes:
+    - `parse_json` reads JSON text.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a well-formed XML document.
+    - The document is nested deeper than 256 levels.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+  mode:
+    type: string
+    generate: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - windows
+
+skipped:
+  - success_cases # string generation is random
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      input: <greeting>some greeting</greeting>
+    target_field: any_value
+    should_pass: true
+    expected:
+      greeting:
+        '#text': some greeting
+    description: The text of an element goes to its #text member
+  - arguments:
+      input: <a x="1">t</a>
+    target_field: any_value
+    should_pass: true
+    expected:
+      a:
+        '#text': t
+        '@x': "1"
+    description: Attributes become members prefixed with @
+  - arguments:
+      input: <r><i>1</i><i>2</i></r>
+    target_field: any_value
+    should_pass: true
+    expected:
+      r:
+        i:
+          - '#text': "1"
+          - '#text': "2"
+    description: Repeated sibling elements become an array
+  - arguments:
+      input: <Event><System><Provider Name="X"/></System><EventData><Data Name="K">v</Data></EventData></Event>
+      mode: windows
+    target_field: any_value
+    should_pass: true
+    expected:
+      System:
+        Provider:
+          '@Name': X
+      EventData:
+        K: v
+    description: In windows mode the Event element is skipped and named Data elements become members
+  - arguments:
+      input: <greeting>some greeting<greeting>
+    target_field: any_value
+    should_pass: false
+    description: Fails on a document that is not well-formed

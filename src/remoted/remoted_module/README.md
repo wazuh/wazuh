@@ -641,7 +641,12 @@ src/endpoints/
   The engine requires a unique `/wazuh/agent/id` equal byte for byte to the trusted carrier.
   Validation runs on cache misses; hits reuse validation of the same id and exact header bytes.
   Repeated identity members cannot select a different id during the later merge. Off-path members
-  remain literal keys because the engine escapes JSON Pointer tokens. The full contract is in
+  remain literal keys because the engine escapes JSON Pointer tokens. The engine also refuses a
+  dotted member name that the indexer would expand into `wazuh.*` — a root member whose first
+  segment is `wazuh` (`"wazuh.agent.id"`, `"wazuh.cluster.name"`) or any dotted name inside the root
+  `wazuh` object (`"agent.id"`): the manager keeps it as a literal sibling, but the indexer would store
+  it as a second value of a `wazuh.*` field. Dotted names elsewhere and event (`E`) lines are left
+  alone. The full contract is in
   [Event protocol](../../../docs/ref/modules/remoted/event-protocol.md#rules).
 
   `stateless::makeHandler(forwarder, socketPath, metrics)` applies the slice check before

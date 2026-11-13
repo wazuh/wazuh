@@ -315,7 +315,7 @@ paths:
                         enabled: true
                         normalize:
                         - map:
-                          - '@timestamp': get_date()
+                          - '@timestamp': now()
                       filters: []
                       outputs: []
                       integrations:
@@ -381,7 +381,7 @@ paths:
                         enabled: true
                         normalize:
                         - map:
-                          - '@timestamp': get_date()
+                          - '@timestamp': now()
                       integrations:
                       - id: 1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d
                         metadata:
