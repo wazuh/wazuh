@@ -40,6 +40,11 @@
 // resolution lost first-wins (WritePath::resolve returned false) or came back closed from Bucket::requeue. Ignore
 // verdicts (Cancelled, Shutdown) never count.
 //
+// DEDUPLICATED. deduplicated counts, among the `ok` resolutions, the ops with `_id` of IndexDataStream whose item came
+// back 409 version_conflict_engine_exception and resolved Ok under ConflictPolicy::Success: the indexer already had
+// the document (an earlier attempt of the same bulk was applied after a timeout or a connection loss), so it was not
+// indexed twice. Every resolution path counts it alike (submit, post, Group).
+//
 // QUERIES. responseBytesInFlight = Σ body bytes of query HttpResults delivered to the query engine and not yet
 // returned to the consumer (classification + DOM); peakResponseBytesInFlight is its process-wide maximum. There is no
 // global charge for them: the gauge makes the memory that reads hold observable.
@@ -145,6 +150,7 @@ namespace indexer_client
         std::array<std::uint64_t, static_cast<std::size_t>(RejectCause::Count)> rejected {};
         std::array<std::uint64_t, static_cast<std::size_t>(DropCause::Count)> dropped {};
         std::uint64_t ok {0};
+        std::uint64_t deduplicated {0}; ///< Of `ok`: 409s of IndexDataStream ops with `_id` (DEDUPLICATED).
         std::array<std::uint64_t, static_cast<std::size_t>(FailCause::Count)> failed {};
         std::array<std::uint64_t, static_cast<std::size_t>(RetryCause::Count)> retries {};
         std::uint64_t lateResults {0};

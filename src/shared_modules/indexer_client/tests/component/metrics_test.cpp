@@ -672,7 +672,7 @@ TEST_F(MetricsBulkTest, CatalogNamesAreSaneAndStable)
     ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
     auto c = client("VD-Scanner", {fast("states.v2"), fast("---")});
     const auto fresh = collect(c->metrics());
-    EXPECT_EQ(fresh.size(), 2u * 51u + 3u);
+    EXPECT_EQ(fresh.size(), 2u * 52u + 3u);
     EXPECT_EQ(get(fresh, "indexer_client.bucket.vd_scanner.states_v2.rejected.queue_full"), 0);
     EXPECT_EQ(get(fresh, "indexer_client.bucket.vd_scanner._.latency.le_32768"), 0);
     EXPECT_EQ(get(fresh, "indexer_client.client.vd_scanner.callback_overruns"), 0);

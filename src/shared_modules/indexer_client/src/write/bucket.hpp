@@ -127,8 +127,9 @@ namespace indexer_client::detail::write
     struct OpState final
     {
         /// The op's wire lines (encoding.hpp Encoded): headView() + `body` + '\n' (the '\n' only with a body).
-        /// IndexAutoId and IndexDataStream carry their action line in `cachedHead` (a line of the
-        /// write path's HeadTable, which outlives every reader of it) and leave `head` empty.
+        /// IndexAutoId and IndexDataStream without `_id` carry their action line in `cachedHead` (a line of the
+        /// write path's HeadTable, which outlives every reader of it) and leave `head` empty; an IndexDataStream with
+        /// `_id` keeps its own line in `head`.
         std::string head;
         const std::string* cachedHead {nullptr};
         std::string body;
@@ -179,9 +180,13 @@ namespace indexer_client::detail::write
         std::uint64_t seq {0};
         /// Op::tag, moved in by submit / Group::add; empty = none.
         std::string tag;
-        /// Ordered buckets only: the key's 64-bit hash; `hasKey` false for kinds without `_id` (never blocked).
+        /// Ordered buckets only: the key's 64-bit hash; `hasKey` false for ops without `_id` (never blocked).
         std::uint64_t keyHash {0};
         bool hasKey {false};
+        /// An IndexDataStream with `_id` (set with `hasKey`, immutable afterwards). Its 409 version_conflict resolved
+        /// Ok (ConflictPolicy::Success) means the indexer already had the document: it counts in
+        /// BucketStats::deduplicated.
+        bool dedupOnConflict {false};
         /// Set under the bucket mutex by cancel(); read lock-free by the sender before it assembles a bulk.
         std::atomic<bool> cancelled {false};
         /// The ambiguous pin, written under the bucket mutex by requeue and read by the sender once the op is in a
@@ -344,6 +349,7 @@ namespace indexer_client::detail::write
         std::uint64_t orderedAmbiguousFailover {
             0}; ///< Pinned ops sent to another node once the window ended (counted at dispatch).
         std::uint64_t resolvedOk {0};
+        std::uint64_t deduplicated {0}; ///< Of resolvedOk: 409s of dedupOnConflict ops (metrics.hpp DEDUPLICATED).
         std::uint64_t resolvedFailed {0};
         std::uint64_t resolvedDropped {0};
         std::uint64_t retained {0}; ///< Pending + delivered to the sink, not yet resolved.
@@ -594,8 +600,12 @@ namespace indexer_client::detail::write
         /// failed[] / dropped[] (metrics.hpp; an unlisted Failed cause counts in invalid_state, Failed(PayloadTooLarge)
         /// — a single-op 413 — in client_4xx). An unsuccessful one also counts in the interval's
         /// (cause, itemErrorType) keys, and the first `reason` of the interval is kept as its DEBUG sample.
-        void
-        countResolved(Status status, Cause cause, std::string_view itemErrorType = {}, std::string_view reason = {});
+        /// `deduplicated`: an Ok of a dedupOnConflict op with a 409, counted also in deduplicated.
+        void countResolved(Status status,
+                           Cause cause,
+                           std::string_view itemErrorType = {},
+                           std::string_view reason = {},
+                           bool deduplicated = false);
         void countInvalidArgument();
         /// `ops` ops of a completion with an HTTP answer resolved late (metrics.hpp LATE RESULTS).
         void countLate(std::uint64_t ops);
@@ -610,6 +620,12 @@ namespace indexer_client::detail::write
         /// creation) logs one WARN; the next 2xx re-arms it (countBulk). Called with no lock held; emits the line
         /// itself.
         void countAmbiguous(int httpStatus, std::uint64_t ops, bool responseTooLarge);
+        /// A bulk response of this bucket in which `k` (> 0) ops with `_id` of IndexDataStream got a 409
+        /// version_conflict resolved Ok (the indexer already had them: an earlier attempt was applied). Logs one WARN
+        /// when no such response was noted in the last `interval` before `now` (or ever), then always moves the mark to
+        /// `now` (never backwards). The caller takes `now` outside any lock. Called with no lock held; emits the line
+        /// itself.
+        void noteDedupResponse(std::uint64_t k, TimePoint now, Duration interval);
         BucketStats stats() const;
         /// The metrics of this bucket (metrics.hpp BucketMetrics), read under the bucket mutex.
         BucketMetrics metrics() const;
@@ -696,7 +712,8 @@ namespace indexer_client::detail::write
 
         /// The body of countResolved(); m_mutex held. Only the interval keys and sample may throw (an allocation), and
         /// they run before any counter moves.
-        void countResolvedLocked(Status status, Cause cause, std::string_view itemErrorType, std::string_view reason);
+        void countResolvedLocked(
+            Status status, Cause cause, std::string_view itemErrorType, std::string_view reason, bool deduplicated);
         /// The body of releasePayload() up to the release itself; m_mutex held. Returns the bytes released (to give
         /// back to the global cap after the mutex) and hands the bucket's copy of the op out in `keep`; cancel(tag)
         /// waiters that reach 0 go to `cancelDone`. The caller re-arms the quota edge and wakes the blocked producers.
@@ -776,7 +793,8 @@ namespace indexer_client::detail::write
         {
             Quota80,
             Full,
-            Ambiguous ///< `charge` holds the ops of the bulk, `httpStatus` its status.
+            Ambiguous,   ///< `charge` holds the ops of the bulk, `httpStatus` its status.
+            Deduplicated ///< `charge` holds the deduplicated ops of the response (noteDedupResponse).
         };
         struct EdgeLine final
         {
@@ -791,7 +809,8 @@ namespace indexer_client::detail::write
         const std::uint64_t m_threshold70;
         bool m_armed80 {true};
         bool m_armedFull {true};
-        bool m_armedAmbiguous {true}; ///< Cleared by countAmbiguous, set by a 2xx bulk (countBulk).
+        bool m_armedAmbiguous {true};         ///< Cleared by countAmbiguous, set by a 2xx bulk (countBulk).
+        std::optional<TimePoint> m_lastDedup; ///< The latest noteDedupResponse's `now`.
         std::vector<EdgeLine> m_edgeLines;
         std::atomic<bool> m_edgePending {false};
         LogInterval m_interval; ///< Keys and sample of the current interval (totals come from m_logMark).

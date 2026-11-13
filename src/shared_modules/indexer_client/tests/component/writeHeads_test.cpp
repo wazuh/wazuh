@@ -47,6 +47,14 @@ namespace
         return op;
     }
 
+    /// An IndexDataStream op with an `_id`: its own line, never the table's.
+    ic::Op streamOpWithId(const std::string& index, std::size_t key, std::string docId)
+    {
+        auto op = streamOp(index, key);
+        op.id = std::move(docId);
+        return op;
+    }
+
     /// The bytes of `op` built on its own (no table): the reference for a shared line.
     std::string ownWire(ic::Op op)
     {
@@ -164,6 +172,74 @@ TEST_F(WriteEncoding, HeadTableCapFallsBack)
     ASSERT_TRUE(fresh.ok());
     EXPECT_EQ(fresh.value.cachedHead, other.find(ic::Op::Kind::IndexDataStream, index(0)));
     EXPECT_NE(fresh.value.cachedHead, first.value.cachedHead);
+}
+
+// On one thread, an op without `_id` fills the per-thread cache and the table; an op with an
+// `_id` to the same index afterwards carries its own line with that `_id` (cachedHead null, the cache never consulted);
+// the op without `_id` keeps the shared line, and the next one without `_id` still hits it. Mutant: sharedKind ignores
+// the `_id` (the second op takes the cached line, without its `_id`).
+TEST_F(WriteEncoding, DataStreamIdNeverUsesSharedHead)
+{
+    wr::HeadTable table;
+    const std::string index = "wazuh-events-id-after";
+    auto first = wr::encode(streamOp(index, 1), ic::ConflictPolicy {}, false, &table);
+    ASSERT_TRUE(first.ok()) << first.reason;
+    const auto* line = table.find(ic::Op::Kind::IndexDataStream, index);
+    ASSERT_NE(line, nullptr);
+    EXPECT_EQ(first.value.cachedHead, line) << "precondition: the op without _id is shared";
+    EXPECT_EQ(table.size(), 1u);
+
+    auto withId = wr::encode(streamOpWithId(index, 2, "doc-2"), ic::ConflictPolicy {}, false, &table);
+    ASSERT_TRUE(withId.ok()) << withId.reason;
+    EXPECT_EQ(withId.value.cachedHead, nullptr) << "an op with an _id never takes the shared line";
+    EXPECT_EQ(std::string(withId.value.headView()), "{\"create\":{\"_index\":\"" + index + "\",\"_id\":\"doc-2\"}}\n");
+    EXPECT_EQ(wireOf(withId.value), ownWire(streamOpWithId(index, 2, "doc-2")));
+    EXPECT_EQ(table.size(), 1u) << "the line with an _id is not interned";
+    EXPECT_EQ(*line, "{\"create\":{\"_index\":\"" + index + "\"}}\n") << "the shared line is untouched";
+
+    EXPECT_EQ(first.value.cachedHead, line) << "the first op still points at the shared line";
+    EXPECT_EQ(wireOf(first.value), ownWire(streamOp(index, 1)));
+    auto again = wr::encode(streamOp(index, 3), ic::ConflictPolicy {}, false, &table);
+    ASSERT_TRUE(again.ok()) << again.reason;
+    EXPECT_EQ(again.value.cachedHead, line) << "an op without _id still shares the line";
+    EXPECT_EQ(table.size(), 1u);
+}
+
+// The inverse order on an empty table: an op with `_id` a, then one without, then one with `_id`
+// b, all to one index: three distinct lines; the table only ever holds the line without `_id`; cachedHead is null
+// exactly for the ops with an `_id`. Mutant: sharedKind ignores the `_id` (the first op interns its line with `_id` a,
+// and the other two take it).
+TEST_F(WriteEncoding, DataStreamIdFirstNeverInterned)
+{
+    wr::HeadTable table;
+    const std::string index = "wazuh-events-id-first";
+    auto a = wr::encode(streamOpWithId(index, 1, "a"), ic::ConflictPolicy {}, false, &table);
+    ASSERT_TRUE(a.ok()) << a.reason;
+    EXPECT_EQ(a.value.cachedHead, nullptr);
+    EXPECT_EQ(table.size(), 0u) << "a line with an _id is never interned";
+    EXPECT_EQ(table.find(ic::Op::Kind::IndexDataStream, index), nullptr);
+
+    auto none = wr::encode(streamOp(index, 2), ic::ConflictPolicy {}, false, &table);
+    ASSERT_TRUE(none.ok()) << none.reason;
+    ASSERT_NE(none.value.cachedHead, nullptr);
+    EXPECT_EQ(table.size(), 1u);
+    EXPECT_EQ(none.value.cachedHead, table.find(ic::Op::Kind::IndexDataStream, index));
+
+    auto b = wr::encode(streamOpWithId(index, 3, "b"), ic::ConflictPolicy {}, false, &table);
+    ASSERT_TRUE(b.ok()) << b.reason;
+    EXPECT_EQ(b.value.cachedHead, nullptr);
+    EXPECT_EQ(table.size(), 1u);
+
+    const std::string lineA(a.value.headView());
+    const std::string lineNone(none.value.headView());
+    const std::string lineB(b.value.headView());
+    EXPECT_EQ(lineA, "{\"create\":{\"_index\":\"" + index + "\",\"_id\":\"a\"}}\n");
+    EXPECT_EQ(lineNone, "{\"create\":{\"_index\":\"" + index + "\"}}\n");
+    EXPECT_EQ(lineB, "{\"create\":{\"_index\":\"" + index + "\",\"_id\":\"b\"}}\n");
+    EXPECT_EQ(*table.find(ic::Op::Kind::IndexDataStream, index), lineNone) << "the table holds no line with an _id";
+    EXPECT_EQ(wireOf(a.value), ownWire(streamOpWithId(index, 1, "a")));
+    EXPECT_EQ(wireOf(none.value), ownWire(streamOp(index, 2)));
+    EXPECT_EQ(wireOf(b.value), ownWire(streamOpWithId(index, 3, "b")));
 }
 
 // No reader of a line outlives the write path: the runtime shuts down while the pool assembles a bulk of shared-line

@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include <simdjson.h>
+
 #include "runtime/runtimeInternal.hpp"
 #include "transport/seams.hpp"
 
@@ -128,6 +130,9 @@ namespace indexer_client::detail::write
             }
         }
 
+        /// The most bytes an IndexDataStream `_id` may take (the indexer's own `_id` limit).
+        constexpr std::size_t MAX_DATA_STREAM_ID_SIZE = 512;
+
         bool isVersion(std::string_view version) noexcept
         {
             // A canonical JSON integer in [0, INT64_MAX]: digits only, no leading zero (a leading zero is not valid
@@ -188,7 +193,20 @@ namespace indexer_client::detail::write
             {
                 return std::string("id: required for ") + kind;
             }
-            if (!needsId && !op.id.empty())
+            if (op.kind == Op::Kind::IndexDataStream)
+            {
+                // Optional: with an `_id` the `create` is idempotent within the backing index. Bounded and UTF-8
+                // for this kind only; Index and Delete keep their unbounded `_id`.
+                if (op.id.size() > MAX_DATA_STREAM_ID_SIZE)
+                {
+                    return "id: longer than " + std::to_string(MAX_DATA_STREAM_ID_SIZE) + " bytes";
+                }
+                if (!simdjson::validate_utf8(op.id)) // RFC 3629; simdjson is already linked (response.cpp).
+                {
+                    return "id: not valid UTF-8";
+                }
+            }
+            else if (!needsId && !op.id.empty())
             {
                 return std::string("id: must be empty for ") + kind;
             }
@@ -532,11 +550,12 @@ namespace indexer_client::detail::write
 
     Outcome<Encoded> encode(Op&& op, const ConflictPolicy& effective, bool trustedBody, HeadTable* heads)
     {
-        // The kinds without `_id` share their action line through the write path's HeadTable, reached by
-        // the per-thread cache. A hit (same table, same kind, the same index byte for byte) skips the index checks:
-        // the cached index passed them.
-        const bool sharedKind =
-            heads != nullptr && (op.kind == Op::Kind::IndexAutoId || op.kind == Op::Kind::IndexDataStream);
+        // The ops without `_id` of IndexAutoId and IndexDataStream share their action line through the write path's
+        // HeadTable, reached by the per-thread cache. A hit (same table, same kind, the same index byte for byte)
+        // skips the index checks: the cached index passed them. An IndexDataStream with `_id` never looks at the
+        // cache nor the table: a line with `_id` is never interned.
+        const bool sharedKind = heads != nullptr && op.id.empty() &&
+                                (op.kind == Op::Kind::IndexAutoId || op.kind == Op::Kind::IndexDataStream);
         HeadCache* cache = nullptr;
         const std::string* cached = nullptr;
         if (sharedKind)
@@ -604,7 +623,7 @@ namespace indexer_client::detail::write
                 break;
             case Op::Kind::IndexDataStream:
                 prefix = CREATE_PREFIX;
-                withId = false;
+                withId = !op.id.empty(); // Its own line {"create":{"_index":"<i>","_id":"<id>"}}.
                 break;
             case Op::Kind::Delete: prefix = DELETE_PREFIX; break;
             case Op::Kind::IndexVersionedScript: prefix = UPDATE_PREFIX; break;

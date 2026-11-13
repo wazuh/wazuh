@@ -115,7 +115,7 @@ TEST(IndexerMetricsNamesTest, BucketNamesAreTheCatalogOfBothBuckets)
             ADD_FAILURE() << "unexpected name " << name;
         }
     }
-    EXPECT_EQ(51U, events);
+    EXPECT_EQ(52U, events);
     EXPECT_EQ(events, raw);
 
     const auto has = [&names](const std::string& wanted)

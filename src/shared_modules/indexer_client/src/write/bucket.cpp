@@ -474,7 +474,7 @@ namespace indexer_client::detail::write
                             try
                             {
                                 seams::midAdmitBatch(); // AdmitBatchDropThrowUndone: stands for the interval keys.
-                                countResolvedLocked(Status::Dropped, Cause::QueueFull, {}, {});
+                                countResolvedLocked(Status::Dropped, Cause::QueueFull, {}, {}, false);
                             }
                             catch (...)
                             {
@@ -752,6 +752,16 @@ namespace indexer_client::detail::write
                                 m_consumer.c_str(),
                                 m_spec.name.c_str(),
                                 line.httpStatus,
+                                static_cast<unsigned long long>(line.charge));
+                    }
+                    else if (line.edge == Edge::Deduplicated)
+                    {
+                        logWarn(TAG,
+                                "Indexer client bucket '%s/%s': the indexer already had %llu document(s) of a resent "
+                                "bulk (an earlier attempt was applied after a timeout or connection loss); they were "
+                                "not indexed twice.",
+                                m_consumer.c_str(),
+                                m_spec.name.c_str(),
                                 static_cast<unsigned long long>(line.charge));
                     }
                     else if (line.edge == Edge::Quota80)
@@ -1707,8 +1717,12 @@ namespace indexer_client::detail::write
                         internalError("settleBulk: an operation settled by a bucket other than its own");
                     }
                     seams::inSettleBulk(); // SettleThrowsTwiceFallsBackPerOp: stands for the interval keys' throw.
-                    countResolvedLocked(
-                        item.result.status, item.result.cause, item.result.itemErrorType, item.result.reason);
+                    countResolvedLocked(item.result.status,
+                                        item.result.cause,
+                                        item.result.itemErrorType,
+                                        item.result.reason,
+                                        item.op->dedupOnConflict && item.result.status == Status::Ok &&
+                                            item.result.httpStatus == 409);
                     if (item.result.status == Status::Dropped && item.result.cause == Cause::Cancelled)
                     {
                         ++m_stats.cancelled; // Also under resolvedDropped (countCancelled).
@@ -1861,14 +1875,15 @@ namespace indexer_client::detail::write
         m_room.notify_all();
     }
 
-    void Bucket::countResolved(Status status, Cause cause, std::string_view itemErrorType, std::string_view reason)
+    void Bucket::countResolved(
+        Status status, Cause cause, std::string_view itemErrorType, std::string_view reason, bool deduplicated)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        countResolvedLocked(status, cause, itemErrorType, reason);
+        countResolvedLocked(status, cause, itemErrorType, reason, deduplicated);
     }
 
-    void
-    Bucket::countResolvedLocked(Status status, Cause cause, std::string_view itemErrorType, std::string_view reason)
+    void Bucket::countResolvedLocked(
+        Status status, Cause cause, std::string_view itemErrorType, std::string_view reason, bool deduplicated)
     {
         if (status != Status::Ok)
         {
@@ -1899,7 +1914,13 @@ namespace indexer_client::detail::write
         }
         switch (status)
         {
-            case Status::Ok: ++m_stats.resolvedOk; break;
+            case Status::Ok:
+                ++m_stats.resolvedOk;
+                if (deduplicated)
+                {
+                    ++m_stats.deduplicated; // Also under resolvedOk.
+                }
+                break;
             case Status::Failed:
             {
                 ++m_stats.resolvedFailed;
@@ -1963,6 +1984,19 @@ namespace indexer_client::detail::write
             m_edgeLines.push_back(EdgeLine {Edge::Ambiguous, ops, httpStatus, responseTooLarge});
             m_edgePending.store(true);
         }
+    }
+
+    void Bucket::noteDedupResponse(std::uint64_t k, TimePoint now, Duration interval)
+    {
+        EmitPendingOnExit emit {*this}; // Declared before the lock: the line is written once the mutex is dropped.
+        std::lock_guard<std::mutex> lock(m_mutex);
+        // A WARN when no deduplicated response was noted in the last `interval` (or ever); every one, warned
+        // or not, moves the mark, so a run that never pauses for `interval` warns once.
+        if (!m_lastDedup || now - *m_lastDedup >= interval)
+        {
+            pushEdgeLocked(EdgeLine {Edge::Deduplicated, k});
+        }
+        m_lastDedup = m_lastDedup ? std::max(*m_lastDedup, now) : now;
     }
 
     CancelResult Bucket::cancel(const std::string& tag, const std::shared_ptr<CancelState>& ticket)
@@ -2102,6 +2136,7 @@ namespace indexer_client::detail::write
         metrics.rejected[at(RejectCause::InvalidArgument)] = s.invalidArgument;
         metrics.dropped = s.dropped;
         metrics.ok = s.resolvedOk;
+        metrics.deduplicated = s.deduplicated;
         metrics.failed = s.failed;
         metrics.retries = s.retries;
         metrics.lateResults = s.lateResults;

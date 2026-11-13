@@ -760,7 +760,7 @@ namespace invsync
             const auto slot = m_indexerMetricsSlot;
 
             // The catalog's names are fixed by the consumer and the bucket, so a shape with no values
-            // enumerates them all; only the buckets' own metrics are published here (51 per bucket).
+            // enumerates them all; only the buckets' own metrics are published here (52 per bucket).
             // The prefix carries the sanitized bucket name: `agent-state` becomes `agent_state`.
             for (const auto* bucketName : {invsync::indexer::INVENTORY_BUCKET, invsync::indexer::AGENT_STATE_BUCKET})
             {

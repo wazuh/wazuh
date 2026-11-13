@@ -188,7 +188,7 @@ namespace indexer_client
         Duration maxAge {Duration {5000}};
     };
 
-    /// Treatment of HTTP 409 on `update` actions.
+    /// Treatment of HTTP 409 (`version_conflict_engine_exception`) on any write item.
     struct ConflictPolicy final
     {
         enum class Kind
@@ -265,19 +265,19 @@ namespace indexer_client
         /// the bucket keeps at most one bulk in flight, and an ambiguous failure (the node may have applied the bulk)
         /// pins the retry to that node for ambiguous_retry_window_ms. See README § Ordered buckets.
         bool ordered {false};
-        /// A `_bulk` answered 500, 502 or 504 may have been applied by the indexer: Retry resends it (a duplicate in an
-        /// index without `_id`), Fail resolves its ops Failed(Ambiguous) without resending them. A response over
+        /// A `_bulk` answered 500, 502 or 504 may have been applied by the indexer: Retry resends it (a duplicate of
+        /// each op without `_id`), Fail resolves its ops Failed(Ambiguous) without resending them. A response over
         /// max_response_bytes is ambiguous too (the node answered, the client did not read it): Retry splits the batch
         /// and resends the halves, Fail resolves it like a 500. A 503 is always retried. A transport timeout after the
-        /// request left stays Retry under both (known asymmetry: it may still duplicate in buckets without `_id`).
+        /// request left stays Retry under both (known asymmetry: it may still duplicate the ops without `_id`).
         AmbiguousPolicy onAmbiguous5xx {AmbiguousPolicy::Retry};
         /// The producer guarantees every body is compact JSON with no raw '\n': submit, post and Group::add skip the
         /// per-op search for it (an empty body is still InvalidArgument). Risk: a stray '\n' is not caught locally;
         /// it splits the NDJSON line. If what follows is not a valid action line, the indexer answers 400 to that whole
         /// bulk (every op in it fails). If it is one, the indexer runs the injected operation and answers 2xx with one
         /// item more than ops: the whole batch is requeued, so every retry runs the injected operation again and
-        /// duplicates each IndexAutoId/IndexDataStream of the batch, until RetryExhausted. Only for producers that
-        /// guarantee compact JSON (the engine escapes every '\n').
+        /// duplicates each IndexAutoId/IndexDataStream without `_id` of the batch, until RetryExhausted. Only for
+        /// producers that guarantee compact JSON (the engine escapes every '\n').
         bool trustedBodies {false};
     };
 

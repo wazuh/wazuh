@@ -368,8 +368,10 @@ namespace indexer_client::detail::write
                 op->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
                 // encode() only moved the body out: the tag and the key fields are still the request's.
                 op->tag = std::move(request.tag);
-                op->hasKey = spec.ordered && !request.id.empty(); // `_id` iff the kind has one.
+                op->hasKey = spec.ordered && !request.id.empty(); // `_id` iff the op has one.
                 op->keyHash = op->hasKey ? orderedKeyHash(request.index, request.id) : 0;
+                // A 409 version_conflict of this op resolved Ok is a deduplicated resend.
+                op->dedupOnConflict = request.kind == Op::Kind::IndexDataStream && !request.id.empty();
                 return op;
             }
 
@@ -593,7 +595,11 @@ namespace indexer_client::detail::write
             // Once per op (the bucket tracks it); wakes blocked producers; frees the op's last-error strings under the
             // mutex a concurrent Bucket::requeue writes them with (nothing reads them after the claim: an exhausted
             // op's error was copied out by that requeue).
-            bucket->countResolved(result.status, result.cause, result.itemErrorType, result.reason);
+            bucket->countResolved(result.status,
+                                  result.cause,
+                                  result.itemErrorType,
+                                  result.reason,
+                                  op.dedupOnConflict && result.status == Status::Ok && result.httpStatus == 409);
             if (result.status == Status::Dropped && result.cause == Cause::Cancelled)
             {
                 bucket->countCancelled(1); // Also under resolvedDropped.
@@ -767,8 +773,12 @@ namespace indexer_client::detail::write
                 {
                     closing = accountUpTo(m_settled + 1);
                     auto& item = m_items[m_settled];
-                    m_bucket.countResolved(
-                        item.result.status, item.result.cause, item.result.itemErrorType, item.result.reason);
+                    m_bucket.countResolved(item.result.status,
+                                           item.result.cause,
+                                           item.result.itemErrorType,
+                                           item.result.reason,
+                                           item.op->dedupOnConflict && item.result.status == Status::Ok &&
+                                               item.result.httpStatus == 409);
                     if (item.result.status == Status::Dropped && item.result.cause == Cause::Cancelled)
                     {
                         m_bucket.countCancelled(1);

@@ -14,7 +14,8 @@
 // effective policy (the op's onConflict, else the bucket's) on the wire and in the verdict of a 409 item, and the
 // frozen ReplacePreserving vectors as the fake receives them. Every case runs the production sink over the real
 // transport against a fake node (bulkFixture.hpp); every wait is bounded; every case ends with the charge and the
-// retained ops at 0 (TearDown).
+// retained ops at 0 (TearDown). The 409 of an IndexDataStream with an `_id` counted `deduplicated` on every
+// resolution path, its WARN rate-limited per bucket, and the resend of such an op byte for byte.
 
 #include <cstdint>
 #include <cstdio>
@@ -25,12 +26,15 @@
 #include <gmock/gmock.h>
 
 #include "bulkFixture.hpp"
+#include "logSink.hpp"
+#include "testTimeScale.hpp"
 #include "write/sender.hpp"
 
 using namespace write_component;
 using bulk_component::BulkItem;
 using bulk_component::BulkScript;
 using component::eventually;
+using indexer_client::testing::scaled;
 using ::testing::HasSubstr;
 
 // The frozen vectors of writeEncoding_test.cpp (defined there, one copy for both suites).
@@ -118,6 +122,31 @@ namespace
         bulk_component::FakeIndexerOptions options;
         options.recordBodies = true;
         return options;
+    }
+
+    /// An IndexDataStream op, with `docId` as its `_id` when not empty.
+    ic::Op streamOp(std::string docId)
+    {
+        ic::Op op;
+        op.kind = ic::Op::Kind::IndexDataStream;
+        op.index = "wazuh-events-test";
+        op.id = std::move(docId);
+        op.body = R"({"event":{"original":"x"}})";
+        return op;
+    }
+
+    /// The public counter `deduplicated` of `bucket` (Client::metrics()).
+    std::uint64_t publicDeduplicated(const ic::Client& c, const std::string& bucket)
+    {
+        for (const auto& b : c.metrics().buckets)
+        {
+            if (b.bucket == bucket)
+            {
+                return b.deduplicated;
+            }
+        }
+        ADD_FAILURE() << "no bucket " << bucket << " in the client's metrics";
+        return 0;
     }
 
     std::string describe(const std::optional<ic::OpResult>& result)
@@ -370,5 +399,330 @@ TEST_F(BulkTest, PreservingOutcomes)
         }
     }
     EXPECT_EQ(a.bulk->opCount(), 8u) << "nothing sent again";
+    expectInvariants(stats("b"));
+}
+
+// ---- IndexDataStream with an `_id`, its 409 deduplicated.
+
+/// BulkTest plus the log sink, installed before the runtime starts (startOn) and removed once it is down.
+class BulkLogTest : public BulkTest
+{
+protected:
+    /// loggerHelper.h's LOGLEVEL_WARNING, as the library passes it to the log function.
+    static constexpr int WARN = 2;
+    /// The fixed part of the dedup WARN (bucket.cpp); the periodic summary also warns, so lines are told by this text.
+    static constexpr const char* DEDUP = "the indexer already had ";
+
+    log_component::Sink m_logs;
+
+    void SetUp() override
+    {
+        BulkTest::SetUp();
+        indexer_client::setLogFunction(m_logs.function());
+    }
+
+    void TearDown() override
+    {
+        BulkTest::TearDown();
+        indexer_client::setLogFunction({}); // The runtime is down: valid again.
+    }
+
+    /// The dedup WARN lines so far.
+    std::vector<log_component::Line> dedupWarns() const
+    {
+        std::vector<log_component::Line> out;
+        for (auto& line : m_logs.atLeast(WARN, DEDUP))
+        {
+            if (line.level == WARN)
+            {
+                out.push_back(std::move(line));
+            }
+        }
+        return out;
+    }
+
+    /// Waits (bounded) for at least one dedup WARN, then checks that no other one follows within a short window.
+    std::vector<log_component::Line> settledDedupWarns(std::size_t expected)
+    {
+        EXPECT_TRUE(eventually([&] { return dedupWarns().size() >= expected; }, scaled(5s))) << m_logs.dump();
+        EXPECT_FALSE(eventually([&] { return dedupWarns().size() > expected; }, scaled(200ms))) << m_logs.dump();
+        return dedupWarns();
+    }
+};
+
+namespace
+{
+    enum class DedupPath
+    {
+        Submit,
+        Post,
+        Group
+    };
+} // namespace
+
+class BulkDedupPathTest
+    : public BulkLogTest
+    , public ::testing::WithParamInterface<DedupPath>
+{
+};
+
+// A Success bucket; four IndexDataStream ops with an `_id` in one bulk, three answered 409
+// version_conflict and one 400 mapper_parsing_exception ⇒ three Ok keeping the 409 (through submit + callback and the
+// group's ticket; through post, by the counters), one Failed(ItemPermanent); `deduplicated` = 3 on every path (bucket
+// stats and Client::metrics()); one dedup WARN naming the bucket and the number. Mutant (b2): counted only in
+// settleBulk (the submit and group paths see 0).
+TEST_P(BulkDedupPathTest, DataStreamIdConflictCountsDeduplicated)
+{
+    constexpr std::uint64_t OPS = 4;
+    constexpr std::size_t PERMANENT = 3; // Position of the 400 in the bulk.
+    constexpr std::size_t CREATED = 2;   // Position of a plain 201 (a 2xx of an op with `_id` must not count, on
+                                         // every path).
+    auto script = BulkScript::all(BulkItem::conflict());
+    script.at[PERMANENT] = BulkItem::failed(400, "mapper_parsing_exception", "failed to parse field [event]");
+    script.at[CREATED] = BulkItem::ok();
+    const auto a = startNode();
+    a.bulk->push(script);
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
+    auto c = client("c", {fastBucket("b", OPS, 5)});
+    auto writer = c->writer("b");
+    auto results = Results::create();
+    std::vector<std::optional<ic::OpResult>> byKey(OPS);
+
+    switch (GetParam())
+    {
+        case DedupPath::Submit:
+            for (std::uint64_t k = 0; k < OPS; ++k)
+            {
+                ASSERT_TRUE(writer->submit(streamOp(id(k)), results->callback(k)).accepted);
+            }
+            ASSERT_TRUE(results->waitTotal(OPS, scaled(5s))) << results->total();
+            for (std::uint64_t k = 0; k < OPS; ++k)
+            {
+                byKey[k] = results->result(k);
+            }
+            break;
+        case DedupPath::Post:
+            for (std::uint64_t k = 0; k < OPS; ++k)
+            {
+                ASSERT_TRUE(writer->post(streamOp(id(k))).accepted);
+            }
+            break;
+        case DedupPath::Group:
+        {
+            auto group = writer->group();
+            for (std::uint64_t k = 0; k < OPS; ++k)
+            {
+                ASSERT_EQ(group.add(streamOp(id(k))), ic::Cause::None) << group.lastAddReason();
+            }
+            const auto ticket = group.commit();
+            const auto outcome = ticket.wait(std::chrono::steady_clock::now() + scaled(5s));
+            ASSERT_TRUE(outcome.ok()) << ic::toString(outcome.cause) << ": " << outcome.reason;
+            ASSERT_EQ(outcome.value.size(), OPS);
+            for (std::uint64_t k = 0; k < OPS; ++k)
+            {
+                byKey[k] = outcome.value[k]; // Add order.
+            }
+            break;
+        }
+    }
+    ASSERT_TRUE(eventually(
+        [&]
+        {
+            const auto s = stats("b");
+            return s.resolvedOk + s.resolvedFailed == OPS;
+        },
+        scaled(5s)))
+        << describe(stats("b"));
+
+    const auto received = a.bulk->received();
+    ASSERT_EQ(received.size(), 1u) << "one bulk of four";
+    ASSERT_EQ(received[0].size(), OPS);
+    for (const auto& op : received[0])
+    {
+        EXPECT_EQ(op.action, "create");
+        ASSERT_TRUE(op.id.has_value()) << "the _id is on the wire";
+    }
+    const std::string permanentId = *received[0][PERMANENT].id;
+    const std::string createdId = *received[0][CREATED].id;
+    if (GetParam() != DedupPath::Post)
+    {
+        for (std::uint64_t k = 0; k < OPS; ++k)
+        {
+            SCOPED_TRACE(k);
+            const auto& result = byKey[k];
+            ASSERT_TRUE(result.has_value());
+            if (id(k) == permanentId)
+            {
+                EXPECT_EQ(result->status, ic::Status::Failed) << describe(result);
+                EXPECT_EQ(result->cause, ic::Cause::ItemPermanent) << describe(result);
+                EXPECT_EQ(result->httpStatus, 400) << describe(result);
+                EXPECT_EQ(result->itemErrorType, "mapper_parsing_exception");
+            }
+            else if (id(k) == createdId)
+            {
+                EXPECT_EQ(result->status, ic::Status::Ok) << describe(result);
+                EXPECT_EQ(result->httpStatus, 201) << describe(result);
+            }
+            else
+            {
+                EXPECT_EQ(result->status, ic::Status::Ok) << describe(result);
+                EXPECT_EQ(result->cause, ic::Cause::None);
+                EXPECT_EQ(result->httpStatus, 409) << "the 409 kept" << describe(result);
+                EXPECT_EQ(result->itemErrorType, "version_conflict_engine_exception");
+            }
+        }
+    }
+    const auto s = stats("b");
+    EXPECT_EQ(s.resolvedOk, 3u) << describe(s);
+    EXPECT_EQ(s.resolvedFailed, 1u) << describe(s);
+    EXPECT_EQ(s.failed[static_cast<std::size_t>(ic::FailCause::ItemPermanent)], 1u);
+    EXPECT_EQ(s.deduplicated, 2u) << "every applied 409 of an IndexDataStream with an _id, not its 201";
+    EXPECT_EQ(publicDeduplicated(*c, "b"), 2u);
+    EXPECT_EQ(a.bulk->answered(), 1u) << "nothing sent again";
+
+    const auto warns = settledDedupWarns(1);
+    ASSERT_EQ(warns.size(), 1u) << m_logs.dump();
+    EXPECT_NE(warns.front().text.find("Indexer client bucket 'c/b': the indexer already had 2 document(s)"),
+              std::string::npos)
+        << warns.front().text;
+    expectInvariants(s);
+}
+
+INSTANTIATE_TEST_SUITE_P(Dedup,
+                         BulkDedupPathTest,
+                         ::testing::Values(DedupPath::Submit, DedupPath::Post, DedupPath::Group),
+                         [](const ::testing::TestParamInfo<DedupPath>& info)
+                         {
+                             switch (info.param)
+                             {
+                                 case DedupPath::Submit: return std::string("Submit");
+                                 case DedupPath::Post: return std::string("Post");
+                                 case DedupPath::Group: return std::string("Group");
+                             }
+                             return std::string("Unknown");
+                         });
+
+// Nothing else is deduplicated. In a Success bucket: a 409 version_conflict on an IndexDataStream without
+// `_id` and on an Index (both Ok keeping the 409, as today) and a 409 of another type on an IndexDataStream with an
+// `_id` (Failed(ItemPermanent), as today); in a Retry bucket a 409 version_conflict on an IndexDataStream with an `_id`
+// (resent, then Ok 200). `deduplicated` = 0 in both buckets and no dedup WARN. Mutant (b): every 409 resolved Ok
+// counted, without OpState::dedupOnConflict.
+TEST_F(BulkLogTest, ConflictNotDeduplicatedWithoutDataStreamId)
+{
+    const auto a = startNode();
+    a.bulk->push(BulkScript::all(BulkItem::conflict()));
+    a.bulk->push(BulkScript::all(BulkItem::conflict()));
+    a.bulk->push(BulkScript::all(BulkItem::failed(409, "resource_already_exists_exception", "already exists")));
+    a.bulk->push(BulkScript::all(BulkItem::conflict()));
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
+    auto c = client("c", {fastBucket("s", 1, 5), fastBucket("r", 1, 5, retryPolicy(3))});
+    auto results = Results::create();
+
+    // One op at a time: each takes the next scripted answer.
+    ASSERT_TRUE(c->writer("s")->submit(streamOp(""), results->callback(0)).accepted);
+    ASSERT_TRUE(results->waitTotal(1, scaled(5s)));
+    ASSERT_TRUE(c->writer("s")->submit(indexOp(id(1)), results->callback(1)).accepted);
+    ASSERT_TRUE(results->waitTotal(2, scaled(5s)));
+    ASSERT_TRUE(c->writer("s")->submit(streamOp(id(2)), results->callback(2)).accepted);
+    ASSERT_TRUE(results->waitTotal(3, scaled(5s)));
+    ASSERT_TRUE(c->writer("r")->submit(streamOp(id(3)), results->callback(3)).accepted);
+    ASSERT_TRUE(results->waitTotal(4, scaled(5s)));
+
+    for (std::uint64_t k = 0; k < 2; ++k)
+    {
+        SCOPED_TRACE(k);
+        const auto result = results->result(k);
+        EXPECT_EQ(result->status, ic::Status::Ok) << describe(result);
+        EXPECT_EQ(result->httpStatus, 409) << describe(result);
+        EXPECT_EQ(result->itemErrorType, "version_conflict_engine_exception");
+    }
+    const auto other = results->result(2);
+    EXPECT_EQ(other->status, ic::Status::Failed) << describe(other);
+    EXPECT_EQ(other->cause, ic::Cause::ItemPermanent) << describe(other);
+    EXPECT_EQ(other->httpStatus, 409) << describe(other);
+    EXPECT_EQ(other->itemErrorType, "resource_already_exists_exception");
+    const auto retried = results->result(3);
+    EXPECT_EQ(retried->status, ic::Status::Ok) << describe(retried);
+    EXPECT_EQ(retried->httpStatus, 201) << "the resend's create" << describe(retried);
+    EXPECT_EQ(receivedWithId(a, id(3)), 2u) << "the Retry policy resent it";
+    EXPECT_EQ(a.bulk->answered(), 5u);
+
+    EXPECT_EQ(stats("s").deduplicated, 0u) << describe(stats("s"));
+    EXPECT_EQ(stats("r").deduplicated, 0u) << describe(stats("r"));
+    EXPECT_EQ(publicDeduplicated(*c, "s"), 0u);
+    EXPECT_EQ(publicDeduplicated(*c, "r"), 0u);
+    EXPECT_FALSE(eventually([&] { return !dedupWarns().empty(); }, scaled(200ms))) << m_logs.dump();
+    expectInvariants(stats("s"));
+    expectInvariants(stats("r"));
+}
+
+// The resend of an IndexDataStream with an `_id` after a bulk that timed out once sent: node A
+// records (applies) the bulk and never answers (request_timeout_ms 300), the op fails over to B, which answers 409
+// version_conflict ⇒ Ok keeping the 409, `deduplicated` = 1, one dedup WARN; B received byte for byte the body A
+// received, with the same `_id`. Mutant (d): the `_id` left out of the line.
+TEST_F(BulkLogTest, DataStreamIdResendIsDeduplicated)
+{
+    const auto a = startNode(BulkScript::items().held(), "green", recording());
+    const auto b = startNode(BulkScript::all(BulkItem::conflict()), "green", recording());
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url(), b.url()}, std::chrono::hours(1), {{"request_timeout_ms", "300"}}));
+    auto c = client("c", {fastBucket("b", 1, 5)});
+    auto results = Results::create();
+    ASSERT_TRUE(c->writer("b")->submit(streamOp(id(0)), results->callback(0)).accepted);
+    ASSERT_TRUE(results->waitTotal(1, scaled(10s)))
+        << "requests: A " << bulkBodies(a).size() << ", B " << b.bulk->answered();
+
+    const auto result = results->result(0);
+    EXPECT_EQ(result->status, ic::Status::Ok) << describe(result);
+    EXPECT_EQ(result->cause, ic::Cause::None);
+    EXPECT_EQ(result->httpStatus, 409) << describe(result);
+    EXPECT_EQ(result->itemErrorType, "version_conflict_engine_exception");
+    EXPECT_EQ(results->count(0), 1);
+
+    const auto sentA = bulkBodies(a);
+    const auto sentB = bulkBodies(b);
+    ASSERT_EQ(sentA.size(), 1u) << "A got (and applied) the first send";
+    ASSERT_EQ(sentB.size(), 1u) << "B got the resend";
+    const std::string expected =
+        R"({"create":{"_index":"wazuh-events-test","_id":")" + id(0) + "\"}}\n" + streamOp("").body + "\n";
+    EXPECT_EQ(sentA[0], expected);
+    EXPECT_EQ(sentB[0], sentA[0]) << "the resend carries the same bytes, the same _id";
+
+    ASSERT_TRUE(eventually([&] { return stats("b").deduplicated == 1; }, scaled(5s))) << describe(stats("b"));
+    EXPECT_EQ(publicDeduplicated(*c, "b"), 1u);
+    const auto warns = settledDedupWarns(1);
+    ASSERT_EQ(warns.size(), 1u) << m_logs.dump();
+    EXPECT_NE(warns.front().text.find("the indexer already had 1 document(s)"), std::string::npos)
+        << warns.front().text;
+    a.fake->releaseHeld();
+    expectInvariants(stats("b"));
+}
+
+// With the default log_summary_interval_ms (60 000 ms), three `_bulk` in a row each with a 409
+// version_conflict on an IndexDataStream with an `_id`: one dedup WARN for the run and `deduplicated` = 3. The interval
+// itself is pinned by the deterministic DedupWarnRateLimitedByInterval (writeLocalBatch_test.cpp). Mutant (c): a WARN
+// on every response.
+TEST_F(BulkLogTest, DeduplicatedWarnsOnceForARun)
+{
+    constexpr std::uint64_t BULKS = 3;
+    const auto a = startNode(BulkScript::all(BulkItem::conflict()));
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
+    auto c = client("c", {fastBucket("b", 1, 5)});
+    auto writer = c->writer("b");
+    auto results = Results::create();
+    for (std::uint64_t k = 0; k < BULKS; ++k)
+    {
+        ASSERT_TRUE(writer->submit(streamOp(id(k)), results->callback(k)).accepted);
+        ASSERT_TRUE(results->waitTotal(k + 1, scaled(5s))) << k;
+        EXPECT_EQ(results->result(k)->httpStatus, 409) << describe(results->result(k));
+    }
+    EXPECT_EQ(a.bulk->answered(), BULKS) << "one _bulk per op";
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), BULKS);
+    ASSERT_TRUE(eventually([&] { return stats("b").deduplicated == BULKS; }, scaled(5s))) << describe(stats("b"));
+    EXPECT_EQ(publicDeduplicated(*c, "b"), BULKS);
+
+    const auto warns = settledDedupWarns(1);
+    ASSERT_EQ(warns.size(), 1u) << "one WARN for the run" << m_logs.dump();
+    EXPECT_NE(warns.front().text.find("the indexer already had 1 document(s)"), std::string::npos)
+        << warns.front().text;
     expectInvariants(stats("b"));
 }
