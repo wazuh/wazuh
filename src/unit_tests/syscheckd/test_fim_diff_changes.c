@@ -157,6 +157,20 @@ static void expect_tmp_folder_removal() {
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
+fim_diff_exec_rc __wrap_fim_diff_exec(const char *old_file, const char *new_file, const char *out_file) {
+    check_expected(old_file);
+    check_expected(new_file);
+    check_expected(out_file);
+    return (fim_diff_exec_rc)mock();
+}
+
+static void expect_fim_diff_exec(fim_diff_exec_rc rc) {
+    expect_any(__wrap_fim_diff_exec, old_file);
+    expect_any(__wrap_fim_diff_exec, new_file);
+    expect_any(__wrap_fim_diff_exec, out_file);
+    will_return(__wrap_fim_diff_exec, rc);
+}
+
 void expect_gen_diff_generate(gen_diff_struct *gen_diff_data_container) {
     FILE *fp = (FILE*)2345;
     size_t n = strlen(gen_diff_data_container->strarray[0]);
@@ -257,13 +271,9 @@ void expect_nodiff_realpath(const char *path, const char *resolved) {
 
 void expect_fim_diff_generate(gen_diff_struct *gen_diff_data_container, int generate_fail) {
     if (generate_fail) {
-        expect_system(-1);
+        expect_fim_diff_exec(FIM_DIFF_EXEC_ERROR);
     } else {
-#ifndef TEST_WINAGENT
-        expect_system(256);
-#else
-        expect_system(1);
-#endif
+        expect_fim_diff_exec(FIM_DIFF_EXEC_DIFF);
         expect_gen_diff_generate(gen_diff_data_container);
     }
 }
@@ -1169,7 +1179,7 @@ void test_fim_diff_generate_status_equal(void **state) {
     expect_string(__wrap_utf8_GetShortPathName, utf8_path, "/path/to/file/origin");
     will_return(__wrap_utf8_GetShortPathName, strdup("/path/to/file/origin"));
 
-    expect_system(0);
+    expect_fim_diff_exec(FIM_DIFF_EXEC_SAME);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6352): Command diff/fc output 0, files are the same");
 
@@ -1187,7 +1197,7 @@ void test_fim_diff_generate_utf8_short_path(void **state) {
     expect_string(__wrap_utf8_GetShortPathName, utf8_path, "C:\\tmp\\tést.txt");
     will_return(__wrap_utf8_GetShortPathName, strdup("C:\\tmp\\TEST~1.TXT"));
 
-    expect_system(0);
+    expect_fim_diff_exec(FIM_DIFF_EXEC_SAME);
 
     expect_string(__wrap__mdebug2, formatted_msg,
                   "(6352): Command diff/fc output 0, files are the same");
@@ -1210,7 +1220,7 @@ void test_fim_diff_generate_status_error(void **state) {
     will_return(__wrap_utf8_GetShortPathName, strdup("/path/to/file/origin"));
 #endif
 
-    expect_system(-1);
+    expect_fim_diff_exec(FIM_DIFF_EXEC_ERROR);
 
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
@@ -1234,11 +1244,7 @@ void test_fim_diff_generate_status_ok(void **state) {
     will_return(__wrap_utf8_GetShortPathName, strdup("/path/to/file/origin"));
 #endif
 
-#ifndef TEST_WINAGENT
-    expect_system(256);
-#else
-    expect_system(1);
-#endif
+    expect_fim_diff_exec(FIM_DIFF_EXEC_DIFF);
 
     expect_gen_diff_generate(gen_diff_data_container);
 
@@ -1246,6 +1252,82 @@ void test_fim_diff_generate_status_ok(void **state) {
     assert_string_equal(diff_str, gen_diff_data_container->strarray[1]);
     free(diff_str);
 }
+
+void test_fim_diff_generate_timeout(void **state) {
+    diff_data *diff = *state;
+
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->new_file = strdup("/path/to/file/new");
+    diff->diff_file = strdup("/path/to/diff/file");
+    diff->file_origin = strdup("/path/to/file/origin");
+
+    expect_fim_diff_exec(FIM_DIFF_EXEC_TIMEOUT);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6378): The diff of '/path/to/file/origin' exceeded its time limit and was discarded.");
+
+    char *diff_str = fim_diff_generate(diff, false);
+
+    assert_string_equal(diff_str, "Unable to calculate diff due to the diff process exceeding its time limit.");
+    free(diff_str);
+}
+
+void test_fim_diff_generate_memory(void **state) {
+    diff_data *diff = *state;
+
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->new_file = strdup("/path/to/file/new");
+    diff->diff_file = strdup("/path/to/diff/file");
+    diff->file_origin = strdup("/path/to/file/origin");
+
+    expect_fim_diff_exec(FIM_DIFF_EXEC_MEMORY);
+    expect_string(__wrap__mdebug1, formatted_msg, "(6379): The diff of '/path/to/file/origin' exceeded its memory limit and was discarded.");
+
+    char *diff_str = fim_diff_generate(diff, false);
+
+    assert_string_equal(diff_str, "Unable to calculate diff due to the diff process exceeding its memory limit.");
+    free(diff_str);
+}
+
+void test_fim_diff_generate_failed(void **state) {
+    diff_data *diff = *state;
+
+    diff->uncompress_file = strdup("/path/to/uncompress/file");
+    diff->new_file = strdup("/path/to/file/new");
+    diff->diff_file = strdup("/path/to/diff/file");
+    diff->file_origin = strdup("/path/to/file/origin");
+
+    expect_fim_diff_exec(FIM_DIFF_EXEC_FAILED);
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command fc output an error");
+#else
+    expect_string(__wrap__merror, formatted_msg, "(6714): Command diff output an error");
+#endif
+
+    char *diff_str = fim_diff_generate(diff, false);
+
+    // A message is returned, so the caller stores the new snapshot and does not diff the same pair again
+    assert_string_equal(diff_str, "Unable to calculate diff due to the diff process failing.");
+    free(diff_str);
+}
+
+#ifndef TEST_WINAGENT
+void test_fim_diff_generate_paths_not_escaped(void **state) {
+    diff_data *diff = *state;
+
+    // No shell runs the command, so shell characters must reach it unchanged
+    diff->uncompress_file = strdup("/tmp/a\"b$c`d\\e");
+    diff->new_file = strdup("/tmp/new $(x)");
+    diff->diff_file = strdup("/tmp/out;f");
+
+    expect_string(__wrap_fim_diff_exec, old_file, "/tmp/a\"b$c`d\\e");
+    expect_string(__wrap_fim_diff_exec, new_file, "/tmp/new $(x)");
+    expect_string(__wrap_fim_diff_exec, out_file, "/tmp/out;f");
+    will_return(__wrap_fim_diff_exec, FIM_DIFF_EXEC_SAME);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6352): Command diff/fc output 0, files are the same");
+
+    assert_null(fim_diff_generate(diff, true));
+}
+#endif
 
 #ifdef TEST_WINAGENT
 void test_fim_diff_registry_tmp_fopen_fail(void **state) {
@@ -2192,6 +2274,55 @@ void test_fim_file_diff_generate_diff_str(void **state) {
     free(diff_str);
 }
 
+void test_fim_file_diff_generate_timeout(void **state) {
+    os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
+    os_md5 md5sum_new = "abc44bfb4ab4cf4af49a4fa9b04fa44a";
+    const directory_t configuration = { .diff_size_limit = 1024 };
+
+    syscheck.comp_estimation_perc = 0.4;
+    syscheck.diff_folder_size = 512;
+
+    expect_initialize_file_diff_data(GENERIC_PATH, 1);
+
+    expect_path_lock();
+
+    expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_FILE, UNCOMPRESS_FILE, NULL);
+
+    // Only the subtraction of the old snapshot: the size is not given back, the new snapshot replaces it
+    expect_FileSize(COMPRESS_FILE, 1024 * 1024);
+    expect_quota_update();
+
+    expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, 0);
+
+    expect_w_uncompress_gzfile(COMPRESS_TMP_FILE, NEW_FILE, NULL);
+
+    expect_fim_diff_compare(UNCOMPRESS_FILE, NEW_FILE, md5sum_old, md5sum_new, 0);
+
+    expect_nodiff_realpath(GENERIC_PATH, NULL);
+
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_utf8_GetShortPathName, utf8_path, NEW_FILE);
+    will_return(__wrap_utf8_GetShortPathName, strdup(NEW_FILE));
+    expect_string(__wrap__mdebug1, formatted_msg, "(6378): The diff of 'c:\\file\\path' exceeded its time limit and was discarded.");
+#else
+    expect_string(__wrap__mdebug1, formatted_msg, "(6378): The diff of '/path/to/file' exceeded its time limit and was discarded.");
+#endif
+    expect_fim_diff_exec(FIM_DIFF_EXEC_TIMEOUT);
+
+    // The new snapshot is kept, so the same pair is not diffed again
+    expect_save_compress_file(COMPRESS_TMP_FILE, COMPRESS_FILE, 0);
+
+    expect_path_unlock();
+    expect_tmp_folder_removal();
+
+    char *diff_str = fim_file_diff(GENERIC_PATH, &configuration);
+
+    assert_string_equal(diff_str, "Unable to calculate diff due to the diff process exceeding its time limit.");
+    free(diff_str);
+}
+
 void test_fim_file_diff_generate_diff_str_too_long(void **state) {
     gen_diff_struct *gen_diff_data_container = *state;
     os_md5 md5sum_old = "3c183a30cffcda1408daf1c61d47b274";
@@ -2635,6 +2766,12 @@ int main(void) {
         // fim_diff_generate
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_error, setup_diff_data, teardown_free_diff_data),
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_ok, setup_gen_diff_str, teardown_free_gen_diff_str),
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_timeout, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_memory, setup_diff_data, teardown_free_diff_data),
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_failed, setup_diff_data, teardown_free_diff_data),
+#ifndef TEST_WINAGENT
+        cmocka_unit_test_setup_teardown(test_fim_diff_generate_paths_not_escaped, setup_diff_data, teardown_free_diff_data),
+#endif
 #ifdef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_filters_fail, setup_diff_data, teardown_free_diff_data),
         cmocka_unit_test_setup_teardown(test_fim_diff_generate_status_equal, setup_diff_data, teardown_free_diff_data),
@@ -2685,6 +2822,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_diff_str, setup_gen_diff_str, teardown_free_gen_diff_str),
 #endif
         cmocka_unit_test_setup_teardown(test_fim_file_diff_generate_diff_str_too_long, setup_gen_diff_str, teardown_free_gen_diff_str),
+        cmocka_unit_test(test_fim_file_diff_generate_timeout),
 
         // fim_diff_process_delete_file
         // fim_diff_create_tmp_folder
