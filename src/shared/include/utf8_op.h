@@ -17,8 +17,7 @@
  * @param string File path
  * @return True if the file is UTF-8, false if not.
  */
-bool w_utf8_valid(const char * string);
-
+bool w_utf8_valid(const char* string);
 
 /**
  * @brief Get the pointer to the first character that does not match UTF-8, or the last byte (0).
@@ -26,8 +25,7 @@ bool w_utf8_valid(const char * string);
  * @param string String to be checked.
  * @return Pointer to character.
  */
-const char * w_utf8_drop(const char * string);
-
+const char* w_utf8_drop(const char* string);
 
 /**
  * @brief Filter string to remove or replace invalid characters.
@@ -36,8 +34,7 @@ const char * w_utf8_drop(const char * string);
  * @param replacement Set to 0 for remove invalid characters or set to 1 to replace them.
  * @return Return a new string with valid UTF-8 characters only.
  */
-char * w_utf8_filter(const char * string, bool replacement);
-
+char* w_utf8_filter(const char* string, bool replacement);
 
 /**
  * @brief Get the length a string may be cut to without splitting a UTF-8 character.
@@ -55,4 +52,4 @@ char * w_utf8_filter(const char * string, bool replacement);
  * @param max_length Maximum length in bytes, excluding the null terminator.
  * @return Length in bytes that keeps every character whole, given valid input.
  */
-size_t w_utf8_truncate_len(const char * string, size_t max_length);
+size_t w_utf8_truncate_len(const char* string, size_t max_length);

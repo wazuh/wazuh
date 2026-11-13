@@ -21,18 +21,23 @@
  * test binary via libwazuh_test.a, and only test_https_client_bridge needs ferror()
  * mocked. Compiled and -Wl,--wrap,ferror'd only for that target (see its CMakeLists.txt),
  * so __real_ferror only needs to resolve there and can stay a plain (non-weak) extern. */
-extern int __real_ferror(FILE *_File);
+extern int __real_ferror(FILE* _File);
 
-int __wrap_ferror(FILE *_File) {
-    if (test_mode) {
+int __wrap_ferror(FILE* _File)
+{
+    if (test_mode)
+    {
         check_expected(_File);
         return mock();
-    } else {
+    }
+    else
+    {
         return __real_ferror(_File);
     }
 }
 
-void expect_ferror(FILE *_File, int ret) {
+void expect_ferror(FILE* _File, int ret)
+{
     expect_value(__wrap_ferror, _File, _File);
     will_return(__wrap_ferror, ret);
 }

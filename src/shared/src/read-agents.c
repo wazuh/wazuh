@@ -17,10 +17,10 @@
 #ifndef WIN32
 /* Non-windows functions from now on */
 
-char *agent_file_perm(mode_t mode)
+char* agent_file_perm(mode_t mode)
 {
     /* rwxrwxrwx0 -> 10 */
-    char *permissions;
+    char* permissions;
 
     os_calloc(10, sizeof(char), permissions);
     permissions[0] = (mode & S_IRUSR) ? 'r' : '-';

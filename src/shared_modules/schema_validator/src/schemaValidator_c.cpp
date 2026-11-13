@@ -3,7 +3,8 @@
 #include <cstring>
 #include <string>
 
-extern "C" {
+extern "C"
+{
 
     bool schema_validator_initialize(void)
     {
@@ -37,9 +38,7 @@ extern "C" {
         // LCOV_EXCL_STOP
     }
 
-    bool schema_validator_validate(const char* indexPattern,
-                                   const char* message,
-                                   char** errorMessage)
+    bool schema_validator_validate(const char* indexPattern, const char* message, char** errorMessage)
     {
         if (!indexPattern || !message)
         {

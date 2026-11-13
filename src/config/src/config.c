@@ -14,9 +14,10 @@
 #include "os_xml.h"
 #include "config.h"
 
-typedef struct obsolete_element_t {
-    const char *element;
-    const char *hint;
+typedef struct obsolete_element_t
+{
+    const char* element;
+    const char* hint;
 } obsolete_element_t;
 
 /* Top-level elements that 4.x accepted and 5.0.0 no longer has a parser for.
@@ -44,17 +45,18 @@ static const obsolete_element_t OBSOLETE_ELEMENTS[] = {
     {"rule_test", "Rule testing is provided by the engine."},
     {"ruleset", "Rules and decoders are managed by the engine."},
     {"syslog_output", "The wazuh-csyslogd daemon was removed in 5.0.0."},
-    {NULL, NULL}
-};
+    {NULL, NULL}};
 
 /* Return the explanation for an element that is obsolete, or NULL if the element is
  * either still valid or not one we know about. */
-static const char *get_obsolete_hint(const char *element)
+static const char* get_obsolete_hint(const char* element)
 {
     int i;
 
-    for (i = 0; OBSOLETE_ELEMENTS[i].element != NULL; i++) {
-        if (strcmp(element, OBSOLETE_ELEMENTS[i].element) == 0) {
+    for (i = 0; OBSOLETE_ELEMENTS[i].element != NULL; i++)
+    {
+        if (strcmp(element, OBSOLETE_ELEMENTS[i].element) == 0)
+        {
             return OBSOLETE_ELEMENTS[i].hint;
         }
     }
@@ -63,12 +65,14 @@ static const char *get_obsolete_hint(const char *element)
 }
 
 /* True when `element` is a section of the manager's own configuration file. */
-static int w_is_manager_section(const char *element, const char **sections)
+static int w_is_manager_section(const char* element, const char** sections)
 {
     int i;
 
-    for (i = 0; sections[i] != NULL; i++) {
-        if (strcmp(element, sections[i]) == 0) {
+    for (i = 0; sections[i] != NULL; i++)
+    {
+        if (strcmp(element, sections[i]) == 0)
+        {
             return 1;
         }
     }
@@ -77,46 +81,52 @@ static int w_is_manager_section(const char *element, const char **sections)
 }
 
 /* Read the main elements of the configuration */
-static int read_main_elements(const OS_XML *xml, int modules,
-                              XML_NODE node,
-                              void *d1,
-                              void *d2)
+static int read_main_elements(const OS_XML* xml, int modules, XML_NODE node, void* d1, void* d2)
 {
     int i = 0;
-    const char *ossyscheck = "syscheck";                        /* Agent Config  */
-    const char *osrootcheck = "rootcheck";                      /* Agent Config  */
-    const char *oslocalfile = "localfile";                      /* Agent Config  */
-    const char *osclient = "client";                            /* Agent Config  */
-    const char *osbuffer = "client_buffer";                     /* Removed in 5.0.0 (#38030) */
-    const char *osagent = "agent";                              /* Agent Config (HTTPS endpoint) */
-    const char *osactiveresponse = "active-response";           /* Agent Active Response Config  */
-    const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
-    const char *oslogging = "logging";                          /* Logging Config */
-    const char *oscluster = "cluster";                          /* Cluster Config */
-    const char *ossocket = "socket";                            /* Socket Config */
-    const char *ossca = "sca";                                  /* Security Configuration Assessment */
-    const char* osagent_info = "agent-info";                    /* Agent Info Module */
-    const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
-    const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
-    const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
+    const char* ossyscheck = "syscheck";              /* Agent Config  */
+    const char* osrootcheck = "rootcheck";            /* Agent Config  */
+    const char* oslocalfile = "localfile";            /* Agent Config  */
+    const char* osclient = "client";                  /* Agent Config  */
+    const char* osbuffer = "client_buffer";           /* Removed in 5.0.0 (#38030) */
+    const char* osagent = "agent";                    /* Agent Config (HTTPS endpoint) */
+    const char* osactiveresponse = "active-response"; /* Agent Active Response Config  */
+    const char* oswmodule = "wodle";                  /* Wodle - Wazuh Module  */
+    const char* oslogging = "logging";                /* Logging Config */
+    const char* oscluster = "cluster";                /* Cluster Config */
+    const char* ossocket = "socket";                  /* Socket Config */
+    const char* ossca = "sca";                        /* Security Configuration Assessment */
+    const char* osagent_info = "agent-info";          /* Agent Info Module */
+    const char* osgcp_pub = "gcp-pubsub";             /* Google Cloud PubSub - Wazuh Module */
+    const char* osgcp_bucket = "gcp-bucket";          /* Google Cloud Bucket - Wazuh Module */
+    const char* agent_upgrade = "agent-upgrade";      /* Agent Upgrade Module */
 #ifndef WIN32
-    const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
+    const char* anti_tampering = "anti_tampering"; /* Agent anti tampering Config */
 #endif
     /* Sections of the manager's own configuration (/etc/wazuh-manager/wazuh-manager.conf). They have no XML
      * parser anymore: an agent file that carries one is told so and the block is ignored. */
-    const char *manager_sections[] = { "global", "remote", "auth", "wdb", "indexer", "vulnerability-detection",
-                                       "vulnerability-detector", "task-manager", NULL };
+    const char* manager_sections[] = {"global",
+                                      "remote",
+                                      "auth",
+                                      "wdb",
+                                      "indexer",
+                                      "vulnerability-detection",
+                                      "vulnerability-detector",
+                                      "task-manager",
+                                      NULL};
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
-    const char *github = "github";                      /* GitHub Module */
-    const char *office365 = "office365";                /* Office365 Module */
-    const char *ms_graph = "ms-graph";                  /* MS Graph Module */
+    const char* github = "github";       /* GitHub Module */
+    const char* office365 = "office365"; /* Office365 Module */
+    const char* ms_graph = "ms-graph";   /* MS Graph Module */
 #endif
 
-    while (node[i]) {
+    while (node[i])
+    {
         XML_NODE chld_node = NULL;
-        const char *obsolete_hint = NULL;
+        const char* obsolete_hint = NULL;
 
-        if (!node[i]->element) {
+        if (!node[i]->element)
+        {
             merror(XML_ELEMNULL);
             goto fail;
         }
@@ -125,7 +135,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
          * an unknown one, which is fatal further down. */
         obsolete_hint = get_obsolete_hint(node[i]->element);
 
-        if (obsolete_hint != NULL) {
+        if (obsolete_hint != NULL)
+        {
             mwarn(XML_OBSOLETE, node[i]->element, obsolete_hint);
             i++;
             continue;
@@ -133,65 +144,101 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         chld_node = OS_GetElementsbyNode(xml, node[i]);
 
-        if (w_is_manager_section(node[i]->element, manager_sections)) {
+        if (w_is_manager_section(node[i]->element, manager_sections))
+        {
             mwarn("%s configuration is only set in the manager.", node[i]->element);
-        } else if (strcmp(node[i]->element, ossyscheck) == 0) {
-            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
+        }
+        else if (strcmp(node[i]->element, ossyscheck) == 0)
+        {
+            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, osrootcheck) == 0) {
-            if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
+        }
+        else if (strcmp(node[i]->element, osrootcheck) == 0)
+        {
+            if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
-            if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
+        }
+        else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0))
+        {
+            if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osagent) == 0)) {
-            if (modules & CCLIENT) {
-                if (modules & CAGENT_CONFIG) {
-                    if (Read_Agent_Shared(xml, chld_node, d1) < 0) {
+        }
+        else if (chld_node && (strcmp(node[i]->element, osagent) == 0))
+        {
+            if (modules & CCLIENT)
+            {
+                if (modules & CAGENT_CONFIG)
+                {
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0)
+                    {
                         goto fail;
                     }
                 }
-                else {
-                    if (Read_Agent(xml, chld_node, d1, d2) < 0) {
+                else
+                {
+                    if (Read_Agent(xml, chld_node, d1, d2) < 0)
+                    {
                         goto fail;
                     }
                 }
             }
-        } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
+        }
+        else if (chld_node && (strcmp(node[i]->element, osclient) == 0))
+        {
             /* 4.x spelled this block <client> (#38103). An upgrade never rewrites
              * ossec.conf, so the block is still accepted, but only <server><address>
              * - as the fallback for <agent><manager><address> - and <enrollment>,
              * which carries the agent's identity, are read from it. */
-            if (modules & CCLIENT) {
-                if (modules & CAGENT_CONFIG) {
-                    if (Read_Agent_Shared(xml, chld_node, d1) < 0){
+            if (modules & CCLIENT)
+            {
+                if (modules & CAGENT_CONFIG)
+                {
+                    if (Read_Agent_Shared(xml, chld_node, d1) < 0)
+                    {
                         goto fail;
                     }
                 }
-                else {
-                    if (Read_Legacy_Client(xml, chld_node, d1, d2) < 0){
+                else
+                {
+                    if (Read_Legacy_Client(xml, chld_node, d1, d2) < 0)
+                    {
                         goto fail;
                     }
                 }
             }
 #ifndef WIN32
-        } else if (chld_node && (strcmp(node[i]->element, anti_tampering) == 0)) {
-            if ((modules & ATAMPERING) && (Read_AntiTampering(chld_node, d1) < 0)) {
+        }
+        else if (chld_node && (strcmp(node[i]->element, anti_tampering) == 0))
+        {
+            if ((modules & ATAMPERING) && (Read_AntiTampering(chld_node, d1) < 0))
+            {
                 goto fail;
             }
 #endif
-        } else if (strcmp(node[i]->element, osbuffer) == 0) {
+        }
+        else if (strcmp(node[i]->element, osbuffer) == 0)
+        {
             minfo("'%s' is no longer used and will be ignored. Event batching is configured "
-                  "under <agent><batch>.", node[i]->element);
-        } else if (strcmp(node[i]->element, oswmodule) == 0) {
-            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
+                  "under <agent><batch>.",
+                  node[i]->element);
+        }
+        else if (strcmp(node[i]->element, oswmodule) == 0)
+        {
+            if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, ossca) == 0) {
-            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1, d2) < 0)) {
+        }
+        else if (strcmp(node[i]->element, ossca) == 0)
+        {
+            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1, d2) < 0))
+            {
                 goto fail;
             }
         }
@@ -206,24 +253,38 @@ static int read_main_elements(const OS_XML *xml, int modules,
             mdebug2("Agent-info module is not supported on manager. Ignoring configuration.");
 #endif
         }
-        else if (strcmp(node[i]->element, osgcp_pub) == 0) {
-            if ((modules & CWMODULE) && (Read_GCP_pubsub(xml, node[i], d1, d2) < 0)) {
+        else if (strcmp(node[i]->element, osgcp_pub) == 0)
+        {
+            if ((modules & CWMODULE) && (Read_GCP_pubsub(xml, node[i], d1, d2) < 0))
+            {
                 goto fail;
             }
-
-        } else if (strcmp(node[i]->element, osgcp_bucket) == 0) {
-            if ((modules & CWMODULE) && (Read_GCP_bucket(xml, node[i], d1, d2) < 0)) {
+        }
+        else if (strcmp(node[i]->element, osgcp_bucket) == 0)
+        {
+            if ((modules & CWMODULE) && (Read_GCP_bucket(xml, node[i], d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, oslogging) == 0) {
-        } else if (strcmp(node[i]->element, oscluster) == 0) {
-        } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
-            if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0)) {
+        }
+        else if (strcmp(node[i]->element, oslogging) == 0)
+        {
+        }
+        else if (strcmp(node[i]->element, oscluster) == 0)
+        {
+        }
+        else if (chld_node && (strcmp(node[i]->element, ossocket) == 0))
+        {
+            if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
+        }
+        else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0))
+        {
 #ifdef CLIENT
-            if ((modules & CWMODULE) && !(modules & CAGENT_CONFIG) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && !(modules & CAGENT_CONFIG) && (Read_AgentUpgrade(xml, node[i], d1) < 0))
+            {
                 goto fail;
             }
 #else
@@ -234,25 +295,36 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #endif
         }
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
-        else if (chld_node && (strcmp(node[i]->element, github) == 0)) {
-            if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1, d2) < 0)) {
+        else if (chld_node && (strcmp(node[i]->element, github) == 0))
+        {
+            if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, office365) == 0)) {
-            if ((modules & CWMODULE) && (Read_Office365(xml, node[i], d1, d2) < 0)) {
+        }
+        else if (chld_node && (strcmp(node[i]->element, office365) == 0))
+        {
+            if ((modules & CWMODULE) && (Read_Office365(xml, node[i], d1, d2) < 0))
+            {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, ms_graph) == 0)) {
-            if ((modules & CWMODULE) && (Read_MS_Graph(xml, node[i], d1, d2) < 0)) {
+        }
+        else if (chld_node && (strcmp(node[i]->element, ms_graph) == 0))
+        {
+            if ((modules & CWMODULE) && (Read_MS_Graph(xml, node[i], d1, d2) < 0))
+            {
                 goto fail;
             }
         }
 #endif
-        else if (strcmp(node[i]->element, osactiveresponse) == 0) {
+        else if (strcmp(node[i]->element, osactiveresponse) == 0)
+        {
             /* Agent Active Response settings. Only reached when the block is
              * valid here (see OBSOLETE_ELEMENTS): execd reads it from the file
              * itself, so there is nothing to parse at this point. */
-        } else {
+        }
+        else
+        {
             merror(XML_INVELEM, node[i]->element);
             goto fail;
         }
@@ -262,7 +334,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         continue;
 
-        fail:
+    fail:
         OS_ClearNode(chld_node);
         return (OS_INVALID);
     }
@@ -271,7 +343,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 }
 
 /* Read the config files */
-int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
+int ReadConfig(int modules, const char* cfgfile, void* d1, void* d2)
 {
     int i;
     OS_XML xml;
@@ -279,25 +351,30 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
     /** XML definitions **/
     /* Global */
-    const char *xml_start_ossec = WAZUHCONFIG;
-    const char *xml_start_agent = "agent_config";
+    const char* xml_start_ossec = WAZUHCONFIG;
+    const char* xml_start_agent = "agent_config";
 
     /* Attributes of the <agent_config> tag */
-    const char *xml_agent_name = "name";
-    const char *xml_agent_os = "os";
-    const char *xml_agent_overwrite = "overwrite";
-    const char *xml_agent_profile = "profile";
+    const char* xml_agent_name = "name";
+    const char* xml_agent_os = "os";
+    const char* xml_agent_overwrite = "overwrite";
+    const char* xml_agent_profile = "profile";
 
-    if ((modules & CAGENT_CONFIG) && !getDefine_Int_default("agent", "remote_conf", 0, 1, 1)) {
-      return 0;
+    if ((modules & CAGENT_CONFIG) && !getDefine_Int_default("agent", "remote_conf", 0, 1, 1))
+    {
+        return 0;
     }
 
-    if (OS_ReadXML(cfgfile, &xml) < 0) {
-        if (modules & CAGENT_CONFIG) {
+    if (OS_ReadXML(cfgfile, &xml) < 0)
+    {
+        if (modules & CAGENT_CONFIG)
+        {
 #ifndef CLIENT
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
 #endif
-        } else {
+        }
+        else
+        {
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
         }
 
@@ -309,27 +386,33 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     }
 
     node = OS_GetElementsbyNode(&xml, NULL);
-    if (!node) {
+    if (!node)
+    {
         OS_ClearXML(&xml);
         return (0);
     }
 
     /* Read the main configuration */
     i = 0;
-    while (node[i]) {
-        if (!node[i]->element) {
+    while (node[i])
+    {
+        if (!node[i]->element)
+        {
             merror(XML_ELEMNULL);
             OS_ClearNode(node);
             OS_ClearXML(&xml);
             return (OS_INVALID);
-        } else if (!(modules & CAGENT_CONFIG) &&
-                   (strcmp(node[i]->element, xml_start_ossec) == 0)) {
+        }
+        else if (!(modules & CAGENT_CONFIG) && (strcmp(node[i]->element, xml_start_ossec) == 0))
+        {
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(&xml, node[i]);
 
             /* Main element does not need to have any child */
-            if (chld_node) {
-                if (read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
+            if (chld_node)
+            {
+                if (read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
+                {
                     PrintErrorAcordingToModules(modules, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
@@ -339,82 +422,114 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
                 OS_ClearNode(chld_node);
             }
-        } else if ((modules & CAGENT_CONFIG) &&
-                   (strcmp(node[i]->element, xml_start_agent) == 0)) {
+        }
+        else if ((modules & CAGENT_CONFIG) && (strcmp(node[i]->element, xml_start_agent) == 0))
+        {
             int passed_agent_test = 1;
             int attrs = 0;
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(&xml, node[i]);
 
             /* Check if this is specific to any agent */
-            if (node[i]->attributes && node[i]->values) {
-                while (node[i]->attributes[attrs] && node[i]->values[attrs]) {
+            if (node[i]->attributes && node[i]->values)
+            {
+                while (node[i]->attributes[attrs] && node[i]->values[attrs])
+                {
                     /* Check if there is an "name=" attribute */
-                    if (strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0) {
+                    if (strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
+                    {
 #ifdef CLIENT
-                        char *agentname = os_read_agent_name();
+                        char* agentname = os_read_agent_name();
 
-                        if (!agentname) {
+                        if (!agentname)
+                        {
                             passed_agent_test = 0;
                             merror("Reading shared configuration. Unable to retrieve the agent name.");
-                        } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
+                        }
+                        else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE)
+                        {
                             int attrlen = strlen(node[i]->values[attrs]);
                             mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             passed_agent_test = 0;
                             free(agentname);
-                        } else {
-                            if (!OS_Match2(node[i]->values[attrs], agentname)) {
+                        }
+                        else
+                        {
+                            if (!OS_Match2(node[i]->values[attrs], agentname))
+                            {
                                 passed_agent_test = 0;
                             }
                             free(agentname);
                         }
 #endif
-                    } else if (strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0) {
+                    }
+                    else if (strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0)
+                    {
 #ifdef CLIENT
-                        const char *agentos = getuname();
+                        const char* agentos = getuname();
 
-                        if (!agentos) {
+                        if (!agentos)
+                        {
                             passed_agent_test = 0;
                             merror("Reading shared configuration. Unable to retrieve the agent OS.");
-                        } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
+                        }
+                        else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE)
+                        {
                             int attrlen = strlen(node[i]->values[attrs]);
                             mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             passed_agent_test = 0;
-                        } else if (!OS_Match2(node[i]->values[attrs], agentos)) {
+                        }
+                        else if (!OS_Match2(node[i]->values[attrs], agentos))
+                        {
                             passed_agent_test = 0;
                         }
 #endif
-                    } else if (strcmp(xml_agent_profile, node[i]->attributes[attrs]) == 0) {
+                    }
+                    else if (strcmp(xml_agent_profile, node[i]->attributes[attrs]) == 0)
+                    {
 #ifdef CLIENT
-                        char *agentprofile = os_read_agent_profile();
+                        char* agentprofile = os_read_agent_profile();
 
-                        if (!agentprofile) {
+                        if (!agentprofile)
+                        {
                             passed_agent_test = 0;
                             merror("Reading shared configuration. Unable to retrieve agent profile.");
-                        } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
+                        }
+                        else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE)
+                        {
                             int attrlen = strlen(node[i]->values[attrs]);
-                            mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
+                            mwarn(
+                                "Agent profile filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             passed_agent_test = 0;
                             free(agentprofile);
-                        } else {
+                        }
+                        else
+                        {
                             /* match the profile name of this <agent_config> section
                              * with a comma separated list of values in agent's
                              * <config-profile> tag.
                              */
-                            if (!OS_Match2(node[i]->values[attrs], agentprofile)) {
+                            if (!OS_Match2(node[i]->values[attrs], agentprofile))
+                            {
                                 passed_agent_test = 0;
                                 mdebug2("[%s] did not match agent config profile name [%s]",
-                                       node[i]->values[attrs], agentprofile);
-                            } else {
+                                        node[i]->values[attrs],
+                                        agentprofile);
+                            }
+                            else
+                            {
                                 mdebug2("Matched agent config profile name [%s]", agentprofile);
                             }
                             free(agentprofile);
                         }
 #endif
-                    } else if (strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0) {
-                    } else {
-                        merror(XML_INVATTR, node[i]->attributes[attrs],
-                               cfgfile);
+                    }
+                    else if (strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
+                    {
+                    }
+                    else
+                    {
+                        merror(XML_INVATTR, node[i]->attributes[attrs], cfgfile);
 #ifndef CLIENT
                         /* On the manager this read only validates a group's agent.conf
                          * (verify-agent-conf, behind PUT /groups/{group_id}/configuration).
@@ -433,8 +548,9 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                 }
             }
 #ifdef CLIENT
-            else {
-                char *agentprofile = os_read_agent_profile();
+            else
+            {
+                char* agentprofile = os_read_agent_profile();
                 mdebug2("agent_config element does not have any attributes.");
 
                 /* if node does not have any attributes, it is a generic config block.
@@ -443,18 +559,23 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                  * agent_config block
                  */
 
-                if (!agentprofile) {
+                if (!agentprofile)
+                {
                     mdebug2("but agent has a profile name.");
                     passed_agent_test = 0;
-                } else {
+                }
+                else
+                {
                     free(agentprofile);
                 }
             }
 #endif
 
             /* Main element does not need to have any child */
-            if (chld_node) {
-                if (passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
+            if (chld_node)
+            {
+                if (passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
+                {
                     merror(CONFIG_ERROR, cfgfile);
                     OS_ClearNode(chld_node);
                     OS_ClearNode(node);
@@ -464,7 +585,9 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
                 OS_ClearNode(chld_node);
             }
-        } else {
+        }
+        else
+        {
             merror(XML_INVELEM, node[i]->element);
             OS_ClearNode(node);
             OS_ClearXML(&xml);
@@ -479,15 +602,13 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     return (0);
 }
 
-void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
+void PrintErrorAcordingToModules(int modules, const char* cfgfile)
+{
 
-    switch (BITMASK(modules)) {
+    switch (BITMASK(modules))
+    {
         case CSYSCHECK:
-        case CROOTCHECK:
-            mwarn(XML_INVELEM, cfgfile);
-            break;
-        default:
-            merror(CONFIG_ERROR, cfgfile);
-            break;
+        case CROOTCHECK: mwarn(XML_INVELEM, cfgfile); break;
+        default: merror(CONFIG_ERROR, cfgfile); break;
     }
 }

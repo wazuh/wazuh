@@ -15,31 +15,34 @@
 #include "authd-config.h"
 
 #ifdef WIN32
-  #include <wincrypt.h>
+#include <wincrypt.h>
 #endif
 
-#define DEFAULT_ID   132512
+#define DEFAULT_ID 132512
 
-static char *trimwhitespace(char *str)
+static char* trimwhitespace(char* str)
 {
-    char *end;
+    char* end;
 
     /* Null pointer? */
     if (!str)
         return NULL;
 
     /* Trim leading space */
-    while (isspace((unsigned char)*str)) {
+    while (isspace((unsigned char)*str))
+    {
         str++;
     }
 
-    if (*str == 0) { /* All spaces? */
+    if (*str == 0)
+    { /* All spaces? */
         return str;
     }
 
     /* Trim trailing space */
     end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end)) {
+    while (end > str && isspace((unsigned char)*end))
+    {
         end--;
     }
 
@@ -50,17 +53,17 @@ static char *trimwhitespace(char *str)
 }
 
 /* Import a key */
-int k_import(const char *cmdimport)
+int k_import(const char* cmdimport)
 {
-    FILE *fp;
-    const char *user_input;
+    FILE* fp;
+    const char* user_input;
     char auth_file[] = KEYS_FILE;
-    char *keys_file = basename_ex(auth_file);
-    char *b64_dec;
+    char* keys_file = basename_ex(auth_file);
+    char* b64_dec;
 
-    char *name;
-    char *ip;
-    char *tmp_key;
+    char* name;
+    char* ip;
+    char* tmp_key;
 
     char line_read[FILE_SIZE + 1];
     char tmp_path[PATH_MAX];
@@ -68,24 +71,30 @@ int k_import(const char *cmdimport)
     snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
 
     /* Parse user argument */
-    if (cmdimport) {
+    if (cmdimport)
+    {
         user_input = cmdimport;
-    } else {
+    }
+    else
+    {
         printf(IMPORT_KEY);
 
         user_input = getenv("OSSEC_AGENT_KEY");
-        if (user_input == NULL) {
+        if (user_input == NULL)
+        {
             user_input = read_from_user();
         }
     }
 
     /* Quit */
-    if (strcmp(user_input, QUIT) == 0) {
+    if (strcmp(user_input, QUIT) == 0)
+    {
         return (0);
     }
 
     b64_dec = decode_base64(user_input);
-    if (b64_dec == NULL) {
+    if (b64_dec == NULL)
+    {
         printf(NO_KEY);
         printf(PRESS_ENTER);
         read_from_user();
@@ -96,16 +105,19 @@ int k_import(const char *cmdimport)
     strncpy(line_read, b64_dec, FILE_SIZE);
 
     name = strchr(b64_dec, ' ');
-    if (name && strlen(line_read) < FILE_SIZE) {
+    if (name && strlen(line_read) < FILE_SIZE)
+    {
         *name = '\0';
         name++;
         ip = strchr(name, ' ');
-        if (ip) {
+        if (ip)
+        {
             *ip = '\0';
             ip++;
 
             tmp_key = strchr(ip, ' ');
-            if (!tmp_key) {
+            if (!tmp_key)
+            {
                 printf(NO_KEY);
                 free(b64_dec);
                 return (0);
@@ -119,18 +131,23 @@ int k_import(const char *cmdimport)
             fflush(stdout);
 
             user_input = getenv("OSSEC_ACTION_CONFIRMED");
-            if (user_input == NULL) {
+            if (user_input == NULL)
+            {
                 user_input = read_from_user();
             }
 
-            if (user_input[0] == 'y' || user_input[0] == 'Y') {
-                if (mkstemp_ex(tmp_path)) {
+            if (user_input[0] == 'y' || user_input[0] == 'Y')
+            {
+                if (mkstemp_ex(tmp_path))
+                {
                     merror_exit(MKSTEMP_ERROR, tmp_path, errno, strerror(errno));
                 }
 
 #ifndef WIN32
-                if (chmod(tmp_path, 0640) == -1) {
-                    if (unlink(tmp_path)) {
+                if (chmod(tmp_path, 0640) == -1)
+                {
+                    if (unlink(tmp_path))
+                    {
                         minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                     }
 
@@ -139,8 +156,10 @@ int k_import(const char *cmdimport)
 #endif
 
                 fp = wfopen(tmp_path, "w");
-                if (!fp) {
-                    if (unlink(tmp_path)) {
+                if (!fp)
+                {
+                    if (unlink(tmp_path))
+                    {
                         minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                     }
 
@@ -149,8 +168,10 @@ int k_import(const char *cmdimport)
                 fprintf(fp, "%s\n", line_read);
                 fclose(fp);
 
-                if (rename_ex(tmp_path, KEYS_FILE)) {
-                    if (unlink(tmp_path)) {
+                if (rename_ex(tmp_path, KEYS_FILE))
+                {
+                    if (unlink(tmp_path))
+                    {
                         minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                     }
 
@@ -163,7 +184,9 @@ int k_import(const char *cmdimport)
                 printf(ADDED);
                 free(b64_dec);
                 return (1);
-            } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
+            }
+            else
+            { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
                 printf("%s", ADD_NOT);
 
                 free(b64_dec);

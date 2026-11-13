@@ -10,29 +10,16 @@
 #include "log_rotate.h"
 
 #ifdef WIN32
-#define mkdir(x, y) _mkdir(x)
-#define unlink(x) _unlink(x)
+#define mkdir(x, y)       _mkdir(x)
+#define unlink(x)         _unlink(x)
 #define localtime_r(x, y) localtime_s(y, x)
 #endif
 
-static const char * MONTHS[] = {
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
-};
+static const char* MONTHS[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-static void remove_old_logs(const char *base_dir, int keep_log_days);
-static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
-static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
+static void remove_old_logs(const char* base_dir, int keep_log_days);
+static void remove_old_logs_y(const char* base_dir, int year, time_t threshold);
+static void remove_old_logs_m(const char* base_dir, int year, int month, time_t threshold);
 
 /**
  * @brief Whether a rotated log slot is already taken, in either of the two forms it can have.
@@ -45,7 +32,8 @@ static void remove_old_logs_m(const char * base_dir, int year, int month, time_t
  * @param path Uncompressed path of the slot.
  * @return 1 when either form exists, 0 when the slot is free.
  */
-static int rotated_slot_exists(const char *path) {
+static int rotated_slot_exists(const char* path)
+{
     char compressed[PATH_MAX];
 
     os_snprintf(compressed, PATH_MAX, "%s.gz", path);
@@ -63,25 +51,29 @@ static int rotated_slot_exists(const char *path) {
  * @param to Uncompressed path of the destination slot.
  * @return 0 on success or when there was nothing to move, non-zero on a failed rename.
  */
-static int rename_rotated_slot(const char *from, const char *to) {
+static int rename_rotated_slot(const char* from, const char* to)
+{
     char from_compressed[PATH_MAX];
     char to_compressed[PATH_MAX];
 
     os_snprintf(from_compressed, PATH_MAX, "%s.gz", from);
     os_snprintf(to_compressed, PATH_MAX, "%s.gz", to);
 
-    if (IsFile(from_compressed) == 0) {
+    if (IsFile(from_compressed) == 0)
+    {
         return rename_ex(from_compressed, to_compressed);
     }
 
-    if (IsFile(from) == 0) {
+    if (IsFile(from) == 0)
+    {
         return rename_ex(from, to);
     }
 
     return 0;
 }
 
-void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
+void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations)
+{
     char old_path[PATH_MAX];
     char old_path_json[PATH_MAX];
     char base_dir[PATH_MAX];
@@ -91,19 +83,20 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     char new_path_json[PATH_MAX];
     char rename_path[PATH_MAX];
     char old_rename_path[PATH_MAX];
-    struct tm tm = { .tm_sec = 0 };
+    struct tm tm = {.tm_sec = 0};
     time_t now;
     int counter = 0;
 
 #ifdef CLIENT
-    const char * prefix = "ossec";
+    const char* prefix = "ossec";
 #else
-    const char * prefix = "wazuh";
+    const char* prefix = "wazuh";
 #endif
 
     if (new_day)
         minfo("Running daily rotation of log files.");
-    else {
+    else
+    {
         if (rotate_json)
             minfo("Rotating '%s' file: Maximum size reached.", LOGJSONFILE);
         else
@@ -143,61 +136,80 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     // A failed mkdir aborts this rotation and nothing else. It used to call merror_exit(), which
     // was survivable while rotation lived in its own daemon and is not now that it runs inside a
     // module: an unwritable log directory would take the whole of modulesd down with it.
-    if (IsDir(year_dir) < 0 && mkdir(year_dir, 0770) < 0) {
+    if (IsDir(year_dir) < 0 && mkdir(year_dir, 0770) < 0)
+    {
         merror(MKDIR_ERROR, year_dir, errno, strerror(errno));
         return;
     }
 
-    if (IsDir(month_dir) < 0 && mkdir(month_dir, 0770) < 0) {
+    if (IsDir(month_dir) < 0 && mkdir(month_dir, 0770) < 0)
+    {
         merror(MKDIR_ERROR, month_dir, errno, strerror(errno));
         return;
     }
 
-    if (new_day || (!new_day && !rotate_json)) {
+    if (new_day || (!new_day && !rotate_json))
+    {
 
         /* Count rotated log files of the current day */
-        while (rotated_slot_exists(new_path)) {
+        while (rotated_slot_exists(new_path))
+        {
             counter++;
             os_snprintf(new_path, PATH_MAX, "%s/%s-%02d-%03d.log", month_dir, prefix, tm.tm_mday, counter);
         }
 
         /* Rotate compressed logs if needed */
-        if (counter == daily_rotations) {
-            if (daily_rotations == 1 && counter == 1) {
+        if (counter == daily_rotations)
+        {
+            if (daily_rotations == 1 && counter == 1)
+            {
                 os_snprintf(new_path, PATH_MAX, "%s/%s-%02d.log", month_dir, prefix, tm.tm_mday);
-            } else {
+            }
+            else
+            {
                 // The slot paths carry no .gz here: which form each slot actually holds is
                 // decided per slot by rename_rotated_slot().
                 os_snprintf(rename_path, PATH_MAX, "%s/%s-%02d.log", month_dir, prefix, tm.tm_mday);
                 os_snprintf(old_rename_path, PATH_MAX, "%s/%s-%02d-001.log", month_dir, prefix, tm.tm_mday);
                 counter = 1;
-                while (counter < daily_rotations) {
-                    if (rename_rotated_slot(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename rotated log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                while (counter < daily_rotations)
+                {
+                    if (rename_rotated_slot(old_rename_path, rename_path) != 0)
+                    {
+                        merror("Couldn't rename rotated log '%s' to '%s': '%s'",
+                               old_rename_path,
+                               rename_path,
+                               strerror(errno));
                         return;
                     }
                     counter++;
                     snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
-                    os_snprintf(old_rename_path, PATH_MAX, "%s/%s-%02d-%03d.log", month_dir, prefix, tm.tm_mday, counter);
+                    os_snprintf(
+                        old_rename_path, PATH_MAX, "%s/%s-%02d-%03d.log", month_dir, prefix, tm.tm_mday, counter);
                 }
                 os_snprintf(new_path, PATH_MAX, "%s/%s-%02d-%03d.log", month_dir, prefix, tm.tm_mday, counter - 1);
             }
         }
 
-        if (!IsFile(old_path)) {
-            if (rename_ex(old_path, new_path) == 0) {
-                if (compress) {
+        if (!IsFile(old_path))
+        {
+            if (rename_ex(old_path, new_path) == 0)
+            {
+                if (compress)
+                {
                     OS_CompressLog(new_path);
                 }
-            } else {
+            }
+            else
+            {
                 merror("Couldn't rename '%s' to '%s': %s", old_path, new_path, strerror(errno));
             }
         }
-
     }
 
     // An empty JSON log (e.g. the install placeholder under plain logging) has nothing to archive.
-    if ((new_day || (!new_day && rotate_json)) && FileSize(old_path_json) > 0) {
+    if ((new_day || (!new_day && rotate_json)) && FileSize(old_path_json) > 0)
+    {
 
         // On a daily rotation both branches run, and the counter is what the .log branch left
         // behind. Carrying it over made the .json slot depend on how many .log slots existed,
@@ -205,38 +217,55 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
         counter = 0;
 
         /* Count rotated log files of the current day */
-        while (rotated_slot_exists(new_path_json)) {
+        while (rotated_slot_exists(new_path_json))
+        {
             counter++;
             os_snprintf(new_path_json, PATH_MAX, "%s/%s-%02d-%03d.json", month_dir, prefix, tm.tm_mday, counter);
         }
 
         /* Rotate compressed logs if needed */
-        if (counter == daily_rotations) {
-            if (daily_rotations == 1 && counter == 1) {
+        if (counter == daily_rotations)
+        {
+            if (daily_rotations == 1 && counter == 1)
+            {
                 os_snprintf(new_path_json, PATH_MAX, "%s/%s-%02d.json", month_dir, prefix, tm.tm_mday);
-            } else {
+            }
+            else
+            {
                 os_snprintf(rename_path, PATH_MAX, "%s/%s-%02d.json", month_dir, prefix, tm.tm_mday);
                 os_snprintf(old_rename_path, PATH_MAX, "%s/%s-%02d-001.json", month_dir, prefix, tm.tm_mday);
                 counter = 1;
-                while (counter < daily_rotations) {
-                    if (rename_rotated_slot(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename rotated log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                while (counter < daily_rotations)
+                {
+                    if (rename_rotated_slot(old_rename_path, rename_path) != 0)
+                    {
+                        merror("Couldn't rename rotated log '%s' to '%s': '%s'",
+                               old_rename_path,
+                               rename_path,
+                               strerror(errno));
                         return;
                     }
                     counter++;
                     snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
-                    os_snprintf(old_rename_path, PATH_MAX, "%s/%s-%02d-%03d.json", month_dir, prefix, tm.tm_mday, counter);
+                    os_snprintf(
+                        old_rename_path, PATH_MAX, "%s/%s-%02d-%03d.json", month_dir, prefix, tm.tm_mday, counter);
                 }
-                os_snprintf(new_path_json, PATH_MAX, "%s/%s-%02d-%03d.json", month_dir, prefix, tm.tm_mday, counter - 1);
+                os_snprintf(
+                    new_path_json, PATH_MAX, "%s/%s-%02d-%03d.json", month_dir, prefix, tm.tm_mday, counter - 1);
             }
         }
 
-        if (!IsFile(old_path_json)) {
-            if (rename_ex(old_path_json, new_path_json) == 0) {
-                if (compress) {
+        if (!IsFile(old_path_json))
+        {
+            if (rename_ex(old_path_json, new_path_json) == 0)
+            {
+                if (compress)
+                {
                     OS_CompressLog(new_path_json);
                 }
-            } else {
+            }
+            else
+            {
                 merror("Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
             }
         }
@@ -248,28 +277,35 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     remove_old_logs(base_dir, keep_log_days);
 }
 
-void remove_old_logs(const char *base_dir, int keep_log_days) {
+void remove_old_logs(const char* base_dir, int keep_log_days)
+{
     time_t threshold = time(NULL) - (keep_log_days + 1) * 86400;
     char path[PATH_MAX];
     int year;
-    DIR *dir;
-    struct dirent *dirent = NULL;
+    DIR* dir;
+    struct dirent* dirent = NULL;
 
-    if (dir = wopendir(base_dir), !dir) {
+    if (dir = wopendir(base_dir), !dir)
+    {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
-    while (dirent = readdir(dir), dirent) {
+    while (dirent = readdir(dir), dirent)
+    {
         // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+        if (dirent->d_name[0] == '.' &&
+            (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0')))
+        {
             continue;
         }
 
-        if (sscanf(dirent->d_name, "%d", &year) > 0) {
+        if (sscanf(dirent->d_name, "%d", &year) > 0)
+        {
             const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-            if (size >= 0 && (size_t)size < sizeof(path)) {
+            if (size >= 0 && (size_t)size < sizeof(path))
+            {
                 remove_old_logs_y(path, year, threshold);
             }
         }
@@ -278,37 +314,48 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     closedir(dir);
 }
 
-void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
+void remove_old_logs_y(const char* base_dir, int year, time_t threshold)
+{
     char path[PATH_MAX];
     int month;
-    DIR *dir;
-    struct dirent *dirent = NULL;
+    DIR* dir;
+    struct dirent* dirent = NULL;
 
-    if (dir = wopendir(base_dir), !dir) {
+    if (dir = wopendir(base_dir), !dir)
+    {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
-    while (dirent = readdir(dir), dirent) {
+    while (dirent = readdir(dir), dirent)
+    {
         // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+        if (dirent->d_name[0] == '.' &&
+            (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0')))
+        {
             continue;
         }
 
         // Find month
 
-        for (month = 0; month < 12; month++) {
-            if (strcmp(dirent->d_name, MONTHS[month]) == 0) {
+        for (month = 0; month < 12; month++)
+        {
+            if (strcmp(dirent->d_name, MONTHS[month]) == 0)
+            {
                 break;
             }
         }
 
         const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-        if (size >= 0 && (size_t)size < sizeof(path)) {
-            if (month < 12) {
+        if (size >= 0 && (size_t)size < sizeof(path))
+        {
+            if (month < 12)
+            {
                 remove_old_logs_m(path, year, month, threshold);
-            } else {
+            }
+            else
+            {
                 mwarn("Unexpected folder '%s'", path);
             }
         }
@@ -317,13 +364,14 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     closedir(dir);
 }
 
-void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold) {
+void remove_old_logs_m(const char* base_dir, int year, int month, time_t threshold)
+{
     char path[PATH_MAX];
-    DIR *dir;
+    DIR* dir;
     int day;
-    struct dirent *dirent = NULL;
+    struct dirent* dirent = NULL;
     time_t now = time(NULL);
-    struct tm tm = { .tm_sec = 0 };
+    struct tm tm = {.tm_sec = 0};
     int counter;
     localtime_r(&now, &tm);
 
@@ -333,28 +381,36 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     tm.tm_min = 0;
     tm.tm_sec = 0;
 
-    if (dir = wopendir(base_dir), !dir) {
+    if (dir = wopendir(base_dir), !dir)
+    {
         merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
         return;
     }
 
-    while (dirent = readdir(dir), dirent) {
+    while (dirent = readdir(dir), dirent)
+    {
         // Skip "." and ".."
-        if (dirent->d_name[0] == '.' && (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0'))) {
+        if (dirent->d_name[0] == '.' &&
+            (dirent->d_name[1] == '\0' || (dirent->d_name[1] == '.' && dirent->d_name[2] == '\0')))
+        {
             continue;
         }
 
 #ifdef CLIENT
-        if (sscanf(dirent->d_name, "ossec-%02d.log", &day) > 0) {
+        if (sscanf(dirent->d_name, "ossec-%02d.log", &day) > 0)
+        {
 #else
-        if (sscanf(dirent->d_name, "wazuh-%02d.log", &day) > 0) {
+        if (sscanf(dirent->d_name, "wazuh-%02d.log", &day) > 0)
+        {
 #endif
             tm.tm_mday = day;
 
-            if (mktime(&tm) <= threshold) {
+            if (mktime(&tm) <= threshold)
+            {
                 const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size >= 0 && (size_t)size < sizeof(path)) {
+                if (size >= 0 && (size_t)size < sizeof(path))
+                {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
@@ -362,16 +418,20 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         }
 
 #ifdef CLIENT
-        if (sscanf(dirent->d_name, "ossec-%02d-%03d.log", &day, &counter) > 0) {
+        if (sscanf(dirent->d_name, "ossec-%02d-%03d.log", &day, &counter) > 0)
+        {
 #else
-        if (sscanf(dirent->d_name, "wazuh-%02d-%03d.log", &day, &counter) > 0) {
+        if (sscanf(dirent->d_name, "wazuh-%02d-%03d.log", &day, &counter) > 0)
+        {
 #endif
             tm.tm_mday = day;
 
-            if (mktime(&tm) <= threshold) {
+            if (mktime(&tm) <= threshold)
+            {
                 const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size >= 0 && (size_t)size < sizeof(path)) {
+                if (size >= 0 && (size_t)size < sizeof(path))
+                {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
@@ -379,16 +439,20 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         }
 
 #ifdef CLIENT
-        if (sscanf(dirent->d_name, "ossec-%02d.json", &day) > 0) {
+        if (sscanf(dirent->d_name, "ossec-%02d.json", &day) > 0)
+        {
 #else
-        if (sscanf(dirent->d_name, "wazuh-%02d.json", &day) > 0) {
+        if (sscanf(dirent->d_name, "wazuh-%02d.json", &day) > 0)
+        {
 #endif
             tm.tm_mday = day;
 
-            if (mktime(&tm) <= threshold) {
+            if (mktime(&tm) <= threshold)
+            {
                 const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size >= 0 && (size_t)size < sizeof(path)) {
+                if (size >= 0 && (size_t)size < sizeof(path))
+                {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
@@ -396,22 +460,25 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
         }
 
 #ifdef CLIENT
-        if (sscanf(dirent->d_name, "ossec-%02d-%03d.json", &day, &counter) > 0) {
+        if (sscanf(dirent->d_name, "ossec-%02d-%03d.json", &day, &counter) > 0)
+        {
 #else
-        if (sscanf(dirent->d_name, "wazuh-%02d-%03d.json", &day, &counter) > 0) {
+        if (sscanf(dirent->d_name, "wazuh-%02d-%03d.json", &day, &counter) > 0)
+        {
 #endif
             tm.tm_mday = day;
 
-            if (mktime(&tm) <= threshold) {
+            if (mktime(&tm) <= threshold)
+            {
                 const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size >= 0 && (size_t)size < sizeof(path)) {
+                if (size >= 0 && (size_t)size < sizeof(path))
+                {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
             }
         }
-
     }
 
     closedir(dir);

@@ -250,8 +250,9 @@ TEST(CheckConditionEvaluatorTest, NotApplicableReasonIsTheUnresolvedReason)
     auto evaluator = CheckConditionEvaluator::FromString("all");
 
     evaluator.AddResult(RuleEvaluationResult(RuleResult::Found, "", "f:/etc/modprobe.d"));
-    evaluator.AddResult(RuleEvaluationResult(
-                            RuleResult::Invalid, "Command execution failed: modprobe -n -v cramfs", "c:modprobe -n -v cramfs -> r:install /bin/true"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid,
+                                             "Command execution failed: modprobe -n -v cramfs",
+                                             "c:modprobe -n -v cramfs -> r:install /bin/true"));
 
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
     EXPECT_EQ(evaluator.Reason(), "Command execution failed: modprobe -n -v cramfs");
@@ -267,7 +268,8 @@ TEST(CheckConditionEvaluatorTest, NotRunReasonIsTheUnresolvedReason)
     auto evaluator = CheckConditionEvaluator::FromString("any");
 
     evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/issue -> r:Authorized"));
-    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotRun, "Command timed out after 30 seconds: sleep 60", "c:sleep 60"));
+    evaluator.AddResult(
+        RuleEvaluationResult(RuleResult::NotRun, "Command timed out after 30 seconds: sleep 60", "c:sleep 60"));
 
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotRun);
     EXPECT_EQ(evaluator.Reason(), "Command timed out after 30 seconds: sleep 60");
@@ -309,10 +311,7 @@ TEST(CheckConditionEvaluatorTest, PassedCheckHasNoReason)
     auto none = CheckConditionEvaluator::FromString("none");
     none.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "p:telnetd"));
 
-    for (const auto* evaluator :
-            {
-                &any, &all, &none
-            })
+    for (const auto* evaluator : {&any, &all, &none})
     {
         EXPECT_EQ(evaluator->Result(), sca::CheckResult::Passed);
         EXPECT_EQ(evaluator->Reason(), "");
@@ -335,8 +334,9 @@ TEST(CheckConditionEvaluatorTest, FailedCheckReasonLeavesOutRulesThatCouldNotBeE
 {
     auto evaluator = CheckConditionEvaluator::FromString("all");
 
-    evaluator.AddResult(RuleEvaluationResult(
-                            RuleResult::Invalid, "File '/etc/aide/aide.conf' does not exist or is not a regular file", "f:/etc/aide/aide.conf -> r:^/boot"));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid,
+                                             "File '/etc/aide/aide.conf' does not exist or is not a regular file",
+                                             "f:/etc/aide/aide.conf -> r:^/boot"));
     evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "c:dpkg -s aide -> r:install ok installed"));
 
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
@@ -350,7 +350,8 @@ TEST(CheckConditionEvaluatorTest, RulesAfterTheVerdictLeaveTheUnresolvedReasonAl
     auto evaluator = CheckConditionEvaluator::FromString("all");
 
     evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound, "", "f:/etc/motd -> r:Authorized"));
-    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, "Path '/etc/update-motd.d' does not exist", "d:/etc/update-motd.d"));
+    evaluator.AddResult(
+        RuleEvaluationResult(RuleResult::Invalid, "Path '/etc/update-motd.d' does not exist", "d:/etc/update-motd.d"));
 
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
     EXPECT_EQ(evaluator.GetUnresolvedReason(), "");

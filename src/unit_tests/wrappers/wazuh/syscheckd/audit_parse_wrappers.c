@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void __wrap_audit_parse(__attribute__((unused)) char *buffer) {
+void __wrap_audit_parse(__attribute__((unused)) char* buffer)
+{
     function_called();
 }

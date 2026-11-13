@@ -16,8 +16,10 @@
 #include "token_bootstrap.h"
 
 bool needs_config_reload = false;
-void reload_handler(int signum) {
-    if (signum == SIGUSR1) {
+void reload_handler(int signum)
+{
+    if (signum == SIGUSR1)
+    {
         mdebug1("SIGNAL [(%d)-(%s)] Received. Reload agentd.", signum, strsignal(signum));
         needs_config_reload = true;
     }
@@ -38,7 +40,7 @@ void agentd_shutdown(int sig)
  * bootstrap retries this runs as root, in a directory the agent's group can write: the old file is
  * unlinked and the new one created exclusively, so a symlink planted there cannot redirect the
  * write, and a stale file from a killed run is replaced whoever owns it. */
-static int write_pid_file(const char *path, uid_t uid, gid_t gid)
+static int write_pid_file(const char* path, uid_t uid, gid_t gid)
 {
     char pid[32];
     int len = snprintf(pid, sizeof(pid), "%d\n", (int)getpid());
@@ -46,13 +48,14 @@ static int write_pid_file(const char *path, uid_t uid, gid_t gid)
 
     unlink(path);
 
-    if ((fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0640)) < 0) {
+    if ((fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0640)) < 0)
+    {
         merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
         return -1;
     }
 
-    if ((geteuid() == 0 && fchown(fd, uid, gid) != 0) || fchmod(fd, 0640) != 0 ||
-            write(fd, pid, len) != len) {
+    if ((geteuid() == 0 && fchown(fd, uid, gid) != 0) || fchmod(fd, 0640) != 0 || write(fd, pid, len) != len)
+    {
         merror("Could not write PID file '%s': %s (%d)", path, strerror(errno), errno);
         close(fd);
         unlink(path);
@@ -91,14 +94,16 @@ static void publish_pid_files(uid_t uid, gid_t gid)
     static bool published = false;
     char path[256];
 
-    if (published) {
+    if (published)
+    {
         return;
     }
 
     /* The name CreatePID() would give it, which is what wazuh-control looks for. */
     snprintf(path, sizeof(path), "%s/%s-%d.pid", OS_PIDFILE, ARGV0, (int)getpid());
 
-    if (write_pid_file(path, uid, gid) < 0) {
+    if (write_pid_file(path, uid, gid) < 0)
+    {
         merror_exit(PID_ERROR);
     }
     write_systemd_pidfile(uid, gid);
@@ -107,7 +112,7 @@ static void publish_pid_files(uid_t uid, gid_t gid)
 }
 
 /* Start the agent daemon */
-void AgentdStart(int uid, int gid, const char *user, const char *group)
+void AgentdStart(int uid, int gid, const char* user, const char* group)
 {
     int rc = 0;
     int maxfd = 0;
@@ -121,7 +126,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     srandom_init();
 
     /* Going Daemon */
-    if (!run_foreground) {
+    if (!run_foreground)
+    {
         nowDaemon();
         goDaemon();
     }
@@ -161,10 +167,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     time_t token_pending_since = 0;
     w_token_bootstrap_result_t token_bootstrap_result;
 
-    while ((token_bootstrap_result =
-                w_token_bootstrap_bound_pending(w_agent_token_bootstrap(uid, gid), &token_pending_since,
-                                                w_get_monotonic_time())) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
-        if (token_bootstrap_delay < agt->enrollment.retry_max) {
+    while ((token_bootstrap_result = w_token_bootstrap_bound_pending(
+                w_agent_token_bootstrap(uid, gid), &token_pending_since, w_get_monotonic_time())) ==
+           W_TOKEN_BOOTSTRAP_TRANSIENT)
+    {
+        if (token_bootstrap_delay < agt->enrollment.retry_max)
+        {
             token_bootstrap_delay += agt->enrollment.retry_delta;
         }
         mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
@@ -172,7 +180,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         sleep(token_bootstrap_delay);
     }
 
-    if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT) {
+    if (token_bootstrap_result == W_TOKEN_BOOTSTRAP_PERMANENT)
+    {
         merror_exit("Enrollment-token bootstrap failed; refusing to enroll unverified.");
     }
 
@@ -185,27 +194,34 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * unconditional so a boot that had nothing to bootstrap does not re-run a resolution that
      * can only reach the same answer -- and, when the operator has asked for 'none' outright,
      * log its warning about that a second time. */
-    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0) {
+    if (!anchor_before && IsFile(AGENT_ANCHOR_CA) == 0)
+    {
         w_agent_resolve_ssl_posture(agt);
     }
 
     w_agent_warn_unverified_without_anchor(agt);
 
     /* Set group ID */
-    if (Privsep_SetGroup(gid) < 0) {
+    if (Privsep_SetGroup(gid) < 0)
+    {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    if (Privsep_SetUser(uid) < 0) {
+    if (Privsep_SetUser(uid) < 0)
+    {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    if (agt->enrollment.enabled) {
+    if (agt->enrollment.enabled)
+    {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
-    } else {
+    }
+    else
+    {
         /* Check auth keys */
-        if (!OS_CheckKeys()) {
+        if (!OS_CheckKeys())
+        {
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
@@ -216,9 +232,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     mdebug1("Using notify time: %d", agt->notify_time);
 
-    if (!getuname()) {
+    if (!getuname())
+    {
         merror(MEM_ERROR, errno, strerror(errno));
-    } else {
+    }
+    else
+    {
         mdebug1("Version detected -> %s", getuname());
     }
 
@@ -226,7 +245,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
+    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0)
+    {
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
@@ -243,13 +263,14 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     signal(SIGPIPE, SIG_IGN);
 
     /* Config SIGUSR1 as reload signal */
-    struct sigaction action = { .sa_handler = reload_handler, .sa_flags = SA_RESTART };
+    struct sigaction action = {.sa_handler = reload_handler, .sa_flags = SA_RESTART};
     sigaction(SIGUSR1, &action, NULL);
 
     /* Launch rotation thread */
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
-    if (rotate_log) {
-        w_create_thread(w_rotate_log_thread, (void *)NULL);
+    if (rotate_log)
+    {
+        w_create_thread(w_rotate_log_thread, (void*)NULL);
     }
 
     /* Configure and start statistics */
@@ -265,7 +286,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * lifecycle, the keepalives, the buffering and the shutdown notification.
      * Its own failure paths already logged the reason via merror; exit here
      * rather than run on with no way to ever reach the manager. */
-    if (!w_https_client_start()) {
+    if (!w_https_client_start())
+    {
         merror_exit("https_client: startup failed. Exiting.");
     }
 
@@ -288,10 +310,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Monitor loop. The local event queue is the only descriptor left, so the
      * per-iteration work runs before the wait: an idle agent still handles a
      * pending SIGUSR1 reload. */
-    while (1) {
+    while (1)
+    {
 
         /* Check the flag for pending configuration reload */
-        if (needs_config_reload) {
+        if (needs_config_reload)
+        {
             needs_config_reload = false;
 
             close(agt->execdq);
@@ -308,8 +332,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         }
 
         /* Connect to the execd queue */
-        if (agt->execdq <= 0) {
-            if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
+        if (agt->execdq <= 0)
+        {
+            if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0)
+            {
                 mdebug1("Unable to connect to the active response queue (disabled).");
                 agt->execdq = -1;
             }
@@ -322,46 +348,59 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         fdtimeout.tv_usec = 0;
 
         /* Wait with a timeout for the event queue */
-        do {
+        do
+        {
             rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         } while (rc < 0 && errno == EINTR);
 
-        if (rc == -1) {
+        if (rc == -1)
+        {
             merror_exit(SELECT_ERROR, errno, strerror(errno));
         }
 
         /* For the forwarder */
-        if (rc > 0 && FD_ISSET(agt->m_queue, &fdset)) {
+        if (rc > 0 && FD_ISSET(agt->m_queue, &fdset))
+        {
             EventForward();
         }
     }
 }
 
-bool check_uninstall_permission(const char *token, const char *host, bool ssl_verify) {
+bool check_uninstall_permission(const char* token, const char* host, bool ssl_verify)
+{
     char url[OS_SIZE_8192];
     snprintf(url, sizeof(url), "https://%s/agents/uninstall", host);
 
-    char header[OS_SIZE_8192] = { '\0' };
+    char header[OS_SIZE_8192] = {'\0'};
     snprintf(header, sizeof(header), "Authorization: Bearer %s", token);
 
-    char* headers[] = { NULL, NULL };
+    char* headers[] = {NULL, NULL};
     os_strdup(header, headers[0]);
 
-    curl_response *response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, OS_SIZE_8192, 30, NULL, ssl_verify);
+    curl_response* response =
+        wurl_http_request(WURL_GET_METHOD, headers, url, NULL, OS_SIZE_8192, 30, NULL, ssl_verify);
 
-    if (response) {
-        if (response->status_code == 200) {
+    if (response)
+    {
+        if (response->status_code == 200)
+        {
             mdebug1(AG_UNINSTALL_VALIDATION_GRANTED);
             wurl_free_response(response);
             os_free(headers[0]);
             return false;
-        } else if (response->status_code == 403) {
+        }
+        else if (response->status_code == 403)
+        {
             mdebug1(AG_UNINSTALL_VALIDATION_DENIED);
-        } else {
+        }
+        else
+        {
             merror(AG_API_ERROR_CODE, response->status_code);
         }
         wurl_free_response(response);
-    } else {
+    }
+    else
+    {
         merror(AG_REQUEST_FAIL);
     }
 
@@ -369,44 +408,62 @@ bool check_uninstall_permission(const char *token, const char *host, bool ssl_ve
     return true;
 }
 
-char* authenticate_and_get_token(const char *userpass, const char *host, bool ssl_verify) {
+char* authenticate_and_get_token(const char* userpass, const char* host, bool ssl_verify)
+{
     char url[OS_SIZE_8192];
-    char *token = NULL;
-    char* headers[] = { NULL };
+    char* token = NULL;
+    char* headers[] = {NULL};
 
     snprintf(url, sizeof(url), "https://%s/security/user/authenticate?raw=true", host);
-    curl_response *response = wurl_http_request(WURL_POST_METHOD, headers, url, NULL, OS_SIZE_8192, 30, userpass, ssl_verify);
+    curl_response* response =
+        wurl_http_request(WURL_POST_METHOD, headers, url, NULL, OS_SIZE_8192, 30, userpass, ssl_verify);
 
-    if (response) {
-        if (response->status_code == 200) {
+    if (response)
+    {
+        if (response->status_code == 200)
+        {
             os_strdup(response->body, token);
-        } else {
+        }
+        else
+        {
             merror(AG_API_ERROR_CODE, response->status_code);
         }
         wurl_free_response(response);
-    } else {
+    }
+    else
+    {
         merror(AG_REQUEST_FAIL);
     }
 
     return token;
 }
 
-bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify) {
+bool package_uninstall_validation(const char* uninstall_auth_token,
+                                  const char* uninstall_auth_login,
+                                  const char* uninstall_auth_host,
+                                  bool ssl_verify)
+{
     bool validate_result = true;
 
     mdebug1(AG_UNINSTALL_VALIDATION_START);
-    if (uninstall_auth_token) {
+    if (uninstall_auth_token)
+    {
         validate_result = check_uninstall_permission(uninstall_auth_token, uninstall_auth_host, ssl_verify);
-        if (validate_result) {
+        if (validate_result)
+        {
             return validate_result;
         }
     }
-    if (uninstall_auth_login) {
-        char *new_token = authenticate_and_get_token(uninstall_auth_login, uninstall_auth_host, ssl_verify);
-        if (new_token) {
+    if (uninstall_auth_login)
+    {
+        char* new_token = authenticate_and_get_token(uninstall_auth_login, uninstall_auth_host, ssl_verify);
+        if (new_token)
+        {
             validate_result = check_uninstall_permission(new_token, uninstall_auth_host, ssl_verify);
             os_free(new_token);
-        } else {
+        }
+        else
+        {
             merror(AG_TOKEN_FAIL, uninstall_auth_login);
         }
     }

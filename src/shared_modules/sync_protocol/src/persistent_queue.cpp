@@ -19,10 +19,12 @@ PersistentQueue::PersistentQueue(const std::string& dbPath,
                                  std::optional<std::chrono::milliseconds> flushInterval,
                                  std::optional<int32_t> walAutocheckpointPages,
                                  std::optional<int32_t> cacheSizeKiB)
-    : FLUSH_BATCH_SIZE(flushBatchSize.value_or(DEFAULT_FLUSH_BATCH_SIZE)),
-      FLUSH_INTERVAL(flushInterval.value_or(DEFAULT_FLUSH_INTERVAL)),
-      m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger, nullptr, walAutocheckpointPages, cacheSizeKiB)),
-      m_logger(std::move(logger))
+    : FLUSH_BATCH_SIZE(flushBatchSize.value_or(DEFAULT_FLUSH_BATCH_SIZE))
+    , FLUSH_INTERVAL(flushInterval.value_or(DEFAULT_FLUSH_INTERVAL))
+    , m_storage(storage ? std::move(storage)
+                        : std::make_shared<PersistentQueueStorage>(
+                              dbPath, logger, nullptr, walAutocheckpointPages, cacheSizeKiB))
+    , m_logger(std::move(logger))
 {
     if (!m_logger)
     {
@@ -69,7 +71,7 @@ void PersistentQueue::submit(const std::string& id,
     bool shouldNotify = false;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_buffers[m_currentIdx].push_back(PersistedData{0, id, index, data, operation, version, isDataContext});
+        m_buffers[m_currentIdx].push_back(PersistedData {0, id, index, data, operation, version, isDataContext});
         shouldNotify = (m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE);
     }
 
@@ -87,10 +89,9 @@ void PersistentQueue::flushLoop()
 
         {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_cv.waitFor(lock, FLUSH_INTERVAL, [this]
-            {
-                return m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE || m_stop.load();
-            });
+            m_cv.waitFor(lock,
+                         FLUSH_INTERVAL,
+                         [this] { return m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE || m_stop.load(); });
 
             stopping = m_stop.load();
         }
@@ -233,10 +234,7 @@ void PersistentQueue::clearItemsByIndex(const std::string& index)
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
-        discardBuffered([&index](const PersistedData & item)
-        {
-            return item.index == index;
-        });
+        discardBuffered([&index](const PersistedData& item) { return item.index == index; });
         m_storage->removeByIndex(index);
     }
     catch (const std::exception& ex)
@@ -254,10 +252,7 @@ void PersistentQueue::clearAllDataContext()
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
-        discardBuffered([](const PersistedData & item)
-        {
-            return item.is_data_context;
-        });
+        discardBuffered([](const PersistedData& item) { return item.is_data_context; });
         m_storage->removeAllDataContext();
     }
     catch (const std::exception& ex)
@@ -275,10 +270,7 @@ void PersistentQueue::deleteDatabase()
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
-        discardBuffered([](const PersistedData&)
-        {
-            return true;
-        });
+        discardBuffered([](const PersistedData&) { return true; });
         m_storage->deleteDatabase();
     }
     catch (const std::exception& ex)

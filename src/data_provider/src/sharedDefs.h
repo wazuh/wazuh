@@ -24,7 +24,7 @@ constexpr auto WM_SYS_IFDATA_DIR {"/sys/class/net/"};
 constexpr auto WM_SYS_IF_FILE {"/etc/network/interfaces"};
 constexpr auto WM_SYS_IF_DIR_RH {"/etc/sysconfig/network-scripts/"};
 constexpr auto WM_SYS_IF_DIR_SUSE {"/etc/sysconfig/network/"};
-constexpr auto WM_SYS_NET_DIR {"/proc/net/" };
+constexpr auto WM_SYS_NET_DIR {"/proc/net/"};
 constexpr auto WM_SYS_PROC_DIR {"/proc/"};
 
 constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
@@ -45,16 +45,13 @@ constexpr std::uintmax_t PACKAGE_METADATA_MAX_FILE_SIZE {10 * 1024 * 1024};
 // it apart from a genuine zero. The manager stores it as NULL.
 constexpr int NOT_COLLECTED_VALUE = -1;
 
-constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
-{
-    6ull
-};
+constexpr auto MAC_ADDRESS_COUNT_SEGMENTS {6ull};
 
 // Routing socket messages pad each sockaddr to 4 bytes on Darwin and to sizeof(long) elsewhere
 #ifdef __APPLE__
-#define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(uint32_t) - 1))) : sizeof(uint32_t))
+#define ROUNDUP(a) ((a) > 0 ? (1 + (((a) - 1) | (sizeof(uint32_t) - 1))) : sizeof(uint32_t))
 #else
-#define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
+#define ROUNDUP(a) ((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 #endif
 
 enum OSPlatformType
@@ -116,8 +113,7 @@ enum MacOSArchitecture
     ARM64
 };
 
-static const std::set<std::string> UNIX_PYPI_DEFAULT_BASE_DIRS
-{
+static const std::set<std::string> UNIX_PYPI_DEFAULT_BASE_DIRS {
     "/usr/lib/python*/*-packages",
     "/usr/lib64/python*/*-packages",
     "/usr/local/lib/python*/*-packages",
@@ -126,29 +122,22 @@ static const std::set<std::string> UNIX_PYPI_DEFAULT_BASE_DIRS
     "/opt/homebrew/lib",
     "/Library/Frameworks/Python.framework/Versions/*/lib/python*/*-packages",
     "/root/.pyenv/versions/*/lib/python*/*-packages",
-    "/home/*/.pyenv/versions/*/lib/python*/*-packages"
-};
+    "/home/*/.pyenv/versions/*/lib/python*/*-packages"};
 
-static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS
-{
-    "/usr/local/lib",
-    "/opt/homebrew/lib",
-    "/usr/lib",
-    "/home/*/.npm-global/lib",
-    "/Users/*/.npm-global/lib",
-    "/home/*/.nvm/versions/node/v*/lib",
-    "/root/.nvm/versions/node/v*/lib",
-    "/opt/local/lib",
-    "/Users/*/.nvm/versions/node/v*/lib",
-    "/private/var/root/.nvm/versions/node/v*/lib"
-};
+static const std::set<std::string> UNIX_NPM_DEFAULT_BASE_DIRS {"/usr/local/lib",
+                                                               "/opt/homebrew/lib",
+                                                               "/usr/lib",
+                                                               "/home/*/.npm-global/lib",
+                                                               "/Users/*/.npm-global/lib",
+                                                               "/home/*/.nvm/versions/node/v*/lib",
+                                                               "/root/.nvm/versions/node/v*/lib",
+                                                               "/opt/local/lib",
+                                                               "/Users/*/.nvm/versions/node/v*/lib",
+                                                               "/private/var/root/.nvm/versions/node/v*/lib"};
 
 // Per-user application folders on macOS, expanded and scanned the same way as the
 // PYPI/NPM base dirs above. Add more glob patterns here to cover other per-user locations.
-static const std::set<std::string> MACOS_USER_APPLICATIONS_DIRS
-{
-    "/Users/*/Applications",
-    "/private/var/root/Applications"
-};
+static const std::set<std::string> MACOS_USER_APPLICATIONS_DIRS {"/Users/*/Applications",
+                                                                 "/private/var/root/Applications"};
 
 #endif //_SHARED_DEFS_H

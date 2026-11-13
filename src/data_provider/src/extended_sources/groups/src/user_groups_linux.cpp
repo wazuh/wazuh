@@ -95,7 +95,7 @@ nlohmann::json UserGroupsProvider::getGroupNamesByUid(const std::set<uid_t>& uid
     std::unordered_map<gid_t, std::string> gidToName;
     std::unordered_set<gid_t> unresolvableGids;
 
-    const auto resolveGidName = [&](gid_t gid, std::string & name) -> bool
+    const auto resolveGidName = [&](gid_t gid, std::string& name) -> bool
     {
         if (const auto cached = gidToName.find(gid); cached != gidToName.end())
         {
@@ -272,7 +272,7 @@ std::vector<std::pair<uid_t, std::vector<gid_t>>> UserGroupsProvider::getUserGro
 
     auto buf = std::make_unique<char[]>(bufSize);
 
-    auto processUser = [&](const struct passwd * pwdInfo)
+    auto processUser = [&](const struct passwd* pwdInfo)
     {
         UserInfo user {pwdInfo->pw_name, pwdInfo->pw_uid, pwdInfo->pw_gid};
 

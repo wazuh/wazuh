@@ -7,10 +7,9 @@
  * Foundation
  */
 
-
 #include <openssl/rsa.h>
 
-int __wrap_RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb);
+int __wrap_RSA_generate_key_ex(RSA* rsa, int bits, BIGNUM* e_value, BN_GENCB* cb);
 
 /**
  * @brief Wrapper for RSA_new.
@@ -18,6 +17,6 @@ int __wrap_RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb
  *
  * @return RSA* Real structure in case the first mock is not null, a mock otherwise.
  */
-RSA * __wrap_RSA_new(void);
+RSA* __wrap_RSA_new(void);
 
-extern RSA *__real_RSA_new(void);
+extern RSA* __real_RSA_new(void);

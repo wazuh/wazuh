@@ -23,32 +23,42 @@
 
 /* The agent's queue does not exist in this process. Reported as "not sent" rather than silently
  * accepted, so a future caller that does reach here fails visibly. */
-int SendMSG(__attribute__((unused)) int queue, __attribute__((unused)) const char *message,
-            __attribute__((unused)) const char *locmsg, __attribute__((unused)) char loc) {
+int SendMSG(__attribute__((unused)) int queue,
+            __attribute__((unused)) const char* message,
+            __attribute__((unused)) const char* locmsg,
+            __attribute__((unused)) char loc)
+{
     return -1;
 }
 
-int SendMSGPredicated(__attribute__((unused)) int queue, __attribute__((unused)) const char *message,
-                      __attribute__((unused)) const char *locmsg, __attribute__((unused)) char loc,
-                      __attribute__((unused)) bool (*fn_ptr)()) {
+int SendMSGPredicated(__attribute__((unused)) int queue,
+                      __attribute__((unused)) const char* message,
+                      __attribute__((unused)) const char* locmsg,
+                      __attribute__((unused)) char loc,
+                      __attribute__((unused)) bool (*fn_ptr)())
+{
     return -1;
 }
 
 /* The agent's own Windows implementations of these are no-ops that report success; there is no
  * queue to open on this platform either way. */
-int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type,
-            __attribute__((unused)) short int n_tries) {
+int StartMQ(__attribute__((unused)) const char* path,
+            __attribute__((unused)) short int type,
+            __attribute__((unused)) short int n_tries)
+{
     return 0;
 }
 
-int StartMQPredicated(__attribute__((unused)) const char *path, __attribute__((unused)) short int type,
+int StartMQPredicated(__attribute__((unused)) const char* path,
+                      __attribute__((unused)) short int type,
                       __attribute__((unused)) short int n_tries,
-                      __attribute__((unused)) bool (*fn_ptr)()) {
+                      __attribute__((unused)) bool (*fn_ptr)())
+{
     return 0;
 }
 
-int MQReconnectPredicated(__attribute__((unused)) const char *path,
-                          __attribute__((unused)) bool (fn_ptr)()) {
+int MQReconnectPredicated(__attribute__((unused)) const char* path, __attribute__((unused)) bool(fn_ptr)())
+{
     return 0;
 }
 
@@ -57,17 +67,21 @@ int MQReconnectPredicated(__attribute__((unused)) const char *path,
  * execd, which it does not, and linking either to satisfy a call that never happens would pull a
  * whole subsystem into a command that enrolls and exits. 0 is what report_dispatch() itself
  * returns for a target it does not know. */
-size_t lccom_dispatch(__attribute__((unused)) char *command, __attribute__((unused)) char **output) {
+size_t lccom_dispatch(__attribute__((unused)) char* command, __attribute__((unused)) char** output)
+{
     return 0;
 }
 
-size_t wcom_dispatch(__attribute__((unused)) char *command, __attribute__((unused)) char **output) {
+size_t wcom_dispatch(__attribute__((unused)) char* command, __attribute__((unused)) char** output)
+{
     return 0;
 }
 
 /* syscheck is not running in this process, so there is no state for a command to query. */
-size_t syscom_dispatch(__attribute__((unused)) char *command, __attribute__((unused)) size_t command_len,
-                       __attribute__((unused)) char **output) {
+size_t syscom_dispatch(__attribute__((unused)) char* command,
+                       __attribute__((unused)) size_t command_len,
+                       __attribute__((unused)) char** output)
+{
     return 0;
 }
 

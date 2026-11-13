@@ -18,34 +18,40 @@
 #define STATIC static
 #endif
 
-static log_builder_t * mq_log_builder;
+static log_builder_t* mq_log_builder;
 int sock_fail_time;
 
 #ifndef WIN32
 
 /* Start the Message Queue with specific owner and permissions(Only for READ type). type: WRITE||READ */
-int StartMQWithSpecificOwnerAndPerms(const char *path, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode)
+int StartMQWithSpecificOwnerAndPerms(
+    const char* path, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode)
 {
-    if (type == READ) {
+    if (type == READ)
+    {
         return (OS_BindUnixDomainWithPerms(path, SOCK_DGRAM, OS_MAXSTR + 512, uid, gid, mode));
     }
 
     /* We give up to 21 seconds for the other end to start */
-    else {
+    else
+    {
         int rc = 0, sleep_time = 5;
         short int attempt = 0;
 
         // If n_attempts is 0, trying to reconnect infinitely
-        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
+        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0)
+        {
             attempt++;
             mdebug1("Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, attempt);
-            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts) {
+            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts)
+            {
                 break;
             }
             sleep(sleep_time += 5);
         }
 
-        if (rc < 0) {
+        if (rc < 0)
+        {
             return OS_INVALID;
         }
 
@@ -56,32 +62,40 @@ int StartMQWithSpecificOwnerAndPerms(const char *path, short int type, short int
 }
 
 /* Start a Message Queue with predicated. type: WRITE||READ */
-int StartMQPredicated(const char *path, short int type, short int n_attempts, bool (*fn_ptr)()) {
-    if (type == READ) {
+int StartMQPredicated(const char* path, short int type, short int n_attempts, bool (*fn_ptr)())
+{
+    if (type == READ)
+    {
         return (OS_BindUnixDomainWithPerms(path, SOCK_DGRAM, OS_MAXSTR + 512, getuid(), getgid(), 0660));
     }
 
     /* We give up to 21 seconds for the other end to start */
-    else {
+    else
+    {
         int rc = 0, sleep_time = 5;
         short int attempt = 0;
 
         // If n_attempts is 0, trying to reconnect infinitely
-        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0) {
-            if ((*fn_ptr)()) {
+        while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0)
+        {
+            if ((*fn_ptr)())
+            {
                 mdebug2(MQ_SHUTDOWN_DETECTED);
                 return OS_INVALID;
             }
             attempt++;
             mdebug1("Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, attempt);
-            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts) {
+            if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts)
+            {
                 break;
             }
             // Interruptible backoff: keep the escalating delay, but re-check the
             // shutdown predicate every second so shutdown is honored within ~1 s.
             sleep_time += 5;
-            for (int slept = 0; slept < sleep_time; slept++) {
-                if ((*fn_ptr)()) {
+            for (int slept = 0; slept < sleep_time; slept++)
+            {
+                if ((*fn_ptr)())
+                {
                     mdebug2(MQ_SHUTDOWN_DETECTED);
                     return OS_INVALID;
                 }
@@ -89,7 +103,8 @@ int StartMQPredicated(const char *path, short int type, short int n_attempts, bo
             }
         }
 
-        if (rc < 0) {
+        if (rc < 0)
+        {
             return OS_INVALID;
         }
 
@@ -100,16 +115,19 @@ int StartMQPredicated(const char *path, short int type, short int n_attempts, bo
 }
 
 /* Start the Message Queue. type: WRITE||READ */
-int StartMQ(const char *path, short int type, short int n_attempts)
+int StartMQ(const char* path, short int type, short int n_attempts)
 {
     return StartMQWithSpecificOwnerAndPerms(path, type, n_attempts, getuid(), getgid(), 0660);
 }
 
 /* Reconnect to message queue */
-int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
+int MQReconnectPredicated(const char* path, bool (*fn_ptr)())
+{
     int rc = 0;
-    while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0){
-        if ((*fn_ptr)()) {
+    while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0)
+    {
+        if ((*fn_ptr)())
+        {
             return OS_INVALID;
         }
         mdebug1(UNABLE_TO_RECONNECT, path, strerror(errno), errno);
@@ -135,30 +153,34 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
  * @param loc The location character (e.g., SYNC_MQ).
  * @return 0 on success, -1 on failure.
  */
-STATIC int SendBinaryMSGAction(int queue, const void *message, size_t message_len, const char *locmsg, char loc) {
+STATIC int SendBinaryMSGAction(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
+{
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1] = {0};
     char loc_buff[OS_SIZE_8192 + 1] = {0};
-    char *p = tmpstr; // A pointer to build the message in tmpstr.
+    char* p = tmpstr; // A pointer to build the message in tmpstr.
     static int reported = 0;
     size_t header_len;
     size_t total_len;
 
     // Escape the location string, as in the original SendMSGAction.
-    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char*)locmsg, '|', ':'))
+    {
         merror(FORMAT_ERROR);
         return (-1);
     }
 
     // Check for unsupported modes.
-    if (loc == SECURE_MQ) {
+    if (loc == SECURE_MQ)
+    {
         // This mode involves text parsing of the message payload, which is incompatible with binary data.
         merror("SendBinaryMSGAction does not support SECURE_MQ mode.");
         return (-1);
     }
 
     // Send the fully constructed message.
-    if (queue < 0) {
+    if (queue < 0)
+    {
         return (-1);
     }
 
@@ -169,9 +191,14 @@ STATIC int SendBinaryMSGAction(int queue, const void *message, size_t message_le
     total_len = header_len + message_len;
 
     // Ensure the total message will fit in our fixed-size buffer
-    if (total_len > OS_MAXSTR) {
-        mwarn("Binary message is too large to be sent (%zu bytes required, %d max). Payload of %zu bytes for module '%s' was dropped.",
-              total_len, OS_MAXSTR, message_len, locmsg);
+    if (total_len > OS_MAXSTR)
+    {
+        mwarn("Binary message is too large to be sent (%zu bytes required, %d max). Payload of %zu bytes for module "
+              "'%s' was dropped.",
+              total_len,
+              OS_MAXSTR,
+              message_len,
+              locmsg);
         return (-1);
     }
 
@@ -185,9 +212,11 @@ STATIC int SendBinaryMSGAction(int queue, const void *message, size_t message_le
     // Add binary payload
     memcpy(p, message, message_len);
 
-    if ((__mq_rcode = OS_SendUnix(queue, tmpstr, total_len)) < 0) {
+    if ((__mq_rcode = OS_SendUnix(queue, tmpstr, total_len)) < 0)
+    {
         // Error on the socket
-        if (__mq_rcode == OS_SOCKTERR) {
+        if (__mq_rcode == OS_SOCKTERR)
+        {
             // The socket being unavailable is a transient, caller-handled condition
             // (e.g. expected during agent restart). Log at debug, like SendMSGAction().
             mdebug1("socketerr (not available).");
@@ -197,7 +226,8 @@ STATIC int SendBinaryMSGAction(int queue, const void *message, size_t message_le
 
         mdebug2("Socket busy, discarding binary message.");
 
-        if (!reported) {
+        if (!reported)
+        {
             reported = 1;
             mwarn("Socket busy, discarding binary message.");
         }
@@ -207,39 +237,45 @@ STATIC int SendBinaryMSGAction(int queue, const void *message, size_t message_le
 }
 
 /* Send message primitive. */
-STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
+STATIC int SendMSGAction(int queue, const char* message, const char* locmsg, char loc)
+{
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1] = {0};
     char loc_buff[OS_SIZE_8192 + 1] = {0};
     static int reported = 0;
-    char *sanitized = NULL;
+    char* sanitized = NULL;
     size_t header_length;
     size_t message_length;
     bool secure = false;
 
     tmpstr[OS_MAXSTR] = '\0';
 
-    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char*)locmsg, '|', ':'))
+    {
         merror(FORMAT_ERROR);
         return (0);
     }
 
-    if (message == NULL) {
+    if (message == NULL)
+    {
         merror(FORMAT_ERROR);
         return (0);
     }
 
-    if (loc == SECURE_MQ) {
+    if (loc == SECURE_MQ)
+    {
         loc = message[0];
         message++;
 
-        if (message[0] != ':') {
+        if (message[0] != ':')
+        {
             merror(FORMAT_ERROR);
             return (0);
         }
         message++; /* Pointing now to the location */
 
-        if (strncmp(message, "keepalive", 9) == 0) {
+        if (strncmp(message, "keepalive", 9) == 0)
+        {
             return (0);
         }
 
@@ -251,16 +287,20 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
      * would have raised are both lost. Filtering here covers every producer
      * that sends an event, on every platform, instead of one reader at a time.
      * The framing bytes above are already past, so only the payload is touched. */
-    if (!w_utf8_valid(message)) {
+    if (!w_utf8_valid(message))
+    {
         static int utf8_reported = 0;
 
         sanitized = w_utf8_filter(message, true);
         message = sanitized;
 
-        if (!utf8_reported) {
+        if (!utf8_reported)
+        {
             mwarn("Invalid UTF-8 byte in a message from '%s'. Replacing it with U+FFFD.", locmsg);
             utf8_reported = 1;
-        } else {
+        }
+        else
+        {
             mdebug2("Invalid UTF-8 byte in a message from '%s'. Replacing it with U+FFFD.", locmsg);
         }
     }
@@ -273,26 +313,33 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
     header_length = strlen(loc_buff) + (secure ? 4 : 3); /* "%c:" + loc_buff + "->" or ":" */
     message_length = w_utf8_truncate_len(message, OS_MAXSTR - 1 - header_length);
 
-    if (message[message_length] != '\0') {
+    if (message[message_length] != '\0')
+    {
         mdebug2("Message from '%s' cut to %zu bytes to fit the queue.", locmsg, message_length);
     }
 
-    if (secure) {
+    if (secure)
+    {
         snprintf(tmpstr, OS_MAXSTR, "%c:%s->%.*s", loc, loc_buff, (int)message_length, message);
-    } else {
+    }
+    else
+    {
         snprintf(tmpstr, OS_MAXSTR, "%c:%s:%.*s", loc, loc_buff, (int)message_length, message);
     }
 
     os_free(sanitized);
 
     /* Queue not available */
-    if (queue < 0) {
+    if (queue < 0)
+    {
         return (-1);
     }
 
-    if ((__mq_rcode = OS_SendUnix(queue, tmpstr, 0)) < 0) {
+    if ((__mq_rcode = OS_SendUnix(queue, tmpstr, 0)) < 0)
+    {
         /* Error on the socket */
-        if (__mq_rcode == OS_SOCKTERR) {
+        if (__mq_rcode == OS_SOCKTERR)
+        {
             mdebug1("socketerr (not available).");
             close(queue);
             return (-1);
@@ -301,7 +348,8 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
         /* Unable to send. Socket busy */
         mdebug2("Socket busy, discarding message.");
 
-        if (!reported) {
+        if (!reported)
+        {
             reported = 1;
             mwarn("Socket busy, discarding message.");
         }
@@ -311,117 +359,161 @@ STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, cha
 }
 
 /* Send a message with predicated to run out from while. */
-int SendMSGPredicated(int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) {
+int SendMSGPredicated(int queue, const char* message, const char* locmsg, char loc, bool (*fn_ptr)())
+{
     /* Check for global locks */
     os_wait_predicate(fn_ptr);
     return SendMSGAction(queue, message, locmsg, loc);
 }
 
 /* Send a message to the queue */
-int SendMSG(int queue, const char *message, const char *locmsg, char loc) {
+int SendMSG(int queue, const char* message, const char* locmsg, char loc)
+{
     /* Check for global locks */
     os_wait();
     return SendMSGAction(queue, message, locmsg, loc);
 }
 
 /* Send a message to the queue */
-int SendBinaryMSG(int queue, const void *message, size_t message_len, const char *locmsg, char loc) {
+int SendBinaryMSG(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
+{
     /* Check for global locks */
     os_wait();
     return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
 }
 
 /* Send a binary message with a predicate to break out of the manager-disconnected wait */
-int SendBinaryMSGPredicated(int queue, const void *message, size_t message_len, const char *locmsg, char loc, bool (*fn_ptr)()) {
+int SendBinaryMSGPredicated(
+    int queue, const void* message, size_t message_len, const char* locmsg, char loc, bool (*fn_ptr)())
+{
     /* Check for global locks */
     os_wait_predicate(fn_ptr);
     return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
 }
 
 /* Send a message to socket */
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute__((unused)) char loc, logtarget * target)
+int SendMSGtoSCK(
+    int queue, const char* message, const char* locmsg, __attribute__((unused)) char loc, logtarget* target)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR + 1];
     time_t mtime;
-    char * _message = NULL;
+    char* _message = NULL;
     int retval = 0;
 
     _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
 
     tmpstr[OS_MAXSTR] = '\0';
 
-    if (strcmp(target->log_socket->name, "agent") == 0) {
-        if(SendMSG(queue, _message, locmsg, loc) != 0) {
+    if (strcmp(target->log_socket->name, "agent") == 0)
+    {
+        if (SendMSG(queue, _message, locmsg, loc) != 0)
+        {
             free(_message);
             return -1;
         }
-    }else{
+    }
+    else
+    {
         int sock_type;
-        const char * strmode;
+        const char* strmode;
 
-        switch (target->log_socket->mode) {
-        case IPPROTO_UDP:
-            sock_type = SOCK_DGRAM;
-            strmode = "udp";
-            break;
-        case IPPROTO_TCP:
-            sock_type = SOCK_STREAM;
-            strmode = "tcp";
-            break;
-        default:
-            merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
-            free(_message);
-            return -1;
+        switch (target->log_socket->mode)
+        {
+            case IPPROTO_UDP:
+                sock_type = SOCK_DGRAM;
+                strmode = "udp";
+                break;
+            case IPPROTO_TCP:
+                sock_type = SOCK_STREAM;
+                strmode = "tcp";
+                break;
+            default:
+                merror("At %s(): undefined protocol. This shouldn't happen.", __FUNCTION__);
+                free(_message);
+                return -1;
         }
 
         // create message and add prefix
-        if (target->log_socket->prefix && *target->log_socket->prefix) {
+        if (target->log_socket->prefix && *target->log_socket->prefix)
+        {
             snprintf(tmpstr, OS_MAXSTR, "%s%s", target->log_socket->prefix, _message);
-        } else {
+        }
+        else
+        {
             snprintf(tmpstr, OS_MAXSTR, "%s", _message);
         }
 
         // Connect to socket if disconnected
-        if (target->log_socket->socket < 0) {
-            if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time) {
-                if (target->log_socket->socket = OS_ConnectUnixDomain(target->log_socket->location, sock_type, OS_MAXSTR + 256), target->log_socket->socket < 0) {
+        if (target->log_socket->socket < 0)
+        {
+            if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time)
+            {
+                if (target->log_socket->socket =
+                        OS_ConnectUnixDomain(target->log_socket->location, sock_type, OS_MAXSTR + 256),
+                    target->log_socket->socket < 0)
+                {
                     target->log_socket->last_attempt = mtime;
-                    merror("Unable to connect to socket '%s': %s (%s)", target->log_socket->name, target->log_socket->location, strmode);
+                    merror("Unable to connect to socket '%s': %s (%s)",
+                           target->log_socket->name,
+                           target->log_socket->location,
+                           strmode);
                     free(_message);
                     return -1;
                 }
 
                 mdebug1("Connected to socket '%s' (%s)", target->log_socket->name, target->log_socket->location);
-            } else {
-                mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, target->log_socket->name);
+            }
+            else
+            {
+                mdebug2(
+                    "Discarding event from '%s' due to connection issue with '%s'", locmsg, target->log_socket->name);
                 free(_message);
                 return 1;
             }
         }
 
         // Send msg to socket
-        if (__mq_rcode = OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
-            if (__mq_rcode == OS_SOCKTERR) {
-                if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time) {
+        if (__mq_rcode = OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0)
+        {
+            if (__mq_rcode == OS_SOCKTERR)
+            {
+                if (mtime = time(NULL), mtime > target->log_socket->last_attempt + sock_fail_time)
+                {
                     close(target->log_socket->socket);
 
-                    if (target->log_socket->socket = OS_ConnectUnixDomain(target->log_socket->location, sock_type, OS_MAXSTR + 256), target->log_socket->socket < 0) {
-                        merror("Unable to connect to socket '%s': %s (%s)", target->log_socket->name, target->log_socket->location, strmode);
+                    if (target->log_socket->socket =
+                            OS_ConnectUnixDomain(target->log_socket->location, sock_type, OS_MAXSTR + 256),
+                        target->log_socket->socket < 0)
+                    {
+                        merror("Unable to connect to socket '%s': %s (%s)",
+                               target->log_socket->name,
+                               target->log_socket->location,
+                               strmode);
                         target->log_socket->last_attempt = mtime;
-                    } else {
-                        mdebug1("Connected to socket '%s' (%s)", target->log_socket->name, target->log_socket->location);
+                    }
+                    else
+                    {
+                        mdebug1(
+                            "Connected to socket '%s' (%s)", target->log_socket->name, target->log_socket->location);
 
-                        if (OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
+                        if (OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0)
+                        {
                             merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
                             SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
                             target->log_socket->last_attempt = mtime;
                         }
                     }
-                } else {
-                    mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, target->log_socket->name);
                 }
-            } else {
+                else
+                {
+                    mdebug2("Discarding event from '%s' due to connection issue with '%s'",
+                            locmsg,
+                            target->log_socket->name);
+                }
+            }
+            else
+            {
                 merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
                 SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
             }
@@ -434,11 +526,13 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
 
 #else
 
-int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * targets) {
-    char * _message;
+int SendMSGtoSCK(int queue, const char* message, const char* locmsg, char loc, logtarget* targets)
+{
+    char* _message;
     int retval;
 
-    if (!targets[0].log_socket) {
+    if (!targets[0].log_socket)
+    {
         merror("No targets defined for a localfile.");
         return -1;
     }
@@ -451,12 +545,14 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, l
 
 #endif /* !WIN32 */
 
-void mq_log_builder_init() {
+void mq_log_builder_init()
+{
     assert(mq_log_builder == NULL);
     mq_log_builder = log_builder_init(true);
 }
 
-int mq_log_builder_update() {
+int mq_log_builder_update()
+{
     assert(mq_log_builder != NULL);
     return log_builder_update(mq_log_builder);
 }

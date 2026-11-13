@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef LOGCOLLECTOR_WRAPPERS_H
 #define LOGCOLLECTOR_WRAPPERS_H
 

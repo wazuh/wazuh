@@ -14,16 +14,16 @@
 
 #include "shared.h"
 
-
 /* Create the list storage
  * Returns NULL on error
  */
-OSStore *OSStore_Create()
+OSStore* OSStore_Create()
 {
-    OSStore *my_list;
+    OSStore* my_list;
 
-    my_list = (OSStore *) calloc(1, sizeof(OSStore));
-    if (!my_list) {
+    my_list = (OSStore*)calloc(1, sizeof(OSStore));
+    if (!my_list)
+    {
         return (NULL);
     }
 
@@ -42,17 +42,20 @@ OSStore *OSStore_Create()
 /* Delete the list storage
  * Returns NULL on error
  */
-OSStore *OSStore_Free(OSStore *list)
+OSStore* OSStore_Free(OSStore* list)
 {
-    OSStoreNode *delnode;
+    OSStoreNode* delnode;
     list->cur_node = list->first_node;
 
-    while (list->cur_node) {
-        if (list->cur_node->key) {
+    while (list->cur_node)
+    {
+        if (list->cur_node->key)
+        {
             free(list->cur_node->key);
             list->cur_node->key = NULL;
         }
-        if (list->cur_node->data) {
+        if (list->cur_node->data)
+        {
             free(list->cur_node->data);
             list->cur_node->data = NULL;
         }
@@ -78,15 +81,18 @@ OSStore *OSStore_Free(OSStore *list)
  * Returns 0 if not present or the key if available
  * (position may change after each PUT)
  */
-int OSStore_GetPosition(OSStore *list, const char *key)
+int OSStore_GetPosition(OSStore* list, const char* key)
 {
     int chk_rc, pos = 1;
     list->cur_node = list->first_node;
 
-    while (list->cur_node) {
-        if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0) {
+    while (list->cur_node)
+    {
+        if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0)
+        {
             /* Found */
-            if (chk_rc == 0) {
+            if (chk_rc == 0)
+            {
                 return (pos);
             }
 
@@ -103,7 +109,7 @@ int OSStore_GetPosition(OSStore *list, const char *key)
 /* Get first node from storage
  * Returns NULL if not present
  */
-OSStoreNode *OSStore_GetFirstNode(OSStore *list)
+OSStoreNode* OSStore_GetFirstNode(OSStore* list)
 {
     return (list->first_node);
 }
@@ -111,15 +117,18 @@ OSStoreNode *OSStore_GetFirstNode(OSStore *list)
 /* Get data from storage
  * Returns NULL if not present
  */
-void *OSStore_Get(OSStore *list, const char *key)
+void* OSStore_Get(OSStore* list, const char* key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
 
-    while (list->cur_node) {
-        if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0) {
+    while (list->cur_node)
+    {
+        if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0)
+        {
             /* Found */
-            if (chk_rc == 0) {
+            if (chk_rc == 0)
+            {
                 return (list->cur_node->data);
             }
 
@@ -135,14 +144,15 @@ void *OSStore_Get(OSStore *list, const char *key)
 /* Add data to the list
  * Returns 1 on success and 0 on failure
  */
-int OSStore_Put(OSStore *list, const char *key, void *data)
+int OSStore_Put(OSStore* list, const char* key, void* data)
 {
     int chk_rc;
-    OSStoreNode *newnode;
+    OSStoreNode* newnode;
 
     /* Allocate memory for new node */
-    newnode = (OSStoreNode *) calloc(1, sizeof(OSStoreNode));
-    if (!newnode) {
+    newnode = (OSStoreNode*)calloc(1, sizeof(OSStoreNode));
+    if (!newnode)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (0);
     }
@@ -151,7 +161,8 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
     newnode->next = NULL;
     newnode->data = data;
     newnode->key = strdup(key);
-    if (!newnode->key) {
+    if (!newnode->key)
+    {
         free(newnode);
         merror(MEM_ERROR, errno, strerror(errno));
         return (0);
@@ -159,27 +170,35 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
     newnode->key_size = strlen(key);
 
     /* If we don't have first node, assign it */
-    if (!list->first_node) {
+    if (!list->first_node)
+    {
         list->first_node = newnode;
         list->last_node = newnode;
     }
 
     /* Store the data in order */
-    else {
+    else
+    {
         list->cur_node = list->first_node;
-        while (list->cur_node) {
-            if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0) {
+        while (list->cur_node)
+        {
+            if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0)
+            {
                 /* Duplicate entry */
-                if (chk_rc == 0) {
+                if (chk_rc == 0)
+                {
                     free(newnode->key);
                     free(newnode);
                     return (1);
                 }
 
                 /* If there is no prev node, this is the first node */
-                if (list->cur_node->prev) {
+                if (list->cur_node->prev)
+                {
                     list->cur_node->prev->next = newnode;
-                } else {
+                }
+                else
+                {
                     list->first_node = newnode;
                 }
 
@@ -194,7 +213,8 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
         }
 
         /* New node is the higher key */
-        if (!newnode->next) {
+        if (!newnode->next)
+        {
             list->last_node->next = newnode;
             newnode->prev = list->last_node;
             list->last_node = newnode;

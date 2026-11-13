@@ -17,22 +17,24 @@
 #include "shared.h"
 
 /* setups/teardowns */
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
     return 0;
 }
 
-
 // Tests
 
-void test_md5_string(void **state) {
-    const char *string = "teststring";
-    const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
+void test_md5_string(void** state)
+{
+    const char* string = "teststring";
+    const char* string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
     os_md5 buffer;
 
     assert_int_equal(OS_MD5_Str(string, -1, buffer), 0);
@@ -40,9 +42,10 @@ void test_md5_string(void **state) {
     assert_string_equal(buffer, string_md5);
 }
 
-void test_md5_file(void **state) {
-    const char *string = "teststring";
-    const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
+void test_md5_file(void** state)
+{
+    const char* string = "teststring";
+    const char* string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
 
     char path[] = "path/to/file";
 
@@ -65,7 +68,8 @@ void test_md5_file(void **state) {
     assert_string_equal(buffer, string_md5);
 }
 
-void test_md5_file_fail(void **state) {
+void test_md5_file_fail(void** state)
+{
     char path[] = "path/to/non-existing/file";
 
     expect_value(__wrap_wfopen, path, path);
@@ -76,12 +80,13 @@ void test_md5_file_fail(void **state) {
     assert_int_equal(OS_MD5_File(path, buffer, OS_TEXT), -1);
 }
 
-void test_OS_MD5_File_null_path(void **state) {
+void test_OS_MD5_File_null_path(void** state)
+{
     os_md5 output;
 
     memset(output, '1', sizeof(output));
 
-    const char *volatile null_path = NULL;
+    const char* volatile null_path = NULL;
 
     int ret = OS_MD5_File(null_path, output, OS_BINARY);
 
@@ -92,13 +97,12 @@ void test_OS_MD5_File_null_path(void **state) {
     assert_memory_equal(output, expected, sizeof(output));
 }
 
-int main(void) {
-    const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_md5_string),
-        cmocka_unit_test_setup_teardown(test_md5_file, setup_group, teardown_group),
-        cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group),
-        cmocka_unit_test(test_OS_MD5_File_null_path)
-    };
+int main(void)
+{
+    const struct CMUnitTest tests[] = {cmocka_unit_test(test_md5_string),
+                                       cmocka_unit_test_setup_teardown(test_md5_file, setup_group, teardown_group),
+                                       cmocka_unit_test_setup_teardown(test_md5_file_fail, setup_group, teardown_group),
+                                       cmocka_unit_test(test_OS_MD5_File_null_path)};
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

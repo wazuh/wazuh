@@ -48,43 +48,34 @@
 #include <unistd.h>
 #include "processHelperMac.h"
 
-const std::string MAC_APPS_PATH{"/Applications"};
-const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
+const std::string MAC_APPS_PATH {"/Applications"};
+const std::string MAC_UTILITIES_PATH {"/Applications/Utilities"};
 constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
 
-static const std::vector<int> s_validFDSock =
-{
-    {
-        SOCKINFO_TCP,
-        SOCKINFO_IN
-    }
-};
+static const std::vector<int> s_validFDSock = {{SOCKINFO_TCP, SOCKINFO_IN}};
 
-static const std::map<std::string, int> s_mapPackagesDirectories =
-{
-    { "/Applications", PKG },
-    { "/System/Applications", PKG},
-    { "/System/Library/CoreServices", PKG},
-    { "/private/var/db/receipts", RCP},
-    { "/Library/Apple/System/Library/Receipts", RCP},
-    { "/usr/local/Cellar", BREW},
-    { "/opt/homebrew/Cellar", BREW},
-    { "/opt/local/var/macports/registry", MACPORTS}
-};
+static const std::map<std::string, int> s_mapPackagesDirectories = {{"/Applications", PKG},
+                                                                    {"/System/Applications", PKG},
+                                                                    {"/System/Library/CoreServices", PKG},
+                                                                    {"/private/var/db/receipts", RCP},
+                                                                    {"/Library/Apple/System/Library/Receipts", RCP},
+                                                                    {"/usr/local/Cellar", BREW},
+                                                                    {"/opt/homebrew/Cellar", BREW},
+                                                                    {"/opt/local/var/macports/registry", MACPORTS}};
 
 static mach_timebase_info_data_t getTimebase()
 {
-    mach_timebase_info_data_t tb{0, 0};
+    mach_timebase_info_data_t tb {0, 0};
     mach_timebase_info(&tb);
     return tb;
 }
 
 static uint64_t machTimeToClockTicks(const uint64_t machTicks)
 {
-    static const auto timebase { getTimebase() };
-    static const int64_t clkTck { sysconf(_SC_CLK_TCK) };
+    static const auto timebase {getTimebase()};
+    static const int64_t clkTck {sysconf(_SC_CLK_TCK)};
     return ProcessHelperMac::clockTicksFromMachTime(machTicks, timebase.numer, timebase.denom, clkTck);
 }
 
@@ -102,7 +93,8 @@ static int32_t getMainThreadRunState(const pid_t pid)
 
     struct proc_threadinfo threadInfo {};
 
-    if (proc_pidinfo(pid, PROC_PIDTHREADINFO, threadHandle, &threadInfo, PROC_PIDTHREADINFO_SIZE) != PROC_PIDTHREADINFO_SIZE)
+    if (proc_pidinfo(pid, PROC_PIDTHREADINFO, threadHandle, &threadInfo, PROC_PIDTHREADINFO_SIZE) !=
+        PROC_PIDTHREADINFO_SIZE)
     {
         return 0;
     }
@@ -134,22 +126,19 @@ static bool getProcessArgs(const pid_t pid, std::vector<char>& buffer, ProcessAr
 
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid, std::vector<char>& argsBuffer)
 {
-    nlohmann::json jsProcessInfo{};
-    jsProcessInfo["pid"]        = std::to_string(pid);
+    nlohmann::json jsProcessInfo {};
+    jsProcessInfo["pid"] = std::to_string(pid);
     // resolveProcessName() falls back to pbi_name, which the kernel cuts at a fixed byte
     // length and can split a multi-byte character on the way.
-    jsProcessInfo["name"]       = Utils::sanitizeUtf8(resolveProcessName(pid, taskInfo.pbsd.pbi_name));
-    jsProcessInfo["state"]      = ProcessHelperMac::getProcessState(taskInfo.pbsd.pbi_status, getMainThreadRunState(pid));
+    jsProcessInfo["name"] = Utils::sanitizeUtf8(resolveProcessName(pid, taskInfo.pbsd.pbi_name));
+    jsProcessInfo["state"] = ProcessHelperMac::getProcessState(taskInfo.pbsd.pbi_status, getMainThreadRunState(pid));
     jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
-    jsProcessInfo["utime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_user);
-    jsProcessInfo["stime"]      = machTimeToClockTicks(taskInfo.ptinfo.pti_total_system);
-    jsProcessInfo["start"]      = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));
+    jsProcessInfo["utime"] = machTimeToClockTicks(taskInfo.ptinfo.pti_total_user);
+    jsProcessInfo["stime"] = machTimeToClockTicks(taskInfo.ptinfo.pti_total_system);
+    jsProcessInfo["start"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));
 
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
-    const auto pathLen
-    {
-        proc_pidpath(pid, pathBuffer, sizeof(pathBuffer))
-    };
+    const auto pathLen {proc_pidpath(pid, pathBuffer, sizeof(pathBuffer))};
 
     ProcessArgs processArgs;
 
@@ -159,8 +148,8 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     const auto commandLine {buildProcessCommandLine(pathLen > 0 ? std::string(pathBuffer) : "", processArgs)};
 
     jsProcessInfo["command_line"] = commandLine.commandLine;
-    jsProcessInfo["args"]         = commandLine.args;
-    jsProcessInfo["args_count"]   = commandLine.argsCount;
+    jsProcessInfo["args"] = commandLine.args;
+    jsProcessInfo["args_count"] = commandLine.argsCount;
 
     return jsProcessInfo;
 }
@@ -168,29 +157,29 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
 nlohmann::json SysInfo::getHardware() const
 {
     nlohmann::json hardware;
-    FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_shared<OSHardwareWrapperMac<OsPrimitivesMac>>())->buildHardwareData(hardware);
+    FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(
+        std::make_shared<OSHardwareWrapperMac<OsPrimitivesMac>>())
+        ->buildHardwareData(hardware);
     return hardware;
 }
 
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json jsPackages;
-    getPackages([&jsPackages](nlohmann::json & package)
-    {
-        jsPackages.push_back(package);
-    });
+    getPackages([&jsPackages](nlohmann::json& package) { jsPackages.push_back(package); });
     return jsPackages;
 }
 
 nlohmann::json SysInfo::getProcessesInfo() const
 {
-    nlohmann::json jsProcessesList{};
+    nlohmann::json jsProcessesList {};
 
-    getProcessesInfo([&jsProcessesList](nlohmann::json & processInfo)
-    {
-        // Append the current json process object to the list of processes
-        jsProcessesList.push_back(processInfo);
-    });
+    getProcessesInfo(
+        [&jsProcessesList](nlohmann::json& processInfo)
+        {
+            // Append the current json process object to the list of processes
+            jsProcessesList.push_back(processInfo);
+        });
 
     return jsProcessesList;
 }
@@ -205,23 +194,18 @@ static bool isRunningOnRosetta()
      * If sysctl.proc_translated flag cannot be found, the current process is
      *  nativally running on x86_64.
      * Ref: https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment
-    */
+     */
     constexpr auto PROCESS_TRANSLATED {1};
     auto retVal {false};
-    auto isTranslated{0};
-    auto len{sizeof(isTranslated)};
-    const auto result{sysctlbyname("sysctl.proc_translated", &isTranslated, &len, NULL, 0)};
+    auto isTranslated {0};
+    auto len {sizeof(isTranslated)};
+    const auto result {sysctlbyname("sysctl.proc_translated", &isTranslated, &len, NULL, 0)};
 
     if (result)
     {
         if (errno != ENOENT)
         {
-            throw std::system_error
-            {
-                result,
-                std::system_category(),
-                "Error reading rosetta status."
-            };
+            throw std::system_error {result, std::system_category(), "Error reading rosetta status."};
         }
     }
     else
@@ -271,7 +255,7 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo
 
     try
     {
-        pids = listAllPids(OsPrimitivesMac{});
+        pids = listAllPids(OsPrimitivesMac {});
     }
     catch (const std::system_error&)
     {
@@ -286,28 +270,33 @@ static void getProcessesSocketFD(std::map<ProcessInfo, std::vector<socket_fdinfo
 
         if (proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &processInformation, PROC_PIDTBSDINFO_SIZE) != -1)
         {
-            const std::string processName { resolveProcessName(pid, processInformation.pbi_name) };
-            const ProcessInfo processData { pid, processName };
+            const std::string processName {resolveProcessName(pid, processInformation.pbi_name)};
+            const ProcessInfo processData {pid, processName};
 
-            const auto processFDBufferSize { proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0) };
+            const auto processFDBufferSize {proc_pidinfo(pid, PROC_PIDLISTFDS, 0, 0, 0)};
 
             if (processFDBufferSize != -1)
             {
-                auto processFDInformationBuffer { std::make_unique<char[]>(processFDBufferSize) };
+                auto processFDInformationBuffer {std::make_unique<char[]>(processFDBufferSize)};
 
                 if (proc_pidinfo(pid, PROC_PIDLISTFDS, 0, processFDInformationBuffer.get(), processFDBufferSize) != -1)
                 {
-                    auto processFDInformation { reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
+                    auto processFDInformation {reinterpret_cast<proc_fdinfo*>(processFDInformationBuffer.get())};
 
-                    for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j )
+                    for (auto j = 0ul; j < processFDBufferSize / PROC_PIDLISTFD_SIZE; ++j)
                     {
                         if (PROX_FDTYPE_SOCKET == processFDInformation[j].proc_fdtype)
                         {
                             socket_fdinfo socketInfo {};
 
-                            if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid, processFDInformation[j].proc_fd, PROC_PIDFDSOCKETINFO, &socketInfo, PROC_PIDFDSOCKETINFO_SIZE))
+                            if (PROC_PIDFDSOCKETINFO_SIZE == proc_pidfdinfo(pid,
+                                                                            processFDInformation[j].proc_fd,
+                                                                            PROC_PIDFDSOCKETINFO,
+                                                                            &socketInfo,
+                                                                            PROC_PIDFDSOCKETINFO_SIZE))
                             {
-                                if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) != s_validFDSock.end())
+                                if (std::find(s_validFDSock.begin(), s_validFDSock.end(), socketInfo.psi.soi_kind) !=
+                                    s_validFDSock.end())
                                 {
                                     processSocket[processData].push_back(socketInfo);
                                 }
@@ -346,11 +335,11 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
-    const auto pids { listAllPids(OsPrimitivesMac{}) };
+    const auto pids {listAllPids(OsPrimitivesMac {})};
 
     // Reused for every process; kern.argmax bounds the size of a process argument area.
-    int argMax{};
-    size_t len { sizeof(argMax) };
+    int argMax {};
+    size_t len {sizeof(argMax)};
     std::vector<char> argsBuffer;
 
     if (!sysctlbyname("kern.argmax", &argMax, &len, NULL, 0) && argMax > 0)
@@ -360,11 +349,8 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
     for (const auto pid : pids)
     {
-        ProcessTaskInfo taskInfo{};
-        const auto sizeTask
-        {
-            proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)
-        };
+        ProcessTaskInfo taskInfo {};
+        const auto sizeTask {proc_pidinfo(pid, PROC_PIDTASKALLINFO, 0, &taskInfo, PROC_PIDTASKALLINFO_SIZE)};
 
         if (PROC_PIDTASKALLINFO_SIZE == sizeTask)
         {
@@ -380,7 +366,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
     for (const auto& packageDirectory : s_mapPackagesDirectories)
     {
-        const auto pkgDirectory { packageDirectory.first };
+        const auto pkgDirectory {packageDirectory.first};
 
         try
         {
@@ -437,11 +423,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     }
 
     // Add all the unix default paths
-    std::set<std::string> pypyMacOSPaths =
-    {
-        UNIX_PYPI_DEFAULT_BASE_DIRS.begin(),
-        UNIX_PYPI_DEFAULT_BASE_DIRS.end()
-    };
+    std::set<std::string> pypyMacOSPaths = {UNIX_PYPI_DEFAULT_BASE_DIRS.begin(), UNIX_PYPI_DEFAULT_BASE_DIRS.end()};
 
     // Add macOS specific paths
     pypyMacOSPaths.emplace("/Library/Python/*/*-packages");
@@ -453,11 +435,8 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     pypyMacOSPaths.emplace("/System/Library/Frameworks/Python.framework/*-packages");
     pypyMacOSPaths.emplace("/opt/homebrew/lib/python*/*-packages");
 
-    static const std::map<std::string, std::set<std::string>> searchPaths =
-    {
-        {"PYPI", pypyMacOSPaths},
-        {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
-    };
+    static const std::map<std::string, std::set<std::string>> searchPaths = {{"PYPI", pypyMacOSPaths},
+                                                                             {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}};
     ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
@@ -493,7 +472,7 @@ nlohmann::json SysInfo::getGroups() const
     for (auto& group : collectedGroups)
     {
         nlohmann::json groupItem {};
-        const bool hasGid { group.contains("gid") };
+        const bool hasGid {group.contains("gid")};
 
         // A group resolvable only via OpenDirectory (see GroupsProvider::collect()) carries no
         // real GID. group_id/group_id_signed are BIGINT columns downstream (dbsync's
@@ -507,9 +486,14 @@ nlohmann::json SysInfo::getGroups() const
             groupItem["group_id_signed"] = group["gid_signed"];
         }
 
-        groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
-        groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty()) ? group["comment"] : UNKNOWN_VALUE;
-        groupItem["group_uuid"] = (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
+        groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty())
+                                      ? group["groupname"]
+                                      : UNKNOWN_VALUE;
+        groupItem["group_description"] = (group.contains("comment") && !group["comment"].get<std::string>().empty())
+                                             ? group["comment"]
+                                             : UNKNOWN_VALUE;
+        groupItem["group_uuid"] =
+            (group.contains("uuid") && !group["uuid"].get<std::string>().empty()) ? group["uuid"] : UNKNOWN_VALUE;
         groupItem["group_is_hidden"] = group["is_hidden"];
 
         // Obtain the users for this specific GID, when one is known
@@ -518,8 +502,7 @@ nlohmann::json SysInfo::getGroups() const
         if (hasGid)
         {
             auto gidStr = std::to_string(static_cast<gid_t>(group["gid"].get<int>()));
-            collectedUsersGroups = allUsersGroups.contains(gidStr) ?
-                                   allUsersGroups[gidStr] : nlohmann::json::array();
+            collectedUsersGroups = allUsersGroups.contains(gidStr) ? allUsersGroups[gidStr] : nlohmann::json::array();
         }
 
         if (collectedUsersGroups.empty())
@@ -528,7 +511,8 @@ nlohmann::json SysInfo::getGroups() const
         }
         else
         {
-            groupItem["group_users"] = Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), arraySeparator);
+            groupItem["group_users"] =
+                Utils::join(collectedUsersGroups.get<std::vector<std::string>>(), arraySeparator);
         }
 
         result.push_back(std::move(groupItem));
@@ -560,7 +544,9 @@ nlohmann::json SysInfo::getUsers() const
     {
         nlohmann::json userItem {};
 
-        std::string username = (user.contains("username") && !user["username"].get<std::string>().empty()) ? user["username"] : UNKNOWN_VALUE;
+        std::string username = (user.contains("username") && !user["username"].get<std::string>().empty())
+                                   ? user["username"]
+                                   : UNKNOWN_VALUE;
 
         userItem["user_id"] = user["uid"];
         userItem["user_full_name"] = user["description"];
@@ -596,7 +582,8 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_is_hidden"] = user["is_hidden"];
         userItem["user_created"] = creationTime > 0 ? Utils::rawTimestampToISO8601(creationTime) : UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = user["failed_login_count"];
-        userItem["user_auth_failed_timestamp"] = failedLoginTimestamp > 0 ? Utils::rawTimestampToISO8601(failedLoginTimestamp) : UNKNOWN_VALUE;
+        userItem["user_auth_failed_timestamp"] =
+            failedLoginTimestamp > 0 ? Utils::rawTimestampToISO8601(failedLoginTimestamp) : UNKNOWN_VALUE;
         // Macos or windows
         userItem["user_uuid"] = user["uuid"];
 
@@ -611,7 +598,7 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["host_ip"] = UNKNOWN_VALUE;
 
-        //TODO: Avoid this iteration, move logic to LoggedInUsersProvider
+        // TODO: Avoid this iteration, move logic to LoggedInUsersProvider
         for (auto& item : collectedLoggedInUser)
         {
             // tty,host,time and pid can take more than one value due to different logins.
@@ -636,8 +623,8 @@ nlohmann::json SysInfo::getUsers() const
                 if (!hostStr.empty())
                 {
                     userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
-                                          ? hostStr
-                                          : (userItem["host_ip"].get<std::string>() + arraySeparator + hostStr);
+                                              ? hostStr
+                                              : (userItem["host_ip"].get<std::string>() + arraySeparator + hostStr);
                 }
             }
         }
@@ -663,7 +650,7 @@ nlohmann::json SysInfo::getUsers() const
 
         if (user.contains("password_expiration_date"))
         {
-            const auto expirationTimestamp{user["password_expiration_date"].get<int64_t>()};
+            const auto expirationTimestamp {user["password_expiration_date"].get<int64_t>()};
 
             if (expirationTimestamp > 0)
             {
@@ -674,8 +661,8 @@ nlohmann::json SysInfo::getUsers() const
 
         userItem["user_password_inactive_days"] = NOT_COLLECTED_VALUE;
         userItem["user_password_max_days_between_changes"] = user.contains("password_max_days_between_changes")
-                                                             ? user["password_max_days_between_changes"]
-                                                             : nlohmann::json(NOT_COLLECTED_VALUE);
+                                                                 ? user["password_max_days_between_changes"]
+                                                                 : nlohmann::json(NOT_COLLECTED_VALUE);
         userItem["user_password_min_days_between_changes"] = NOT_COLLECTED_VALUE;
         userItem["user_password_warning_days_before_expiration"] = NOT_COLLECTED_VALUE;
 
@@ -683,7 +670,7 @@ nlohmann::json SysInfo::getUsers() const
 
         if (SudoersProvider::isUserSudoer(collectedSudoers, username, userGroupNames, sudoersUserAliases))
         {
-            //TODO: user_roles_sudo_sudo_rule_details has more detailed information.
+            // TODO: user_roles_sudo_sudo_rule_details has more detailed information.
             userItem["user_roles"] = "sudo";
         }
 
@@ -697,15 +684,15 @@ nlohmann::json SysInfo::getServices() const
 {
     nlohmann::json result = nlohmann::json::array();
 
-    LaunchdProvider servicesProvider{nullptr};
+    LaunchdProvider servicesProvider {nullptr};
     auto collectedServices = servicesProvider.collect();
 
     for (auto& svc : collectedServices)
     {
-        nlohmann::json serviceItem{};
+        nlohmann::json serviceItem {};
 
         // Convert string fields to int
-        auto stringToInt = [&svc](const std::string & fieldName) -> int
+        auto stringToInt = [&svc](const std::string& fieldName) -> int
         {
             if (svc.contains(fieldName))
             {
@@ -723,16 +710,16 @@ nlohmann::json SysInfo::getServices() const
             return 0;
         };
 
-        auto field = [&svc](const std::string & fieldName)
+        auto field = [&svc](const std::string& fieldName)
         {
-            return svc.value(fieldName, std::string{});
+            return svc.value(fieldName, std::string {});
         };
 
         // The provider renders plist booleans as the words "true"/"false", and as "0"/"1" when the
         // plist spells them as numbers. std::stoi parses neither vocabulary, so boolean-backed
         // fields go through this one normalization. An unrecognised spelling has no boolean
         // meaning, which includes LAUNCHD_UNEVALUATED_VALUE.
-        auto launchdBool = [](const std::string & value) -> std::optional<bool>
+        auto launchdBool = [](const std::string& value) -> std::optional<bool>
         {
             if (value == "true" || value == "1")
             {
@@ -748,12 +735,13 @@ nlohmann::json SysInfo::getServices() const
         };
 
         // ECS mapping based on the provided table
-        serviceItem["service_id"]           = (svc.contains("label") && !svc["label"].get<std::string>().empty()) ? svc["label"] : UNKNOWN_VALUE;
-        serviceItem["service_name"]         = svc.value("name",         UNKNOWN_VALUE);
-        serviceItem["service_description"]  = UNKNOWN_VALUE;
-        serviceItem["service_type"]         = svc.value("process_type", UNKNOWN_VALUE);
-        serviceItem["service_state"]        = UNKNOWN_VALUE;
-        serviceItem["service_sub_state"]    = UNKNOWN_VALUE;
+        serviceItem["service_id"] =
+            (svc.contains("label") && !svc["label"].get<std::string>().empty()) ? svc["label"] : UNKNOWN_VALUE;
+        serviceItem["service_name"] = svc.value("name", UNKNOWN_VALUE);
+        serviceItem["service_description"] = UNKNOWN_VALUE;
+        serviceItem["service_type"] = svc.value("process_type", UNKNOWN_VALUE);
+        serviceItem["service_state"] = UNKNOWN_VALUE;
+        serviceItem["service_sub_state"] = UNKNOWN_VALUE;
 
         // An unset Disabled key means enabled, which is the launchd default. Anything the
         // normalization above cannot read as a boolean, such as a feature flag conditional, is a
@@ -774,31 +762,32 @@ nlohmann::json SysInfo::getServices() const
             serviceItem["service_enabled"] = UNKNOWN_VALUE;
         }
 
-        serviceItem["service_start_type"]                    = svc.value("run_at_load",         UNKNOWN_VALUE);
-        serviceItem["service_restart"]                       = svc.value("keep_alive",          UNKNOWN_VALUE);
-        serviceItem["service_frequency"]                     = stringToInt("start_interval");
-        serviceItem["service_starts_on_mount"]               = launchdBool(field("start_on_mount")).value_or(false) ? 1 : 0;
-        serviceItem["service_starts_on_path_modified"]       = svc.value("watch_paths",         UNKNOWN_VALUE);
-        serviceItem["service_starts_on_not_empty_directory"] = svc.value("queue_directories",   UNKNOWN_VALUE);
-        serviceItem["service_inetd_compatibility"]           = launchdBool(field("inetd_compatibility")).value_or(false) ? 1 : 0;
-        serviceItem["process_pid"]                           = 0;
-        serviceItem["process_executable"]                    = svc.value("program",             UNKNOWN_VALUE);
-        serviceItem["process_args"]                          = svc.value("program_arguments",   UNKNOWN_VALUE);
-        serviceItem["process_user_name"]                     = svc.value("username",            UNKNOWN_VALUE);
-        serviceItem["process_group_name"]                    = svc.value("groupname",           UNKNOWN_VALUE);
-        serviceItem["process_working_directory"]             = svc.value("working_directory",   UNKNOWN_VALUE);
-        serviceItem["process_root_directory"]                = svc.value("root_directory",      UNKNOWN_VALUE);
-        serviceItem["file_path"]                             = (svc.contains("path") && !svc["path"].get<std::string>().empty()) ? svc["path"] : UNKNOWN_VALUE;
-        serviceItem["service_address"]                       = UNKNOWN_VALUE;
-        serviceItem["log_file_path"]                         = svc.value("stdout_path",         UNKNOWN_VALUE);
-        serviceItem["error_log_file_path"]                   = svc.value("stderr_path",         UNKNOWN_VALUE);
-        serviceItem["service_exit_code"]                     = 0;
-        serviceItem["service_win32_exit_code"]               = 0;
-        serviceItem["service_following"]                     = UNKNOWN_VALUE;
-        serviceItem["service_object_path"]                   = UNKNOWN_VALUE;
-        serviceItem["service_target_ephemeral_id"]           = 0;
-        serviceItem["service_target_type"]                   = UNKNOWN_VALUE;
-        serviceItem["service_target_address"]                = UNKNOWN_VALUE;
+        serviceItem["service_start_type"] = svc.value("run_at_load", UNKNOWN_VALUE);
+        serviceItem["service_restart"] = svc.value("keep_alive", UNKNOWN_VALUE);
+        serviceItem["service_frequency"] = stringToInt("start_interval");
+        serviceItem["service_starts_on_mount"] = launchdBool(field("start_on_mount")).value_or(false) ? 1 : 0;
+        serviceItem["service_starts_on_path_modified"] = svc.value("watch_paths", UNKNOWN_VALUE);
+        serviceItem["service_starts_on_not_empty_directory"] = svc.value("queue_directories", UNKNOWN_VALUE);
+        serviceItem["service_inetd_compatibility"] = launchdBool(field("inetd_compatibility")).value_or(false) ? 1 : 0;
+        serviceItem["process_pid"] = 0;
+        serviceItem["process_executable"] = svc.value("program", UNKNOWN_VALUE);
+        serviceItem["process_args"] = svc.value("program_arguments", UNKNOWN_VALUE);
+        serviceItem["process_user_name"] = svc.value("username", UNKNOWN_VALUE);
+        serviceItem["process_group_name"] = svc.value("groupname", UNKNOWN_VALUE);
+        serviceItem["process_working_directory"] = svc.value("working_directory", UNKNOWN_VALUE);
+        serviceItem["process_root_directory"] = svc.value("root_directory", UNKNOWN_VALUE);
+        serviceItem["file_path"] =
+            (svc.contains("path") && !svc["path"].get<std::string>().empty()) ? svc["path"] : UNKNOWN_VALUE;
+        serviceItem["service_address"] = UNKNOWN_VALUE;
+        serviceItem["log_file_path"] = svc.value("stdout_path", UNKNOWN_VALUE);
+        serviceItem["error_log_file_path"] = svc.value("stderr_path", UNKNOWN_VALUE);
+        serviceItem["service_exit_code"] = 0;
+        serviceItem["service_win32_exit_code"] = 0;
+        serviceItem["service_following"] = UNKNOWN_VALUE;
+        serviceItem["service_object_path"] = UNKNOWN_VALUE;
+        serviceItem["service_target_ephemeral_id"] = 0;
+        serviceItem["service_target_type"] = UNKNOWN_VALUE;
+        serviceItem["service_target_address"] = UNKNOWN_VALUE;
 
         result.push_back(std::move(serviceItem));
     }
@@ -818,10 +807,10 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
         for (auto& ext : collectedChromeExtensions)
         {
-            nlohmann::json extensionItem{};
+            nlohmann::json extensionItem {};
 
             // Convert string fields to int
-            auto stringToInt = [&ext](const std::string & fieldName) -> int
+            auto stringToInt = [&ext](const std::string& fieldName) -> int
             {
                 if (ext.contains(fieldName))
                 {
@@ -839,28 +828,38 @@ nlohmann::json SysInfo::getBrowserExtensions() const
                 return 0;
             };
 
-            extensionItem["browser_name"]              = (ext.contains("browser_type") && !ext["browser_type"].get<std::string>().empty()) ? ext["browser_type"] : UNKNOWN_VALUE;
-            extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
-            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
-            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
-            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
-            extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
-            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
-            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
-            extensionItem["browser_profile_name"]      = (ext.contains("profile") && !ext["profile"].get<std::string>().empty()) ? ext["profile"] : UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = (ext.contains("profile_path") && !ext["profile_path"].get<std::string>().empty()) ? ext["profile_path"] : UNKNOWN_VALUE;
-            extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
-            extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
-            extensionItem["package_type"]              = UNKNOWN_VALUE;
-            extensionItem["package_enabled"]            = (ext.value("state", std::string("1")) == "1") ? 1 : 0;
-            extensionItem["package_visible"]           = 0;
-            extensionItem["package_autoupdate"]        = 0;
-            extensionItem["package_persistent"]        = stringToInt("persistent");
-            extensionItem["package_from_webstore"]     = stringToInt("from_webstore");
+            extensionItem["browser_name"] =
+                (ext.contains("browser_type") && !ext["browser_type"].get<std::string>().empty()) ? ext["browser_type"]
+                                                                                                  : UNKNOWN_VALUE;
+            extensionItem["user_id"] =
+                (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
+            extensionItem["package_name"] =
+                (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"] = ext.value("identifier", UNKNOWN_VALUE);
+            extensionItem["package_version_"] = (ext.contains("version") && !ext["version"].get<std::string>().empty())
+                                                    ? ext["version"]
+                                                    : UNKNOWN_VALUE;
+            extensionItem["package_description"] = ext.value("description", UNKNOWN_VALUE);
+            extensionItem["package_vendor"] = ext.value("author", UNKNOWN_VALUE);
+            extensionItem["package_build_version"] = UNKNOWN_VALUE;
+            extensionItem["package_path"] = ext.value("path", UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"] =
+                (ext.contains("profile") && !ext["profile"].get<std::string>().empty()) ? ext["profile"]
+                                                                                        : UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"] =
+                (ext.contains("profile_path") && !ext["profile_path"].get<std::string>().empty()) ? ext["profile_path"]
+                                                                                                  : UNKNOWN_VALUE;
+            extensionItem["package_reference"] = ext.value("update_url", UNKNOWN_VALUE);
+            extensionItem["package_permissions"] = ext.value("permissions", UNKNOWN_VALUE);
+            extensionItem["package_type"] = UNKNOWN_VALUE;
+            extensionItem["package_enabled"] = (ext.value("state", std::string("1")) == "1") ? 1 : 0;
+            extensionItem["package_visible"] = 0;
+            extensionItem["package_autoupdate"] = 0;
+            extensionItem["package_persistent"] = stringToInt("persistent");
+            extensionItem["package_from_webstore"] = stringToInt("from_webstore");
             extensionItem["browser_profile_referenced"] = stringToInt("referenced");
-            extensionItem["package_installed"]         = ext.value("install_timestamp",  UNKNOWN_VALUE);
-            extensionItem["file_hash_sha256"]          = ext.value("manifest_hash",      UNKNOWN_VALUE);
+            extensionItem["package_installed"] = ext.value("install_timestamp", UNKNOWN_VALUE);
+            extensionItem["file_hash_sha256"] = ext.value("manifest_hash", UNKNOWN_VALUE);
 
             result.push_back(std::move(extensionItem));
         }
@@ -878,30 +877,34 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
         for (auto& ext : collectedSafariExtensions)
         {
-            nlohmann::json extensionItem{};
+            nlohmann::json extensionItem {};
 
-            extensionItem["browser_name"]              = "safari";
-            extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
-            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
-            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
-            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
-            extensionItem["package_vendor"]            = ext.value("copyright",           UNKNOWN_VALUE);
-            extensionItem["package_build_version"]     = ext.value("bundle_version",      UNKNOWN_VALUE);
-            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
-            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
-            extensionItem["package_reference"]         = UNKNOWN_VALUE;
-            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
-            extensionItem["package_type"]              = UNKNOWN_VALUE;
-            extensionItem["package_enabled"]           = 1;
-            extensionItem["package_visible"]            = 0;
-            extensionItem["package_autoupdate"]        = 0;
-            extensionItem["package_persistent"]        = 0;
-            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_name"] = "safari";
+            extensionItem["user_id"] =
+                (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
+            extensionItem["package_name"] =
+                (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"] = ext.value("identifier", UNKNOWN_VALUE);
+            extensionItem["package_version_"] = (ext.contains("version") && !ext["version"].get<std::string>().empty())
+                                                    ? ext["version"]
+                                                    : UNKNOWN_VALUE;
+            extensionItem["package_description"] = ext.value("description", UNKNOWN_VALUE);
+            extensionItem["package_vendor"] = ext.value("copyright", UNKNOWN_VALUE);
+            extensionItem["package_build_version"] = ext.value("bundle_version", UNKNOWN_VALUE);
+            extensionItem["package_path"] = ext.value("path", UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"] = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"] = UNKNOWN_VALUE;
+            extensionItem["package_reference"] = UNKNOWN_VALUE;
+            extensionItem["package_permissions"] = UNKNOWN_VALUE;
+            extensionItem["package_type"] = UNKNOWN_VALUE;
+            extensionItem["package_enabled"] = 1;
+            extensionItem["package_visible"] = 0;
+            extensionItem["package_autoupdate"] = 0;
+            extensionItem["package_persistent"] = 0;
+            extensionItem["package_from_webstore"] = 0;
             extensionItem["browser_profile_referenced"] = 0;
-            extensionItem["package_installed"]         = UNKNOWN_VALUE;
-            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+            extensionItem["package_installed"] = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"] = UNKNOWN_VALUE;
 
             result.push_back(std::move(extensionItem));
         }
@@ -919,30 +922,34 @@ nlohmann::json SysInfo::getBrowserExtensions() const
 
         for (auto& ext : collectedFirefoxExtensions)
         {
-            nlohmann::json extensionItem{};
+            nlohmann::json extensionItem {};
 
-            extensionItem["browser_name"]              = "firefox";
-            extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
-            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
-            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
-            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
-            extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
-            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
-            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
-            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
-            extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
-            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
-            extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
-            extensionItem["package_enabled"]           = ext["disabled"].get<bool>() ? 0 : 1;
-            extensionItem["package_visible"]            = ext["visible"].get<bool>() ? 1 : 0;
-            extensionItem["package_autoupdate"]        = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>()) ? 1 : 0;
-            extensionItem["package_persistent"]        = 0;
-            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_name"] = "firefox";
+            extensionItem["user_id"] =
+                (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
+            extensionItem["package_name"] =
+                (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"] = ext.value("identifier", UNKNOWN_VALUE);
+            extensionItem["package_version_"] = (ext.contains("version") && !ext["version"].get<std::string>().empty())
+                                                    ? ext["version"]
+                                                    : UNKNOWN_VALUE;
+            extensionItem["package_description"] = ext.value("description", UNKNOWN_VALUE);
+            extensionItem["package_vendor"] = ext.value("creator", UNKNOWN_VALUE);
+            extensionItem["package_build_version"] = UNKNOWN_VALUE;
+            extensionItem["package_path"] = ext.value("path", UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"] = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"] = UNKNOWN_VALUE;
+            extensionItem["package_reference"] = ext.value("source_url", UNKNOWN_VALUE);
+            extensionItem["package_permissions"] = UNKNOWN_VALUE;
+            extensionItem["package_type"] = ext.value("type", UNKNOWN_VALUE);
+            extensionItem["package_enabled"] = ext["disabled"].get<bool>() ? 0 : 1;
+            extensionItem["package_visible"] = ext["visible"].get<bool>() ? 1 : 0;
+            extensionItem["package_autoupdate"] = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>()) ? 1 : 0;
+            extensionItem["package_persistent"] = 0;
+            extensionItem["package_from_webstore"] = 0;
             extensionItem["browser_profile_referenced"] = 0;
-            extensionItem["package_installed"]         = UNKNOWN_VALUE;
-            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+            extensionItem["package_installed"] = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"] = UNKNOWN_VALUE;
 
             result.push_back(std::move(extensionItem));
         }

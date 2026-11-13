@@ -53,53 +53,52 @@ TEST_P(OutcomeClassifierTable, ClassifiesAsExpected)
     EXPECT_EQ(param.expected, classifyOutcome(makeResponse(param.status, param.httpCode)));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    D9Table,
-    OutcomeClassifierTable,
-    ::testing::Values(
-        // Success family.
-        ClassifierCase {TransportStatus::Ok, 200, OutcomeClass::Ok},
-        ClassifierCase {TransportStatus::Ok, 201, OutcomeClass::Ok},
-        ClassifierCase {TransportStatus::Ok, 299, OutcomeClass::Ok},
-        // Transport errors: retryable AND the confirmed-disconnect class that
-        // arms the producer pause. TlsFail is deliberately in here too: no HTTP
-        // status arrived, so the manager did not answer -- including a TlsFail
-        // CurlPerformer's verify_mode=system fallback (#39123) already decided was
-        // not eligible (a classified hostname/date failure, or no fallback path
-        // configured) or had already exhausted; CurlPerformer resolves the
-        // retry-eligible case before a response ever gets here.
-        ClassifierCase {TransportStatus::Timeout, 0, OutcomeClass::Unreachable},
-        ClassifierCase {TransportStatus::ConnectFail, 0, OutcomeClass::Unreachable},
-        ClassifierCase {TransportStatus::TlsFail, 0, OutcomeClass::Unreachable},
-        ClassifierCase {TransportStatus::OtherError, 0, OutcomeClass::Unreachable},
-        // Auth: 401 only. 403 is not an auth code in the final contract; as a
-        // non-contract intermediary code it is transient, so events are kept.
-        ClassifierCase {TransportStatus::Ok, 401, OutcomeClass::AuthFail},
-        ClassifierCase {TransportStatus::Ok, 403, OutcomeClass::ServerError},
-        // Version rejection: 409 Conflict per the #37733 /control contract.
-        // 426 was the superseded #37732 proposal; now a transient intermediary
-        // code rather than a batch-dropping Permanent.
-        ClassifierCase {TransportStatus::Ok, 409, OutcomeClass::VersionRejected},
-        ClassifierCase {TransportStatus::Ok, 426, OutcomeClass::ServerError},
-        // Back-pressure signals.
-        ClassifierCase {TransportStatus::Ok, 429, OutcomeClass::BackPressure},
-        ClassifierCase {TransportStatus::Ok, 503, OutcomeClass::BackPressure},
-        // Retryable but NOT a disconnect: an HTTP status came back, so something
-        // answered. 503 is BackPressure above; 403/426 share this class.
-        ClassifierCase {TransportStatus::Ok, 500, OutcomeClass::ServerError},
-        ClassifierCase {TransportStatus::Ok, 502, OutcomeClass::ServerError},
-        ClassifierCase {TransportStatus::Ok, 504, OutcomeClass::ServerError},
-        // 413: the /stateless split-and-resend class (#37835), distinct from
-        // the generic permanent drop.
-        ClassifierCase {TransportStatus::Ok, 413, OutcomeClass::PayloadTooLarge},
-        // 415: the manager rejects Content-Encoding: zstd --
-        // RetrySender retries once, uncompressed.
-        ClassifierCase {TransportStatus::Ok, 415, OutcomeClass::CompressionRejected},
-        // Permanent for this payload.
-        ClassifierCase {TransportStatus::Ok, 400, OutcomeClass::Permanent},
-        // 404 is NOT Permanent: nothing at the target says nothing about the
-        // payload, so the two classes get opposite treatment downstream.
-        ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::RouteNotFound}));
+INSTANTIATE_TEST_SUITE_P(D9Table,
+                         OutcomeClassifierTable,
+                         ::testing::Values(
+                             // Success family.
+                             ClassifierCase {TransportStatus::Ok, 200, OutcomeClass::Ok},
+                             ClassifierCase {TransportStatus::Ok, 201, OutcomeClass::Ok},
+                             ClassifierCase {TransportStatus::Ok, 299, OutcomeClass::Ok},
+                             // Transport errors: retryable AND the confirmed-disconnect class that
+                             // arms the producer pause. TlsFail is deliberately in here too: no HTTP
+                             // status arrived, so the manager did not answer -- including a TlsFail
+                             // CurlPerformer's verify_mode=system fallback (#39123) already decided was
+                             // not eligible (a classified hostname/date failure, or no fallback path
+                             // configured) or had already exhausted; CurlPerformer resolves the
+                             // retry-eligible case before a response ever gets here.
+                             ClassifierCase {TransportStatus::Timeout, 0, OutcomeClass::Unreachable},
+                             ClassifierCase {TransportStatus::ConnectFail, 0, OutcomeClass::Unreachable},
+                             ClassifierCase {TransportStatus::TlsFail, 0, OutcomeClass::Unreachable},
+                             ClassifierCase {TransportStatus::OtherError, 0, OutcomeClass::Unreachable},
+                             // Auth: 401 only. 403 is not an auth code in the final contract; as a
+                             // non-contract intermediary code it is transient, so events are kept.
+                             ClassifierCase {TransportStatus::Ok, 401, OutcomeClass::AuthFail},
+                             ClassifierCase {TransportStatus::Ok, 403, OutcomeClass::ServerError},
+                             // Version rejection: 409 Conflict per the #37733 /control contract.
+                             // 426 was the superseded #37732 proposal; now a transient intermediary
+                             // code rather than a batch-dropping Permanent.
+                             ClassifierCase {TransportStatus::Ok, 409, OutcomeClass::VersionRejected},
+                             ClassifierCase {TransportStatus::Ok, 426, OutcomeClass::ServerError},
+                             // Back-pressure signals.
+                             ClassifierCase {TransportStatus::Ok, 429, OutcomeClass::BackPressure},
+                             ClassifierCase {TransportStatus::Ok, 503, OutcomeClass::BackPressure},
+                             // Retryable but NOT a disconnect: an HTTP status came back, so something
+                             // answered. 503 is BackPressure above; 403/426 share this class.
+                             ClassifierCase {TransportStatus::Ok, 500, OutcomeClass::ServerError},
+                             ClassifierCase {TransportStatus::Ok, 502, OutcomeClass::ServerError},
+                             ClassifierCase {TransportStatus::Ok, 504, OutcomeClass::ServerError},
+                             // 413: the /stateless split-and-resend class (#37835), distinct from
+                             // the generic permanent drop.
+                             ClassifierCase {TransportStatus::Ok, 413, OutcomeClass::PayloadTooLarge},
+                             // 415: the manager rejects Content-Encoding: zstd --
+                             // RetrySender retries once, uncompressed.
+                             ClassifierCase {TransportStatus::Ok, 415, OutcomeClass::CompressionRejected},
+                             // Permanent for this payload.
+                             ClassifierCase {TransportStatus::Ok, 400, OutcomeClass::Permanent},
+                             // 404 is NOT Permanent: nothing at the target says nothing about the
+                             // payload, so the two classes get opposite treatment downstream.
+                             ClassifierCase {TransportStatus::Ok, 404, OutcomeClass::RouteNotFound}));
 
 // A reply whose body couldn't be decoded still came with its status (#38514). An error reply is
 // judged by it, as it would be had nothing been offered; a 2xx is no success without its body.
@@ -148,8 +147,7 @@ inline void PrintTo(const CertVerificationCase& value, std::ostream* stream)
 {
     *stream << "status=" << static_cast<int>(value.status) << " kind=" << static_cast<int>(value.kind)
             << " depth0Failed=" << value.depth0VerificationFailed
-            << " chainAboveDepth0=" << value.chainTrustRejectedAboveDepth0
-            << " expected=" << value.expected;
+            << " chainAboveDepth0=" << value.chainTrustRejectedAboveDepth0 << " expected=" << value.expected;
 }
 
 class IsCertificateVerificationFailureTable : public ::testing::TestWithParam<CertVerificationCase>

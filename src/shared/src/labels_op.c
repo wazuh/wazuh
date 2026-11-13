@@ -11,24 +11,34 @@
 #include "shared.h"
 
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
-wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, label_flags_t flags, int overwrite) {
+wlabel_t*
+labels_add(wlabel_t* labels, size_t* size, const char* key, const char* value, label_flags_t flags, int overwrite)
+{
     size_t i;
 
-    if (overwrite) {
-        for (i = 0; labels && labels[i].key; i++) {
-            if (!strcmp(labels[i].key, key)) {
+    if (overwrite)
+    {
+        for (i = 0; labels && labels[i].key; i++)
+        {
+            if (!strcmp(labels[i].key, key))
+            {
                 break;
             }
         }
-    } else {
+    }
+    else
+    {
         i = *size;
     }
 
-    if (!labels || i == *size) {
+    if (!labels || i == *size)
+    {
         os_realloc(labels, (*size + 2) * sizeof(wlabel_t), labels);
         labels[(*size)++].key = strdup(key);
         memset(labels + *size, 0, sizeof(wlabel_t));
-    } else if (labels) {
+    }
+    else if (labels)
+    {
         free(labels[i].value);
     }
 
@@ -39,11 +49,14 @@ wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const cha
 }
 
 /* Free label array */
-void labels_free(wlabel_t *labels) {
+void labels_free(wlabel_t* labels)
+{
     int i;
 
-    if (labels) {
-        for (i = 0; labels[i].key != NULL; i++) {
+    if (labels)
+    {
+        for (i = 0; labels[i].key != NULL; i++)
+        {
             free(labels[i].key);
             free(labels[i].value);
         }

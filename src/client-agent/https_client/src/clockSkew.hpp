@@ -56,8 +56,7 @@ inline std::int64_t correctClockFromServerDate(IClock& clock, std::time_t server
         return 0; // No Date captured/parsed: nothing to measure skew against.
     }
 
-    const auto delta =
-        static_cast<std::int64_t>(serverDateSeconds) - static_cast<std::int64_t>(clock.wallSeconds());
+    const auto delta = static_cast<std::int64_t>(serverDateSeconds) - static_cast<std::int64_t>(clock.wallSeconds());
 
     if (std::abs(delta) < kSkewNoiseFloorSeconds)
     {

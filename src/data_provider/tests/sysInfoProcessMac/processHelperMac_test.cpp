@@ -25,9 +25,9 @@ TEST(ProcessHelperMacTest, clockTicksFromMachTimeZeroAndInvalid)
 TEST(ProcessHelperMacTest, clockTicksFromMachTimeIntel)
 {
     // Intel: 1:1 timebase ratio (1 tick = 1 nanosecond)
-    constexpr uint32_t numer { 1 };
-    constexpr uint32_t denom { 1 };
-    constexpr int64_t clkTck { 100 }; // 100 ticks per second (10 ms per tick)
+    constexpr uint32_t numer {1};
+    constexpr uint32_t denom {1};
+    constexpr int64_t clkTck {100}; // 100 ticks per second (10 ms per tick)
 
     // 10 milliseconds = 10,000,000 nanoseconds -> 1 clock tick
     EXPECT_EQ(1ULL, ProcessHelperMac::clockTicksFromMachTime(10'000'000ULL, numer, denom, clkTck));
@@ -45,9 +45,9 @@ TEST(ProcessHelperMacTest, clockTicksFromMachTimeIntel)
 TEST(ProcessHelperMacTest, clockTicksFromMachTimeAppleSilicon)
 {
     // Apple Silicon (ARM64): 24 MHz counter -> 1 tick = 125 / 3 nanoseconds
-    constexpr uint32_t numer { 125 };
-    constexpr uint32_t denom { 3 };
-    constexpr int64_t clkTck { 100 };
+    constexpr uint32_t numer {125};
+    constexpr uint32_t denom {3};
+    constexpr int64_t clkTck {100};
 
     // 24,000,000 ticks = 1 second -> 100 clock ticks
     EXPECT_EQ(100ULL, ProcessHelperMac::clockTicksFromMachTime(24'000'000ULL, numer, denom, clkTck));
@@ -63,13 +63,13 @@ TEST(ProcessHelperMacTest, clockTicksFromMachTimeLargeValuesNoOverflow)
 {
     // 100 days of continuous process CPU time on Apple Silicon (24 MHz)
     // 100 days = 8,640,000 seconds = 207,360,000,000,000 mach ticks
-    constexpr uint64_t hundredDaysTicks { 207'360'000'000'000ULL };
-    constexpr uint32_t numer { 125 };
-    constexpr uint32_t denom { 3 };
-    constexpr int64_t clkTck { 100 };
+    constexpr uint64_t hundredDaysTicks {207'360'000'000'000ULL};
+    constexpr uint32_t numer {125};
+    constexpr uint32_t denom {3};
+    constexpr int64_t clkTck {100};
 
     // Expected: 8,640,000 seconds * 100 ticks/sec = 864,000,000 clock ticks
-    constexpr uint64_t expectedTicks { 864'000'000ULL };
+    constexpr uint64_t expectedTicks {864'000'000ULL};
     EXPECT_EQ(expectedTicks, ProcessHelperMac::clockTicksFromMachTime(hundredDaysTicks, numer, denom, clkTck));
 }
 

@@ -30,7 +30,6 @@
  * @param buffer_size Size of output_buffer
  * @return true on success with output_buffer populated, false on failure
  */
-bool w_query_agentd(const char* log_tag, const char* command,
-                    char* output_buffer, size_t buffer_size);
+bool w_query_agentd(const char* log_tag, const char* command, char* output_buffer, size_t buffer_size);
 
 #endif /* AGENTD_QUERY_H */

@@ -79,9 +79,10 @@ namespace sca
 
             if (check.contains("reason"))
             {
-                const auto& reason = check["reason"].is_string()
-                                     ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
-                                     : std::string {};
+                const auto& reason =
+                    check["reason"].is_string()
+                        ? sca::SanitizeReason(check["reason"].get<std::string>(), sca::REASON_MAX_LENGTH)
+                        : std::string {};
 
                 if (reason.empty())
                 {
@@ -142,12 +143,12 @@ namespace sca
             const std::string escapedPolicyId = escapeSqlString(policyId);
             const std::string filter = "WHERE id = '" + escapedPolicyId + "'";
             auto selectQuery = SelectQuery::builder()
-                               .table("sca_policy")
-                               .columnList({"id", "name", "description", "file", "refs"})
-                               .rowFilter(filter)
-                               .build();
+                                   .table("sca_policy")
+                                   .columnList({"id", "name", "description", "file", "refs"})
+                                   .rowFilter(filter)
+                                   .build();
 
-            const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+            const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
             {
                 if (returnTypeCallback == SELECTED)
                 {

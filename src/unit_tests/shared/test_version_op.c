@@ -22,12 +22,14 @@
 #include "version_op.h"
 
 /* setup/teardowns */
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
     return 0;
 }
@@ -35,18 +37,18 @@ static int teardown_group(void **state) {
 /* tests */
 
 #ifdef __linux__
-static int delete_os_info(void **state)
+static int delete_os_info(void** state)
 {
-    os_info *data = *state;
+    os_info* data = *state;
     free_osinfo(data);
     return 0;
 }
 
 // Linux Only
-void test_get_unix_version_Ubuntu1904(void **state)
+void test_get_unix_version_Ubuntu1904(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -80,10 +82,10 @@ void test_get_unix_version_Ubuntu1904(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_centos(void **state)
+void test_get_unix_version_centos(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -132,10 +134,10 @@ void test_get_unix_version_centos(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_archlinux_distro_based(void **state)
+void test_get_unix_version_archlinux_distro_based(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -188,10 +190,10 @@ void test_get_unix_version_archlinux_distro_based(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_archlinux_no_version_id(void **state)
+void test_get_unix_version_archlinux_no_version_id(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -218,10 +220,10 @@ void test_get_unix_version_archlinux_no_version_id(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_archlinux(void **state)
+void test_get_unix_version_archlinux(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -250,10 +252,10 @@ void test_get_unix_version_archlinux(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_opensuse_tumbleweed_no_version_id(void **state)
+void test_get_unix_version_opensuse_tumbleweed_no_version_id(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -280,10 +282,10 @@ void test_get_unix_version_opensuse_tumbleweed_no_version_id(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_opensuse_tumbleweed(void **state)
+void test_get_unix_version_opensuse_tumbleweed(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -312,10 +314,10 @@ void test_get_unix_version_opensuse_tumbleweed(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_sles_service_pack(void **state)
+void test_get_unix_version_sles_service_pack(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -348,10 +350,10 @@ void test_get_unix_version_sles_service_pack(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_sles_service_pack_sp7(void **state)
+void test_get_unix_version_sles_service_pack_sp7(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -384,10 +386,10 @@ void test_get_unix_version_sles_service_pack_sp7(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_sles_service_pack_12_sp5(void **state)
+void test_get_unix_version_sles_service_pack_12_sp5(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -420,10 +422,10 @@ void test_get_unix_version_sles_service_pack_12_sp5(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_sled_service_pack(void **state)
+void test_get_unix_version_sled_service_pack(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -456,10 +458,10 @@ void test_get_unix_version_sled_service_pack(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_sles_service_pack_lowercase(void **state)
+void test_get_unix_version_sles_service_pack_lowercase(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -490,10 +492,10 @@ void test_get_unix_version_sles_service_pack_lowercase(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_sles_service_pack_extra_suffix(void **state)
+void test_get_unix_version_sles_service_pack_extra_suffix(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -522,10 +524,10 @@ void test_get_unix_version_sles_service_pack_extra_suffix(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_sles_no_service_pack(void **state)
+void test_get_unix_version_sles_no_service_pack(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -556,10 +558,10 @@ void test_get_unix_version_sles_no_service_pack(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_opensuse_leap_unaffected(void **state)
+void test_get_unix_version_opensuse_leap_unaffected(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -592,10 +594,10 @@ void test_get_unix_version_opensuse_leap_unaffected(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_rhcos_rhel_version(void **state)
+void test_get_unix_version_rhcos_rhel_version(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -639,10 +641,10 @@ void test_get_unix_version_rhcos_rhel_version(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_rhcos_rhel_version_quoted(void **state)
+void test_get_unix_version_rhcos_rhel_version_quoted(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -678,10 +680,10 @@ void test_get_unix_version_rhcos_rhel_version_quoted(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_rhcos_rhel_version_major_only(void **state)
+void test_get_unix_version_rhcos_rhel_version_major_only(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -715,10 +717,10 @@ void test_get_unix_version_rhcos_rhel_version_major_only(void **state)
     assert_string_equal(ret->os_platform, "rhcos");
 }
 
-void test_get_unix_version_rhcos_no_rhel_version(void **state)
+void test_get_unix_version_rhcos_no_rhel_version(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -750,10 +752,10 @@ void test_get_unix_version_rhcos_no_rhel_version(void **state)
     assert_string_equal(ret->os_platform, "rhcos");
 }
 
-void test_get_unix_version_rhcos_empty_rhel_version(void **state)
+void test_get_unix_version_rhcos_empty_rhel_version(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -785,10 +787,10 @@ void test_get_unix_version_rhcos_empty_rhel_version(void **state)
     assert_string_equal(ret->os_platform, "rhcos");
 }
 
-void test_get_unix_version_rhcos_invalid_rhel_version(void **state)
+void test_get_unix_version_rhcos_invalid_rhel_version(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -820,10 +822,10 @@ void test_get_unix_version_rhcos_invalid_rhel_version(void **state)
     assert_string_equal(ret->os_platform, "rhcos");
 }
 
-void test_get_unix_version_rhel_version_ignored_other_platform(void **state)
+void test_get_unix_version_rhel_version_ignored_other_platform(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -858,10 +860,10 @@ void test_get_unix_version_rhel_version_ignored_other_platform(void **state)
     assert_string_equal(ret->os_platform, "rhel");
 }
 
-void test_get_unix_version_alpine(void **state)
+void test_get_unix_version_alpine(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -899,10 +901,10 @@ void test_get_unix_version_alpine(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_centos(void **state)
+void test_get_unix_version_fail_os_release_centos(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -937,10 +939,10 @@ void test_get_unix_version_fail_os_release_centos(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_fedora(void **state)
+void test_get_unix_version_fail_os_release_fedora(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -979,10 +981,10 @@ void test_get_unix_version_fail_os_release_fedora(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_redhat_centos(void **state)
+void test_get_unix_version_fail_os_release_redhat_centos(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1027,10 +1029,10 @@ void test_get_unix_version_fail_os_release_redhat_centos(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_redhat_fedora(void **state)
+void test_get_unix_version_fail_os_release_redhat_fedora(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1075,10 +1077,10 @@ void test_get_unix_version_fail_os_release_redhat_fedora(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_redhat_rhel(void **state)
+void test_get_unix_version_fail_os_release_redhat_rhel(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1123,10 +1125,10 @@ void test_get_unix_version_fail_os_release_redhat_rhel(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_redhat_rhel_server(void **state)
+void test_get_unix_version_fail_os_release_redhat_rhel_server(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1171,10 +1173,10 @@ void test_get_unix_version_fail_os_release_redhat_rhel_server(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_ubuntu(void **state)
+void test_get_unix_version_fail_os_release_ubuntu(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1239,10 +1241,10 @@ void test_get_unix_version_fail_os_release_ubuntu(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_gentoo(void **state)
+void test_get_unix_version_fail_os_release_gentoo(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1297,10 +1299,10 @@ void test_get_unix_version_fail_os_release_gentoo(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_suse(void **state)
+void test_get_unix_version_fail_os_release_suse(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1359,10 +1361,10 @@ void test_get_unix_version_fail_os_release_suse(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_arch(void **state)
+void test_get_unix_version_fail_os_release_arch(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1412,10 +1414,10 @@ void test_get_unix_version_fail_os_release_arch(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_debian(void **state)
+void test_get_unix_version_fail_os_release_debian(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1485,10 +1487,10 @@ void test_get_unix_version_fail_os_release_debian(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_slackware(void **state)
+void test_get_unix_version_fail_os_release_slackware(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1563,10 +1565,10 @@ void test_get_unix_version_fail_os_release_slackware(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_alpine(void **state)
+void test_get_unix_version_fail_os_release_alpine(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1647,10 +1649,10 @@ void test_get_unix_version_fail_os_release_alpine(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_uname_darwin(void **state)
+void test_get_unix_version_fail_os_release_uname_darwin(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -1713,7 +1715,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_wfopen, 0);
 
     // uname
-    char *uname_path = NULL;
+    char* uname_path = NULL;
     os_strdup("/path/to/uname", uname_path);
     expect_string(__wrap_get_binary_path, command, "uname");
     will_return(__wrap_get_binary_path, uname_path);
@@ -1727,7 +1729,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_fgets, "Darwin\n");
 
     // system_profiler SPSoftwareDataType
-    char *system_profiler_path = NULL;
+    char* system_profiler_path = NULL;
     os_strdup("/path/to/system_profiler", system_profiler_path);
     expect_string(__wrap_get_binary_path, command, "system_profiler");
     will_return(__wrap_get_binary_path, system_profiler_path);
@@ -1756,7 +1758,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
-    char *sw_vers_path = NULL;
+    char* sw_vers_path = NULL;
     os_strdup("/path/to/sw_vers", sw_vers_path);
     expect_string(__wrap_get_binary_path, command, "sw_vers");
     will_return(__wrap_get_binary_path, sw_vers_path);
@@ -1794,7 +1796,6 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
-
     expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
@@ -1812,22 +1813,32 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
 
 /* Feed the mocks needed to reach the macOS branch of get_unix_version(), so the caller only has to
  * provide the sw_vers product version and the uname -r output under test. */
-static void expect_darwin_version_calls(const char *product_version, const char *kernel_release)
+static void expect_darwin_version_calls(const char* product_version, const char* kernel_release)
 {
-    static const char *RELEASE_FILES[] = {
-        "/etc/os-release", "/usr/lib/os-release", "/etc/centos-release", "/etc/fedora-release",
-        "/etc/redhat-release", "/etc/arch-release", "/etc/gentoo-release", "/etc/SuSE-release",
-        "/etc/lsb-release", "/etc/debian_version", "/etc/slackware-version", "/etc/alpine-release",
+    static const char* RELEASE_FILES[] = {
+        "/etc/os-release",
+        "/usr/lib/os-release",
+        "/etc/centos-release",
+        "/etc/fedora-release",
+        "/etc/redhat-release",
+        "/etc/arch-release",
+        "/etc/gentoo-release",
+        "/etc/SuSE-release",
+        "/etc/lsb-release",
+        "/etc/debian_version",
+        "/etc/slackware-version",
+        "/etc/alpine-release",
     };
 
-    for (unsigned i = 0; i < sizeof(RELEASE_FILES) / sizeof(char *); i++) {
+    for (unsigned i = 0; i < sizeof(RELEASE_FILES) / sizeof(char*); i++)
+    {
         expect_string(__wrap_wfopen, path, RELEASE_FILES[i]);
         expect_string(__wrap_wfopen, mode, "r");
         will_return(__wrap_wfopen, 0);
     }
 
     // uname
-    char *uname_path = NULL;
+    char* uname_path = NULL;
     os_strdup("/path/to/uname", uname_path);
     expect_string(__wrap_get_binary_path, command, "uname");
     will_return(__wrap_get_binary_path, uname_path);
@@ -1841,7 +1852,7 @@ static void expect_darwin_version_calls(const char *product_version, const char 
     will_return(__wrap_fgets, "Darwin\n");
 
     // system_profiler SPSoftwareDataType
-    char *system_profiler_path = NULL;
+    char* system_profiler_path = NULL;
     os_strdup("/path/to/system_profiler", system_profiler_path);
     expect_string(__wrap_get_binary_path, command, "system_profiler");
     will_return(__wrap_get_binary_path, system_profiler_path);
@@ -1861,7 +1872,7 @@ static void expect_darwin_version_calls(const char *product_version, const char 
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
-    char *sw_vers_path = NULL;
+    char* sw_vers_path = NULL;
     os_strdup("/path/to/sw_vers", sw_vers_path);
     expect_string(__wrap_get_binary_path, command, "sw_vers");
     will_return(__wrap_get_binary_path, sw_vers_path);
@@ -1903,10 +1914,10 @@ static void expect_darwin_version_calls(const char *product_version, const char 
     will_return(__wrap_pclose, 1);
 }
 
-void test_get_unix_version_darwin_mapped_codename(void **state)
+void test_get_unix_version_darwin_mapped_codename(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // macOS 26 Tahoe runs Darwin 25
     expect_darwin_version_calls("26.5.1\n", "25.5.0\n");
@@ -1920,10 +1931,10 @@ void test_get_unix_version_darwin_mapped_codename(void **state)
     assert_string_equal(ret->os_version, "26.5.1 (Tahoe)");
 }
 
-void test_get_unix_version_darwin_golden_gate_codename(void **state)
+void test_get_unix_version_darwin_golden_gate_codename(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // macOS 27 Golden Gate runs Darwin 27
     expect_darwin_version_calls("27.0.1\n", "27.0.0\n");
@@ -1937,10 +1948,10 @@ void test_get_unix_version_darwin_golden_gate_codename(void **state)
     assert_string_equal(ret->os_version, "27.0.1 (Golden Gate)");
 }
 
-void test_get_unix_version_darwin_unmapped_codename(void **state)
+void test_get_unix_version_darwin_unmapped_codename(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Darwin version newer than the release name table: no codename, and no "(Unknown)" suffix
     expect_darwin_version_calls("29.0\n", "28.0.0\n");
@@ -1954,10 +1965,10 @@ void test_get_unix_version_darwin_unmapped_codename(void **state)
     assert_string_equal(ret->os_version, "29.0");
 }
 
-void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
+void test_get_unix_version_fail_os_release_uname_darwin_no_key(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -2020,7 +2031,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_wfopen, 0);
 
     // uname
-    char *uname_path = NULL;
+    char* uname_path = NULL;
     os_strdup("/path/to/uname", uname_path);
     expect_string(__wrap_get_binary_path, command, "uname");
     will_return(__wrap_get_binary_path, uname_path);
@@ -2034,7 +2045,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_fgets, "Darwin\n");
 
     // system_profiler SPSoftwareDataType
-    char *cmd_path = NULL;
+    char* cmd_path = NULL;
     os_strdup("/path/to/system_profiler", cmd_path);
     expect_string(__wrap_get_binary_path, command, "system_profiler");
     will_return(__wrap_get_binary_path, cmd_path);
@@ -2057,7 +2068,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
-    char *sw_vers_path = NULL;
+    char* sw_vers_path = NULL;
     os_strdup("/path/to/sw_vers", sw_vers_path);
     expect_string(__wrap_get_binary_path, command, "sw_vers");
     will_return(__wrap_get_binary_path, sw_vers_path);
@@ -2095,7 +2106,6 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
-
     expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
@@ -2111,10 +2121,10 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_fail_os_release_uname_bsd(void **state)
+void test_get_unix_version_fail_os_release_uname_bsd(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -2177,7 +2187,7 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     will_return(__wrap_wfopen, 0);
 
     // uname
-    char *uname_path = NULL;
+    char* uname_path = NULL;
     os_strdup("/path/to/uname", uname_path);
     expect_string(__wrap_get_binary_path, command, "uname");
     will_return(__wrap_get_binary_path, uname_path);
@@ -2201,7 +2211,6 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
-
     expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
@@ -2217,10 +2226,10 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     assert_string_equal(ret->sysname, "Linux");
 }
 
-void test_get_unix_version_zscaler(void **state)
+void test_get_unix_version_zscaler(void** state)
 {
-    (void) state;
-    os_info *ret;
+    (void)state;
+    os_info* ret;
 
     // Fail to open /etc/os-release
     expect_string(__wrap_wfopen, path, "/etc/os-release");
@@ -2283,7 +2292,7 @@ void test_get_unix_version_zscaler(void **state)
     will_return(__wrap_wfopen, 0);
 
     // uname
-    char *uname_path = NULL;
+    char* uname_path = NULL;
     os_strdup("/path/to/uname", uname_path);
     expect_string(__wrap_get_binary_path, command, "uname");
     will_return(__wrap_get_binary_path, uname_path);
@@ -2320,7 +2329,8 @@ void test_get_unix_version_zscaler(void **state)
     assert_string_equal(ret->os_platform, "bsd");
 }
 
-void test_OSX_ReleaseName(void **state) {
+void test_OSX_ReleaseName(void** state)
+{
     (void)state;
 
     assert_string_equal(OSX_ReleaseName(9), "Unknown");
@@ -2347,9 +2357,9 @@ void test_OSX_ReleaseName(void **state) {
 
 #endif
 
-void test_win_processor_arch_to_machine(void **state)
+void test_win_processor_arch_to_machine(void** state)
 {
-    (void) state;
+    (void)state;
 
     assert_string_equal(win_processor_arch_to_machine("AMD64"), "x86_64");
     assert_string_equal(win_processor_arch_to_machine("IA64"), "x86_64");
@@ -2361,165 +2371,165 @@ void test_win_processor_arch_to_machine(void **state)
     assert_null(win_processor_arch_to_machine(NULL));
 }
 
-void test_compare_wazuh_versions_equal_patch(void **state)
+void test_compare_wazuh_versions_equal_patch(void** state)
 {
-    (void) state;
-    char *v1 = "v4.0.0";
-    char *v2 = "v4.0.0";
+    (void)state;
+    char* v1 = "v4.0.0";
+    char* v2 = "v4.0.0";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 0);
 }
 
-void test_compare_wazuh_versions_equal_minor(void **state)
+void test_compare_wazuh_versions_equal_minor(void** state)
 {
-    (void) state;
-    char *v1 = "3.13";
-    char *v2 = "3.13";
+    (void)state;
+    char* v1 = "3.13";
+    char* v2 = "3.13";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 0);
 }
 
-void test_compare_wazuh_versions_equal_major(void **state)
+void test_compare_wazuh_versions_equal_major(void** state)
 {
-    (void) state;
-    char *v1 = "4";
-    char *v2 = "v4";
+    (void)state;
+    char* v1 = "4";
+    char* v2 = "v4";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 0);
 }
 
-void test_compare_wazuh_versions_greater_patch(void **state)
+void test_compare_wazuh_versions_greater_patch(void** state)
 {
-    (void) state;
-    char *v1 = "4.0.1";
-    char *v2 = "v4.0.0";
+    (void)state;
+    char* v1 = "4.0.1";
+    char* v2 = "v4.0.0";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 1);
 }
 
-void test_compare_wazuh_versions_greater_patch_no_patch(void **state)
+void test_compare_wazuh_versions_greater_patch_no_patch(void** state)
 {
-    (void) state;
-    char *v1 = "4.0.1";
-    char *v2 = "v4.0.0";
+    (void)state;
+    char* v1 = "4.0.1";
+    char* v2 = "v4.0.0";
 
     int ret = compare_wazuh_versions(v1, v2, false);
 
     assert_int_equal(ret, 0);
 }
 
-void test_compare_wazuh_versions_greater_minor(void **state)
+void test_compare_wazuh_versions_greater_minor(void** state)
 {
-    (void) state;
-    char *v1 = "2.15";
-    char *v2 = "2";
+    (void)state;
+    char* v1 = "2.15";
+    char* v2 = "2";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 1);
 }
 
-void test_compare_wazuh_versions_greater_major(void **state)
+void test_compare_wazuh_versions_greater_major(void** state)
 {
-    (void) state;
-    char *v1 = "v5";
-    char *v2 = "4.9";
+    (void)state;
+    char* v1 = "v5";
+    char* v2 = "4.9";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 1);
 }
 
-void test_compare_wazuh_versions_lower_patch(void **state)
+void test_compare_wazuh_versions_lower_patch(void** state)
 {
-    (void) state;
-    char *v1 = "v4.0.1";
-    char *v2 = "v4.0.3";
+    (void)state;
+    char* v1 = "v4.0.1";
+    char* v2 = "v4.0.3";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, -1);
 }
 
-void test_compare_wazuh_versions_lower_minor(void **state)
+void test_compare_wazuh_versions_lower_minor(void** state)
 {
-    (void) state;
-    char *v1 = "2.15.1";
-    char *v2 = "2.18";
+    (void)state;
+    char* v1 = "2.15.1";
+    char* v2 = "2.18";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, -1);
 }
 
-void test_compare_wazuh_versions_lower_major(void **state)
+void test_compare_wazuh_versions_lower_major(void** state)
 {
-    (void) state;
-    char *v1 = "v5";
-    char *v2 = "v6.1";
+    (void)state;
+    char* v1 = "v5";
+    char* v2 = "v6.1";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, -1);
 }
 
-void test_compare_wazuh_versions_null(void **state)
+void test_compare_wazuh_versions_null(void** state)
 {
-    (void) state;
-    char *v1 = NULL;
-    char *v2 = NULL;
+    (void)state;
+    char* v1 = NULL;
+    char* v2 = NULL;
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 0);
 }
 
-void test_compare_wazuh_versions_long_string_v1(void **state)
+void test_compare_wazuh_versions_long_string_v1(void** state)
 {
-    (void) state;
-    char *v1 = "AAAAAAAAA";
-    char *v2 = "v4.0.0";
+    (void)state;
+    char* v1 = "AAAAAAAAA";
+    char* v2 = "v4.0.0";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, -1);
 }
 
-void test_compare_wazuh_versions_long_string_v2(void **state)
+void test_compare_wazuh_versions_long_string_v2(void** state)
 {
-    (void) state;
-    char *v1 = "v4.0.0";
-    char *v2 = "AAAAAAAAA";
+    (void)state;
+    char* v1 = "v4.0.0";
+    char* v2 = "AAAAAAAAA";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 1);
 }
 
-void test_compare_wazuh_versions_long_string_both(void **state)
+void test_compare_wazuh_versions_long_string_both(void** state)
 {
-    (void) state;
-    char *v1 = "BBBBBBBBB";
-    char *v2 = "AAAAAAAAA";
+    (void)state;
+    char* v1 = "BBBBBBBBB";
+    char* v2 = "AAAAAAAAA";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
     assert_int_equal(ret, 0);
 }
 
-void test_compare_wazuh_versions_truncated_version(void **state)
+void test_compare_wazuh_versions_truncated_version(void** state)
 {
-    (void) state;
-    char *v1 = "v5.123456";
-    char *v2 = "v4.0.0";
+    (void)state;
+    char* v1 = "v5.123456";
+    char* v2 = "v4.0.0";
 
     int ret = compare_wazuh_versions(v1, v2, true);
 
@@ -2528,51 +2538,51 @@ void test_compare_wazuh_versions_truncated_version(void **state)
 
 // The gates call compare_wazuh_versions(manager, agent, false) and refuse the agent when it is < 0, so a
 // zero-padded agent version that the old nine-byte copy cut short must still compare greater.
-void test_compare_wazuh_versions_zero_padded_major(void **state)
+void test_compare_wazuh_versions_zero_padded_major(void** state)
 {
-    (void) state;
+    (void)state;
 
     assert_int_equal(compare_wazuh_versions("v5.0.0", "v000000006.0.0", false), -1);
     assert_int_equal(compare_wazuh_versions("v000000006.0.0", "v6.0.0", true), 0);
 }
 
-void test_compare_wazuh_versions_zero_padded_minor(void **state)
+void test_compare_wazuh_versions_zero_padded_minor(void** state)
 {
-    (void) state;
+    (void)state;
 
     assert_int_equal(compare_wazuh_versions("v5.0.0", "v5.0000001", false), -1);
     assert_int_equal(compare_wazuh_versions("v5.0000001", "v5.1", true), 0);
 }
 
-void test_compare_wazuh_versions_zero_padded_major_only(void **state)
+void test_compare_wazuh_versions_zero_padded_major_only(void** state)
 {
-    (void) state;
+    (void)state;
 
     assert_int_equal(compare_wazuh_versions("v5.0.0", "v0000000099", false), -1);
     assert_int_equal(compare_wazuh_versions("v0000000099", "v99.0.0", true), 0);
 }
 
-void test_compare_wazuh_versions_long_patch_not_truncated(void **state)
+void test_compare_wazuh_versions_long_patch_not_truncated(void** state)
 {
-    (void) state;
+    (void)state;
 
     assert_int_equal(compare_wazuh_versions("v10.14.100", "v10.14.10", true), 1);
     assert_int_equal(compare_wazuh_versions("v10.14.10", "v10.14.100", true), -1);
     assert_int_equal(compare_wazuh_versions("v123.456.789", "v123.456.789", true), 0);
 }
 
-void test_compare_wazuh_versions_huge_part_saturates(void **state)
+void test_compare_wazuh_versions_huge_part_saturates(void** state)
 {
-    (void) state;
+    (void)state;
 
     assert_int_equal(compare_wazuh_versions("v99999999999999999999.0.0", "v5.0.0", true), 1);
     assert_int_equal(compare_wazuh_versions("v5.0.0", "v99999999999999999999.0.0", true), -1);
     assert_int_equal(compare_wazuh_versions("v99999999999999999999.0.0", "v99999999999999999999.0.0", true), 0);
 }
 
-void test_compare_wazuh_versions_suffix_and_empty_parts(void **state)
+void test_compare_wazuh_versions_suffix_and_empty_parts(void** state)
 {
-    (void) state;
+    (void)state;
 
     assert_int_equal(compare_wazuh_versions("v4.14.0-rc1", "v4.14.0", true), 0);
     assert_int_equal(compare_wazuh_versions("v5..1", "v5.1.0", true), 0);
@@ -2581,12 +2591,12 @@ void test_compare_wazuh_versions_suffix_and_empty_parts(void **state)
     assert_int_equal(compare_wazuh_versions("v-5.0.0", "v0.0.0", true), 0);
 }
 
-#define VERSION_THREADS 8
+#define VERSION_THREADS    8
 #define VERSION_ITERATIONS 5000
 
-static void *compare_wazuh_versions_thread(void *arg)
+static void* compare_wazuh_versions_thread(void* arg)
 {
-    const int index = *(int *) arg;
+    const int index = *(int*)arg;
     char lower[16];
     char higher[16];
     int mismatches = 0;
@@ -2596,108 +2606,111 @@ static void *compare_wazuh_versions_thread(void *arg)
     snprintf(lower, sizeof(lower), "v4.%d.0", index);
     snprintf(higher, sizeof(higher), "v4.%d.1", index);
 
-    for (iteration = 0; iteration < VERSION_ITERATIONS; iteration++) {
+    for (iteration = 0; iteration < VERSION_ITERATIONS; iteration++)
+    {
         mismatches += compare_wazuh_versions(lower, higher, true) != -1;
         mismatches += compare_wazuh_versions(higher, lower, true) != 1;
         mismatches += compare_wazuh_versions(lower, higher, false) != 0;
     }
 
-    *(int *) arg = mismatches;
+    *(int*)arg = mismatches;
     return NULL;
 }
 
 // The old implementation split with strtok(), whose cursor is process-global; remoted calls this
 // function from its worker threads.
-void test_compare_wazuh_versions_reentrant_across_threads(void **state)
+void test_compare_wazuh_versions_reentrant_across_threads(void** state)
 {
-    (void) state;
+    (void)state;
     pthread_t threads[VERSION_THREADS];
     int results[VERSION_THREADS];
     int index;
 
-    for (index = 0; index < VERSION_THREADS; index++) {
+    for (index = 0; index < VERSION_THREADS; index++)
+    {
         results[index] = index;
         assert_int_equal(pthread_create(&threads[index], NULL, compare_wazuh_versions_thread, &results[index]), 0);
     }
 
-    for (index = 0; index < VERSION_THREADS; index++) {
+    for (index = 0; index < VERSION_THREADS; index++)
+    {
         assert_int_equal(pthread_join(threads[index], NULL), 0);
         assert_int_equal(results[index], 0);
     }
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
 #ifdef __linux__
-            cmocka_unit_test_teardown(test_get_unix_version_Ubuntu1904, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_centos, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_archlinux_distro_based, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_archlinux_no_version_id, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_archlinux, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed_no_version_id, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_sp7, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_12_sp5, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_sled_service_pack, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_lowercase, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_extra_suffix, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_sles_no_service_pack, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_opensuse_leap_unaffected, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_quoted, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_major_only, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_rhcos_no_rhel_version, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_rhcos_empty_rhel_version, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_rhcos_invalid_rhel_version, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_rhel_version_ignored_other_platform, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_alpine, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_centos, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_fedora, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_centos, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_fedora, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_rhel, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_rhel_server, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_ubuntu, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_gentoo, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_suse, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_arch, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_debian, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_slackware, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_alpine, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_darwin_mapped_codename, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_darwin_golden_gate_codename, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_darwin_unmapped_codename, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),
-            cmocka_unit_test(test_OSX_ReleaseName),
+        cmocka_unit_test_teardown(test_get_unix_version_Ubuntu1904, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_centos, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_archlinux_distro_based, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_archlinux_no_version_id, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_archlinux, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed_no_version_id, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_opensuse_tumbleweed, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_sp7, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_12_sp5, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_sled_service_pack, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_lowercase, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_sles_service_pack_extra_suffix, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_sles_no_service_pack, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_opensuse_leap_unaffected, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_quoted, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_rhcos_rhel_version_major_only, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_rhcos_no_rhel_version, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_rhcos_empty_rhel_version, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_rhcos_invalid_rhel_version, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_rhel_version_ignored_other_platform, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_alpine, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_centos, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_fedora, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_centos, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_fedora, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_rhel, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_redhat_rhel_server, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_ubuntu, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_gentoo, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_suse, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_arch, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_debian, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_slackware, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_alpine, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_darwin_no_key, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_darwin_mapped_codename, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_darwin_golden_gate_codename, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_darwin_unmapped_codename, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
+        cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),
+        cmocka_unit_test(test_OSX_ReleaseName),
 #endif
-            cmocka_unit_test(test_win_processor_arch_to_machine),
-            // compare_wazuh_versions
-            cmocka_unit_test(test_compare_wazuh_versions_equal_patch),
-            cmocka_unit_test(test_compare_wazuh_versions_equal_minor),
-            cmocka_unit_test(test_compare_wazuh_versions_equal_major),
-            cmocka_unit_test(test_compare_wazuh_versions_greater_patch),
-            cmocka_unit_test(test_compare_wazuh_versions_greater_patch_no_patch),
-            cmocka_unit_test(test_compare_wazuh_versions_greater_minor),
-            cmocka_unit_test(test_compare_wazuh_versions_greater_major),
-            cmocka_unit_test(test_compare_wazuh_versions_lower_patch),
-            cmocka_unit_test(test_compare_wazuh_versions_lower_minor),
-            cmocka_unit_test(test_compare_wazuh_versions_lower_major),
-            cmocka_unit_test(test_compare_wazuh_versions_null),
-            cmocka_unit_test(test_compare_wazuh_versions_long_string_v1),
-            cmocka_unit_test(test_compare_wazuh_versions_long_string_v2),
-            cmocka_unit_test(test_compare_wazuh_versions_long_string_both),
-            cmocka_unit_test(test_compare_wazuh_versions_truncated_version),
-            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major),
-            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_minor),
-            cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major_only),
-            cmocka_unit_test(test_compare_wazuh_versions_long_patch_not_truncated),
-            cmocka_unit_test(test_compare_wazuh_versions_huge_part_saturates),
-            cmocka_unit_test(test_compare_wazuh_versions_suffix_and_empty_parts),
-            cmocka_unit_test(test_compare_wazuh_versions_reentrant_across_threads)
-    };
+        cmocka_unit_test(test_win_processor_arch_to_machine),
+        // compare_wazuh_versions
+        cmocka_unit_test(test_compare_wazuh_versions_equal_patch),
+        cmocka_unit_test(test_compare_wazuh_versions_equal_minor),
+        cmocka_unit_test(test_compare_wazuh_versions_equal_major),
+        cmocka_unit_test(test_compare_wazuh_versions_greater_patch),
+        cmocka_unit_test(test_compare_wazuh_versions_greater_patch_no_patch),
+        cmocka_unit_test(test_compare_wazuh_versions_greater_minor),
+        cmocka_unit_test(test_compare_wazuh_versions_greater_major),
+        cmocka_unit_test(test_compare_wazuh_versions_lower_patch),
+        cmocka_unit_test(test_compare_wazuh_versions_lower_minor),
+        cmocka_unit_test(test_compare_wazuh_versions_lower_major),
+        cmocka_unit_test(test_compare_wazuh_versions_null),
+        cmocka_unit_test(test_compare_wazuh_versions_long_string_v1),
+        cmocka_unit_test(test_compare_wazuh_versions_long_string_v2),
+        cmocka_unit_test(test_compare_wazuh_versions_long_string_both),
+        cmocka_unit_test(test_compare_wazuh_versions_truncated_version),
+        cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major),
+        cmocka_unit_test(test_compare_wazuh_versions_zero_padded_minor),
+        cmocka_unit_test(test_compare_wazuh_versions_zero_padded_major_only),
+        cmocka_unit_test(test_compare_wazuh_versions_long_patch_not_truncated),
+        cmocka_unit_test(test_compare_wazuh_versions_huge_part_saturates),
+        cmocka_unit_test(test_compare_wazuh_versions_suffix_and_empty_parts),
+        cmocka_unit_test(test_compare_wazuh_versions_reentrant_across_threads)};
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

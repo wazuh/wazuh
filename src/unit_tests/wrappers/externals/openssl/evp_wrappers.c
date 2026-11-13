@@ -7,18 +7,18 @@
  * Foundation
  */
 
-
 #include "evp_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-
-EVP_PKEY *__wrap_EVP_PKEY_new(void) {
-    if (mock()) {
+EVP_PKEY* __wrap_EVP_PKEY_new(void)
+{
+    if (mock())
+    {
         return __real_EVP_PKEY_new();
     }
 
-    return mock_type(EVP_PKEY *);
+    return mock_type(EVP_PKEY*);
 }

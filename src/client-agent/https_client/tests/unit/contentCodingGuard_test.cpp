@@ -36,7 +36,8 @@ TEST(ContentCodingGuardTest, AdmitsOneCoding)
 {
     ContentCodingGuard guard;
 
-    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: zstd", "Content-Type: application/octet-stream"}));
+    EXPECT_TRUE(
+        admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: zstd", "Content-Type: application/octet-stream"}));
     EXPECT_FALSE(guard.refused());
     EXPECT_TRUE(guard.refusalNote().empty());
 }
@@ -61,7 +62,8 @@ TEST(ContentCodingGuardTest, AdmitsIdentityAlongsideTheCoding)
 {
     ContentCodingGuard guard;
 
-    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: identity", "Content-Encoding: identity, zstd"}));
+    EXPECT_TRUE(
+        admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: identity", "Content-Encoding: identity, zstd"}));
 }
 
 // curl would stack one zstd decoder, with its own window, per listed coding.
@@ -88,11 +90,9 @@ TEST(ContentCodingGuardTest, IgnoresTheCodingsOfAnInformationalResponse)
 {
     ContentCodingGuard guard;
 
-    EXPECT_TRUE(admitReply(guard,
-    {
-        "HTTP/1.1 103 Early Hints", "Content-Encoding: br, zstd", "",
-        "HTTP/1.1 200 OK", "Content-Encoding: zstd"
-    }));
+    EXPECT_TRUE(admitReply(
+        guard,
+        {"HTTP/1.1 103 Early Hints", "Content-Encoding: br, zstd", "", "HTTP/1.1 200 OK", "Content-Encoding: zstd"}));
 }
 
 // Only the first line of a block is a status line, for curl as for the guard: a header that reads
@@ -118,13 +118,11 @@ TEST(ContentCodingGuardTest, ReadsTheStatusCodeWhereCurlDoes)
 // it back like any other: a 103 there is informational too, and a 204 has no body.
 TEST(ContentCodingGuardTest, ReadsTheStatusLinesCurlWritesForHttp2AndHttp3)
 {
-    for (const std::string version :
-            {"HTTP/2", "HTTP/3"
-            })
+    for (const std::string version : {"HTTP/2", "HTTP/3"})
     {
         ContentCodingGuard afterHints;
         EXPECT_FALSE(admitReply(afterHints, {version + " 103 ", "", version + " 200 ", "Content-Encoding: zstd, zstd"}))
-                << version;
+            << version;
 
         ContentCodingGuard noContent;
         EXPECT_TRUE(admitReply(noContent, {version + " 204 ", "Content-Encoding: zstd, zstd"})) << version;
@@ -135,16 +133,15 @@ TEST(ContentCodingGuardTest, ReadsTheStatusLinesCurlWritesForHttp2AndHttp3)
 // after the code), which has a body: so does the guard.
 TEST(ContentCodingGuardTest, AStatusLineItCannotReadHasABody)
 {
-    for (const auto* status :
-            {"HTTP/2 204", "http/1.1 204 No Content", "HTTP/1.1  204 No Content"
-            })
+    for (const auto* status : {"HTTP/2 204", "http/1.1 204 No Content", "HTTP/1.1  204 No Content"})
     {
         ContentCodingGuard guard;
         EXPECT_FALSE(admitReply(guard, {status, "Content-Encoding: zstd, zstd"})) << status;
     }
 
     ContentCodingGuard afterHints;
-    EXPECT_FALSE(admitReply(afterHints, {"HTTP/1.1 103 Early Hints", "", "http/1.1 200 OK", "Content-Encoding: zstd, zstd"}));
+    EXPECT_FALSE(
+        admitReply(afterHints, {"HTTP/1.1 103 Early Hints", "", "http/1.1 200 OK", "Content-Encoding: zstd, zstd"}));
 }
 
 // curl builds no decoder from a chunked trailer, which arrives after the body.
@@ -157,9 +154,7 @@ TEST(ContentCodingGuardTest, IgnoresTheTrailersAfterTheBody)
 
 TEST(ContentCodingGuardTest, IgnoresTheCodingsOfAResponseWithoutABody)
 {
-    for (const auto* status :
-            {"HTTP/1.1 204 No Content", "HTTP/1.1 304 Not Modified"
-            })
+    for (const auto* status : {"HTTP/1.1 204 No Content", "HTTP/1.1 304 Not Modified"})
     {
         ContentCodingGuard guard;
         EXPECT_TRUE(admitReply(guard, {status, "Content-Encoding: zstd, zstd"})) << status;
@@ -181,9 +176,7 @@ TEST(ContentCodingGuardTest, TheRefusalNoteShowsAShortPrintableExcerpt)
 // costs a window, so neither counts.
 TEST(ContentCodingGuardTest, CountsOnlyWhatCurlTurnsIntoADecoder)
 {
-    for (const auto* value :
-            {"none, zstd", "NONE, zstd", "zstd, \x01", "zstd, \x80"
-            })
+    for (const auto* value : {"none, zstd", "NONE, zstd", "zstd, \x01", "zstd, \x80"})
     {
         ContentCodingGuard guard;
         EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", std::string {"Content-Encoding: "} + value})) << value;
@@ -197,5 +190,6 @@ TEST(ContentCodingGuardTest, EmptyListsNameNoCoding)
 {
     ContentCodingGuard guard;
 
-    EXPECT_TRUE(admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: ,, ", "Content-Encoding:", "Content-Encoding: zstd"}));
+    EXPECT_TRUE(
+        admitReply(guard, {"HTTP/1.1 200 OK", "Content-Encoding: ,, ", "Content-Encoding:", "Content-Encoding: zstd"}));
 }

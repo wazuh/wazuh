@@ -17,38 +17,44 @@
 #include "bf_op.h"
 #include "keys_wrappers.h"
 
-int __wrap_OS_IsAllowedDynamicID(__attribute__((unused)) keystore *keys, const char *id, const char *srcip) {
+int __wrap_OS_IsAllowedDynamicID(__attribute__((unused)) keystore* keys, const char* id, const char* srcip)
+{
     check_expected(id);
     check_expected(srcip);
 
     return mock();
 }
 
-int __wrap_OS_DeleteSocket(__attribute__((unused)) keystore * keys, int sock) {
+int __wrap_OS_DeleteSocket(__attribute__((unused)) keystore* keys, int sock)
+{
     check_expected(sock);
 
     return mock();
 }
 
-int __wrap_OS_IsAllowedIP(__attribute__((unused)) keystore *keys, const char *srcip) {
+int __wrap_OS_IsAllowedIP(__attribute__((unused)) keystore* keys, const char* srcip)
+{
     check_expected(srcip);
 
     return mock();
 }
 
-int __wrap_OS_IsAllowedID(__attribute__((unused)) keystore *keys, const char *id) {
+int __wrap_OS_IsAllowedID(__attribute__((unused)) keystore* keys, const char* id)
+{
     check_expected(id);
 
     return mock();
 }
 
-keyentry * __wrap_OS_DupKeyEntry(const keyentry * key) {
+keyentry* __wrap_OS_DupKeyEntry(const keyentry* key)
+{
     check_expected(key);
 
-    return mock_type(keyentry *);
+    return mock_type(keyentry*);
 }
 
-int __wrap_OS_AddSocket(keystore * keys, unsigned int i, int sock) {
+int __wrap_OS_AddSocket(keystore* keys, unsigned int i, int sock)
+{
     check_expected(keys);
     check_expected(i);
     check_expected(sock);
@@ -56,7 +62,8 @@ int __wrap_OS_AddSocket(keystore * keys, unsigned int i, int sock) {
     return mock();
 }
 
-void __wrap_OS_FreeKey(keyentry *key) {
+void __wrap_OS_FreeKey(keyentry* key)
+{
     check_expected(key);
 
     return;

@@ -27,11 +27,10 @@
 #include "openssl_init.h"
 
 /* Prototypes */
-static void help_logcollector(char * home_path) __attribute__((noreturn));
-
+static void help_logcollector(char* home_path) __attribute__((noreturn));
 
 /* Print help statement */
-static void help_logcollector(char * home_path)
+static void help_logcollector(char* home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -48,7 +47,7 @@ static void help_logcollector(char * home_path)
     exit(1);
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int c;
     int debug_level = 0;
@@ -60,68 +59,65 @@ int main(int argc, char **argv)
     w_openssl_init();
 
     // Define current working directory
-    char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
+    char* home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1)
+    {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
-    const char *cfg = WAZUHCONF;
+    const char* cfg = WAZUHCONF;
     gid_t gid;
-    const char *group = GROUPGLOBAL;
+    const char* group = GROUPGLOBAL;
     lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
 
     /* Setup random */
     srandom_init();
 
-    while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
-        switch (c) {
-            case 'V':
-                print_version();
-                break;
-            case 'h':
-                help_logcollector(home_path);
-                break;
+    while ((c = getopt(argc, argv, "Vtdhfc:")) != -1)
+    {
+        switch (c)
+        {
+            case 'V': print_version(); break;
+            case 'h': help_logcollector(home_path); break;
             case 'd':
                 nowDebug();
                 debug_level = 1;
                 break;
-            case 'f':
-                run_foreground = 1;
-                break;
+            case 'f': run_foreground = 1; break;
             case 'c':
-                if (!optarg) {
+                if (!optarg)
+                {
                     merror_exit("-c needs an argument");
                 }
                 cfg = optarg;
                 break;
-            case 't':
-                test_config = 1;
-                break;
-            default:
-                help_logcollector(home_path);
-                break;
+            case 't': test_config = 1; break;
+            default: help_logcollector(home_path); break;
         }
-
     }
 
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
+    if (gid == (gid_t)-1)
+    {
         merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Privilege separation */
-    if (Privsep_SetGroup(gid) < 0) {
+    if (Privsep_SetGroup(gid) < 0)
+    {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Check current debug_level
      * Command line setting takes precedence
      */
-    if (debug_level == 0) {
+    if (debug_level == 0)
+    {
         /* Get debug level */
         debug_level = lc_debug_level;
-        while (debug_level != 0) {
+        while (debug_level != 0)
+        {
             nowDebug();
             debug_level--;
         }
@@ -134,17 +130,20 @@ int main(int argc, char **argv)
     w_msg_hash_queues_init();
 
     /* Read config file */
-    if (LogCollectorConfig(cfg) < 0) {
+    if (LogCollectorConfig(cfg) < 0)
+    {
         mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
     }
 
     /* Exit if test config */
-    if (test_config) {
+    if (test_config)
+    {
         exit(0);
     }
 
     /* No file available to monitor -- continue */
-    if (logff == NULL) {
+    if (logff == NULL)
+    {
         os_calloc(2, sizeof(logreader), logff);
         logff[0].file = NULL;
         logff[0].ffile = NULL;
@@ -157,7 +156,8 @@ int main(int argc, char **argv)
     }
 
     /* No sockets defined */
-    if (logsk == NULL) {
+    if (logsk == NULL)
+    {
         os_calloc(2, sizeof(socket_forwarder), logsk);
         logsk[0].name = NULL;
         logsk[0].location = NULL;
@@ -177,7 +177,8 @@ int main(int argc, char **argv)
     // logcollector.rlimit_nofile; the limit in force is only used to check max_files against it.
     w_logcollector_check_max_files(w_raise_nofile_limit((long)nofile, "logcollector.rlimit_nofile"));
 
-    if (!run_foreground) {
+    if (!run_foreground)
+    {
         /* Going on daemon mode */
         nowDaemon();
         goDaemon();
@@ -187,16 +188,19 @@ int main(int argc, char **argv)
     StartSIGShutdownThread();
 
     /* Create PID file */
-    if (CreatePID(ARGV0, getpid()) < 0) {
+    if (CreatePID(ARGV0, getpid()) < 0)
+    {
         merror_exit(PID_ERROR);
     }
 
     /* Start the queue */
-    if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0)
+    {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
-    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
+    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY)
+    {
         mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
         exit(0);
     }

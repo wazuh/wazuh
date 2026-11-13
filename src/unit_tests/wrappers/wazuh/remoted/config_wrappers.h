@@ -13,6 +13,6 @@
 
 #include <cJSON.h>
 
-cJSON *__wrap_getRemoteConfig();
+cJSON* __wrap_getRemoteConfig();
 
 #endif /* REM_CONFIG_WRAPPERS_H */

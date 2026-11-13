@@ -15,12 +15,14 @@
 
 #include "os_cert_bundle_wrappers.h"
 
-const char* __wrap_os_find_ca_bundle(const char* const* candidates) {
+const char* __wrap_os_find_ca_bundle(const char* const* candidates)
+{
     check_expected_ptr(candidates);
     return mock_type(const char*);
 }
 
-void expect_os_find_ca_bundle(const char *path) {
+void expect_os_find_ca_bundle(const char* path)
+{
     expect_any(__wrap_os_find_ca_bundle, candidates);
     will_return(__wrap_os_find_ca_bundle, path);
 }

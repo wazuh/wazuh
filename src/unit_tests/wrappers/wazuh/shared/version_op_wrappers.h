@@ -7,12 +7,11 @@
  * Foundation
  */
 
-
 #ifndef VERSION_OP_WRAPPERS_H
 #define VERSION_OP_WRAPPERS_H
 
 #include <stdbool.h>
 
-int __wrap_compare_wazuh_versions(const char *version1, const char *version2, bool compare_patch);
+int __wrap_compare_wazuh_versions(const char* version1, const char* version2, bool compare_patch);
 
 #endif

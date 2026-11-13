@@ -59,23 +59,37 @@ namespace
 
     class MockAgentSyncProtocol : public IAgentSyncProtocol
     {
-        public:
-            MOCK_METHOD(void, persistDifference,
-                        (const std::string& id, Operation operation, const std::string& index,
-                         const std::string& data, uint64_t version, bool isDataContext), (override));
-            MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode mode, Option option), (override));
-            MOCK_METHOD(IntegrityCheckResult, requiresFullSync, (const std::string& index, const std::string& checksum), (override));
-            MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
-            MOCK_METHOD(SyncModuleResult, synchronizeMetadataOrGroups,
-                        (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion), (override));
-            MOCK_METHOD(SyncModuleResult, notifyDataClean, (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures), (override));
-            MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t* data, size_t length), (override));
-            MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
-            MOCK_METHOD(void, clearAllDataContext, (), (override));
-            MOCK_METHOD(void, deleteDatabase, (), (override));
-            MOCK_METHOD(void, stop, (), (override));
-            MOCK_METHOD(void, reset, (), (override));
-            MOCK_METHOD(bool, shouldStop, (), (const, override));
+    public:
+        MOCK_METHOD(void,
+                    persistDifference,
+                    (const std::string& id,
+                     Operation operation,
+                     const std::string& index,
+                     const std::string& data,
+                     uint64_t version,
+                     bool isDataContext),
+                    (override));
+        MOCK_METHOD(SyncModuleResult, synchronizeModule, (Mode mode, Option option), (override));
+        MOCK_METHOD(IntegrityCheckResult,
+                    requiresFullSync,
+                    (const std::string& index, const std::string& checksum),
+                    (override));
+        MOCK_METHOD(void, clearIntegrityProgress, (const std::string& index), (override));
+        MOCK_METHOD(SyncModuleResult,
+                    synchronizeMetadataOrGroups,
+                    (Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion),
+                    (override));
+        MOCK_METHOD(SyncModuleResult,
+                    notifyDataClean,
+                    (const std::vector<std::string>& indices, Option option, bool trackConsecutiveFailures),
+                    (override));
+        MOCK_METHOD(bool, parseResponseBuffer, (const uint8_t* data, size_t length), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchPendingItems, (bool onlyDataValues), (override));
+        MOCK_METHOD(void, clearAllDataContext, (), (override));
+        MOCK_METHOD(void, deleteDatabase, (), (override));
+        MOCK_METHOD(void, stop, (), (override));
+        MOCK_METHOD(void, reset, (), (override));
+        MOCK_METHOD(bool, shouldStop, (), (const, override));
     };
 
     SyncModuleResult okResult()
@@ -84,251 +98,250 @@ namespace
         result.success = true;
         return result;
     }
-}
+} // namespace
 
 class SyscollectorIdentityTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            // Own directory: the metadata provider is a file at a path relative to the working
-            // directory, and every other test binary in this tree writes the same one. Without
-            // this, a parallel ctest decides which agent id these cases observe.
-            std::filesystem::create_directories(std::string(WORK_DIR) + "/var/run");
-            std::filesystem::current_path(WORK_DIR);
+protected:
+    void SetUp() override
+    {
+        // Own directory: the metadata provider is a file at a path relative to the working
+        // directory, and every other test binary in this tree writes the same one. Without
+        // this, a parallel ctest decides which agent id these cases observe.
+        std::filesystem::create_directories(std::string(WORK_DIR) + "/var/run");
+        std::filesystem::current_path(WORK_DIR);
 
-            std::remove(IDENTITY_DB_PATH);
-            metadata_provider_reset();
+        std::remove(IDENTITY_DB_PATH);
+        metadata_provider_reset();
+    }
+
+    void TearDown() override
+    {
+        Syscollector::instance().destroy();
+        metadata_provider_reset();
+        std::remove(IDENTITY_DB_PATH);
+        std::filesystem::current_path("..");
+    }
+
+    /// @brief Publishes an agent id, the way agentd does after enrolling.
+    static void publishAgentId(const std::string& agentId)
+    {
+        agent_metadata_t metadata {};
+        strncpy(metadata.agent_id, agentId.c_str(), sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+        strncpy(metadata.agent_version, "5.0.0", sizeof(metadata.agent_version) - 1);
+        strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+        strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+        strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+        strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+        strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+        strncpy(metadata.os_version, "24.04", sizeof(metadata.os_version) - 1);
+        metadata_provider_update(&metadata);
+    }
+
+    /// @brief init() with only the collectors a case needs. packages and os ride the VD
+    /// lane, users the plain one, which is what makes the routing observable with two mocks.
+    static void initModule(bool packages,
+                           bool users,
+                           bool os = false,
+                           std::function<void(const modules_log_level_t, const std::string&)> log = {})
+    {
+        const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+        EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(::testing::AnyNumber());
+
+        if (!log)
+        {
+            log = [](const modules_log_level_t, const std::string&) {};
         }
 
-        void TearDown() override
-        {
-            Syscollector::instance().destroy();
-            metadata_provider_reset();
-            std::remove(IDENTITY_DB_PATH);
-            std::filesystem::current_path("..");
-        }
-
-        /// @brief Publishes an agent id, the way agentd does after enrolling.
-        static void publishAgentId(const std::string& agentId)
-        {
-            agent_metadata_t metadata {};
-            strncpy(metadata.agent_id, agentId.c_str(), sizeof(metadata.agent_id) - 1);
-            strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
-            strncpy(metadata.agent_version, "5.0.0", sizeof(metadata.agent_version) - 1);
-            strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
-            strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
-            strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
-            strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
-            strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
-            strncpy(metadata.os_version, "24.04", sizeof(metadata.os_version) - 1);
-            metadata_provider_update(&metadata);
-        }
-
-        /// @brief init() with only the collectors a case needs. packages and os ride the VD
-        /// lane, users the plain one, which is what makes the routing observable with two mocks.
-        static void initModule(bool packages, bool users, bool os = false,
-                               std::function<void(const modules_log_level_t, const std::string&)> log = {})
-        {
-            const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
-            EXPECT_CALL(*spInfoWrapper, releaseThreadResources()).Times(::testing::AnyNumber());
-
-            if (!log)
-            {
-                log = [](const modules_log_level_t, const std::string&) {};
-            }
-
-            Syscollector::instance().init(spInfoWrapper,
+        Syscollector::instance().init(
+            spInfoWrapper,
             [](const std::string&) {},
-            [](const std::string&, Operation_t, const std::string&,
-               const std::string&, uint64_t) {},
+            [](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) {},
             log,
             IDENTITY_DB_PATH,
             "",
             "",
             3600,
-            false,      // scanOnStart
-            false,      // hardware
-            os,         // os        -> VD lane
-            false,      // network
-            packages,   // packages  -> VD lane
-            false,      // ports
-            false,      // portsAll
-            false,      // processes
-            false,      // hotfixes
-            false,      // groups
-            users,      // users     -> plain lane
-            false,      // services
-            false,      // browserExtensions
-            false);     // notifyOnFirstScan
+            false,    // scanOnStart
+            false,    // hardware
+            os,       // os        -> VD lane
+            false,    // network
+            packages, // packages  -> VD lane
+            false,    // ports
+            false,    // portsAll
+            false,    // processes
+            false,    // hotfixes
+            false,    // groups
+            users,    // users     -> plain lane
+            false,    // services
+            false,    // browserExtensions
+            false);   // notifyOnFirstScan
 
-            // start() computes this, and these cases do not call it -- they inject protocols
-            // instead of letting the module build real ones. Set here so that no case can model
-            // a lane a real agent could not have: with a VD collector switched off there is no
-            // VD lane at all, and checkAgentIdentity() routes os and packages through the plain
-            // one. (Windows also requires hotfixes; these cases stand in for the enabled lane.)
-            Syscollector::instance().m_vdSyncEnabled = packages && os;
+        // start() computes this, and these cases do not call it -- they inject protocols
+        // instead of letting the module build real ones. Set here so that no case can model
+        // a lane a real agent could not have: with a VD collector switched off there is no
+        // VD lane at all, and checkAgentIdentity() routes os and packages through the plain
+        // one. (Windows also requires hotfixes; these cases stand in for the enabled lane.)
+        Syscollector::instance().m_vdSyncEnabled = packages && os;
+    }
+
+    /// @brief Creates the schema, seeds the marker, and reopens: DBSync holds the database
+    /// open for as long as the module is initialized, so a write from outside it is refused
+    /// with SQLITE_BUSY while it is up.
+    static void initWithMarker(bool packages, bool users, int64_t marker, bool os = false)
+    {
+        initModule(packages, users, os);
+        Syscollector::instance().destroy();
+        seedMarker(marker);
+        initModule(packages, users, os);
+    }
+
+    /// @brief Brings the module up with the identity already synchronized (so the recovery
+    /// pass goes straight to the integrity checks) and the given tables' integrity clocks
+    /// long expired, so each one is due.
+    static void initWithIntegrityDue(bool users, bool os, const std::vector<std::string>& dueTables)
+    {
+        initModule(false, users, os);
+        Syscollector::instance().destroy();
+        seedMarker(5);
+
+        for (const auto& table : dueTables)
+        {
+            seedMetadata(table, 1);
         }
 
-        /// @brief Creates the schema, seeds the marker, and reopens: DBSync holds the database
-        /// open for as long as the module is initialized, so a write from outside it is refused
-        /// with SQLITE_BUSY while it is up.
-        static void initWithMarker(bool packages, bool users, int64_t marker, bool os = false)
-        {
-            initModule(packages, users, os);
-            Syscollector::instance().destroy();
-            seedMarker(marker);
-            initModule(packages, users, os);
-        }
+        initModule(false, users, os);
+        publishAgentId("5");
+    }
 
-        /// @brief Brings the module up with the identity already synchronized (so the recovery
-        /// pass goes straight to the integrity checks) and the given tables' integrity clocks
-        /// long expired, so each one is due.
-        static void initWithIntegrityDue(bool users, bool os, const std::vector<std::string>& dueTables)
-        {
-            initModule(false, users, os);
-            Syscollector::instance().destroy();
-            seedMarker(5);
+    static int64_t integrityClock(const std::string& table)
+    {
+        int64_t stamped = 0;
+        EXPECT_TRUE(Syscollector::instance().getMetadataValue(table, stamped));
+        return stamped;
+    }
 
-            for (const auto& table : dueTables)
+    /// @brief Replaces the module's logger, keeping what it logs at @p level.
+    static void captureLogs(std::vector<std::string>& logs, modules_log_level_t level)
+    {
+        Syscollector::instance().m_logFunction =
+            [&logs, level](const modules_log_level_t logLevel, const std::string& msg)
+        {
+            if (logLevel == level)
             {
-                seedMetadata(table, 1);
+                logs.push_back(msg);
             }
+        };
+    }
 
-            initModule(false, users, os);
-            publishAgentId("5");
-        }
+    /// @brief Writes any metadata row, for the markers other than synced_agent_id.
+    static void seedMetadata(const std::string& key, int64_t value)
+    {
+        sqlite3* db = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
 
-        static int64_t integrityClock(const std::string& table)
+        const std::string statement = "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" +
+                                      key + "', " + std::to_string(value) + ");";
+
+        ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
+        sqlite3_close(db);
+    }
+
+    /// @brief Writes a non-numeric value under a key, so reading it back fails.
+    static void seedUnreadableMetadata(const std::string& key)
+    {
+        sqlite3* db = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+        const std::string statement =
+            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" + key + "', 'unreadable');";
+
+        ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
+        sqlite3_close(db);
+    }
+
+    /// @brief Seeds one OS row, so a packages recovery has a real DataContext to attach.
+    /// Written from outside the module for the same reason seedMarker() is: DBSync holds the
+    /// database open while it is initialized.
+    static void seedOsRow()
+    {
+        sqlite3* db = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+        const std::string statement =
+            "INSERT OR REPLACE INTO dbsync_osinfo (hostname, architecture, os_name, os_version, "
+            "os_codename, os_major, os_minor, os_patch, os_platform, os_type, os_kernel_name, "
+            "os_kernel_release, os_kernel_version, sync, checksum, version) VALUES "
+            "('test-host', 'x86_64', 'Ubuntu', '22.04.2 LTS', 'jammy', '22', '04', '2', 'ubuntu', "
+            "'linux', 'Linux', '5.15.0-69-generic', '#76-Ubuntu', 1, 'seedchecksum', 1);";
+
+        char* errMsg = nullptr;
+        ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+        if (errMsg)
         {
-            int64_t stamped = 0;
-            EXPECT_TRUE(Syscollector::instance().getMetadataValue(table, stamped));
-            return stamped;
+            sqlite3_free(errMsg);
         }
 
-        /// @brief Replaces the module's logger, keeping what it logs at @p level.
-        static void captureLogs(std::vector<std::string>& logs, modules_log_level_t level)
+        sqlite3_close(db);
+    }
+
+    /// @brief Writes a row straight into table_metadata, which is where the marker lives.
+    static void seedMarker(int64_t agentId)
+    {
+        sqlite3* db = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+        const std::string statement = "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" +
+                                      std::string(SYNCED_AGENT_ID_KEY) + "', " + std::to_string(agentId) + ");";
+
+        char* errMsg = nullptr;
+        ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK) << (errMsg ? errMsg : "");
+
+        if (errMsg)
         {
-            Syscollector::instance().m_logFunction = [&logs, level](const modules_log_level_t logLevel, const std::string & msg)
-            {
-                if (logLevel == level)
-                {
-                    logs.push_back(msg);
-                }
-            };
+            sqlite3_free(errMsg);
         }
 
-        /// @brief Writes any metadata row, for the markers other than synced_agent_id.
-        static void seedMetadata(const std::string& key, int64_t value)
+        sqlite3_close(db);
+    }
+
+    /// @brief Waits for a DataClean started on another thread. On a timeout, stops the module
+    /// so it returns: a failed assertion must fail the test, not hang it in ~future.
+    static bool finished(std::future<bool>& dataClean)
+    {
+        if (dataClean.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
         {
-            sqlite3* db = nullptr;
-            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
-
-            const std::string statement =
-                "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" +
-                key + "', " + std::to_string(value) + ");";
-
-            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
-            sqlite3_close(db);
+            return true;
         }
 
-        /// @brief Writes a non-numeric value under a key, so reading it back fails.
-        static void seedUnreadableMetadata(const std::string& key)
         {
-            sqlite3* db = nullptr;
-            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
-
-            const std::string statement =
-                "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" + key + "', 'unreadable');";
-
-            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, nullptr), SQLITE_OK);
-            sqlite3_close(db);
+            std::lock_guard<std::mutex> lock(Syscollector::instance().m_pauseMutex);
+            Syscollector::instance().m_stopping = true;
         }
 
-        /// @brief Seeds one OS row, so a packages recovery has a real DataContext to attach.
-        /// Written from outside the module for the same reason seedMarker() is: DBSync holds the
-        /// database open while it is initialized.
-        static void seedOsRow()
-        {
-            sqlite3* db = nullptr;
-            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        Syscollector::instance().m_pauseCv.notify_all();
+        dataClean.wait();
+        Syscollector::instance().m_stopping = false;
+        return false;
+    }
 
-            const std::string statement =
-                "INSERT OR REPLACE INTO dbsync_osinfo (hostname, architecture, os_name, os_version, "
-                "os_codename, os_major, os_minor, os_patch, os_platform, os_type, os_kernel_name, "
-                "os_kernel_release, os_kernel_version, sync, checksum, version) VALUES "
-                "('test-host', 'x86_64', 'Ubuntu', '22.04.2 LTS', 'jammy', '22', '04', '2', 'ubuntu', "
-                "'linux', 'Linux', '5.15.0-69-generic', '#76-Ubuntu', 1, 'seedchecksum', 1);";
-
-            char* errMsg = nullptr;
-            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK)
-                    << (errMsg ? errMsg : "");
-
-            if (errMsg)
-            {
-                sqlite3_free(errMsg);
-            }
-
-            sqlite3_close(db);
-        }
-
-        /// @brief Writes a row straight into table_metadata, which is where the marker lives.
-        static void seedMarker(int64_t agentId)
-        {
-            sqlite3* db = nullptr;
-            ASSERT_EQ(sqlite3_open_v2(IDENTITY_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
-
-            const std::string statement =
-                "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('" +
-                std::string(SYNCED_AGENT_ID_KEY) + "', " + std::to_string(agentId) + ");";
-
-            char* errMsg = nullptr;
-            ASSERT_EQ(sqlite3_exec(db, statement.c_str(), nullptr, nullptr, &errMsg), SQLITE_OK)
-                    << (errMsg ? errMsg : "");
-
-            if (errMsg)
-            {
-                sqlite3_free(errMsg);
-            }
-
-            sqlite3_close(db);
-        }
-
-        /// @brief Waits for a DataClean started on another thread. On a timeout, stops the module
-        /// so it returns: a failed assertion must fail the test, not hang it in ~future.
-        static bool finished(std::future<bool>& dataClean)
-        {
-            if (dataClean.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
-            {
-                return true;
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(Syscollector::instance().m_pauseMutex);
-                Syscollector::instance().m_stopping = true;
-            }
-
-            Syscollector::instance().m_pauseCv.notify_all();
-            dataClean.wait();
-            Syscollector::instance().m_stopping = false;
-            return false;
-        }
-
-        static int64_t readMarker()
-        {
-            const auto response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
-            return nlohmann::json::parse(response)["data"]["synced_agent_id"].get<int64_t>();
-        }
+    static int64_t readMarker()
+    {
+        const auto response = Syscollector::instance().query(R"({"command":"get_synced_agent_id"})");
+        return nlohmann::json::parse(response)["data"]["synced_agent_id"].get<int64_t>();
+    }
 };
 
 /// Declares plainProtocol / vdProtocol and publishes the mocks into the module. Written as a
 /// macro because gtest's FRIEND_TEST grants access to the test body, not to fixture members.
-#define INJECT_MOCK_PROTOCOLS()                                                            \
-    auto plainOwned = std::make_unique<NiceMock<MockAgentSyncProtocol>>();                 \
-    auto vdOwned = std::make_unique<NiceMock<MockAgentSyncProtocol>>();                    \
-    auto* plainProtocol = plainOwned.get();                                                \
-    auto* vdProtocol = vdOwned.get();                                                      \
-    Syscollector::instance().m_spSyncProtocol = std::move(plainOwned);                     \
+#define INJECT_MOCK_PROTOCOLS()                                                                                        \
+    auto plainOwned = std::make_unique<NiceMock<MockAgentSyncProtocol>>();                                             \
+    auto vdOwned = std::make_unique<NiceMock<MockAgentSyncProtocol>>();                                                \
+    auto* plainProtocol = plainOwned.get();                                                                            \
+    auto* vdProtocol = vdOwned.get();                                                                                  \
+    Syscollector::instance().m_spSyncProtocol = std::move(plainOwned);                                                 \
     Syscollector::instance().m_spSyncProtocolVD = std::move(vdOwned)
 
 // An in-place upgrade must not make the whole fleet resend at once: a database that never
@@ -413,14 +426,12 @@ TEST_F(SyscollectorIdentityTest, ChangedIdResendsEachTableOnItsOwnLane)
     publishAgentId("2");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*vdProtocol,
-                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_PACKAGES}, _, _))
-    .Times(1)
-    .WillOnce(Return(okResult()));
-    EXPECT_CALL(*plainProtocol,
-                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_USERS}, _, _))
-    .Times(1)
-    .WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_PACKAGES}, _, _))
+        .Times(1)
+        .WillOnce(Return(okResult()));
+    EXPECT_CALL(*plainProtocol, notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_USERS}, _, _))
+        .Times(1)
+        .WillOnce(Return(okResult()));
 
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
@@ -474,11 +485,9 @@ TEST_F(SyscollectorIdentityTest, ChangedIdSendsTheVDInventoryAsAFirstSync)
     // ask under the marker that is still armed. Those are allowed; a second VDFIRST is not,
     // since each one opens by deleting what the previous indexed.
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, Option::VDSYNC))
-    .Times(::testing::AnyNumber())
-    .WillRepeatedly(Return(okResult()));
-    EXPECT_CALL(*vdProtocol, synchronizeModule(_, Option::VDFIRST))
-    .Times(1)
-    .WillOnce(Return(okResult()));
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, synchronizeModule(_, Option::VDFIRST)).Times(1).WillOnce(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
     Syscollector::instance().checkAgentIdentity();
@@ -600,9 +609,9 @@ TEST_F(SyscollectorIdentityTest, NextPassResendsOnlyThePendingTables)
     EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
     // users fails on the first pass and lands on the second.
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _))
-    .Times(2)
-    .WillOnce(Return(SyncModuleResult {}))
-    .WillOnce(Return(okResult()));
+        .Times(2)
+        .WillOnce(Return(SyncModuleResult {}))
+        .WillOnce(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
@@ -623,12 +632,13 @@ TEST_F(SyscollectorIdentityTest, PassCutByStopResumesWithThePendingTables)
 
     // packages comes first in the pass; the stop lands right after the manager accepted it.
     EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _))
-    .Times(1)
-    .WillOnce([](const std::vector<std::string>&, Option, bool)
-    {
-        Syscollector::instance().m_stopping = true;
-        return okResult();
-    });
+        .Times(1)
+        .WillOnce(
+            [](const std::vector<std::string>&, Option, bool)
+            {
+                Syscollector::instance().m_stopping = true;
+                return okResult();
+            });
     // users is only reached by the resumed pass.
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
@@ -679,8 +689,8 @@ TEST_F(SyscollectorIdentityTest, UnreadablePerTableMarkerCountsAsNotDone)
     INJECT_MOCK_PROTOCOLS();
 
     int64_t unreadable = 0;
-    ASSERT_FALSE(Syscollector::instance().getMetadataValue(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE,
-                                                           unreadable));
+    ASSERT_FALSE(
+        Syscollector::instance().getMetadataValue(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE, unreadable));
 
     EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
@@ -705,9 +715,9 @@ TEST_F(SyscollectorIdentityTest, PlainLaneMarkerDoesNotSkipTheVDLane)
     EXPECT_CALL(*vdProtocol, notifyDataClean(_, _, _)).Times(2).WillRepeatedly(Return(okResult()));
     // users fails the first pass, so the identity stays unrecorded, and lands on the second.
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _))
-    .Times(2)
-    .WillOnce(Return(SyncModuleResult {}))
-    .WillOnce(Return(okResult()));
+        .Times(2)
+        .WillOnce(Return(SyncModuleResult {}))
+        .WillOnce(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
     EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
@@ -736,7 +746,8 @@ TEST_F(SyscollectorIdentityTest, ProgressMarkersAreClearedOnceTheIdentityIsRecor
     ASSERT_EQ(readMarker(), 2);
 
     int64_t value = -1;
-    EXPECT_TRUE(Syscollector::instance().getMetadataValue(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE, value));
+    EXPECT_TRUE(
+        Syscollector::instance().getMetadataValue(std::string(TABLE_SYNCED_AGENT_ID_PREFIX) + USERS_TABLE, value));
     EXPECT_EQ(value, 0);
 
     value = -1;
@@ -752,15 +763,13 @@ TEST_F(SyscollectorIdentityTest, FailedVDTableKeepsTheVDLanePending)
     publishAgentId("2");
     INJECT_MOCK_PROTOCOLS();
 
-    EXPECT_CALL(*vdProtocol,
-                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_SYSTEM}, _, _))
-    .Times(2)
-    .WillOnce(Return(SyncModuleResult {}))
-    .WillOnce(Return(okResult()));
-    EXPECT_CALL(*vdProtocol,
-                notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_PACKAGES}, _, _))
-    .Times(2)
-    .WillRepeatedly(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_SYSTEM}, _, _))
+        .Times(2)
+        .WillOnce(Return(SyncModuleResult {}))
+        .WillOnce(Return(okResult()));
+    EXPECT_CALL(*vdProtocol, notifyDataClean(std::vector<std::string> {SYSCOLLECTOR_SYNC_INDEX_PACKAGES}, _, _))
+        .Times(2)
+        .WillRepeatedly(Return(okResult()));
     // users lands on the first pass and is not cleared again.
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(1).WillOnce(Return(okResult()));
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
@@ -810,22 +819,21 @@ TEST_F(SyscollectorIdentityTest, VDRecoveryAttachesTheDataContext)
     pendingPackage.operation = Operation::CREATE;
     pendingPackage.is_data_context = false;
     EXPECT_CALL(*vdProtocol, fetchPendingItems(true))
-    .WillRepeatedly(Return(std::vector<PersistedData> {pendingPackage}));
+        .WillRepeatedly(Return(std::vector<PersistedData> {pendingPackage}));
 
     EXPECT_CALL(*vdProtocol, clearAllDataContext()).Times(::testing::AtLeast(1));
 
     // The assertion that matters: the OS row goes out tagged as DataContext on the system index.
     // Without it the session would carry the packages and nothing to evaluate them against.
-    EXPECT_CALL(*vdProtocol,
-                persistDifference(_, _, SYSCOLLECTOR_SYNC_INDEX_SYSTEM, _, _, /* isDataContext */ true))
-    .Times(::testing::AtLeast(1));
+    EXPECT_CALL(*vdProtocol, persistDifference(_, _, SYSCOLLECTOR_SYNC_INDEX_SYSTEM, _, _, /* isDataContext */ true))
+        .Times(::testing::AtLeast(1));
 
     // The context rides the lane its DataValues do, so the plain protocol stays out of it.
     EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
     EXPECT_CALL(*plainProtocol, fetchPendingItems(_)).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ true, "retry note"));
+        PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ true, "retry note"));
 }
 
 // The context step belongs to the VD lane only. A plain table has no DataContext rule to honour,
@@ -843,7 +851,7 @@ TEST_F(SyscollectorIdentityTest, PlainRecoveryLeavesTheVDContextAlone)
     EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
+        USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
 }
 
 // A deferred recovery is the identity path: checkAgentIdentity() queues every VD table and clears
@@ -862,7 +870,7 @@ TEST_F(SyscollectorIdentityTest, DeferredVDRecoveryDoesNotAttachContext)
     EXPECT_CALL(*plainProtocol, clearAllDataContext()).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
+        PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
 }
 
 // A VD index is checked on the plain protocol but cleaned on the VD one, so the mismatches the
@@ -878,7 +886,7 @@ TEST_F(SyscollectorIdentityTest, VDRecoveryClearsTheMismatchesStoredByThePlainPr
     EXPECT_CALL(*vdProtocol, clearIntegrityProgress(_)).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
+        PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
 }
 
 // A plain index is checked and cleaned on the same protocol, whose clean removes them itself.
@@ -894,7 +902,7 @@ TEST_F(SyscollectorIdentityTest, PlainRecoveryLeavesTheStoredMismatchesToItsClea
     EXPECT_CALL(*vdProtocol, clearIntegrityProgress(_)).Times(0);
 
     EXPECT_TRUE(Syscollector::instance().resyncTableToManager(
-                    USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
+        USERS_TABLE, SYSCOLLECTOR_SYNC_INDEX_USERS, /* syncNow */ true, "retry note"));
 }
 
 // A clean that did not happen leaves the index as it was, so its mismatches still count.
@@ -908,7 +916,7 @@ TEST_F(SyscollectorIdentityTest, FailedVDCleanKeepsTheStoredMismatches)
     EXPECT_CALL(*plainProtocol, clearIntegrityProgress(_)).Times(0);
 
     EXPECT_FALSE(Syscollector::instance().resyncTableToManager(
-                     PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
+        PACKAGES_TABLE, SYSCOLLECTOR_SYNC_INDEX_PACKAGES, /* syncNow */ false, "retry note"));
 }
 
 // The sync thread polls this to resync right after a re-enrollment instead of waiting out a sync
@@ -922,7 +930,8 @@ TEST_F(SyscollectorIdentityTest, IdentityChangedQueryReportsAChangedId)
 
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
 
-    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    const auto response =
+        nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
     EXPECT_EQ(response["error"], MQ_SUCCESS);
     EXPECT_EQ(response["data"]["identity_changed"], 1);
 
@@ -938,7 +947,8 @@ TEST_F(SyscollectorIdentityTest, IdentityChangedQueryIgnoresAnUnchangedId)
     (void)plainProtocol;
     (void)vdProtocol;
 
-    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    const auto response =
+        nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
     EXPECT_EQ(response["data"]["identity_changed"], 0);
 }
 
@@ -952,7 +962,8 @@ TEST_F(SyscollectorIdentityTest, IdentityChangedQueryReportsAnUnknownId)
     (void)plainProtocol;
     (void)vdProtocol;
 
-    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    const auto response =
+        nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
     EXPECT_EQ(response["data"]["identity_changed"], -1);
 }
 
@@ -966,7 +977,8 @@ TEST_F(SyscollectorIdentityTest, IdentityChangedQueryIgnoresAnAbsentMarker)
     (void)plainProtocol;
     (void)vdProtocol;
 
-    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    const auto response =
+        nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
     EXPECT_EQ(response["data"]["identity_changed"], 0);
     EXPECT_EQ(readMarker(), 0);
 }
@@ -977,7 +989,8 @@ TEST_F(SyscollectorIdentityTest, IdentityChangedQueryReportsUnknownWithoutSyncPr
     initWithMarker(true, true, 5);
     publishAgentId("9");
 
-    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    const auto response =
+        nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
     EXPECT_EQ(response["data"]["identity_changed"], -1);
 }
 
@@ -1041,20 +1054,19 @@ TEST_F(SyscollectorIdentityTest, FlushWaitsForARecoveryThenSends)
     INJECT_MOCK_PROTOCOLS();
 
     std::atomic<bool> sent {false};
-    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillOnce([&sent](Mode, Option)
-    {
-        sent = true;
-        return okResult();
-    });
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _))
+        .WillOnce(
+            [&sent](Mode, Option)
+            {
+                sent = true;
+                return okResult();
+            });
     EXPECT_CALL(*vdProtocol, synchronizeModule(_, _)).WillRepeatedly(Return(okResult()));
 
     Syscollector::instance().m_recoveryInProgress = true;
 
     std::atomic<int> flushResult {1};
-    std::thread flusher([&flushResult]()
-    {
-        flushResult = Syscollector::instance().executeFlushSync();
-    });
+    std::thread flusher([&flushResult]() { flushResult = Syscollector::instance().executeFlushSync(); });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     EXPECT_FALSE(sent.load());
@@ -1085,10 +1097,7 @@ TEST_F(SyscollectorIdentityTest, FlushWaitingForARecoveryGivesUpOnShutdown)
     Syscollector::instance().m_recoveryInProgress = true;
 
     std::atomic<int> flushResult {1};
-    std::thread flusher([&flushResult]()
-    {
-        flushResult = Syscollector::instance().executeFlushSync();
-    });
+    std::thread flusher([&flushResult]() { flushResult = Syscollector::instance().executeFlushSync(); });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     Syscollector::instance().m_stopping = true;
@@ -1114,14 +1123,16 @@ TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush)
     Syscollector::instance().m_disabledCollectorsIndicesWithData = {"wazuh-states-inventory-hotfixes"};
 
     std::atomic<bool> sent {false};
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillOnce([&sent](const std::vector<std::string>&, Option, bool)
-    {
-        EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
-        EXPECT_TRUE(Syscollector::instance().m_recoveryInProgress.load());
-        EXPECT_TRUE(Syscollector::instance().m_startupDataCleanInProgress.load());
-        sent = true;
-        return okResult();
-    });
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _))
+        .WillOnce(
+            [&sent](const std::vector<std::string>&, Option, bool)
+            {
+                EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
+                EXPECT_TRUE(Syscollector::instance().m_recoveryInProgress.load());
+                EXPECT_TRUE(Syscollector::instance().m_startupDataCleanInProgress.load());
+                sent = true;
+                return okResult();
+            });
 
     Syscollector::instance().m_flushInProgress = true;
 
@@ -1157,11 +1168,13 @@ TEST_F(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery)
     Syscollector::instance().m_disabledCollectorsIndicesWithData = {"wazuh-states-inventory-hotfixes"};
 
     std::atomic<bool> recoveryRunning {true};
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillOnce([&recoveryRunning](const std::vector<std::string>&, Option, bool)
-    {
-        EXPECT_FALSE(recoveryRunning.load());
-        return okResult();
-    });
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _))
+        .WillOnce(
+            [&recoveryRunning](const std::vector<std::string>&, Option, bool)
+            {
+                EXPECT_FALSE(recoveryRunning.load());
+                return okResult();
+            });
 
     Syscollector::instance().m_recoveryInProgress = true;
 
@@ -1215,16 +1228,15 @@ TEST_F(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAl
 TEST_F(SyscollectorIdentityTest, FlushClearsItsFlagWhenTheSessionThrows)
 {
 #ifdef WIN32
-    GTEST_SKIP() << "Skipping FlushClearsItsFlagWhenTheSessionThrows test on Windows due to exception handling issues in Wine environment";
+    GTEST_SKIP() << "Skipping FlushClearsItsFlagWhenTheSessionThrows test on Windows due to exception handling issues "
+                    "in Wine environment";
 #endif
     initModule(true, true);
     INJECT_MOCK_PROTOCOLS();
     (void)vdProtocol;
 
-    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _)).WillOnce([](Mode, Option) -> SyncModuleResult
-    {
-        throw std::runtime_error("session failed");
-    });
+    EXPECT_CALL(*plainProtocol, synchronizeModule(_, _))
+        .WillOnce([](Mode, Option) -> SyncModuleResult { throw std::runtime_error("session failed"); });
 
     EXPECT_THROW(Syscollector::instance().executeFlushSync(), std::runtime_error);
     EXPECT_FALSE(Syscollector::instance().m_flushInProgress.load());
@@ -1250,7 +1262,8 @@ TEST_F(SyscollectorIdentityTest, PauseDoesNotWaitForAFlush)
 // cycle. The module is a singleton, so the cases compare deltas.
 static int queryResyncAttempts()
 {
-    const auto response = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
+    const auto response =
+        nlohmann::json::parse(Syscollector::instance().query(R"({"command":"get_identity_changed"})"));
     return response["data"]["resync_attempts"].get<int>();
 }
 
@@ -1329,12 +1342,10 @@ namespace
 
     bool anyContains(const std::vector<std::string>& logs, const std::string& text)
     {
-        return std::any_of(logs.begin(), logs.end(), [&text](const std::string & log)
-        {
-            return log.find(text) != std::string::npos;
-        });
+        return std::any_of(
+            logs.begin(), logs.end(), [&text](const std::string& log) { return log.find(text) != std::string::npos; });
     }
-}
+} // namespace
 
 // A check that could not run still counts the table as checked for this interval, but it must say
 // so -- once per pass, with the reason -- instead of passing for a valid checksum.
@@ -1357,8 +1368,10 @@ TEST_F(SyscollectorIdentityTest, UncheckedTableIsStampedAndReportedOnce)
 
     EXPECT_GT(integrityClock(USERS_TABLE), 1);
     ASSERT_EQ(warnings.size(), 1u);
-    EXPECT_NE(warnings[0].find("Integrity check could not be performed for 1 table(s)"), std::string::npos) << warnings[0];
-    EXPECT_NE(warnings[0].find("inventory-users (Failed to communicate with the manager)"), std::string::npos) << warnings[0];
+    EXPECT_NE(warnings[0].find("Integrity check could not be performed for 1 table(s)"), std::string::npos)
+        << warnings[0];
+    EXPECT_NE(warnings[0].find("inventory-users (Failed to communicate with the manager)"), std::string::npos)
+        << warnings[0];
     EXPECT_NE(warnings[0].find("next integrity_interval (24h)"), std::string::npos) << warnings[0];
 }
 
@@ -1393,23 +1406,25 @@ TEST_F(SyscollectorIdentityTest, UncheckedTablesShareOneWarningAndKeepAReportedM
     INJECT_MOCK_PROTOCOLS();
     (void)vdProtocol;
 
-    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillRepeatedly([](const std::string & index, const std::string&)
-    {
-        IntegrityCheckResult notChecked;
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _))
+        .WillRepeatedly(
+            [](const std::string& index, const std::string&)
+            {
+                IntegrityCheckResult notChecked;
 
-        if (index.find("users") != std::string::npos)
-        {
-            notChecked.failureReason = "Timed out waiting for manager response.";
-        }
-        else
-        {
-            notChecked.failureReason = "Failed to communicate with the manager.";
-            notChecked.managerNotReady = true;
-            notChecked.mismatchUnconfirmed = true;
-        }
+                if (index.find("users") != std::string::npos)
+                {
+                    notChecked.failureReason = "Timed out waiting for manager response.";
+                }
+                else
+                {
+                    notChecked.failureReason = "Failed to communicate with the manager.";
+                    notChecked.managerNotReady = true;
+                    notChecked.mismatchUnconfirmed = true;
+                }
 
-        return notChecked;
-    });
+                return notChecked;
+            });
     EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).Times(0);
 
     std::vector<std::string> warnings;
@@ -1420,10 +1435,14 @@ TEST_F(SyscollectorIdentityTest, UncheckedTablesShareOneWarningAndKeepAReportedM
     EXPECT_GT(integrityClock(OS_TABLE), 1);
     EXPECT_GT(integrityClock(USERS_TABLE), 1);
     ASSERT_EQ(warnings.size(), 1u);
-    EXPECT_NE(warnings[0].find("Integrity check could not be performed for 2 table(s)"), std::string::npos) << warnings[0];
-    EXPECT_NE(warnings[0].find("(Failed to communicate with the manager, after a checksum mismatch reported by the manager)"),
-              std::string::npos) << warnings[0];
-    EXPECT_NE(warnings[0].find("inventory-users (Timed out waiting for manager response)"), std::string::npos) << warnings[0];
+    EXPECT_NE(warnings[0].find("Integrity check could not be performed for 2 table(s)"), std::string::npos)
+        << warnings[0];
+    EXPECT_NE(
+        warnings[0].find("(Failed to communicate with the manager, after a checksum mismatch reported by the manager)"),
+        std::string::npos)
+        << warnings[0];
+    EXPECT_NE(warnings[0].find("inventory-users (Timed out waiting for manager response)"), std::string::npos)
+        << warnings[0];
 }
 
 // A recovery that cannot start is retried in the next integrity_interval, like a failed check, and
@@ -1434,11 +1453,13 @@ TEST_F(SyscollectorIdentityTest, RefusedRecoveryDataCleanStampsAndMovesOn)
     INJECT_MOCK_PROTOCOLS();
 
     // dbsync_osinfo comes first in the pass and mismatches; dbsync_users matches.
-    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillRepeatedly([](const std::string & index, const std::string&)
-    {
-        return integrityResult(index.find("users") != std::string::npos ? IntegrityCheckStatus::VALID
-                               : IntegrityCheckStatus::MISMATCH);
-    });
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _))
+        .WillRepeatedly(
+            [](const std::string& index, const std::string&)
+            {
+                return integrityResult(index.find("users") != std::string::npos ? IntegrityCheckStatus::VALID
+                                                                                : IntegrityCheckStatus::MISMATCH);
+            });
 
     SyncModuleResult refused;
     refused.failureReason = "Failed to communicate with the manager.";
@@ -1463,11 +1484,13 @@ TEST_F(SyscollectorIdentityTest, StopBetweenTablesLeavesTheRestUnstamped)
     INJECT_MOCK_PROTOCOLS();
     (void)vdProtocol;
 
-    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillOnce([](const std::string&, const std::string&)
-    {
-        Syscollector::instance().m_stopping = true;
-        return integrityResult(IntegrityCheckStatus::VALID);
-    });
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _))
+        .WillOnce(
+            [](const std::string&, const std::string&)
+            {
+                Syscollector::instance().m_stopping = true;
+                return integrityResult(IntegrityCheckStatus::VALID);
+            });
 
     Syscollector::instance().runRecoveryProcess();
     Syscollector::instance().m_stopping = false;
@@ -1484,17 +1507,20 @@ TEST_F(SyscollectorIdentityTest, RecoveryInterruptedByStopLeavesTheTableUnstampe
     INJECT_MOCK_PROTOCOLS();
     (void)vdProtocol;
 
-    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _)).WillOnce(Return(integrityResult(IntegrityCheckStatus::MISMATCH)));
+    EXPECT_CALL(*plainProtocol, requiresFullSync(_, _))
+        .WillOnce(Return(integrityResult(IntegrityCheckStatus::MISMATCH)));
 
     // As quiesce() does: m_stopping is raised before the protocol is stopped, so a DataClean the stop
     // cuts short always finds it set.
-    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _)).WillOnce([](const std::vector<std::string>&, Option, bool)
-    {
-        Syscollector::instance().m_stopping = true;
-        SyncModuleResult stopped;
-        stopped.stopped = true;
-        return stopped;
-    });
+    EXPECT_CALL(*plainProtocol, notifyDataClean(_, _, _))
+        .WillOnce(
+            [](const std::vector<std::string>&, Option, bool)
+            {
+                Syscollector::instance().m_stopping = true;
+                SyncModuleResult stopped;
+                stopped.stopped = true;
+                return stopped;
+            });
 
     std::vector<std::string> warnings;
     captureLogs(warnings, LOG_WARNING);
@@ -1522,17 +1548,23 @@ TEST_F(SyscollectorIdentityTest, OsInfoDistributionReleaseColumnIsRenamedOnUpgra
                            "INSERT INTO dbsync_osinfo (os_name, os_version, os_distribution_release, checksum) "
                            "VALUES ('Microsoft Windows 10 Pro', '10.0.19045', '2009', 'oldchecksum');"
                            "PRAGMA user_version = 1;",
-                           nullptr, nullptr, nullptr), SQLITE_OK);
+                           nullptr,
+                           nullptr,
+                           nullptr),
+              SQLITE_OK);
     sqlite3_close(db);
 
     std::vector<std::string> warnings;
-    initModule(false, false, false, [&warnings](const modules_log_level_t level, const std::string & msg)
-    {
-        if (level == LOG_WARNING)
-        {
-            warnings.push_back(msg);
-        }
-    });
+    initModule(false,
+               false,
+               false,
+               [&warnings](const modules_log_level_t level, const std::string& msg)
+               {
+                   if (level == LOG_WARNING)
+                   {
+                       warnings.push_back(msg);
+                   }
+               });
     Syscollector::instance().destroy();
 
     // Upgraded in place: nothing was lost, so nothing to warn about.
@@ -1561,7 +1593,8 @@ TEST_F(SyscollectorIdentityTest, OsInfoUnexpectedSchemaIsRecreatedOnUpgrade)
 {
 #ifdef WIN32
     // The rejected upgrade is an exception thrown and caught inside DBSync.
-    GTEST_SKIP() << "Skipping OsInfoUnexpectedSchemaIsRecreatedOnUpgrade test on Windows due to exception handling issues in Wine environment";
+    GTEST_SKIP() << "Skipping OsInfoUnexpectedSchemaIsRecreatedOnUpgrade test on Windows due to exception handling "
+                    "issues in Wine environment";
 #endif
     initModule(false, false);
     Syscollector::instance().destroy();
@@ -1573,17 +1606,23 @@ TEST_F(SyscollectorIdentityTest, OsInfoUnexpectedSchemaIsRecreatedOnUpgrade)
                            "INSERT INTO dbsync_osinfo (os_name, os_version, os_display_version, checksum) "
                            "VALUES ('Microsoft Windows 10 Pro', '10.0.19045', '22H2', 'oldchecksum');"
                            "PRAGMA user_version = 1;",
-                           nullptr, nullptr, nullptr), SQLITE_OK);
+                           nullptr,
+                           nullptr,
+                           nullptr),
+              SQLITE_OK);
     sqlite3_close(db);
 
     std::vector<std::string> warnings;
-    ASSERT_NO_THROW(initModule(false, false, false, [&warnings](const modules_log_level_t level, const std::string & msg)
-    {
-        if (level == LOG_WARNING)
-        {
-            warnings.push_back(msg);
-        }
-    }));
+    ASSERT_NO_THROW(initModule(false,
+                               false,
+                               false,
+                               [&warnings](const modules_log_level_t level, const std::string& msg)
+                               {
+                                   if (level == LOG_WARNING)
+                                   {
+                                       warnings.push_back(msg);
+                                   }
+                               }));
     Syscollector::instance().destroy();
 
     // Logged by syscollector itself, at a level the default configuration shows: the shared

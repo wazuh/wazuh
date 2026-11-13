@@ -10,40 +10,42 @@
 
 #include "shared.h"
 
-
-char *searchAndReplace(const char *orig, const char *search, const char *value)
+char* searchAndReplace(const char* orig, const char* search, const char* value)
 {
-    const char *p;
+    const char* p;
     const size_t orig_len = strlen(orig);
     const size_t search_len = strlen(search);
     const size_t value_len = strlen(value);
 
     size_t inx_start;
-    char *tmp = NULL;
+    char* tmp = NULL;
     size_t tmp_offset = 0;
     size_t total_bytes_allocated = 1;
     size_t from;
 
     /* Check for any match */
     p = strstr(orig, search);
-    if (p == NULL) {
+    if (p == NULL)
+    {
         os_strdup(orig, tmp);
 
         return tmp;
     }
 
-    inx_start = (size_t) (p - orig);
+    inx_start = (size_t)(p - orig);
     from = inx_start + search_len;
 
     /* Copy content before first match, if any */
-    if (inx_start > 0) {
+    if (inx_start > 0)
+    {
         total_bytes_allocated = inx_start + 1;
         os_malloc(sizeof(char) * total_bytes_allocated, tmp);
         strncpy(tmp, orig, inx_start);
         tmp_offset = inx_start;
     }
 
-    while (p != NULL) {
+    while (p != NULL)
+    {
         /* Copy replacement */
         total_bytes_allocated += value_len;
         os_realloc(tmp, total_bytes_allocated, tmp);
@@ -53,11 +55,13 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
 
         /* Search for further occurrences */
         p = strstr(orig + inx_start + search_len, search);
-        if (p != NULL) {
-            size_t inx_start2 = (size_t) (p - orig);
+        if (p != NULL)
+        {
+            size_t inx_start2 = (size_t)(p - orig);
 
             /* Copy content between matches, if any */
-            if (inx_start2 > from) {
+            if (inx_start2 > from)
+            {
                 size_t gap = inx_start2 - from;
                 total_bytes_allocated += gap;
                 os_realloc(tmp, total_bytes_allocated, tmp);
@@ -73,7 +77,8 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
     }
 
     /* Copy content after last match, if any */
-    if ((from < orig_len) && from > 0) {
+    if ((from < orig_len) && from > 0)
+    {
         total_bytes_allocated += orig_len - from;
         os_realloc(tmp, total_bytes_allocated, tmp);
         strncpy(tmp + tmp_offset, orig + from, orig_len - from);
@@ -85,38 +90,48 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
 }
 
 /* Escape newline characters. Returns a new allocated string. */
-char *escape_newlines(const char *orig)
+char* escape_newlines(const char* orig)
 {
-    const char *ptr;
+    const char* ptr;
     char *ret, *retptr;
     size_t size;
 
     ptr = orig;
     size = 1;
-    while (*ptr) {
-        if ((*ptr == '\n') || (*ptr == '\r')) {
+    while (*ptr)
+    {
+        if ((*ptr == '\n') || (*ptr == '\r'))
+        {
             size += 2;
-        } else {
+        }
+        else
+        {
             size += 1;
         }
         ptr++;
     }
 
-    os_malloc (size, ret);
+    os_malloc(size, ret);
     ptr = orig;
     retptr = ret;
-    while (*ptr) {
-        if (*ptr == '\n') {
+    while (*ptr)
+    {
+        if (*ptr == '\n')
+        {
             *retptr = '\\';
             *(retptr + 1) = 'n';
             retptr += 2;
-        } else if (*ptr == '\r') {
+        }
+        else if (*ptr == '\r')
+        {
             *retptr = '\\';
             *(retptr + 1) = 'r';
             retptr += 2;
-        } else {
+        }
+        else
+        {
             *retptr = *ptr;
-            retptr ++;
+            retptr++;
         }
         ptr++;
     }

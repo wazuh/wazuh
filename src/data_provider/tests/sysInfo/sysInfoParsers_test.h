@@ -15,13 +15,12 @@
 class SysInfoParsersTest : public ::testing::Test
 {
 
-    protected:
+protected:
+    SysInfoParsersTest() = default;
+    virtual ~SysInfoParsersTest() = default;
 
-        SysInfoParsersTest() = default;
-        virtual ~SysInfoParsersTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SYSINFO_PARSERS_TEST_H

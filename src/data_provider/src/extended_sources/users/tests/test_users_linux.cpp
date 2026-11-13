@@ -17,27 +17,23 @@
 
 class MockSystemWrapper : public ISystemWrapper
 {
-    public:
-        MOCK_METHOD(long, sysconf, (int name), (const, override));
-        MOCK_METHOD(FILE*, fopen, (const char*, const char*), (override));
-        MOCK_METHOD(int, fclose, (FILE*), (override));
-        MOCK_METHOD(char*, strerror, (int), (override));
+public:
+    MOCK_METHOD(long, sysconf, (int name), (const, override));
+    MOCK_METHOD(FILE*, fopen, (const char*, const char*), (override));
+    MOCK_METHOD(int, fclose, (FILE*), (override));
+    MOCK_METHOD(char*, strerror, (int), (override));
 };
 
 class MockPasswdWrapper : public IPasswdWrapperLinux
 {
-    public:
-        MOCK_METHOD(int, fgetpwent_r,
-                    (FILE*, struct passwd*, char*, size_t, struct passwd**), (override));
-        MOCK_METHOD(void, setpwent, (), (override));
-        MOCK_METHOD(int, getpwent_r,
-                    (struct passwd*, char*, size_t, struct passwd**), (override));
-        MOCK_METHOD(void, endpwent, (), (override));
-        MOCK_METHOD(struct passwd*, getpwent, (), (override));
-        MOCK_METHOD(int, getpwuid_r,
-                    (uid_t, struct passwd*, char*, size_t, struct passwd**), (override));
-        MOCK_METHOD(int, getpwnam_r,
-                    (const char*, struct passwd*, char*, size_t, struct passwd**), (override));
+public:
+    MOCK_METHOD(int, fgetpwent_r, (FILE*, struct passwd*, char*, size_t, struct passwd**), (override));
+    MOCK_METHOD(void, setpwent, (), (override));
+    MOCK_METHOD(int, getpwent_r, (struct passwd*, char*, size_t, struct passwd**), (override));
+    MOCK_METHOD(void, endpwent, (), (override));
+    MOCK_METHOD(struct passwd*, getpwent, (), (override));
+    MOCK_METHOD(int, getpwuid_r, (uid_t, struct passwd*, char*, size_t, struct passwd**), (override));
+    MOCK_METHOD(int, getpwnam_r, (const char*, struct passwd*, char*, size_t, struct passwd**), (override));
 };
 
 /// @brief Builds a passwd row. The name is kept as a pointer, so pass a literal.
@@ -65,7 +61,7 @@ struct PasswdRows
 /// @brief Action for a mocked fgetpwent_r: next row, then ENOENT like glibc does at end of file.
 static auto serveFgetpwent(const std::shared_ptr<PasswdRows>& state)
 {
-    return [state](FILE*, struct passwd * pwd, char*, size_t, struct passwd** result) -> int
+    return [state](FILE*, struct passwd* pwd, char*, size_t, struct passwd** result) -> int
     {
         if (state->index >= state->rows.size())
         {
@@ -90,7 +86,7 @@ static auto serveFgetpwent(const std::shared_ptr<PasswdRows>& state)
 /// @brief Action for a mocked getpwent_r, same contract as serveFgetpwent.
 static auto serveGetpwent(const std::shared_ptr<PasswdRows>& state)
 {
-    return [state](struct passwd * pwd, char*, size_t, struct passwd** result) -> int
+    return [state](struct passwd* pwd, char*, size_t, struct passwd** result) -> int
     {
         if (state->index >= state->rows.size())
         {
@@ -118,41 +114,34 @@ TEST(UsersProviderTest, CollectLocalUsers)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillOnce(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillOnce(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
 
-    struct passwd test_pwd =
-    {
-        .pw_name = const_cast<char*>("testuser"),
-        .pw_passwd = const_cast<char*>("x"),
-        .pw_uid = 1000,
-        .pw_gid = 1000,
-        .pw_gecos = const_cast<char*>("Test User"),
-        .pw_dir = const_cast<char*>("/home/testuser"),
-        .pw_shell = const_cast<char*>("/bin/bash")
-    };
+    struct passwd test_pwd = {.pw_name = const_cast<char*>("testuser"),
+                              .pw_passwd = const_cast<char*>("x"),
+                              .pw_uid = 1000,
+                              .pw_gid = 1000,
+                              .pw_gecos = const_cast<char*>("Test User"),
+                              .pw_dir = const_cast<char*>("/home/testuser"),
+                              .pw_shell = const_cast<char*>("/bin/bash")};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillOnce(::testing::DoAll(
-                  ::testing::SetArgPointee<1>(test_pwd),
-                  ::testing::SetArgPointee<4>(&test_pwd),
-                  ::testing::Return(0)))
-    .WillOnce(::testing::Return(ENOENT));
+        .WillOnce(::testing::DoAll(
+            ::testing::SetArgPointee<1>(test_pwd), ::testing::SetArgPointee<4>(&test_pwd), ::testing::Return(0)))
+        .WillOnce(::testing::Return(ENOENT));
 
-    EXPECT_CALL(*mockSys, fclose(mockFile))
-    .WillOnce(::testing::Return(0));
+    EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect(false);
 
     ASSERT_EQ(result.size(), static_cast<size_t>(1));
     EXPECT_EQ(result[0]["username"], "testuser");
-    EXPECT_EQ(result[0]["uid"], std::uint32_t{1000});
-    EXPECT_EQ(result[0]["gid"], std::uint32_t{1000});
+    EXPECT_EQ(result[0]["uid"], std::uint32_t {1000});
+    EXPECT_EQ(result[0]["gid"], std::uint32_t {1000});
     EXPECT_EQ(result[0]["description"], "Test User");
     EXPECT_EQ(result[0]["directory"], "/home/testuser");
     EXPECT_EQ(result[0]["shell"], "/bin/bash");
@@ -165,12 +154,11 @@ TEST(UsersProviderTest, CollectMarksOnlyDirectoryAccountsRemote)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -181,12 +169,12 @@ TEST(UsersProviderTest, CollectMarksOnlyDirectoryAccountsRemote)
     nssRows->rows = {makePwd("root", 0), makePwd("daemon", 1), makePwd("alice", 1000), makePwd("bob", 200001)};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -207,12 +195,11 @@ TEST(UsersProviderTest, CollectMarksAllLocalWhenNoDirectoryModule)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -222,12 +209,12 @@ TEST(UsersProviderTest, CollectMarksAllLocalWhenNoDirectoryModule)
     nssRows->rows = {makePwd("root", 0), makePwd("daemon", 1), makePwd("alice", 1000)};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -246,14 +233,13 @@ TEST(UsersProviderTest, CollectDefaultsToLocalWhenPasswdUnreadable)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(nullptr));
+        .WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockSys, fclose(::testing::_)).Times(0);
     EXPECT_CALL(*mockPasswd, fgetpwent_r(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-    .Times(0);
+        .Times(0);
 
     auto nssRows = std::make_shared<PasswdRows>();
     nssRows->rows = {makePwd("root", 0), makePwd("bob", 200001)};
@@ -261,7 +247,7 @@ TEST(UsersProviderTest, CollectDefaultsToLocalWhenPasswdUnreadable)
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -278,12 +264,11 @@ TEST(UsersProviderTest, CollectClassifiesByNameNotUid)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -293,12 +278,12 @@ TEST(UsersProviderTest, CollectClassifiesByNameNotUid)
     nssRows->rows = {makePwd("alice", 1000), makePwd("bob", 1000)};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -316,12 +301,11 @@ TEST(UsersProviderTest, CollectHandlesPasswdAliasesSharingUid)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -331,12 +315,12 @@ TEST(UsersProviderTest, CollectHandlesPasswdAliasesSharingUid)
     nssRows->rows = {makePwd("root", 0), makePwd("toor", 0)};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -351,16 +335,15 @@ TEST(UsersProviderTest, CollectTreatsEmptyPasswdFileAsAllLocal)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillOnce(::testing::Return(ENOENT));
+        .WillOnce(::testing::Return(ENOENT));
 
     auto nssRows = std::make_shared<PasswdRows>();
     nssRows->rows = {makePwd("root", 0), makePwd("bob", 200001)};
@@ -368,7 +351,7 @@ TEST(UsersProviderTest, CollectTreatsEmptyPasswdFileAsAllLocal)
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -384,12 +367,11 @@ TEST(UsersProviderTest, CollectWithConstraintsUsesUnfilteredLocalSet)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -400,13 +382,13 @@ TEST(UsersProviderTest, CollectWithConstraintsUsesUnfilteredLocalSet)
 
     // Both local rows plus the terminator: the local pass ignores the filter.
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .Times(3)
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .Times(3)
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collectWithConstraints({"alice"}, {}, true);
@@ -423,12 +405,11 @@ TEST(UsersProviderTest, CollectDoesNotReportSystemdDynamicUsersAsRemote)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -436,24 +417,21 @@ TEST(UsersProviderTest, CollectDoesNotReportSystemdDynamicUsersAsRemote)
 
     // Both boundaries, one uid on each side, and a real directory account.
     auto nssRows = std::make_shared<PasswdRows>();
-    nssRows->rows =
-    {
-        makePwd("root", 0),
-        makePwd("justbelow", 61183),
-        makePwd("dynlow", 61184),
-        makePwd("dynusertest", 64627),
-        makePwd("dynhigh", 65519),
-        makePwd("justabove", 65520),
-        makePwd("bob", 200001)
-    };
+    nssRows->rows = {makePwd("root", 0),
+                     makePwd("justbelow", 61183),
+                     makePwd("dynlow", 61184),
+                     makePwd("dynusertest", 64627),
+                     makePwd("dynhigh", 65519),
+                     makePwd("justabove", 65520),
+                     makePwd("bob", 200001)};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -475,12 +453,11 @@ TEST(UsersProviderTest, CollectTreatsShortReadAsUndeterminedLocality)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -488,8 +465,8 @@ TEST(UsersProviderTest, CollectTreatsShortReadAsUndeterminedLocality)
 
     // One row read, then a line too long for the buffer.
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillOnce(::testing::Invoke(serveFgetpwent(localRows)))
-    .WillOnce(::testing::Return(ERANGE));
+        .WillOnce(::testing::Invoke(serveFgetpwent(localRows)))
+        .WillOnce(::testing::Return(ERANGE));
 
     auto nssRows = std::make_shared<PasswdRows>();
     nssRows->rows = {makePwd("root", 0), makePwd("bob", 200001)};
@@ -497,7 +474,7 @@ TEST(UsersProviderTest, CollectTreatsShortReadAsUndeterminedLocality)
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();
@@ -514,8 +491,7 @@ TEST(UsersProviderTest, CollectReadsPasswdAfterClosingEnumeration)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
 
@@ -528,12 +504,12 @@ TEST(UsersProviderTest, CollectReadsPasswdAfterClosingEnumeration)
         ::testing::InSequence seq;
         EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
         EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+            .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
         EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
         EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-        .WillOnce(::testing::Return(mockFile));
+            .WillOnce(::testing::Return(mockFile));
         EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+            .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
         EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
     }
 
@@ -550,12 +526,11 @@ TEST(UsersProviderTest, CollectWithConstraintsHandlesNullUsernameRow)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -568,12 +543,12 @@ TEST(UsersProviderTest, CollectWithConstraintsHandlesNullUsernameRow)
     nssRows->rows = {nameless, makePwd("alice", 1000)};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collectWithConstraints({"alice"}, {}, true);
@@ -588,12 +563,11 @@ TEST(UsersProviderTest, CollectHandlesNullUsernameRow)
     auto mockPasswd = std::make_shared<MockPasswdWrapper>();
     auto mockSys = std::make_shared<MockSystemWrapper>();
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillRepeatedly(::testing::Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillRepeatedly(::testing::Return(1024));
 
     FILE* mockFile = reinterpret_cast<FILE*>(0x1234);
     EXPECT_CALL(*mockSys, fopen(::testing::StrEq("/etc/passwd"), ::testing::StrEq("r")))
-    .WillOnce(::testing::Return(mockFile));
+        .WillOnce(::testing::Return(mockFile));
     EXPECT_CALL(*mockSys, fclose(mockFile)).WillOnce(::testing::Return(0));
 
     auto localRows = std::make_shared<PasswdRows>();
@@ -606,12 +580,12 @@ TEST(UsersProviderTest, CollectHandlesNullUsernameRow)
     nssRows->rows = {makePwd("root", 0), nameless};
 
     EXPECT_CALL(*mockPasswd, fgetpwent_r(mockFile, ::testing::_, ::testing::NotNull(), 16 * 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
+        .WillRepeatedly(::testing::Invoke(serveFgetpwent(localRows)));
 
     EXPECT_CALL(*mockPasswd, setpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, endpwent()).Times(1);
     EXPECT_CALL(*mockPasswd, getpwent_r(::testing::_, ::testing::NotNull(), 1024, ::testing::_))
-    .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
+        .WillRepeatedly(::testing::Invoke(serveGetpwent(nssRows)));
 
     UsersProvider provider(mockPasswd, mockSys);
     auto result = provider.collect();

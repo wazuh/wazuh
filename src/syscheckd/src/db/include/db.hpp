@@ -50,147 +50,147 @@ using SearchData = std::tuple<FILE_SEARCH_TYPE, std::string, std::string, std::s
 
 class no_entry_found : public std::exception
 {
-    public:
-        [[nodiscard]] const char* what() const noexcept override
-        {
-            return m_error.what();
-        }
+public:
+    [[nodiscard]] const char* what() const noexcept override
+    {
+        return m_error.what();
+    }
 
-        explicit no_entry_found(const std::string& whatArg)
-            : m_error {whatArg}
-        {
-        }
+    explicit no_entry_found(const std::string& whatArg)
+        : m_error {whatArg}
+    {
+    }
 
-    private:
-        /// an exception object as storage for error messages
-        std::runtime_error m_error;
+private:
+    /// an exception object as storage for error messages
+    std::runtime_error m_error;
 };
 
 class EXPORTED DB final
 {
-    public:
-        static DB& instance()
-        {
-            static DB s_instance;
-            return s_instance;
-        }
+public:
+    static DB& instance()
+    {
+        static DB s_instance;
+        return s_instance;
+    }
 
-        /**
-         * @brief Init facade with database connection
-         *
-         * @param storage Storage type.
-         * @param callbackLogWrapper Callback to log lines.
-         * @param fileLimit File limit.
-         * @param valueLimit Registry value limit.
-         */
-        static void init(int storage,
-                         std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
-                         int fileLimit,
-                         int valueLimit);
+    /**
+     * @brief Init facade with database connection
+     *
+     * @param storage Storage type.
+     * @param callbackLogWrapper Callback to log lines.
+     * @param fileLimit File limit.
+     * @param valueLimit Registry value limit.
+     */
+    static void init(int storage,
+                     std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
+                     int fileLimit,
+                     int valueLimit);
 
-        /**
-         * @brief DBSyncHandle return the dbsync handle, for operations with the database.
-         *
-         * @return dbsync handle.
-         */
-        static DBSYNC_HANDLE DBSyncHandle();
+    /**
+     * @brief DBSyncHandle return the dbsync handle, for operations with the database.
+     *
+     * @return dbsync handle.
+     */
+    static DBSYNC_HANDLE DBSyncHandle();
 
-        /**
-         * @brief removeFile Remove a file from the database.
-         *
-         * @param path File to remove.
-         */
-        void removeFile(const std::string& path);
+    /**
+     * @brief removeFile Remove a file from the database.
+     *
+     * @param path File to remove.
+     */
+    void removeFile(const std::string& path);
 
-        /**
-         * @brief getFile Get a file from the database.
-         *
-         * @param path File to get.
-         * @param callback Callback return the file data.
-         */
-        void getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback);
+    /**
+     * @brief getFile Get a file from the database.
+     *
+     * @param path File to get.
+     * @param callback Callback return the file data.
+     */
+    void getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback);
 
-        /**
-         * @brief countEntries Count files in the database.
-         *
-         * @param tableName Table name.
-         * @param selectType Type of count.
-         * @return Number of files.
-         */
-        static int countEntries(const std::string& tableName, COUNT_SELECT_TYPE selectType);
+    /**
+     * @brief countEntries Count files in the database.
+     *
+     * @param tableName Table name.
+     * @param selectType Type of count.
+     * @return Number of files.
+     */
+    static int countEntries(const std::string& tableName, COUNT_SELECT_TYPE selectType);
 
-        /**
-         * @brief maxVersion Get the maximum version from a table.
-         *
-         * @param tableName Table name.
-         * @return Maximum version value, 0 if no entries exist.
-         */
-        static int maxVersion(const std::string& tableName);
+    /**
+     * @brief maxVersion Get the maximum version from a table.
+     *
+     * @param tableName Table name.
+     * @return Maximum version value, 0 if no entries exist.
+     */
+    static int maxVersion(const std::string& tableName);
 
-        /**
-         * @brief updateVersion Update the version column for all entries in a table.
-         *
-         * @param tableName Table name.
-         * @param version New version value to set.
-         * @return 0 on success, -1 on error.
-         */
-        static int updateVersion(const std::string& tableName, int version);
+    /**
+     * @brief updateVersion Update the version column for all entries in a table.
+     *
+     * @param tableName Table name.
+     * @param version New version value to set.
+     * @return 0 on success, -1 on error.
+     */
+    static int updateVersion(const std::string& tableName, int version);
 
-        /**
-         * @brief updateFile Update/insert a file in the database.
-         *
-         * @param file File entry/data to update/insert.
-         * @param callback Callback to send the fim message.
-         */
-        void updateFile(const nlohmann::json& file, std::function<void(int, const nlohmann::json&)> callback);
+    /**
+     * @brief updateFile Update/insert a file in the database.
+     *
+     * @param file File entry/data to update/insert.
+     * @param callback Callback to send the fim message.
+     */
+    void updateFile(const nlohmann::json& file, std::function<void(int, const nlohmann::json&)> callback);
 
-        /**
-         * @brief searchFiles Search files in the database.
-         *
-         * @param searchData parameter to search information.
-         * @param callback Callback return the file data.
-         */
-        void searchFile(const SearchData& data, std::function<void(const std::string&)> callback);
+    /**
+     * @brief searchFiles Search files in the database.
+     *
+     * @param searchData parameter to search information.
+     * @param callback Callback return the file data.
+     */
+    void searchFile(const SearchData& data, std::function<void(const std::string&)> callback);
 
-        /**
-         * @brief teardown Close the fimdb instances.
-         */
-        static void teardown();
+    /**
+     * @brief teardown Close the fimdb instances.
+     */
+    static void teardown();
 
-        /**
-         * @brief closeAndDeleteDatabase Closes the database connection and deletes the database file.
-         */
-        static void closeAndDeleteDatabase();
+    /**
+     * @brief closeAndDeleteDatabase Closes the database connection and deletes the database file.
+     */
+    static void closeAndDeleteDatabase();
 
-        /**
-         * @brief Update the last_sync_time for a given table.
-         *
-         * @param tableName Name of the table to update.
-         * @param timestamp The sync timestamp to set (UNIX format).
-         */
-        static void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
+    /**
+     * @brief Update the last_sync_time for a given table.
+     *
+     * @param tableName Name of the table to update.
+     * @param timestamp The sync timestamp to set (UNIX format).
+     */
+    static void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
 
-        /**
-         * @brief Get the last_sync_time for a given table.
-         *
-         * @param tableName Name of the table to query.
-         * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
-         */
-        static int64_t getLastSyncTime(const std::string& tableName);
+    /**
+     * @brief Get the last_sync_time for a given table.
+     *
+     * @param tableName Name of the table to query.
+     * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
+     */
+    static int64_t getLastSyncTime(const std::string& tableName);
 
-        static int countSyncedDocs(const std::string& tableName);
+    static int countSyncedDocs(const std::string& tableName);
 
-        static std::vector<nlohmann::json> getDocumentsToPromote(const std::string& tableName,
-                                                                 int numberOfDocumentsToPromote);
+    static std::vector<nlohmann::json> getDocumentsToPromote(const std::string& tableName,
+                                                             int numberOfDocumentsToPromote);
 
-        static std::vector<nlohmann::json> getDocumentsToDemote(const std::string& tableName,
-                                                                int numberOfDocumentsToDemote);
-        DB(const DB&) = delete;
-        DB& operator=(const DB&) = delete;
+    static std::vector<nlohmann::json> getDocumentsToDemote(const std::string& tableName,
+                                                            int numberOfDocumentsToDemote);
+    DB(const DB&) = delete;
+    DB& operator=(const DB&) = delete;
 
-    private:
-        DB() = default;
-        ~DB() = default;
+private:
+    DB() = default;
+    ~DB() = default;
 };
 
 #endif //_IFIMDB_HPP

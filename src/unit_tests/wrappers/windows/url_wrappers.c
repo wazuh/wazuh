@@ -14,69 +14,85 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-CURL* wrap_curl_easy_init() {
-    return mock_type(CURL *);
+CURL* wrap_curl_easy_init()
+{
+    return mock_type(CURL*);
 }
 
-void wrap_curl_easy_cleanup(CURL *curl) {
+void wrap_curl_easy_cleanup(CURL* curl)
+{
     check_expected_ptr(curl);
 }
 
-CURLcode wrap_curl_easy_setopt(CURL *curl, CURLoption option, __attribute__ ((__unused__)) void *parameter) {
+CURLcode wrap_curl_easy_setopt(CURL* curl, CURLoption option, __attribute__((__unused__)) void* parameter)
+{
     check_expected(option);
     check_expected_ptr(curl);
 
     return mock_type(CURLcode);
 }
 
-struct curl_slist* wrap_curl_slist_append(struct curl_slist *list, const char *data) {
+struct curl_slist* wrap_curl_slist_append(struct curl_slist* list, const char* data)
+{
     check_expected(data);
     check_expected_ptr(list);
 
-    return mock_type(struct curl_slist *);
+    return mock_type(struct curl_slist*);
 }
 
-int wrap_wurl_request(const char * url,
-                        const char * dest,
-                        const char *header,
-                        const char *data,
-                        const long timeout) {
-    if (url) {
+int wrap_wurl_request(const char* url, const char* dest, const char* header, const char* data, const long timeout)
+{
+    if (url)
+    {
         check_expected(url);
     }
 
-    if (dest) {
+    if (dest)
+    {
         check_expected(dest);
     }
 
-    if (header) {
+    if (header)
+    {
         check_expected(header);
     }
 
-    if (data) {
+    if (data)
+    {
         check_expected(data);
     }
 
-    if (timeout) {
+    if (timeout)
+    {
         check_expected(timeout);
     }
 
     return mock();
 }
 
-char* wrap_wurl_http_get(const char * url, __attribute__((unused)) size_t max_size, long timeout) {
+char* wrap_wurl_http_get(const char* url, __attribute__((unused)) size_t max_size, long timeout)
+{
     check_expected(url);
 
     check_expected(timeout);
 
-    return mock_type(char *);
+    return mock_type(char*);
 }
 
-curl_response* wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, const char *userpass, bool ssl_verify) {
+curl_response* wrap_wurl_http_request(char* method,
+                                      char** headers,
+                                      const char* url,
+                                      const char* payload,
+                                      size_t max_size,
+                                      long timeout,
+                                      const char* userpass,
+                                      bool ssl_verify)
+{
     check_expected(method);
 
     char** ptr = headers;
-    for (char* header = *ptr; header; header=*++ptr) {
+    for (char* header = *ptr; header; header = *++ptr)
+    {
         check_expected(header);
     }
 
@@ -86,7 +102,8 @@ curl_response* wrap_wurl_http_request(char *method, char **headers, const char* 
 
     check_expected(userpass);
 
-    if (payload) {
+    if (payload)
+    {
         check_expected(payload);
     }
 
@@ -97,17 +114,20 @@ curl_response* wrap_wurl_http_request(char *method, char **headers, const char* 
     return mock_type(curl_response*);
 }
 
-CURLcode wrap_curl_easy_perform(CURL *curl) {
+CURLcode wrap_curl_easy_perform(CURL* curl)
+{
     check_expected_ptr(curl);
 
     return mock_type(CURLcode);
 }
 
-void wrap_curl_slist_free_all(struct curl_slist *list) {
+void wrap_curl_slist_free_all(struct curl_slist* list)
+{
     check_expected_ptr(list);
 }
 
-CURLcode wrap_curl_easy_getinfo(CURL *curl, CURLoption option, __attribute__ ((__unused__)) void *parameter) {
+CURLcode wrap_curl_easy_getinfo(CURL* curl, CURLoption option, __attribute__((__unused__)) void* parameter)
+{
     check_expected(option);
     check_expected_ptr(curl);
 

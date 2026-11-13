@@ -23,20 +23,20 @@ namespace
 
     size_t estimateSerializedItemBytes(const PersistedData& data)
     {
-        return data.id.size()
-               + data.index.size()
-               + data.data.size()
-               + SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES;
+        return data.id.size() + data.index.size() + data.data.size() + SYNC_ITEM_ESTIMATED_OVERHEAD_BYTES;
     }
 } // namespace
 
-PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper,
+PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath,
+                                               LoggerFunc logger,
+                                               std::shared_ptr<IFileSystemWrapper> fileSystemWrapper,
                                                std::optional<int32_t> walAutocheckpointPages,
                                                std::optional<int32_t> cacheSizeKiB)
-    : m_connection(createOrOpenDatabase(dbPath)),
-      m_dbPath(dbPath),
-      m_logger(std::move(logger)),
-      m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_shared<file_system::FileSystemWrapper>())
+    : m_connection(createOrOpenDatabase(dbPath))
+    , m_dbPath(dbPath)
+    , m_logger(std::move(logger))
+    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                            : std::make_shared<file_system::FileSystemWrapper>())
 {
     if (!m_logger)
     {
@@ -79,25 +79,23 @@ void PersistentQueueStorage::createTableIfNotExists()
 {
     try
     {
-        const std::string query =
-            "CREATE TABLE IF NOT EXISTS persistent_queue ("
-            "id TEXT PRIMARY KEY NOT NULL,"
-            "idx TEXT NOT NULL,"
-            "data TEXT NOT NULL,"
-            "operation INTEGER NOT NULL,"
-            "version INTEGER NOT NULL DEFAULT 0,"
-            "sync_status INTEGER NOT NULL DEFAULT 0,"
-            "create_status INTEGER NOT NULL DEFAULT 0,"
-            "operation_syncing INTEGER NOT NULL DEFAULT 3,"
-            "is_data_context INTEGER NOT NULL DEFAULT 0);";
+        const std::string query = "CREATE TABLE IF NOT EXISTS persistent_queue ("
+                                  "id TEXT PRIMARY KEY NOT NULL,"
+                                  "idx TEXT NOT NULL,"
+                                  "data TEXT NOT NULL,"
+                                  "operation INTEGER NOT NULL,"
+                                  "version INTEGER NOT NULL DEFAULT 0,"
+                                  "sync_status INTEGER NOT NULL DEFAULT 0,"
+                                  "create_status INTEGER NOT NULL DEFAULT 0,"
+                                  "operation_syncing INTEGER NOT NULL DEFAULT 3,"
+                                  "is_data_context INTEGER NOT NULL DEFAULT 0);";
 
         m_connection.execute(query);
 
-        m_connection.execute(
-            "CREATE TABLE IF NOT EXISTS integrity_progress ("
-            "idx TEXT PRIMARY KEY NOT NULL,"
-            "mismatches INTEGER NOT NULL,"
-            "last_mismatch_ms INTEGER NOT NULL);");
+        m_connection.execute("CREATE TABLE IF NOT EXISTS integrity_progress ("
+                             "idx TEXT PRIMARY KEY NOT NULL,"
+                             "mismatches INTEGER NOT NULL,"
+                             "last_mismatch_ms INTEGER NOT NULL);");
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -120,7 +118,8 @@ void PersistentQueueStorage::applyCoalesceLogic(const PersistedData& newData)
     Operation newOperationSyncing = Operation::NO_OP;
     int oldOperation = -1;
 
-    const std::string findQuery = "SELECT operation, sync_status, create_status, operation_syncing FROM persistent_queue WHERE id = ?;";
+    const std::string findQuery =
+        "SELECT operation, sync_status, create_status, operation_syncing FROM persistent_queue WHERE id = ?;";
     SQLite3Wrapper::Statement findStmt(m_connection, findQuery);
     findStmt.bind(1, newData.id);
 
@@ -135,31 +134,29 @@ void PersistentQueueStorage::applyCoalesceLogic(const PersistedData& newData)
 
     if (oldSyncStatus != SyncStatus::PENDING)
     {
-        newOperationSyncing = (oldOperationSyncing == Operation::NO_OP)
-                              ? static_cast<Operation>(oldOperation)
-                              : oldOperationSyncing;
+        newOperationSyncing =
+            (oldOperationSyncing == Operation::NO_OP) ? static_cast<Operation>(oldOperation) : oldOperationSyncing;
     }
 
     if (!oldDataFound)
     {
-        const std::string insertQuery = "INSERT INTO persistent_queue (id, idx, data, operation, version, create_status, is_data_context) VALUES (?, ?, ?, ?, ?, ?, ?);";
+        const std::string insertQuery = "INSERT INTO persistent_queue (id, idx, data, operation, version, "
+                                        "create_status, is_data_context) VALUES (?, ?, ?, ?, ?, ?, ?);";
         SQLite3Wrapper::Statement insertStmt(m_connection, insertQuery);
         insertStmt.bind(1, newData.id);
         insertStmt.bind(2, newData.index);
         insertStmt.bind(3, newData.data);
         insertStmt.bind(4, static_cast<int>(newData.operation));
         insertStmt.bind(5, static_cast<int64_t>(newData.version));
-        insertStmt.bind(6, (newData.operation == Operation::CREATE)
-                        ? static_cast<int>(CreateStatus::NEW)
-                        : static_cast<int>(CreateStatus::EXISTING));
+        insertStmt.bind(6,
+                        (newData.operation == Operation::CREATE) ? static_cast<int>(CreateStatus::NEW)
+                                                                 : static_cast<int>(CreateStatus::EXISTING));
         insertStmt.bind(7, newData.is_data_context ? 1 : 0);
         insertStmt.step();
     }
     else
     {
-        newSyncStatus = (oldSyncStatus == SyncStatus::PENDING)
-                        ? SyncStatus::PENDING
-                        : SyncStatus::SYNCING_UPDATED;
+        newSyncStatus = (oldSyncStatus == SyncStatus::PENDING) ? SyncStatus::PENDING : SyncStatus::SYNCING_UPDATED;
 
         if (newData.operation == Operation::DELETE_)
         {
@@ -172,12 +169,11 @@ void PersistentQueueStorage::applyCoalesceLogic(const PersistedData& newData)
             }
             else
             {
-                newCreateStatus = (oldCreateStatus == CreateStatus::NEW)
-                                  ? CreateStatus::NEW_DELETED
-                                  : oldCreateStatus;
+                newCreateStatus = (oldCreateStatus == CreateStatus::NEW) ? CreateStatus::NEW_DELETED : oldCreateStatus;
 
                 const std::string updateQuery =
-                    "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
+                    "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, "
+                    "create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
                 SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
                 updateStmt.bind(1, newData.index);
                 updateStmt.bind(2, newData.data);
@@ -193,12 +189,11 @@ void PersistentQueueStorage::applyCoalesceLogic(const PersistedData& newData)
         }
         else
         {
-            newCreateStatus = (oldCreateStatus == CreateStatus::NEW_DELETED)
-                              ? CreateStatus::NEW
-                              : oldCreateStatus;
+            newCreateStatus = (oldCreateStatus == CreateStatus::NEW_DELETED) ? CreateStatus::NEW : oldCreateStatus;
 
             const std::string updateQuery =
-                "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
+                "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, version = ?, sync_status = ?, "
+                "create_status = ?, operation_syncing = ?, is_data_context = ? WHERE id = ?;";
             SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
             updateStmt.bind(1, newData.index);
             updateStmt.bind(2, newData.data);
@@ -277,11 +272,10 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
         // Scoped so selectStmt finishes before the writes below: a budget break would otherwise
         // leave it mid-scan through COMMIT.
         {
-            const std::string selectQuery =
-                "SELECT rowid, id, idx, data, operation, version, is_data_context "
-                "FROM persistent_queue "
-                "WHERE sync_status = ? "
-                "ORDER BY rowid ASC;";
+            const std::string selectQuery = "SELECT rowid, id, idx, data, operation, version, is_data_context "
+                                            "FROM persistent_queue "
+                                            "WHERE sync_status = ? "
+                                            "ORDER BY rowid ASC;";
 
             SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
             selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
@@ -324,10 +318,10 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
                         // it stays PENDING. Drop it instead of resending it forever.
                         m_logger(LOG_ERROR,
                                  "PersistentQueueStorage: Dropping pending item (~" +
-                                 std::to_string(estimatedItemBytes) +
-                                 " B) after " + std::to_string(m_oversizedItemAttempts) +
-                                 " consecutive cycles alone over the byte cap (" +
-                                 std::to_string(maxBytes) + " B); it was blocking every item behind it.");
+                                     std::to_string(estimatedItemBytes) + " B) after " +
+                                     std::to_string(m_oversizedItemAttempts) +
+                                     " consecutive cycles alone over the byte cap (" + std::to_string(maxBytes) +
+                                     " B); it was blocking every item behind it.");
                         idsToDrop.push_back(rowid);
                         m_oversizedItemId.clear();
                         m_oversizedItemAttempts = 0;
@@ -338,14 +332,10 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
                     // would leave the item stuck in PENDING forever, so we accept it
                     // once but emit a WARNING so operators can investigate oversized records.
                     m_logger(LOG_WARNING,
-                             "PersistentQueueStorage: A single pending item (~" +
-                             std::to_string(estimatedItemBytes) +
-                             " B) exceeds the byte cap (" +
-                             std::to_string(maxBytes) +
-                             " B); sending it alone (attempt " +
-                             std::to_string(m_oversizedItemAttempts) + "/" +
-                             std::to_string(MAX_OVERSIZED_ATTEMPTS) +
-                             "). Consider reducing individual item size.");
+                             "PersistentQueueStorage: A single pending item (~" + std::to_string(estimatedItemBytes) +
+                                 " B) exceeds the byte cap (" + std::to_string(maxBytes) +
+                                 " B); sending it alone (attempt " + std::to_string(m_oversizedItemAttempts) + "/" +
+                                 std::to_string(MAX_OVERSIZED_ATTEMPTS) + "). Consider reducing individual item size.");
                 }
                 else if (data.id == m_oversizedItemId)
                 {
@@ -423,7 +413,8 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync(size_t ma
     // LCOV_EXCL_START
     catch (const std::exception& e)
     {
-        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in fetchAndMarkForSync: ") + e.what());
+        m_logger(LOG_ERROR,
+                 std::string("PersistentQueueStorage: Transaction failed in fetchAndMarkForSync: ") + e.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -439,10 +430,9 @@ std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataVal
 
     try
     {
-        std::string selectQuery =
-            "SELECT rowid, id, idx, data, operation, is_data_context "
-            "FROM persistent_queue "
-            "WHERE sync_status = ?";
+        std::string selectQuery = "SELECT rowid, id, idx, data, operation, is_data_context "
+                                  "FROM persistent_queue "
+                                  "WHERE sync_status = ?";
 
         if (onlyDataValues)
         {
@@ -469,8 +459,9 @@ std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataVal
 
         if (m_logger)
         {
-            m_logger(LOG_DEBUG, "PersistentQueueStorage: Fetcheing " + std::to_string(result.size()) +
-                     " pending datavalues items");
+            m_logger(LOG_DEBUG,
+                     "PersistentQueueStorage: Fetcheing " + std::to_string(result.size()) +
+                         " pending datavalues items");
         }
     }
     catch (const std::exception& e)
@@ -484,7 +475,8 @@ std::vector<PersistedData> PersistentQueueStorage::fetchPending(bool onlyDataVal
 
 void PersistentQueueStorage::settleInFlightRows()
 {
-    const std::string query = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
+    const std::string query = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? "
+                              "WHERE sync_status IN (?, ?);";
     SQLite3Wrapper::Statement stmt(m_connection, query);
     stmt.bind(1, static_cast<int>(SyncStatus::PENDING));
     stmt.bind(2, static_cast<int>(CreateStatus::EXISTING));
@@ -500,7 +492,8 @@ void PersistentQueueStorage::removeAllSynced()
 
     try
     {
-        const std::string query = "DELETE FROM persistent_queue WHERE sync_status = ? OR (create_status = ? AND (operation_syncing = ? OR operation_syncing = ?));";
+        const std::string query = "DELETE FROM persistent_queue WHERE sync_status = ? OR (create_status = ? AND "
+                                  "(operation_syncing = ? OR operation_syncing = ?));";
         SQLite3Wrapper::Statement stmt(m_connection, query);
         stmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
         stmt.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
@@ -645,8 +638,9 @@ std::optional<IntegrityProgress> PersistentQueueStorage::getIntegrityProgress(co
 
 void PersistentQueueStorage::setIntegrityProgress(const std::string& index, const IntegrityProgress& progress)
 {
-    SQLite3Wrapper::Statement stmt(m_connection,
-                                   "INSERT OR REPLACE INTO integrity_progress (idx, mismatches, last_mismatch_ms) VALUES (?, ?, ?);");
+    SQLite3Wrapper::Statement stmt(
+        m_connection,
+        "INSERT OR REPLACE INTO integrity_progress (idx, mismatches, last_mismatch_ms) VALUES (?, ?, ?);");
     stmt.bind(1, index);
     stmt.bind(2, static_cast<int32_t>(progress.mismatches));
     stmt.bind(3, progress.lastMismatchMs);

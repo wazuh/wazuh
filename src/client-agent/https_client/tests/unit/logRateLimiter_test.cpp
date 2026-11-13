@@ -17,10 +17,7 @@
 #include <chrono>
 
 // A window long enough that nothing expires mid-test.
-constexpr auto LONG_WINDOW
-{
-    std::chrono::seconds {60}
-};
+constexpr auto LONG_WINDOW {std::chrono::seconds {60}};
 
 // The first occurrence must be reported immediately: an operator should not have to wait a whole
 // window for the first sign of trouble.

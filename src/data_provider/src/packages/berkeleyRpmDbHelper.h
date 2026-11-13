@@ -22,30 +22,30 @@
 #include "byteArrayHelper.h"
 #include "berkeleyDbWrapper.h"
 
-#define TAG_NAME        1000
-#define TAG_VERSION     1001
-#define TAG_RELEASE     1002
-#define TAG_EPOCH       1003
-#define TAG_SUMMARY     1004
-#define TAG_ITIME       1008
-#define TAG_SIZE        1009
-#define TAG_VENDOR      1011
-#define TAG_GROUP       1016
-#define TAG_SOURCE      1044
-#define TAG_ARCH        1022
-#define TAG_DIRINDEXES  1116
-#define TAG_BASENAMES   1117
-#define TAG_DIRNAMES    1118
+#define TAG_NAME       1000
+#define TAG_VERSION    1001
+#define TAG_RELEASE    1002
+#define TAG_EPOCH      1003
+#define TAG_SUMMARY    1004
+#define TAG_ITIME      1008
+#define TAG_SIZE       1009
+#define TAG_VENDOR     1011
+#define TAG_GROUP      1016
+#define TAG_SOURCE     1044
+#define TAG_ARCH       1022
+#define TAG_DIRINDEXES 1116
+#define TAG_BASENAMES  1117
+#define TAG_DIRNAMES   1118
 
 constexpr auto RPM_DATABASE {"/var/lib/rpm/Packages"};
-constexpr unsigned int FIRST_ENTRY_OFFSET { 8u };
-constexpr unsigned int ENTRY_SIZE { 16u };
-constexpr int INT32_TYPE { 4 };
-constexpr int STRING_TYPE { 6 };
-constexpr int STRING_VECTOR_TYPE { 9 };
+constexpr unsigned int FIRST_ENTRY_OFFSET {8u};
+constexpr unsigned int ENTRY_SIZE {16u};
+constexpr int INT32_TYPE {4};
+constexpr int STRING_TYPE {6};
+constexpr int STRING_VECTOR_TYPE {9};
 
-//This constant is defined with this value in the RPM source code (header.c)
-constexpr int HEADER_TAGS_MAX { 65535 };
+// This constant is defined with this value in the RPM source code (header.c)
+constexpr int HEADER_TAGS_MAX {65535};
 
 struct BerkeleyHeaderEntry final
 {
@@ -55,330 +55,313 @@ struct BerkeleyHeaderEntry final
     int count;
 };
 
-const std::vector<std::pair<int32_t, std::string>> TAG_PACKAGE_NAMES =
-{
-    { std::make_pair(TAG_NAME, "name") },
-    { std::make_pair(TAG_ARCH, "architecture") },
-    { std::make_pair(TAG_SUMMARY, "description") },
-    { std::make_pair(TAG_SIZE, "size") },
-    { std::make_pair(TAG_EPOCH, "epoch") },
-    { std::make_pair(TAG_RELEASE, "release") },
-    { std::make_pair(TAG_VERSION, "version") },
-    { std::make_pair(TAG_VENDOR, "vendor") },
-    { std::make_pair(TAG_ITIME, "install_time") },
-    { std::make_pair(TAG_GROUP, "group") }
-};
+const std::vector<std::pair<int32_t, std::string>> TAG_PACKAGE_NAMES = {{std::make_pair(TAG_NAME, "name")},
+                                                                        {std::make_pair(TAG_ARCH, "architecture")},
+                                                                        {std::make_pair(TAG_SUMMARY, "description")},
+                                                                        {std::make_pair(TAG_SIZE, "size")},
+                                                                        {std::make_pair(TAG_EPOCH, "epoch")},
+                                                                        {std::make_pair(TAG_RELEASE, "release")},
+                                                                        {std::make_pair(TAG_VERSION, "version")},
+                                                                        {std::make_pair(TAG_VENDOR, "vendor")},
+                                                                        {std::make_pair(TAG_ITIME, "install_time")},
+                                                                        {std::make_pair(TAG_GROUP, "group")}};
 
-const std::vector<std::pair<int32_t, std::string>> TAG_FILE_NAMES =
-{
-    { std::make_pair(TAG_NAME, "name") },
-    { std::make_pair(TAG_DIRINDEXES, "dirindexes") },
-    { std::make_pair(TAG_BASENAMES, "basenames") },
-    { std::make_pair(TAG_DIRNAMES, "dirnames") }
-};
+const std::vector<std::pair<int32_t, std::string>> TAG_FILE_NAMES = {{std::make_pair(TAG_NAME, "name")},
+                                                                     {std::make_pair(TAG_DIRINDEXES, "dirindexes")},
+                                                                     {std::make_pair(TAG_BASENAMES, "basenames")},
+                                                                     {std::make_pair(TAG_DIRNAMES, "dirnames")}};
 
 class BerkeleyRpmDBReader final
 {
-    private:
-        bool m_firstIteration;
-        std::shared_ptr<IBerkeleyDbWrapper> m_dbWrapper;
+private:
+    bool m_firstIteration;
+    std::shared_ptr<IBerkeleyDbWrapper> m_dbWrapper;
 
-        std::vector<BerkeleyHeaderEntry> parseHeader(const DBT& data, const std::vector<std::pair<int32_t, std::string>>& TAG_NAMES)
+    std::vector<BerkeleyHeaderEntry> parseHeader(const DBT& data,
+                                                 const std::vector<std::pair<int32_t, std::string>>& TAG_NAMES)
+    {
+        auto bytes {reinterpret_cast<uint8_t*>(data.data)};
+        std::vector<BerkeleyHeaderEntry> retVal;
+        constexpr auto BYTE_SIZE_INT32 {sizeof(int32_t)};
+
+        if (data.size >= FIRST_ENTRY_OFFSET)
         {
-            auto bytes { reinterpret_cast<uint8_t*>(data.data) };
-            std::vector<BerkeleyHeaderEntry> retVal;
-            constexpr auto BYTE_SIZE_INT32{ sizeof(int32_t) };
+            const auto indexSize {Utils::toInt32BE(bytes)};
 
-            if (data.size >= FIRST_ENTRY_OFFSET)
+            const auto dataSize {Utils::toInt32BE(bytes + BYTE_SIZE_INT32)};
+
+            const auto estimatedHeaderTagSize {FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize};
+
+            if (indexSize > 0 && indexSize < HEADER_TAGS_MAX && dataSize >= 0 && estimatedHeaderTagSize <= data.size)
             {
-                const auto indexSize { Utils::toInt32BE(bytes) };
+                bytes = &bytes[FIRST_ENTRY_OFFSET];
 
-                const auto dataSize { Utils::toInt32BE(bytes + BYTE_SIZE_INT32) };
+                retVal.resize(indexSize);
 
-                const auto estimatedHeaderTagSize { FIRST_ENTRY_OFFSET + indexSize* ENTRY_SIZE + dataSize };
+                auto ucp {reinterpret_cast<uint8_t*>(bytes)};
 
-                if (indexSize > 0 && indexSize < HEADER_TAGS_MAX && dataSize >= 0 && estimatedHeaderTagSize <= data.size)
+                // Read all indexes
+                for (auto i = 0; i < indexSize; ++i)
                 {
-                    bytes = &bytes[FIRST_ENTRY_OFFSET];
+                    const auto tag {Utils::toInt32BE(ucp)};
+                    ucp += BYTE_SIZE_INT32;
 
-                    retVal.resize(indexSize);
+                    const auto it {std::find_if(
+                        TAG_NAMES.begin(), TAG_NAMES.end(), [tag](const auto& pair) { return tag == pair.first; })};
 
-                    auto ucp { reinterpret_cast<uint8_t*>(bytes) };
-
-                    // Read all indexes
-                    for (auto i = 0; i < indexSize; ++i)
+                    if (TAG_NAMES.end() != it)
                     {
-                        const auto tag { Utils::toInt32BE(ucp) };
+                        retVal[i].tag = it->second;
+
+                        retVal[i].type = Utils::toInt32BE(ucp);
                         ucp += BYTE_SIZE_INT32;
 
-                        const auto it
+                        retVal[i].offset = Utils::toInt32BE(ucp);
+                        ucp += BYTE_SIZE_INT32;
+
+                        retVal[i].count = Utils::toInt32BE(ucp);
+                        ucp += BYTE_SIZE_INT32;
+
+                        // Untrusted record: later code dereferences offset/count unchecked
+                        if (retVal[i].offset < 0 || retVal[i].offset >= dataSize || retVal[i].count < 0 ||
+                            retVal[i].count > dataSize)
                         {
-                            std::find_if(TAG_NAMES.begin(),
-                                         TAG_NAMES.end(),
-                                         [tag](const auto & pair)
-                            {
-                                return tag == pair.first;
-                            })
-                        };
-
-                        if (TAG_NAMES.end() != it)
-                        {
-                            retVal[i].tag = it->second;
-
-                            retVal[i].type = Utils::toInt32BE(ucp);
-                            ucp += BYTE_SIZE_INT32;
-
-                            retVal[i].offset = Utils::toInt32BE(ucp);
-                            ucp += BYTE_SIZE_INT32;
-
-                            retVal[i].count = Utils::toInt32BE(ucp);
-                            ucp += BYTE_SIZE_INT32;
-
-                            // Untrusted record: later code dereferences offset/count unchecked
-                            if (retVal[i].offset < 0 || retVal[i].offset >= dataSize || retVal[i].count < 0 || retVal[i].count > dataSize)
-                            {
-                                retVal[i] = BerkeleyHeaderEntry {};
-                            }
+                            retVal[i] = BerkeleyHeaderEntry {};
                         }
-                        else
-                        {
-                            ucp += ENTRY_SIZE - BYTE_SIZE_INT32;
-                        }
+                    }
+                    else
+                    {
+                        ucp += ENTRY_SIZE - BYTE_SIZE_INT32;
                     }
                 }
             }
-
-            return retVal;
         }
 
-        // Returns the end of the record's data region. Only valid for a header returned by parseHeader().
-        static const char* dataRegionEnd(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
+        return retVal;
+    }
+
+    // Returns the end of the record's data region. Only valid for a header returned by parseHeader().
+    static const char* dataRegionEnd(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
+    {
+        const auto start {reinterpret_cast<const char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size())};
+        return start + Utils::toInt32BE(reinterpret_cast<const uint8_t*>(data.data) + sizeof(int32_t));
+    }
+
+    // Reads a NUL-terminated string without going past 'end'. Returns false if no terminator is found.
+    static bool readBoundedString(const char* begin, const char* end, std::string& value)
+    {
+        const auto nul {reinterpret_cast<const char*>(std::memchr(begin, '\0', end - begin))};
+
+        if (nullptr == nul)
         {
-            const auto start { reinterpret_cast<const char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
-            return start + Utils::toInt32BE(reinterpret_cast<const uint8_t*>(data.data) + sizeof(int32_t));
+            return false;
         }
 
-        // Reads a NUL-terminated string without going past 'end'. Returns false if no terminator is found.
-        static bool readBoundedString(const char* begin, const char* end, std::string& value)
-        {
-            const auto nul { reinterpret_cast<const char*>(std::memchr(begin, '\0', end - begin)) };
+        value.assign(begin, nul);
+        return true;
+    }
 
-            if (nullptr == nul)
+    static bool readStringVector(const char* ucp, const char* end, int count, std::vector<std::string>& values)
+    {
+        for (int i = 0; i < count; ++i)
+        {
+            std::string value;
+
+            if (!readBoundedString(ucp, end, value))
             {
                 return false;
             }
 
-            value.assign(begin, nul);
-            return true;
+            ucp += value.length() + 1;
+            values.push_back(std::move(value));
         }
 
-        static bool readStringVector(const char* ucp, const char* end, int count, std::vector<std::string>& values)
+        return true;
+    }
+
+    std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
+    {
+        std::string retVal;
+
+        if (!header.empty())
         {
-            for (int i = 0; i < count; ++i)
+            auto bytes {reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size())};
+            const auto end {dataRegionEnd(header, data)};
+
+            for (const auto& TAG : TAG_PACKAGE_NAMES)
             {
-                std::string value;
+                const auto it {std::find_if(header.begin(),
+                                            header.end(),
+                                            [&TAG](const auto& headerEntry)
+                                            { return TAG.second.compare(headerEntry.tag) == 0; })};
 
-                if (!readBoundedString(ucp, end, value))
+                if (it != header.end())
                 {
-                    return false;
-                }
+                    auto ucp {&bytes[it->offset]};
+                    std::string value;
 
-                ucp += value.length() + 1;
-                values.push_back(std::move(value));
-            }
-
-            return true;
-        }
-
-        std::string parseBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data)
-        {
-            std::string retVal;
-
-            if (!header.empty())
-            {
-                auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
-                const auto end { dataRegionEnd(header, data) };
-
-                for (const auto& TAG : TAG_PACKAGE_NAMES)
-                {
-                    const auto it
+                    if (STRING_TYPE == it->type || STRING_VECTOR_TYPE == it->type)
                     {
-                        std::find_if(header.begin(),
-                                     header.end(),
-                                     [&TAG](const auto & headerEntry)
+                        if (readBoundedString(ucp, end, value))
                         {
-                            return TAG.second.compare(headerEntry.tag) == 0;
-                        })
-                    };
-
-                    if (it != header.end())
-                    {
-                        auto ucp { &bytes[it->offset] };
-                        std::string value;
-
-                        if (STRING_TYPE == it->type || STRING_VECTOR_TYPE == it->type)
-                        {
-                            if (readBoundedString(ucp, end, value))
-                            {
-                                retVal += value;
-                            }
-                        }
-                        else if (INT32_TYPE == it->type)
-                        {
-                            if (end - ucp >= static_cast<std::ptrdiff_t>(sizeof(int32_t)))
-                            {
-                                retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
-                            }
+                            retVal += value;
                         }
                     }
-
-                    retVal += "\t";
-                }
-
-                retVal += "\n";
-            }
-
-            return retVal;
-        }
-
-        void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header, const DBT& data, std::vector<std::string>& pythonFiles)
-        {
-            std::vector<std::string> dirnames;
-            std::vector<int> dirindexes;
-            std::vector<std::string> basenames;
-            bool isPython { false };
-
-            if (!header.empty())
-            {
-                auto bytes { reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
-                const auto end { dataRegionEnd(header, data) };
-
-                for (const auto& TAG : TAG_FILE_NAMES)
-                {
-                    const auto it
+                    else if (INT32_TYPE == it->type)
                     {
-                        std::find_if(header.begin(),
-                                     header.end(),
-                                     [&TAG](const auto & headerEntry)
+                        if (end - ucp >= static_cast<std::ptrdiff_t>(sizeof(int32_t)))
                         {
-                            return TAG.second.compare(headerEntry.tag) == 0;
-                        })
-                    };
-
-                    if (it != header.end())
-                    {
-                        auto ucp { &bytes[it->offset] };
-
-                        if (TAG.first == TAG_NAME)
-                        {
-                            std::string name;
-
-                            if (readBoundedString(ucp, end, name) && (name.rfind("python", 0) == 0 || name.rfind("platform-python", 0) == 0))
-                            {
-                                isPython = true;
-                            }
-                        }
-                        else if (TAG.first == TAG_DIRINDEXES)
-                        {
-                            if (static_cast<int64_t>(it->count) * static_cast<int64_t>(sizeof(int32_t)) <= end - ucp)
-                            {
-                                for (int i = 0; i < it->count; ++i)
-                                {
-                                    dirindexes.push_back(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
-                                    ucp += sizeof(int32_t);
-                                }
-                            }
-                        }
-                        else if (TAG.first == TAG_BASENAMES)
-                        {
-                            if (!readStringVector(ucp, end, it->count, basenames))
-                            {
-                                basenames.clear();
-                            }
-                        }
-                        else if (TAG.first == TAG_DIRNAMES)
-                        {
-                            if (!readStringVector(ucp, end, it->count, dirnames))
-                            {
-                                dirnames.clear();
-                            }
+                            retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
                         }
                     }
                 }
 
-                if (isPython && !dirindexes.empty() && !dirnames.empty() && !basenames.empty())
-                {
-                    for (size_t i = 0; i < dirindexes.size() && i < basenames.size(); ++i)
-                    {
-                        int index = dirindexes[i];
+                retVal += "\t";
+            }
 
-                        if (index >= 0 && index < static_cast<int>(dirnames.size()))
+            retVal += "\n";
+        }
+
+        return retVal;
+    }
+
+    void parsePythonFilesBody(const std::vector<BerkeleyHeaderEntry>& header,
+                              const DBT& data,
+                              std::vector<std::string>& pythonFiles)
+    {
+        std::vector<std::string> dirnames;
+        std::vector<int> dirindexes;
+        std::vector<std::string> basenames;
+        bool isPython {false};
+
+        if (!header.empty())
+        {
+            auto bytes {reinterpret_cast<char*>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size())};
+            const auto end {dataRegionEnd(header, data)};
+
+            for (const auto& TAG : TAG_FILE_NAMES)
+            {
+                const auto it {std::find_if(header.begin(),
+                                            header.end(),
+                                            [&TAG](const auto& headerEntry)
+                                            { return TAG.second.compare(headerEntry.tag) == 0; })};
+
+                if (it != header.end())
+                {
+                    auto ucp {&bytes[it->offset]};
+
+                    if (TAG.first == TAG_NAME)
+                    {
+                        std::string name;
+
+                        if (readBoundedString(ucp, end, name) &&
+                            (name.rfind("python", 0) == 0 || name.rfind("platform-python", 0) == 0))
                         {
-                            std::string fullPath = dirnames[index] + basenames[i];
-                            pythonFiles.push_back(std::move(fullPath));
+                            isPython = true;
+                        }
+                    }
+                    else if (TAG.first == TAG_DIRINDEXES)
+                    {
+                        if (static_cast<int64_t>(it->count) * static_cast<int64_t>(sizeof(int32_t)) <= end - ucp)
+                        {
+                            for (int i = 0; i < it->count; ++i)
+                            {
+                                dirindexes.push_back(Utils::toInt32BE(reinterpret_cast<uint8_t*>(ucp)));
+                                ucp += sizeof(int32_t);
+                            }
+                        }
+                    }
+                    else if (TAG.first == TAG_BASENAMES)
+                    {
+                        if (!readStringVector(ucp, end, it->count, basenames))
+                        {
+                            basenames.clear();
+                        }
+                    }
+                    else if (TAG.first == TAG_DIRNAMES)
+                    {
+                        if (!readStringVector(ucp, end, it->count, dirnames))
+                        {
+                            dirnames.clear();
                         }
                     }
                 }
             }
+
+            if (isPython && !dirindexes.empty() && !dirnames.empty() && !basenames.empty())
+            {
+                for (size_t i = 0; i < dirindexes.size() && i < basenames.size(); ++i)
+                {
+                    int index = dirindexes[i];
+
+                    if (index >= 0 && index < static_cast<int>(dirnames.size()))
+                    {
+                        std::string fullPath = dirnames[index] + basenames[i];
+                        pythonFiles.push_back(std::move(fullPath));
+                    }
+                }
+            }
         }
+    }
 
-    public:
-        std::string getNext()
+public:
+    std::string getNext()
+    {
+        std::string retVal;
+        DBT key, data;
+        int cursorRet;
+
+        if (m_firstIteration)
         {
-            std::string retVal;
-            DBT key, data;
-            int cursorRet;
-
-            if (m_firstIteration)
-            {
-                if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
-                {
-                    m_firstIteration = false;
-                }
-            }
-
-            // An unparseable record is skipped: an empty result would be read as the end of the database.
-            while (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
-            {
-                const auto header { parseHeader(data, TAG_PACKAGE_NAMES) };
-
-                if (!header.empty())
-                {
-                    retVal = parseBody(header, data);
-                    break;
-                }
-            }
-
-            return retVal;
-        }
-
-        bool getNextPythonFiles(std::vector<std::string>& pythonFiles)
-        {
-            DBT key, data;
-            int cursorRet;
-
-            if (m_firstIteration)
-            {
-                if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
-                {
-                    m_firstIteration = false;
-                }
-            }
-
             if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
-                parsePythonFilesBody(parseHeader(data, TAG_FILE_NAMES), data, pythonFiles);
-                return true;
+                m_firstIteration = false;
             }
-
-            return false;
         }
 
-        explicit BerkeleyRpmDBReader(std::shared_ptr<IBerkeleyDbWrapper> dbWrapper)
-            : m_firstIteration { true }
-            , m_dbWrapper { dbWrapper }
-        { }
+        // An unparseable record is skipped: an empty result would be read as the end of the database.
+        while (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
+        {
+            const auto header {parseHeader(data, TAG_PACKAGE_NAMES)};
 
-        ~BerkeleyRpmDBReader() { }
+            if (!header.empty())
+            {
+                retVal = parseBody(header, data);
+                break;
+            }
+        }
+
+        return retVal;
+    }
+
+    bool getNextPythonFiles(std::vector<std::string>& pythonFiles)
+    {
+        DBT key, data;
+        int cursorRet;
+
+        if (m_firstIteration)
+        {
+            if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
+            {
+                m_firstIteration = false;
+            }
+        }
+
+        if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
+        {
+            parsePythonFilesBody(parseHeader(data, TAG_FILE_NAMES), data, pythonFiles);
+            return true;
+        }
+
+        return false;
+    }
+
+    explicit BerkeleyRpmDBReader(std::shared_ptr<IBerkeleyDbWrapper> dbWrapper)
+        : m_firstIteration {true}
+        , m_dbWrapper {dbWrapper}
+    {
+    }
+
+    ~BerkeleyRpmDBReader() {}
 };
 #endif // _BERKELEY_RPM_DB_HELPER_H

@@ -25,21 +25,20 @@ namespace
         const auto patternPtr = reinterpret_cast<PCRE2_SPTR8>(pattern.c_str());
 
         auto* re = pcre2_compile(
-                       patternPtr, PCRE2_ZERO_TERMINATED, PCRE2_MULTILINE | PCRE2_CASELESS, &errorCode, &error_offset, nullptr);
+            patternPtr, PCRE2_ZERO_TERMINATED, PCRE2_MULTILINE | PCRE2_CASELESS, &errorCode, &error_offset, nullptr);
 
         if (!re)
         {
             throw std::runtime_error(
                 [&errorCode, &error_offset]()
-            {
-                std::vector<PCRE2_UCHAR> buffer(256); // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-                pcre2_get_error_message(errorCode, buffer.data(), buffer.size());
+                {
+                    std::vector<PCRE2_UCHAR> buffer(256); // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+                    pcre2_get_error_message(errorCode, buffer.data(), buffer.size());
 
-                return "PCRE2 compilation failed at offset " + std::to_string(error_offset) + ": " +
-                       // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                       reinterpret_cast<char*>(buffer.data());
-            }
-            ());
+                    return "PCRE2 compilation failed at offset " + std::to_string(error_offset) + ": " +
+                           // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+                           reinterpret_cast<char*>(buffer.data());
+                }());
         }
 
         auto* matchData = pcre2_match_data_create_from_pattern(re, nullptr);
@@ -83,7 +82,7 @@ namespace
 
         // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         auto match = rc >= 2 ? content.substr(ovector[2], ovector[3] - ovector[2])
-                     : content.substr(ovector[0], ovector[1] - ovector[0]);
+                             : content.substr(ovector[0], ovector[1] - ovector[0]);
         // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
         pcre2CleanUp();
@@ -166,15 +165,16 @@ namespace
 
     bool EqualsIgnoreCase(const std::string& lhs, const std::string& rhs)
     {
-        return lhs.size() == rhs.size() &&
-               std::equal(lhs.begin(),
-                          lhs.end(),
-                          rhs.begin(),
-                          [](const char a, const char b)
-        {
-            // std::tolower is undefined for negative values other than EOF
-            return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
-        });
+        return lhs.size() == rhs.size() && std::equal(lhs.begin(),
+                                                      lhs.end(),
+                                                      rhs.begin(),
+                                                      [](const char a, const char b)
+                                                      {
+                                                          // std::tolower is undefined for negative values other than
+                                                          // EOF
+                                                          return std::tolower(static_cast<unsigned char>(a)) ==
+                                                                 std::tolower(static_cast<unsigned char>(b));
+                                                      });
     }
 
     bool EvaluateMinterm(const std::string& minterm,
@@ -209,17 +209,13 @@ namespace sca
         switch (result)
         {
             // LCOV_EXCL_START
-            case CheckResult::Passed:
-                return "Passed";
+            case CheckResult::Passed: return "Passed";
 
-            case CheckResult::Failed:
-                return "Failed";
+            case CheckResult::Failed: return "Failed";
 
-            case CheckResult::NotApplicable:
-                return "Not applicable";
+            case CheckResult::NotApplicable: return "Not applicable";
 
-            case CheckResult::NotRun:
-                return "Not run";
+            case CheckResult::NotRun: return "Not run";
 
             default:
                 return "Unknown";
@@ -246,11 +242,10 @@ namespace sca
 
         // LCOV_EXCL_START
         static const std::map<std::string, int> typeMap = {{"f", WM_SCA_TYPE_FILE},
-            {"r", WM_SCA_TYPE_REGISTRY},
-            {"p", WM_SCA_TYPE_PROCESS},
-            {"d", WM_SCA_TYPE_DIR},
-            {"c", WM_SCA_TYPE_COMMAND}
-        };
+                                                           {"r", WM_SCA_TYPE_REGISTRY},
+                                                           {"p", WM_SCA_TYPE_PROCESS},
+                                                           {"d", WM_SCA_TYPE_DIR},
+                                                           {"c", WM_SCA_TYPE_COMMAND}};
         // LCOV_EXCL_STOP
 
         const auto it = typeMap.find(key);
@@ -363,7 +358,9 @@ namespace sca
         }
         catch (const std::exception& e)
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, std::string("Exception '") + e.what() + "' was caught while evaluating pattern '" + pattern + "'.");
+            LoggingHelper::getInstance().log(LOG_ERROR,
+                                             std::string("Exception '") + e.what() +
+                                                 "' was caught while evaluating pattern '" + pattern + "'.");
             return std::nullopt;
         }
     }
@@ -376,8 +373,7 @@ namespace sca
 
     bool IsRegexOrNumericPattern(const std::string& pattern)
     {
-        return IsRegexPattern(pattern) ||
-               (pattern.size() >= 2 && pattern.compare(0, 2, "n:") == 0) ||
+        return IsRegexPattern(pattern) || (pattern.size() >= 2 && pattern.compare(0, 2, "n:") == 0) ||
                (pattern.size() >= 3 && pattern.compare(0, 3, "!n:") == 0);
     }
 
@@ -396,12 +392,10 @@ namespace sca
     {
         switch (engineType)
         {
-            case RegexEngineType::PCRE2:
-                return "pcre2";
+            case RegexEngineType::PCRE2: return "pcre2";
 
             case RegexEngineType::Invalid:
-            default:
-                return "invalid";
+            default: return "invalid";
         }
     }
     // LCOV_EXCL_STOP

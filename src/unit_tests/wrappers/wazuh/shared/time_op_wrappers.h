@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef TIME_OP_WRAPPERS_H
 #define TIME_OP_WRAPPERS_H
 
@@ -21,13 +20,14 @@ void __wrap_w_time_delay(unsigned long int msec);
 
 char* __wrap_w_get_timestamp(time_t time);
 
-double __wrap_time_diff(__attribute__((unused)) const struct timespec * a, __attribute__((unused)) const struct timespec * b);
+double __wrap_time_diff(__attribute__((unused)) const struct timespec* a,
+                        __attribute__((unused)) const struct timespec* b);
 
 extern time_t current_time;
 
 #ifdef WIN32
 long long int __wrap_get_windows_file_time_epoch(FILETIME ft);
 #endif
-void __wrap_gettime(struct timespec *ts);
+void __wrap_gettime(struct timespec* ts);
 
 #endif

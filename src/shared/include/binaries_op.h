@@ -13,10 +13,11 @@
  * @brief Check if the binary exists in the default path and complete the path parameter with the full_path.
  *
  * @param command Command searched for.
- * @param validated_comm Variable to be filled with full_path in case of success, or with the original command if it was not found in any path.
+ * @param validated_comm Variable to be filled with full_path in case of success, or with the original command if it was
+ * not found in any path.
  * @retval -1 If it was not found on any path.
  * @retval 0 If it was found.
  */
-int get_binary_path(const char *binary, char **validated_comm);
+int get_binary_path(const char* binary, char** validated_comm);
 
 #endif /* BINARIES_OP_H */

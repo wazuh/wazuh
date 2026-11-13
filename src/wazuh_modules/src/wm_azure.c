@@ -22,32 +22,37 @@
 #define STATIC static
 #endif
 
-static wm_azure_t *azure_config;                               // Pointer to Azure-logs configuration
-STATIC w_expression_t *azure_script_log_regex;                 // Pointer to Azure script log regex
-static int queue_fd;                                           // Output queue file descriptor
-static unsigned int default_timeout;                           // Default timeout for every query
+static wm_azure_t* azure_config;               // Pointer to Azure-logs configuration
+STATIC w_expression_t* azure_script_log_regex; // Pointer to Azure script log regex
+static int queue_fd;                           // Output queue file descriptor
+static unsigned int default_timeout;           // Default timeout for every query
 
-static void* wm_azure_main(wm_azure_t *azure_config);          // Module main function. It won't return
-static void wm_azure_setup(wm_azure_t *_azure_config);         // Setup module
-static void wm_azure_cleanup();                                // Cleanup function, doesn't overwrite wm_cleanup
-static void wm_azure_check();                                  // Check configuration
-static void wm_azure_destroy(wm_azure_t *azure_config);        // Destroy data
-STATIC void wm_setup_logging_capture();                        // Setup script logging output
-STATIC void wm_integrations_parse_output(char * const output, bool failed); // Parse script logging output and log them here
-STATIC bool wm_azure_run_script(char *command, unsigned int timeout, const char *name); // Run script and log its result. Frees command. Returns false if it failed
+static void* wm_azure_main(wm_azure_t* azure_config);   // Module main function. It won't return
+static void wm_azure_setup(wm_azure_t* _azure_config);  // Setup module
+static void wm_azure_cleanup();                         // Cleanup function, doesn't overwrite wm_cleanup
+static void wm_azure_check();                           // Check configuration
+static void wm_azure_destroy(wm_azure_t* azure_config); // Destroy data
+STATIC void wm_setup_logging_capture();                 // Setup script logging output
+STATIC void wm_integrations_parse_output(char* const output,
+                                         bool failed); // Parse script logging output and log them here
+STATIC bool
+wm_azure_run_script(char* command,
+                    unsigned int timeout,
+                    const char* name); // Run script and log its result. Frees command. Returns false if it failed
 
-STATIC bool wm_azure_log_analytics(wm_azure_api_t *log_analytics);      // Run log analytics queries. Returns false if any request failed
-STATIC bool wm_azure_graphs(wm_azure_api_t *graph);                     // Run graph queries. Returns false if any request failed
-STATIC bool wm_azure_storage(wm_azure_storage_t *storage);              // Run storage queries. Returns false if any container failed
-cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump configuration to a JSON structure
+STATIC bool
+wm_azure_log_analytics(wm_azure_api_t* log_analytics); // Run log analytics queries. Returns false if any request failed
+STATIC bool wm_azure_graphs(wm_azure_api_t* graph);    // Run graph queries. Returns false if any request failed
+STATIC bool wm_azure_storage(wm_azure_storage_t* storage); // Run storage queries. Returns false if any container failed
+cJSON* wm_azure_dump(const wm_azure_t* azure);             // Dump configuration to a JSON structure
 
 //  Azure module context definition
 
 const wm_context WM_AZURE_CONTEXT = {
     .name = AZ_WM_NAME,
     .start = (wm_routine)wm_azure_main,
-    .destroy = (void(*)(void *))wm_azure_destroy,
-    .dump = (cJSON * (*)(const void *))wm_azure_dump,
+    .destroy = (void (*)(void*))wm_azure_destroy,
+    .dump = (cJSON * (*)(const void*)) wm_azure_dump,
     .sync = NULL,
     .stop = NULL,
     .query = NULL,
@@ -55,65 +60,94 @@ const wm_context WM_AZURE_CONTEXT = {
 
 // Module main function. It won't return.
 
-void* wm_azure_main(wm_azure_t *azure_config) {
+void* wm_azure_main(wm_azure_t* azure_config)
+{
 
-    wm_azure_api_t *curr_api = NULL;
-    wm_azure_storage_t *curr_storage = NULL;
+    wm_azure_api_t* curr_api = NULL;
+    wm_azure_storage_t* curr_storage = NULL;
     char msg[OS_SIZE_6144];
-    char * timestamp = NULL;
+    char* timestamp = NULL;
 
     wm_azure_setup(azure_config);
     mtinfo(WM_AZURE_LOGTAG, "Module started.");
 
-
-
     // Main loop
 
-    do {
-        const time_t time_sleep = sched_scan_get_time_until_next_scan(&(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
+    do
+    {
+        const time_t time_sleep = sched_scan_get_time_until_next_scan(
+            &(azure_config->scan_config), WM_AZURE_LOGTAG, azure_config->flags.run_on_start);
 
-        if(azure_config->state.next_time == 0) {
+        if (azure_config->state.next_time == 0)
+        {
             azure_config->state.next_time = azure_config->scan_config.time_start + time_sleep;
         }
 
-        if (time_sleep) {
+        if (time_sleep)
+        {
             const int next_scan_time = sched_get_next_scan_time(azure_config->scan_config);
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
             wm_sleep_until_interruptible(next_scan_time);
-            if (wm_shutdown_requested) break;
+            if (wm_shutdown_requested)
+                break;
         }
-        if (wm_shutdown_requested) break;
+        if (wm_shutdown_requested)
+            break;
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 
         snprintf(msg, OS_SIZE_6144, "Starting Azure-logs scan.");
         SendMSG(queue_fd, msg, "rootcheck", ROOTCHECK_MQ);
 
-        for (curr_api = azure_config->api_config; curr_api; curr_api = curr_api->next) {
-            if (curr_api->type == LOG_ANALYTICS) {
-                mtinfo(WM_AZURE_LOGTAG, "Starting Log Analytics collection for the domain '%s'.", curr_api->tenantdomain);
-                if (wm_azure_log_analytics(curr_api)) {
-                    mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for the domain '%s'.", curr_api->tenantdomain);
-                } else {
-                    mtwarn(WM_AZURE_LOGTAG, "Log Analytics collection for the domain '%s' failed for one or more requests.", curr_api->tenantdomain);
+        for (curr_api = azure_config->api_config; curr_api; curr_api = curr_api->next)
+        {
+            if (curr_api->type == LOG_ANALYTICS)
+            {
+                mtinfo(
+                    WM_AZURE_LOGTAG, "Starting Log Analytics collection for the domain '%s'.", curr_api->tenantdomain);
+                if (wm_azure_log_analytics(curr_api))
+                {
+                    mtinfo(WM_AZURE_LOGTAG,
+                           "Finished Log Analytics collection for the domain '%s'.",
+                           curr_api->tenantdomain);
                 }
-            } else if (curr_api->type == GRAPHS) {
+                else
+                {
+                    mtwarn(WM_AZURE_LOGTAG,
+                           "Log Analytics collection for the domain '%s' failed for one or more requests.",
+                           curr_api->tenantdomain);
+                }
+            }
+            else if (curr_api->type == GRAPHS)
+            {
                 mtinfo(WM_AZURE_LOGTAG, "Starting Graphs log collection for the domain '%s'.", curr_api->tenantdomain);
-                if (wm_azure_graphs(curr_api)) {
-                    mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for the domain '%s'.", curr_api->tenantdomain);
-                } else {
-                    mtwarn(WM_AZURE_LOGTAG, "Graphs log collection for the domain '%s' failed for one or more requests.", curr_api->tenantdomain);
+                if (wm_azure_graphs(curr_api))
+                {
+                    mtinfo(
+                        WM_AZURE_LOGTAG, "Finished Graphs log collection for the domain '%s'.", curr_api->tenantdomain);
+                }
+                else
+                {
+                    mtwarn(WM_AZURE_LOGTAG,
+                           "Graphs log collection for the domain '%s' failed for one or more requests.",
+                           curr_api->tenantdomain);
                 }
             }
         }
 
-        for (curr_storage = azure_config->storage; curr_storage; curr_storage = curr_storage->next) {
+        for (curr_storage = azure_config->storage; curr_storage; curr_storage = curr_storage->next)
+        {
             mtinfo(WM_AZURE_LOGTAG, "Starting Storage log collection for '%s'.", curr_storage->tag);
-            if (wm_azure_storage(curr_storage)) {
+            if (wm_azure_storage(curr_storage))
+            {
                 mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for '%s'.", curr_storage->tag);
-            } else {
-                mtwarn(WM_AZURE_LOGTAG, "Storage log collection for '%s' failed for one or more containers.", curr_storage->tag);
+            }
+            else
+            {
+                mtwarn(WM_AZURE_LOGTAG,
+                       "Storage log collection for '%s' failed for one or more containers.",
+                       curr_storage->tag);
             }
         }
 
@@ -127,31 +161,36 @@ void* wm_azure_main(wm_azure_t *azure_config) {
     return NULL;
 }
 
-bool wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
+bool wm_azure_log_analytics(wm_azure_api_t* log_analytics)
+{
 
-    wm_azure_request_t * curr_request = NULL;
+    wm_azure_request_t* curr_request = NULL;
     char query[OS_SIZE_1024];
     unsigned int timeout;
     bool success = true;
 
-    for (curr_request = log_analytics->request; curr_request; curr_request = curr_request->next) {
+    for (curr_request = log_analytics->request; curr_request; curr_request = curr_request->next)
+    {
 
-        char * command = NULL;
+        char* command = NULL;
 
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
 
-        char * script = NULL;
+        char* script = NULL;
         os_calloc(PATH_MAX, sizeof(char), script);
         snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
         wm_strcat(&command, script, '\0');
         os_free(script);
         wm_strcat(&command, "--log_analytics", ' ');
 
-        if (log_analytics->auth_path) {
+        if (log_analytics->auth_path)
+        {
             wm_strcat(&command, "--la_auth_path", ' ');
             wm_strcat(&command, log_analytics->auth_path, ' ');
-        } else {
+        }
+        else
+        {
             wm_strcat(&command, "--la_id", ' ');
             wm_strcat(&command, log_analytics->application_id, ' ');
             wm_strcat(&command, "--la_key", ' ');
@@ -171,12 +210,14 @@ bool wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         wm_strcat(&command, "--workspace", ' ');
         wm_strcat(&command, curr_request->workspace, ' ');
 
-        if (curr_request->time_offset) {
+        if (curr_request->time_offset)
+        {
             wm_strcat(&command, "--la_time_offset", ' ');
             wm_strcat(&command, curr_request->time_offset, ' ');
         }
-        if (isDebug()) {
-            char *int_to_string;
+        if (isDebug())
+        {
+            char* int_to_string;
             os_malloc(OS_SIZE_1024, int_to_string);
             sprintf(int_to_string, "%d", isDebug());
             wm_strcat(&command, "--debug", ' ');
@@ -191,9 +232,12 @@ bool wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
             timeout = default_timeout;
 
         // Run script
-        if (wm_azure_run_script(command, timeout, curr_request->tag)) {
+        if (wm_azure_run_script(command, timeout, curr_request->tag))
+        {
             mtinfo(WM_AZURE_LOGTAG, "Finished Log Analytics collection for request '%s'.", curr_request->tag);
-        } else {
+        }
+        else
+        {
             mtwarn(WM_AZURE_LOGTAG, "Log Analytics collection for request '%s' failed.", curr_request->tag);
             success = false;
         }
@@ -202,31 +246,36 @@ bool wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
     return success;
 }
 
-bool wm_azure_graphs(wm_azure_api_t *graph) {
+bool wm_azure_graphs(wm_azure_api_t* graph)
+{
 
-    wm_azure_request_t * curr_request = NULL;
+    wm_azure_request_t* curr_request = NULL;
     char query[OS_SIZE_1024];
     unsigned int timeout;
     bool success = true;
 
-    for (curr_request = graph->request; curr_request; curr_request = curr_request->next) {
+    for (curr_request = graph->request; curr_request; curr_request = curr_request->next)
+    {
 
-        char * command = NULL;
+        char* command = NULL;
 
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
 
-        char * script = NULL;
+        char* script = NULL;
         os_calloc(PATH_MAX, sizeof(char), script);
         snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
         wm_strcat(&command, script, '\0');
         os_free(script);
         wm_strcat(&command, "--graph", ' ');
 
-        if (graph->auth_path) {
+        if (graph->auth_path)
+        {
             wm_strcat(&command, "--graph_auth_path", ' ');
             wm_strcat(&command, graph->auth_path, ' ');
-        } else {
+        }
+        else
+        {
             wm_strcat(&command, "--graph_id", ' ');
             wm_strcat(&command, graph->application_id, ' ');
             wm_strcat(&command, "--graph_key", ' ');
@@ -243,13 +292,15 @@ bool wm_azure_graphs(wm_azure_api_t *graph) {
         snprintf(query, OS_SIZE_1024 - 1, "\'%s\'", curr_request->query);
         wm_strcat(&command, query, ' ');
 
-        if (curr_request->time_offset) {
+        if (curr_request->time_offset)
+        {
             wm_strcat(&command, "--graph_time_offset", ' ');
             wm_strcat(&command, curr_request->time_offset, ' ');
         }
 
-        if (isDebug()) {
-            char *int_to_string;
+        if (isDebug())
+        {
+            char* int_to_string;
             os_malloc(OS_SIZE_1024, int_to_string);
             sprintf(int_to_string, "%d", isDebug());
             wm_strcat(&command, "--debug", ' ');
@@ -264,9 +315,12 @@ bool wm_azure_graphs(wm_azure_api_t *graph) {
             timeout = default_timeout;
 
         // Run script
-        if (wm_azure_run_script(command, timeout, curr_request->tag)) {
+        if (wm_azure_run_script(command, timeout, curr_request->tag))
+        {
             mtinfo(WM_AZURE_LOGTAG, "Finished Graphs log collection for request '%s'.", curr_request->tag);
-        } else {
+        }
+        else
+        {
             mtwarn(WM_AZURE_LOGTAG, "Graphs log collection for request '%s' failed.", curr_request->tag);
             success = false;
         }
@@ -275,32 +329,37 @@ bool wm_azure_graphs(wm_azure_api_t *graph) {
     return success;
 }
 
-bool wm_azure_storage(wm_azure_storage_t *storage) {
+bool wm_azure_storage(wm_azure_storage_t* storage)
+{
 
-    wm_azure_container_t * curr_container = NULL;
+    wm_azure_container_t* curr_container = NULL;
     char name[OS_SIZE_256];
     char blobs[OS_SIZE_256];
     unsigned int timeout;
     bool success = true;
 
-    for (curr_container = storage->container; curr_container; curr_container = curr_container->next) {
+    for (curr_container = storage->container; curr_container; curr_container = curr_container->next)
+    {
 
-        char * command = NULL;
+        char* command = NULL;
 
         // Create argument list
         mtdebug2(WM_AZURE_LOGTAG, "Creating argument list.");
 
-        char * script = NULL;
+        char* script = NULL;
         os_calloc(PATH_MAX, sizeof(char), script);
         snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
         wm_strcat(&command, script, '\0');
         os_free(script);
         wm_strcat(&command, "--storage", ' ');
 
-        if (storage->auth_path) {
+        if (storage->auth_path)
+        {
             wm_strcat(&command, "--storage_auth_path", ' ');
             wm_strcat(&command, storage->auth_path, ' ');
-        } else {
+        }
+        else
+        {
             wm_strcat(&command, "--account_name", ' ');
             wm_strcat(&command, storage->account_name, ' ');
             wm_strcat(&command, "--account_key", ' ');
@@ -315,32 +374,39 @@ bool wm_azure_storage(wm_azure_storage_t *storage) {
         if (curr_container->blobs)
             snprintf(blobs, OS_SIZE_256 - 1, "\"%s\"", curr_container->blobs);
         else
-            snprintf(blobs, OS_SIZE_256 -1, "\"*\"");
+            snprintf(blobs, OS_SIZE_256 - 1, "\"*\"");
         wm_strcat(&command, blobs, ' ');
 
         wm_strcat(&command, "--storage_tag", ' ');
         wm_strcat(&command, storage->tag, ' ');
 
-        if (curr_container->content_type) {
-            if (!strncmp(curr_container->content_type, "json_file", 9)) {
+        if (curr_container->content_type)
+        {
+            if (!strncmp(curr_container->content_type, "json_file", 9))
+            {
                 wm_strcat(&command, "--json_file", ' ');
-            } else if (!strncmp(curr_container->content_type, "json_inline", 11)) {
+            }
+            else if (!strncmp(curr_container->content_type, "json_inline", 11))
+            {
                 wm_strcat(&command, "--json_inline", ' ');
             }
         }
 
-        if (curr_container->time_offset) {
+        if (curr_container->time_offset)
+        {
             wm_strcat(&command, "--storage_time_offset", ' ');
             wm_strcat(&command, curr_container->time_offset, ' ');
         }
 
-        if (curr_container->path) {
+        if (curr_container->path)
+        {
             wm_strcat(&command, "--prefix", ' ');
             wm_strcat(&command, curr_container->path, ' ');
         }
 
-        if (isDebug()) {
-            char *int_to_string;
+        if (isDebug())
+        {
+            char* int_to_string;
             os_malloc(OS_SIZE_1024, int_to_string);
             sprintf(int_to_string, "%d", isDebug());
             wm_strcat(&command, "--debug", ' ');
@@ -355,9 +421,12 @@ bool wm_azure_storage(wm_azure_storage_t *storage) {
             timeout = default_timeout;
 
         // Run script
-        if (wm_azure_run_script(command, timeout, curr_container->name)) {
+        if (wm_azure_run_script(command, timeout, curr_container->name))
+        {
             mtinfo(WM_AZURE_LOGTAG, "Finished Storage log collection for container '%s'.", curr_container->name);
-        } else {
+        }
+        else
+        {
             mtwarn(WM_AZURE_LOGTAG, "Storage log collection for container '%s' failed.", curr_container->name);
             success = false;
         }
@@ -368,16 +437,19 @@ bool wm_azure_storage(wm_azure_storage_t *storage) {
 
 // Run the script and log its output and result
 
-bool wm_azure_run_script(char *command, unsigned int timeout, const char *name) {
-    char *output = NULL;
+bool wm_azure_run_script(char* command, unsigned int timeout, const char* name)
+{
+    char* output = NULL;
     int status = 0;
     bool success = true;
 
     mtdebug1(WM_AZURE_LOGTAG, "Launching command: %s", command);
 
-    switch (wm_exec(command, &output, &status, timeout, NULL)) {
+    switch (wm_exec(command, &output, &status, timeout, NULL))
+    {
         case 0:
-            if (status != 0) {
+            if (status != 0)
+            {
                 mtwarn(WM_AZURE_LOGTAG, "Command returned exit code %d", status);
                 success = false;
             }
@@ -388,9 +460,15 @@ bool wm_azure_run_script(char *command, unsigned int timeout, const char *name) 
             success = false;
             break;
         default:
-            // The script could not be run. /usr/bin/env, which runs it, also exits with this code when python3 is missing
-            if (status == EXECVE_ERROR) {
-                mterror(WM_AZURE_LOGTAG, "Could not execute '%s' (exit code %d). Check that it and the python3 interpreter it runs with are installed.", WM_AZURE_SCRIPT_PATH, status);
+            // The script could not be run. /usr/bin/env, which runs it, also exits with this code when python3 is
+            // missing
+            if (status == EXECVE_ERROR)
+            {
+                mterror(WM_AZURE_LOGTAG,
+                        "Could not execute '%s' (exit code %d). Check that it and the python3 interpreter it runs with "
+                        "are installed.",
+                        WM_AZURE_SCRIPT_PATH,
+                        status);
                 os_free(command);
                 return false;
             }
@@ -399,7 +477,8 @@ bool wm_azure_run_script(char *command, unsigned int timeout, const char *name) 
             pthread_exit(NULL);
     }
 
-    if (output) {
+    if (output)
+    {
         wm_integrations_parse_output(output, !success);
     }
 
@@ -410,7 +489,8 @@ bool wm_azure_run_script(char *command, unsigned int timeout, const char *name) 
 
 // Setup module
 
-void wm_azure_setup(wm_azure_t *_azure_config) {
+void wm_azure_setup(wm_azure_t* _azure_config)
+{
 
     azure_config = _azure_config;
     wm_azure_check();
@@ -425,7 +505,8 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
     queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-    if (queue_fd < 0) {
+    if (queue_fd < 0)
+    {
         mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
@@ -437,43 +518,48 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
 // Check configuration
 
-void wm_azure_check() {
+void wm_azure_check()
+{
 
     // Check if disabled
-    if (!azure_config->flags.enabled) {
+    if (!azure_config->flags.enabled)
+    {
         mtinfo(WM_AZURE_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
 
     // Check if necessary configuration is defined
 
-    if (!azure_config->api_config && !azure_config->storage) {
+    if (!azure_config->api_config && !azure_config->storage)
+    {
         mtwarn(WM_AZURE_LOGTAG, "No API (log_analytics, graph or storage) defined. Exiting...");
         pthread_exit(NULL);
     }
 
     // Set default timeout
     default_timeout = azure_config->timeout;
-
 }
 
 // Cleanup function, doesn't overwrite wm_cleanup
 
-void wm_azure_cleanup() {
+void wm_azure_cleanup()
+{
     close(queue_fd);
     mtinfo(WM_AZURE_LOGTAG, "Module finished.");
 }
 
 // Destroy data
 
-void wm_azure_destroy(wm_azure_t *azure_config) {
+void wm_azure_destroy(wm_azure_t* azure_config)
+{
 
-    wm_azure_api_t *curr_api = NULL;
-    wm_azure_api_t *next_api = NULL;
-    wm_azure_storage_t *curr_storage = NULL;
-    wm_azure_storage_t *next_storage = NULL;
+    wm_azure_api_t* curr_api = NULL;
+    wm_azure_api_t* next_api = NULL;
+    wm_azure_storage_t* curr_storage = NULL;
+    wm_azure_storage_t* next_storage = NULL;
 
-    for (curr_api = azure_config->api_config; curr_api; curr_api = next_api) {
+    for (curr_api = azure_config->api_config; curr_api; curr_api = next_api)
+    {
 
         next_api = curr_api->next;
         free(curr_api->tenantdomain);
@@ -484,10 +570,11 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
         if (curr_api->auth_path)
             free(curr_api->auth_path);
 
-        wm_azure_request_t *curr_request = NULL;
-        wm_azure_request_t *next_request = NULL;
+        wm_azure_request_t* curr_request = NULL;
+        wm_azure_request_t* next_request = NULL;
 
-        for (curr_request = curr_api->request; curr_request; curr_request = next_request) {
+        for (curr_request = curr_api->request; curr_request; curr_request = next_request)
+        {
 
             next_request = curr_request->next;
             free(curr_request->tag);
@@ -502,7 +589,8 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
         free(curr_api);
     }
 
-    for (curr_storage = azure_config->storage; curr_storage; curr_storage = next_storage) {
+    for (curr_storage = azure_config->storage; curr_storage; curr_storage = next_storage)
+    {
 
         next_storage = curr_storage->next;
         free(curr_storage->tag);
@@ -513,10 +601,11 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
         if (curr_storage->auth_path)
             free(curr_storage->auth_path);
 
-        wm_azure_container_t *curr_container = NULL;
-        wm_azure_container_t *next_container = NULL;
+        wm_azure_container_t* curr_container = NULL;
+        wm_azure_container_t* next_container = NULL;
 
-        for (curr_container = curr_storage->container; curr_container; curr_container = next_container) {
+        for (curr_container = curr_storage->container; curr_container; curr_container = next_container)
+        {
 
             next_container = curr_container->next;
             free(curr_container->name);
@@ -525,7 +614,6 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
             free(curr_container->time_offset);
             free(curr_container->path);
             free(curr_container);
-
         }
 
         free(curr_storage);
@@ -535,63 +623,86 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
     w_free_expression(azure_script_log_regex);
 }
 
-
 // Get configuration data in JSON format
 
-cJSON *wm_azure_dump(const wm_azure_t * azure) {
+cJSON* wm_azure_dump(const wm_azure_t* azure)
+{
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *wm_azure = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* wm_azure = cJSON_CreateObject();
 
-    if (azure->flags.enabled) cJSON_AddStringToObject(wm_azure,"disabled","no"); else cJSON_AddStringToObject(wm_azure,"disabled","yes");
-    if (azure->flags.run_on_start) cJSON_AddStringToObject(wm_azure,"run_on_start","yes"); else cJSON_AddStringToObject(wm_azure,"run_on_start","no");
+    if (azure->flags.enabled)
+        cJSON_AddStringToObject(wm_azure, "disabled", "no");
+    else
+        cJSON_AddStringToObject(wm_azure, "disabled", "yes");
+    if (azure->flags.run_on_start)
+        cJSON_AddStringToObject(wm_azure, "run_on_start", "yes");
+    else
+        cJSON_AddStringToObject(wm_azure, "run_on_start", "no");
     sched_scan_dump(&(azure->scan_config), wm_azure);
-    cJSON_AddNumberToObject(wm_azure,"timeout",azure->timeout);
+    cJSON_AddNumberToObject(wm_azure, "timeout", azure->timeout);
 
-    if (azure->api_config || azure->storage) {
-        cJSON *content = cJSON_CreateArray();
-        wm_azure_api_t * api_config;
-        wm_azure_storage_t * storage_conf;
-        for (api_config = azure->api_config; api_config; api_config = api_config->next) {
-            cJSON *api = cJSON_CreateObject();
-            if (api_config->type == LOG_ANALYTICS) cJSON_AddStringToObject(api, "type", "log_analytics"); else cJSON_AddStringToObject(api, "type", "graph");
+    if (azure->api_config || azure->storage)
+    {
+        cJSON* content = cJSON_CreateArray();
+        wm_azure_api_t* api_config;
+        wm_azure_storage_t* storage_conf;
+        for (api_config = azure->api_config; api_config; api_config = api_config->next)
+        {
+            cJSON* api = cJSON_CreateObject();
+            if (api_config->type == LOG_ANALYTICS)
+                cJSON_AddStringToObject(api, "type", "log_analytics");
+            else
+                cJSON_AddStringToObject(api, "type", "graph");
             cJSON_AddStringToObject(api, "tenantdomain", api_config->tenantdomain);
-            if (api_config->application_id) cJSON_AddStringToObject(api, "application_id", api_config->application_id);
+            if (api_config->application_id)
+                cJSON_AddStringToObject(api, "application_id", api_config->application_id);
             module_report_add_secret(api, "application_key", api_config->application_key, wm_unmask_credentials);
-            if (api_config->auth_path) cJSON_AddStringToObject(api, "auth_path", api_config->auth_path);
-            if (api_config->request) {
-                cJSON *requests = cJSON_CreateArray();
-                wm_azure_request_t * request_conf;
-                for (request_conf = api_config->request; request_conf; request_conf = request_conf->next) {
-                    cJSON * request = cJSON_CreateObject();
+            if (api_config->auth_path)
+                cJSON_AddStringToObject(api, "auth_path", api_config->auth_path);
+            if (api_config->request)
+            {
+                cJSON* requests = cJSON_CreateArray();
+                wm_azure_request_t* request_conf;
+                for (request_conf = api_config->request; request_conf; request_conf = request_conf->next)
+                {
+                    cJSON* request = cJSON_CreateObject();
                     cJSON_AddStringToObject(request, "tag", request_conf->tag);
                     cJSON_AddStringToObject(request, "query", request_conf->query);
                     cJSON_AddStringToObject(request, "time_offset", request_conf->time_offset);
-                    if (request_conf->workspace) cJSON_AddStringToObject(request, "workspace", request_conf->workspace);
-                    if (request_conf->timeout) cJSON_AddNumberToObject(request, "timeout", request_conf->timeout);
+                    if (request_conf->workspace)
+                        cJSON_AddStringToObject(request, "workspace", request_conf->workspace);
+                    if (request_conf->timeout)
+                        cJSON_AddNumberToObject(request, "timeout", request_conf->timeout);
                     cJSON_AddItemToArray(requests, request);
                 }
                 cJSON_AddItemToObject(api, "requests", requests);
             }
             cJSON_AddItemToArray(content, api);
         }
-        for (storage_conf = azure->storage; storage_conf; storage_conf = storage_conf->next) {
-            cJSON *storage = cJSON_CreateObject();
+        for (storage_conf = azure->storage; storage_conf; storage_conf = storage_conf->next)
+        {
+            cJSON* storage = cJSON_CreateObject();
             cJSON_AddStringToObject(storage, "tag", storage_conf->tag);
-            if (storage_conf->account_name) cJSON_AddStringToObject(storage, "account_name", storage_conf->account_name);
+            if (storage_conf->account_name)
+                cJSON_AddStringToObject(storage, "account_name", storage_conf->account_name);
             module_report_add_secret(storage, "account_key", storage_conf->account_key, wm_unmask_credentials);
-            if (storage_conf->auth_path) cJSON_AddStringToObject(storage, "auth_path", storage_conf->auth_path);
-            if (storage_conf->container) {
-                cJSON *containers = cJSON_CreateArray();
-                wm_azure_container_t * container_conf;
-                for (container_conf = storage_conf->container; container_conf; container_conf = container_conf->next) {
-                    cJSON * container = cJSON_CreateObject();
+            if (storage_conf->auth_path)
+                cJSON_AddStringToObject(storage, "auth_path", storage_conf->auth_path);
+            if (storage_conf->container)
+            {
+                cJSON* containers = cJSON_CreateArray();
+                wm_azure_container_t* container_conf;
+                for (container_conf = storage_conf->container; container_conf; container_conf = container_conf->next)
+                {
+                    cJSON* container = cJSON_CreateObject();
                     cJSON_AddStringToObject(container, "name", container_conf->name);
                     cJSON_AddStringToObject(container, "blobs", container_conf->blobs);
                     cJSON_AddStringToObject(container, "content_type", container_conf->content_type);
                     cJSON_AddStringToObject(container, "time_offset", container_conf->time_offset);
                     cJSON_AddStringToObject(container, "prefix", container_conf->path);
-                    if (container_conf->timeout) cJSON_AddNumberToObject(container, "timeout", container_conf->timeout);
+                    if (container_conf->timeout)
+                        cJSON_AddNumberToObject(container, "timeout", container_conf->timeout);
                     cJSON_AddItemToArray(containers, container);
                 }
                 cJSON_AddItemToObject(storage, "containers", containers);
@@ -608,12 +719,14 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
 
 // Setup script logging capture feature
 
-STATIC void wm_setup_logging_capture() {
-    const char * const log_pattern =
+STATIC void wm_setup_logging_capture()
+{
+    const char* const log_pattern =
         "^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2} azure: (DEBUG|INFO|WARNING|ERROR|CRITICAL): ";
     w_calloc_expression_t(&azure_script_log_regex, EXP_TYPE_PCRE2);
 
-    if (!w_expression_compile(azure_script_log_regex, log_pattern, 0)) {
+    if (!w_expression_compile(azure_script_log_regex, log_pattern, 0))
+    {
         mterror(WM_AZURE_LOGTAG, REGEX_COMPILE_2, log_pattern);
         pthread_exit(NULL);
     }
@@ -622,14 +735,17 @@ STATIC void wm_setup_logging_capture() {
 // Append a line to a bounded buffer, dropping whole lines from its front to make room.
 // A traceback's most relevant line is the last one
 
-static void wm_azure_keep_tail(char *tail, size_t size, size_t *tail_len, const char *line) {
+static void wm_azure_keep_tail(char* tail, size_t size, size_t* tail_len, const char* line)
+{
     const size_t max_len = size - 1;
     size_t line_len = strlen(line);
 
-    if (line_len >= max_len) {
+    if (line_len >= max_len)
+    {
         // Longer than the whole buffer: keep its end, starting on a UTF-8 character boundary
         line += line_len - max_len;
-        for (int i = 0; i < 3 && ((unsigned char)*line & 0xC0) == 0x80; i++) {
+        for (int i = 0; i < 3 && ((unsigned char)*line & 0xC0) == 0x80; i++)
+        {
             line++;
         }
         *tail_len = strlen(line);
@@ -637,10 +753,12 @@ static void wm_azure_keep_tail(char *tail, size_t size, size_t *tail_len, const 
         return;
     }
 
-    while (*tail_len > 0 && *tail_len + 1 + line_len > max_len) {
-        char *next_line = strchr(tail, '\n');
+    while (*tail_len > 0 && *tail_len + 1 + line_len > max_len)
+    {
+        char* next_line = strchr(tail, '\n');
 
-        if (!next_line) {
+        if (!next_line)
+        {
             *tail_len = 0;
             break;
         }
@@ -650,7 +768,8 @@ static void wm_azure_keep_tail(char *tail, size_t size, size_t *tail_len, const 
         memmove(tail, next_line, *tail_len + 1);
     }
 
-    if (*tail_len > 0) {
+    if (*tail_len > 0)
+    {
         tail[(*tail_len)++] = '\n';
     }
 
@@ -660,34 +779,46 @@ static void wm_azure_keep_tail(char *tail, size_t size, size_t *tail_len, const 
 
 // Get script logging output and log it here
 
-STATIC void wm_integrations_parse_output(char * const output, bool failed) {
-    char *saveptr = NULL;
-    const char *end_match = NULL;
-    char *log_line = strtok_r(output, "\n", &saveptr);
-    regex_matching *regex_match = NULL;
+STATIC void wm_integrations_parse_output(char* const output, bool failed)
+{
+    char* saveptr = NULL;
+    const char* end_match = NULL;
+    char* log_line = strtok_r(output, "\n", &saveptr);
+    regex_matching* regex_match = NULL;
     // Lines outside the script's log format (e.g. a Python traceback), surfaced only if the script failed.
     // Surfaced even after an ERROR line, since azure-logs.py also logs errors it recovers from
     char unparsed_output[OS_SIZE_6144];
     size_t unparsed_len = 0;
 
-    while (log_line != NULL) {
+    while (log_line != NULL)
+    {
         os_calloc(1, sizeof(regex_matching), regex_match);
-        if (w_expression_match(azure_script_log_regex, log_line, &end_match, regex_match) &&
-            regex_match->sub_strings && regex_match->sub_strings[0] && end_match) {
+        if (w_expression_match(azure_script_log_regex, log_line, &end_match, regex_match) && regex_match->sub_strings &&
+            regex_match->sub_strings[0] && end_match)
+        {
 
-            char * const log_level = regex_match->sub_strings[0];
-            char * const log_payload = (char *)(end_match + 1);
+            char* const log_level = regex_match->sub_strings[0];
+            char* const log_payload = (char*)(end_match + 1);
 
-            if (!strcmp(log_level, "INFO")) {
+            if (!strcmp(log_level, "INFO"))
+            {
                 mtinfo(WM_AZURE_LOGTAG, "%s", log_payload);
-            } else if (!strcmp(log_level, "WARNING")) {
+            }
+            else if (!strcmp(log_level, "WARNING"))
+            {
                 mtwarn(WM_AZURE_LOGTAG, "%s", log_payload);
-            } else if (!strcmp(log_level, "ERROR") || !strcmp(log_level, "CRITICAL")) {
+            }
+            else if (!strcmp(log_level, "ERROR") || !strcmp(log_level, "CRITICAL"))
+            {
                 mterror(WM_AZURE_LOGTAG, "%s", log_payload);
-            } else if (!strcmp(log_level, "DEBUG")) {
+            }
+            else if (!strcmp(log_level, "DEBUG"))
+            {
                 mtdebug1(WM_AZURE_LOGTAG, "%s", log_payload);
             }
-        } else if (failed) {
+        }
+        else if (failed)
+        {
             wm_azure_keep_tail(unparsed_output, sizeof(unparsed_output), &unparsed_len, log_line);
         }
 
@@ -695,7 +826,8 @@ STATIC void wm_integrations_parse_output(char * const output, bool failed) {
         log_line = strtok_r(NULL, "\n", &saveptr);
     }
 
-    if (unparsed_len > 0) {
+    if (unparsed_len > 0)
+    {
         mterror(WM_AZURE_LOGTAG, "%s", unparsed_output);
     }
 }

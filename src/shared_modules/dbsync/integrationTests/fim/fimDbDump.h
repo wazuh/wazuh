@@ -1,7 +1,6 @@
 #ifndef _FIM_DB_DUMP_H
 #define _FIM_DB_DUMP_H
-constexpr auto FIM_SQL_DB_DUMP
-{
+constexpr auto FIM_SQL_DB_DUMP {
     R"(
 	PRAGMA foreign_keys=OFF;
 	BEGIN TRANSACTION;
@@ -3822,6 +3821,5 @@ constexpr auto FIM_SQL_DB_DUMP
 	CREATE INDEX path_index ON entry_path (path);
 	CREATE INDEX inode_index ON entry_path (inode_id);
 	CREATE INDEX dev_inode_index ON entry_data (device, inode);
-	COMMIT;)"
-};
+	COMMIT;)"};
 #endif //_FIM_DB_DUMP_H

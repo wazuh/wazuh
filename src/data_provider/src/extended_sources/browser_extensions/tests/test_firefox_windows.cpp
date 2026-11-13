@@ -16,10 +16,10 @@
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
-        MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD(std::string, getUserId, (std::string), (override));
+public:
+    MOCK_METHOD(std::string, getApplicationsPath, (), (override));
+    MOCK_METHOD(std::string, getHomePath, (), (override));
+    MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
 TEST(FirefoxAddonsTests, NumberOfExtensions)

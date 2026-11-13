@@ -15,17 +15,17 @@
 #include "metadata_provider.h"
 
 #ifdef WAZUH_UNIT_TESTING
-    // Remove static qualifier when unit testing
-    #define STATIC
+// Remove static qualifier when unit testing
+#define STATIC
 
-    // Redefine wazuh_version
-    #undef __wazuh_version
-    #define __wazuh_version "v5.0.0"
+// Redefine wazuh_version
+#undef __wazuh_version
+#define __wazuh_version "v5.0.0"
 #else
-    #define STATIC static
+#define STATIC static
 #endif
 
-static void w_agentd_keys_init (void);
+static void w_agentd_keys_init(void);
 STATIC void send_msg_on_startup(void);
 
 /* Arm the startup gate, make the shared configuration directory consistent
@@ -47,7 +47,8 @@ void start_agent_prepare(void)
  * legacy handshake did around it. */
 void start_agent(int is_startup)
 {
-    if (!is_startup) {
+    if (!is_startup)
+    {
         return;
     }
 
@@ -62,24 +63,29 @@ void start_agent(int is_startup)
 /**
  * @brief Initialize keys structure, counter, agent info and crypto method.
  * Keys are read from client.keys. If no valid entry is found:
- *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received.
- *  -If autoenrollment is disabled, daemon is stoped
+ *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is
+ * received. -If autoenrollment is disabled, daemon is stoped
  * */
-static void w_agentd_keys_init (void) {
+static void w_agentd_keys_init(void)
+{
 
-    if (keys.keysize == 0) {
+    if (keys.keysize == 0)
+    {
         /* Check if we can auto-enroll */
-        if (agt->enrollment.enabled) {
+        if (agt->enrollment.enabled)
+        {
             int delay_sleep = 0;
             w_enroll_status_t status;
 
-            while ((status = try_enroll_to_server()) != W_ENROLL_OK) {
+            while ((status = try_enroll_to_server()) != W_ENROLL_OK)
+            {
                 /* #39064: not every rejection is worth another attempt. A credential the manager
                  * judged and refused will be refused again, for ever, at the top of the ramp --
                  * which is the lab loop this issue exists to remove. w_enrollment_apply_policy()
                  * owns that decision (and shreds a dead re-enrollment secret on the way), so this
                  * loop and bridge_reenroll_thread()'s cannot drift apart on it. */
-                if (w_enrollment_apply_policy(status) == W_ENROLL_ACTION_STOP) {
+                if (w_enrollment_apply_policy(status) == W_ENROLL_ACTION_STOP)
+                {
                     /* No key, and no prospect of getting one without an operator. Exiting is the
                      * honest end -- the same one AG_NOKEYS_EXIT below reports for an agent that
                      * cannot enroll at all -- rather than a daemon that stays up doing nothing. */
@@ -93,7 +99,8 @@ static void w_agentd_keys_init (void) {
                  * agt->server[rc] in turn) is gone -- see plan.md's D4/Q6. The
                  * retry ramp itself is unchanged and still shared with
                  * bridge_reenroll_thread()'s loop, both reading the values ClientConf() resolved. */
-                if (delay_sleep < agt->enrollment.retry_max) {
+                if (delay_sleep < agt->enrollment.retry_max)
+                {
                     delay_sleep += agt->enrollment.retry_delta;
                 }
                 mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
@@ -101,17 +108,18 @@ static void w_agentd_keys_init (void) {
             }
         }
         /* If autoenrollment is disabled, stop daemon */
-        else {
+        else
+        {
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-    else {
+    else
+    {
         /* If the key store was empty, the counters will already be initialized in the enrollment process */
         OS_StartCounter(&keys);
     }
 
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
-                        agt->profile);
+    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, agt->profile);
 
     /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys, W_METH_AES);
@@ -127,9 +135,11 @@ static void w_agentd_keys_init (void) {
  * uses (agt->server[] beyond index 0 has had no real failover behavior since
  * the HTTPS migration -- confirmed against main.c's own startup validation
  * and bridge_build_transport_config(), both of which only ever look at [0]). */
-w_enroll_status_t try_enroll_to_server(void) {
+w_enroll_status_t try_enroll_to_server(void)
+{
     w_enroll_request_t request = {0};
-    if (w_enrollment_build_request(&request) != 0) {
+    if (w_enrollment_build_request(&request) != 0)
+    {
         /* A local validation failure (an invalid configured name or address): nothing was sent, and
          * no manager is going to change its mind about it. Reported as fatal so the caller stops
          * instead of re-building the same rejected request for ever. */
@@ -137,14 +147,14 @@ w_enroll_status_t try_enroll_to_server(void) {
     }
 
     hc_enroll_result_t result;
-    w_https_client_enroll(request.body_json, request.password, request.enroll_kid, request.enroll_key_hex,
-                          &result);
+    w_https_client_enroll(request.body_json, request.password, request.enroll_kid, request.enroll_key_hex, &result);
     /* Destroyed AFTER the response is read: a refused enrollment token is named in the log, and
      * the id it names is the kid this request signed with. */
     const w_enroll_status_t status = w_enrollment_process_response(&result, request.enroll_kid);
     w_enroll_request_destroy(&request);
 
-    if (status != W_ENROLL_OK) {
+    if (status != W_ENROLL_OK)
+    {
         return status;
     }
 
@@ -193,33 +203,40 @@ void w_agentd_populate_metadata(void)
     w_mutex_lock(&metadata_mutex);
 
 #ifdef WIN32
-    os_info *os = get_win_version();
+    os_info* os = get_win_version();
 #else
-    os_info *os = get_unix_version();
+    os_info* os = get_unix_version();
 #endif
 
     /* Agent identity */
-    if (keys.keysize > 0 && keys.keyentries[0]) {
+    if (keys.keysize > 0 && keys.keyentries[0])
+    {
         strncpy(metadata.agent_id, keys.keyentries[0]->id, sizeof(metadata.agent_id) - 1);
         strncpy(metadata.agent_name, keys.keyentries[0]->name, sizeof(metadata.agent_name) - 1);
     }
     strncpy(metadata.agent_version, __wazuh_version, sizeof(metadata.agent_version) - 1);
 
     /* OS info */
-    if (os) {
-        if (os->os_name) {
+    if (os)
+    {
+        if (os->os_name)
+        {
             strncpy(metadata.os_name, os->os_name, sizeof(metadata.os_name) - 1);
         }
-        if (os->os_version) {
+        if (os->os_version)
+        {
             strncpy(metadata.os_version, os->os_version, sizeof(metadata.os_version) - 1);
         }
-        if (os->os_platform) {
+        if (os->os_platform)
+        {
             strncpy(metadata.os_platform, os->os_platform, sizeof(metadata.os_platform) - 1);
         }
-        if (os->machine) {
+        if (os->machine)
+        {
             strncpy(metadata.architecture, os->machine, sizeof(metadata.architecture) - 1);
         }
-        if (os->nodename) {
+        if (os->nodename)
+        {
             strncpy(metadata.hostname, os->nodename, sizeof(metadata.hostname) - 1);
         }
         free_osinfo(os);
@@ -242,26 +259,32 @@ void w_agentd_populate_metadata(void)
     strncpy(metadata.cluster_name, agent_cluster_name, sizeof(metadata.cluster_name) - 1);
 
     /* Groups from handshake */
-    if (agent_agent_groups[0] != '\0') {
+    if (agent_agent_groups[0] != '\0')
+    {
         /* Count groups (comma-separated) */
         size_t count = 1;
-        for (const char *p = agent_agent_groups; *p; p++) {
-            if (*p == ',') {
+        for (const char* p = agent_agent_groups; *p; p++)
+        {
+            if (*p == ',')
+            {
                 count++;
             }
         }
 
-        metadata.groups = (char **)calloc(count, sizeof(char *));
-        if (metadata.groups) {
+        metadata.groups = (char**)calloc(count, sizeof(char*));
+        if (metadata.groups)
+        {
             char groups_copy[OS_SIZE_65536];
             strncpy(groups_copy, agent_agent_groups, sizeof(groups_copy) - 1);
             groups_copy[sizeof(groups_copy) - 1] = '\0';
 
             size_t i = 0;
-            char *saveptr = NULL;
-            char *token = strtok_r(groups_copy, ",", &saveptr);
-            while (token && i < count) {
-                if (token[0] != '\0') {
+            char* saveptr = NULL;
+            char* token = strtok_r(groups_copy, ",", &saveptr);
+            while (token && i < count)
+            {
+                if (token[0] != '\0')
+                {
                     metadata.groups[i] = strdup(token);
                     i++;
                 }
@@ -271,15 +294,20 @@ void w_agentd_populate_metadata(void)
         }
     }
 
-    if (metadata_provider_update(&metadata) == 0) {
+    if (metadata_provider_update(&metadata) == 0)
+    {
         mdebug1("Early metadata populated into shared memory");
-    } else {
+    }
+    else
+    {
         mdebug1("Failed to populate early metadata");
     }
 
     /* Free groups */
-    if (metadata.groups) {
-        for (size_t i = 0; i < metadata.groups_count; i++) {
+    if (metadata.groups)
+    {
+        for (size_t i = 0; i < metadata.groups_count; i++)
+        {
             free(metadata.groups[i]);
         }
         free(metadata.groups);
@@ -292,18 +320,19 @@ void w_agentd_populate_metadata(void)
  * @brief Reports the agent start, now over /stateless. The event shape is
  *        unchanged, only the transport that carries it.
  * */
-STATIC void send_msg_on_startup(void) {
+STATIC void send_msg_on_startup(void)
+{
 
-    char fmsg[OS_MAXSTR + 1] = { '\0' };
+    char fmsg[OS_MAXSTR + 1] = {'\0'};
     char timestamp[32];
 
     get_iso8601_utc_time(timestamp, sizeof(timestamp));
 
-    cJSON *event = cJSON_CreateObject();
+    cJSON* event = cJSON_CreateObject();
     cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
     cJSON_AddStringToObject(event, "event.action", "agent-start");
     cJSON_AddStringToObject(event, "event.start", timestamp);
-    char *json_str = cJSON_PrintUnformatted(event);
+    char* json_str = cJSON_PrintUnformatted(event);
     cJSON_Delete(event);
 
     os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);

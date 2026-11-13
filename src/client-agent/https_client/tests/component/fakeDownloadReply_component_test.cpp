@@ -78,11 +78,12 @@ TEST(FakeDownloadReplyTest, ARequestThatDidNotOfferZstdGetsThePlainBlobWhateverT
 {
     const std::string blob = mergedConfigText(CONFIG_BYTES);
 
-    for (const auto reply :
-            {
-                DownloadReply::Plain, DownloadReply::Zstd, DownloadReply::ZstdCorrupt,
-                DownloadReply::ZstdTruncatedFrame, DownloadReply::ZstdUnterminated, DownloadReply::ZstdStacked
-            })
+    for (const auto reply : {DownloadReply::Plain,
+                             DownloadReply::Zstd,
+                             DownloadReply::ZstdCorrupt,
+                             DownloadReply::ZstdTruncatedFrame,
+                             DownloadReply::ZstdUnterminated,
+                             DownloadReply::ZstdStacked})
     {
         const DownloadBody body = shapeDownloadBody(blob, reply, /*offeredZstd=*/false);
         EXPECT_EQ(blob, body.bytes);
@@ -116,7 +117,8 @@ TEST(FakeDownloadReplyTest, AZstdReplyIsOneFrameThatDecodesBackToTheBlob)
 
 TEST(FakeDownloadReplyTest, ACorruptReplyFailsToDecode)
 {
-    const DownloadBody body = shapeDownloadBody(mergedConfigText(CONFIG_BYTES), DownloadReply::ZstdCorrupt, /*offeredZstd=*/true);
+    const DownloadBody body =
+        shapeDownloadBody(mergedConfigText(CONFIG_BYTES), DownloadReply::ZstdCorrupt, /*offeredZstd=*/true);
 
     EXPECT_EQ("zstd", body.contentEncoding);
     EXPECT_FALSE(decodeLikeCurl(body.bytes).has_value());

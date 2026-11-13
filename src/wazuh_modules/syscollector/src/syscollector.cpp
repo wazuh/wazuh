@@ -14,276 +14,267 @@
 #include <chrono>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 #include "wm_syscollector.h"
 #include "module_query_errors.h"
 
-void syscollector_init(const unsigned int inverval,
-                       send_data_callback_t callbackDiff,
-                       persist_data_callback_t callbackPersistDiff,
-                       log_callback_t callbackLog,
-                       const char* dbPath,
-                       const char* normalizerConfigPath,
-                       const char* normalizerType,
-                       const bool scanOnStart,
-                       const bool hardware,
-                       const bool os,
-                       const bool network,
-                       const bool packages,
-                       const bool ports,
-                       const bool portsAll,
-                       const bool processes,
-                       const bool hotfixes,
-                       const bool groups,
-                       const bool users,
-                       const bool services,
-                       const bool browserExtensions,
-                       const bool notifyOnFirstScan)
-{
-    std::function<void(const std::string&)> callbackDiffWrapper
+    void syscollector_init(const unsigned int inverval,
+                           send_data_callback_t callbackDiff,
+                           persist_data_callback_t callbackPersistDiff,
+                           log_callback_t callbackLog,
+                           const char* dbPath,
+                           const char* normalizerConfigPath,
+                           const char* normalizerType,
+                           const bool scanOnStart,
+                           const bool hardware,
+                           const bool os,
+                           const bool network,
+                           const bool packages,
+                           const bool ports,
+                           const bool portsAll,
+                           const bool processes,
+                           const bool hotfixes,
+                           const bool groups,
+                           const bool users,
+                           const bool services,
+                           const bool browserExtensions,
+                           const bool notifyOnFirstScan)
     {
-        [callbackDiff](const std::string & data)
-        {
-            callbackDiff(data.c_str());
-        }
-    };
+        std::function<void(const std::string&)> callbackDiffWrapper {[callbackDiff](const std::string& data)
+                                                                     { callbackDiff(data.c_str()); }};
 
-    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackPersistDiffWrapper
-    {
-        [callbackPersistDiff](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
-        {
-            callbackPersistDiff(id.c_str(), operation, index.c_str(), data.c_str(), version);
-        }
-    };
+        std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>
+            callbackPersistDiffWrapper {
+                [callbackPersistDiff](const std::string& id,
+                                      Operation_t operation,
+                                      const std::string& index,
+                                      const std::string& data,
+                                      uint64_t version)
+                { callbackPersistDiff(id.c_str(), operation, index.c_str(), data.c_str(), version); }};
 
-    std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper
-    {
-        [callbackLog](const modules_log_level_t level, const std::string & data)
-        {
-            callbackLog(level, data.c_str(), WM_SYS_LOGTAG);
-        }
-    };
+        std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper {
+            [callbackLog](const modules_log_level_t level, const std::string& data)
+            { callbackLog(level, data.c_str(), WM_SYS_LOGTAG); }};
 
-    std::function<void(const std::string&)> callbackErrorLogWrapper
-    {
-        [callbackLog](const std::string & data)
-        {
-            callbackLog(LOG_ERROR, data.c_str(), WM_SYS_LOGTAG);
-        }
-    };
+        std::function<void(const std::string&)> callbackErrorLogWrapper {
+            [callbackLog](const std::string& data) { callbackLog(LOG_ERROR, data.c_str(), WM_SYS_LOGTAG); }};
 
-    DBSync::initialize(std::move(callbackErrorLogWrapper));
+        DBSync::initialize(std::move(callbackErrorLogWrapper));
 
-    try
-    {
-        Syscollector::instance().init(std::make_shared<SysInfo>(),
-                                      std::move(callbackDiffWrapper),
-                                      std::move(callbackPersistDiffWrapper),
-                                      std::move(callbackLogWrapper),
-                                      dbPath,
-                                      normalizerConfigPath,
-                                      normalizerType,
-                                      inverval,
-                                      scanOnStart,
-                                      hardware,
-                                      os,
-                                      network,
-                                      packages,
-                                      ports,
-                                      portsAll,
-                                      processes,
-                                      hotfixes,
-                                      groups,
-                                      users,
-                                      services,
-                                      browserExtensions,
-                                      notifyOnFirstScan);
-    }
-    catch (const std::exception& ex)
-    {
-        callbackLog(LOG_ERROR, ex.what(), WM_SYS_LOGTAG);
-        // DO NOT re-throw - this is called from C code which cannot catch C++ exceptions
-        // The module will be in a failed state and subsequent calls will be no-ops
-    }
-}
-
-void syscollector_set_agentd_query_func(agentd_query_func_t queryFunc)
-{
-    if (queryFunc)
-    {
         try
         {
-            Syscollector::instance().setAgentdQueryFunction(
-                [queryFunc](const char* command, char* output_buffer, size_t buffer_size) -> bool
-            {
-                return queryFunc(command, output_buffer, buffer_size);
-            }
-            );
+            Syscollector::instance().init(std::make_shared<SysInfo>(),
+                                          std::move(callbackDiffWrapper),
+                                          std::move(callbackPersistDiffWrapper),
+                                          std::move(callbackLogWrapper),
+                                          dbPath,
+                                          normalizerConfigPath,
+                                          normalizerType,
+                                          inverval,
+                                          scanOnStart,
+                                          hardware,
+                                          os,
+                                          network,
+                                          packages,
+                                          ports,
+                                          portsAll,
+                                          processes,
+                                          hotfixes,
+                                          groups,
+                                          users,
+                                          services,
+                                          browserExtensions,
+                                          notifyOnFirstScan);
         }
         catch (const std::exception& ex)
         {
-            fprintf(stderr, "Failed to set agentd query function for syscollector: %s\n", ex.what());
+            callbackLog(LOG_ERROR, ex.what(), WM_SYS_LOGTAG);
+            // DO NOT re-throw - this is called from C code which cannot catch C++ exceptions
+            // The module will be in a failed state and subsequent calls will be no-ops
         }
     }
-}
 
-void syscollector_start()
-{
-    Syscollector::instance().start();
-}
-
-void syscollector_stop()
-{
-    Syscollector::instance().quiesce();
-}
-
-void syscollector_release_resources()
-{
-    Syscollector::instance().releaseResources();
-}
-
-void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD,
-                            uint32_t integrityInterval)
-{
-    if (moduleName && syncDbPath && syncDbPathVD)
+    void syscollector_set_agentd_query_func(agentd_query_func_t queryFunc)
     {
-        try
+        if (queryFunc)
         {
-            Syscollector::instance().initSyncProtocol(std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD),
-                                                      integrityInterval);
-        }
-        catch (const std::exception& ex)
-        {
-            // Log error but don't crash - module will continue without sync protocol
-            auto callbackErrorLogWrapper = [](const std::string & data)
+            try
             {
-                // Use syscollector's logging - this will reach the C logging system
-                fprintf(stderr, "Syscollector sync protocol initialization failed: %s\n", data.c_str());
-            };
-            callbackErrorLogWrapper(ex.what());
+                Syscollector::instance().setAgentdQueryFunction(
+                    [queryFunc](const char* command, char* output_buffer, size_t buffer_size) -> bool
+                    { return queryFunc(command, output_buffer, buffer_size); });
+            }
+            catch (const std::exception& ex)
+            {
+                fprintf(stderr, "Failed to set agentd query function for syscollector: %s\n", ex.what());
+            }
         }
     }
-}
 
-bool syscollector_sync_module(Mode_t mode)
-{
-    (void)mode;
-    // Syscollector::syncModule() already logs a WARNING with the failure reason before returning.
-    // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
-    // Only MODE_DELTA is meaningful here: a full replace is now a DataClean + DELTA
-    // sequence handled internally by the recovery path, not by this entry point.
-    return Syscollector::instance().syncModule(Mode::DELTA).success;
-}
-
-void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)
-{
-    if (id && index && data)
+    void syscollector_start()
     {
-        Operation cppOperation = (operation == OPERATION_CREATE) ? Operation::CREATE :
-                                 (operation == OPERATION_MODIFY) ? Operation::MODIFY :
-                                 (operation == OPERATION_DELETE) ? Operation::DELETE_ : Operation::NO_OP;
-        Syscollector::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data), version);
-    }
-}
-
-bool syscollector_parse_response(const unsigned char* data, size_t length)
-{
-    if (data)
-    {
-        return Syscollector::instance().parseResponseBuffer(data, length);
+        Syscollector::instance().start();
     }
 
-    return false;
-}
-
-bool syscollector_parse_response_vd(const unsigned char* data, size_t length)
-{
-    if (data)
+    void syscollector_stop()
     {
-        return Syscollector::instance().parseResponseBufferVD(data, length);
+        Syscollector::instance().quiesce();
     }
 
-    return false;
-}
-
-bool syscollector_notify_data_clean(const char** indices, size_t indices_count)
-{
-    if (indices && indices_count > 0)
+    void syscollector_release_resources()
     {
-        std::vector<std::string> indicesVec;
-        indicesVec.reserve(indices_count);
+        Syscollector::instance().releaseResources();
+    }
 
-        for (size_t i = 0; i < indices_count; ++i)
+    void syscollector_init_sync(const char* moduleName,
+                                const char* syncDbPath,
+                                const char* syncDbPathVD,
+                                uint32_t integrityInterval)
+    {
+        if (moduleName && syncDbPath && syncDbPathVD)
         {
-            if (indices[i])
+            try
             {
-                indicesVec.emplace_back(indices[i]);
+                Syscollector::instance().initSyncProtocol(
+                    std::string(moduleName), std::string(syncDbPath), std::string(syncDbPathVD), integrityInterval);
+            }
+            catch (const std::exception& ex)
+            {
+                // Log error but don't crash - module will continue without sync protocol
+                auto callbackErrorLogWrapper = [](const std::string& data)
+                {
+                    // Use syscollector's logging - this will reach the C logging system
+                    fprintf(stderr, "Syscollector sync protocol initialization failed: %s\n", data.c_str());
+                };
+                callbackErrorLogWrapper(ex.what());
+            }
+        }
+    }
+
+    bool syscollector_sync_module(Mode_t mode)
+    {
+        (void)mode;
+        // Syscollector::syncModule() already logs a WARNING with the failure reason before returning.
+        // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
+        // Only MODE_DELTA is meaningful here: a full replace is now a DataClean + DELTA
+        // sequence handled internally by the recovery path, not by this entry point.
+        return Syscollector::instance().syncModule(Mode::DELTA).success;
+    }
+
+    void syscollector_persist_diff(
+        const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)
+    {
+        if (id && index && data)
+        {
+            Operation cppOperation = (operation == OPERATION_CREATE)   ? Operation::CREATE
+                                     : (operation == OPERATION_MODIFY) ? Operation::MODIFY
+                                     : (operation == OPERATION_DELETE) ? Operation::DELETE_
+                                                                       : Operation::NO_OP;
+            Syscollector::instance().persistDifference(
+                std::string(id), cppOperation, std::string(index), std::string(data), version);
+        }
+    }
+
+    bool syscollector_parse_response(const unsigned char* data, size_t length)
+    {
+        if (data)
+        {
+            return Syscollector::instance().parseResponseBuffer(data, length);
+        }
+
+        return false;
+    }
+
+    bool syscollector_parse_response_vd(const unsigned char* data, size_t length)
+    {
+        if (data)
+        {
+            return Syscollector::instance().parseResponseBufferVD(data, length);
+        }
+
+        return false;
+    }
+
+    bool syscollector_notify_data_clean(const char** indices, size_t indices_count)
+    {
+        if (indices && indices_count > 0)
+        {
+            std::vector<std::string> indicesVec;
+            indicesVec.reserve(indices_count);
+
+            for (size_t i = 0; i < indices_count; ++i)
+            {
+                if (indices[i])
+                {
+                    indicesVec.emplace_back(indices[i]);
+                }
+            }
+
+            if (!indicesVec.empty())
+            {
+                return Syscollector::instance().notifyDataClean(indicesVec);
             }
         }
 
-        if (!indicesVec.empty())
+        return false;
+    }
+
+    void syscollector_delete_database()
+    {
+        Syscollector::instance().deleteDatabase();
+    }
+
+    /// @brief Query handler for Syscollector module.
+    ///
+    /// Handles query commands sent to the Syscollector module from other modules.
+    /// Supports commands like "pause", "resume", and "status".
+    ///
+    /// @param json_query Json query command string
+    /// @param output Pointer to output string (caller must free with os_free)
+    /// @return Length of the output string
+    size_t syscollector_query(const char* json_query, char** output)
+    {
+        if (!json_query || !output)
         {
-            return Syscollector::instance().notifyDataClean(indicesVec);
+            return 0;
+        }
+
+        try
+        {
+            std::string result = Syscollector::instance().query(std::string(json_query));
+            *output = strdup(result.c_str());
+            return strlen(*output);
+        }
+        catch (const std::exception& ex)
+        {
+            std::string error = "{\"error\":" + std::to_string(MQ_ERR_EXCEPTION) +
+                                ",\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
+            *output = strdup(error.c_str());
+            return strlen(*output);
         }
     }
 
-    return false;
-}
-
-void syscollector_delete_database()
-{
-    Syscollector::instance().deleteDatabase();
-}
-
-/// @brief Query handler for Syscollector module.
-///
-/// Handles query commands sent to the Syscollector module from other modules.
-/// Supports commands like "pause", "resume", and "status".
-///
-/// @param json_query Json query command string
-/// @param output Pointer to output string (caller must free with os_free)
-/// @return Length of the output string
-size_t syscollector_query(const char* json_query, char** output)
-{
-    if (!json_query || !output)
+    void syscollector_lock_scan_mutex()
     {
-        return 0;
+        Syscollector::instance().lockScanMutex();
     }
 
-    try
+    void syscollector_unlock_scan_mutex()
     {
-        std::string result = Syscollector::instance().query(std::string(json_query));
-        *output = strdup(result.c_str());
-        return strlen(*output);
+        Syscollector::instance().unlockScanMutex();
     }
-    catch (const std::exception& ex)
+
+    bool syscollector_is_scanning()
     {
-        std::string error = "{\"error\":" + std::to_string(MQ_ERR_EXCEPTION) + ",\"message\":\"Exception in query handler: " + std::string(ex.what()) + "\"}";
-        *output = strdup(error.c_str());
-        return strlen(*output);
+        return Syscollector::instance().isScanning();
     }
-}
 
-void syscollector_lock_scan_mutex()
-{
-    Syscollector::instance().lockScanMutex();
-}
-
-void syscollector_unlock_scan_mutex()
-{
-    Syscollector::instance().unlockScanMutex();
-}
-
-bool syscollector_is_scanning()
-{
-    return Syscollector::instance().isScanning();
-}
-
-void syscollector_run_recovery_process()
-{
-    Syscollector::instance().runRecoveryProcess();
-}
+    void syscollector_run_recovery_process()
+    {
+        Syscollector::instance().runRecoveryProcess();
+    }
 
 #ifdef __cplusplus
 }

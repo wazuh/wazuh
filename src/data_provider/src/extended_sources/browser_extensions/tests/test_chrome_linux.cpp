@@ -20,12 +20,11 @@
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
-        MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD(std::string, getUserId, (std::string), (override));
+public:
+    MOCK_METHOD(std::string, getApplicationsPath, (), (override));
+    MOCK_METHOD(std::string, getHomePath, (), (override));
+    MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
-
 
 // The fixture files must belong to the profile owner, so the owner reported is whoever owns the checkout
 static std::string fixtureOwner(const std::string& path)
@@ -40,7 +39,8 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
@@ -53,14 +53,16 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillOnce(::testing::Return(fixtureOwner(mockHomePath)));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
 
     for (const auto& jsonElement : extensionsJson)
     {
-        if (jsonElement.contains("manifest_hash") && jsonElement["manifest_hash"] == "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19")
+        if (jsonElement.contains("manifest_hash") &&
+            jsonElement["manifest_hash"] == "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19")
         {
             EXPECT_EQ(jsonElement["author"], "");
             EXPECT_EQ(jsonElement["browser_type"], "chrome");
@@ -74,12 +76,18 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
             EXPECT_EQ(jsonElement["name"], "Chrome Web Store Payments");
             EXPECT_EQ(jsonElement["optional_permissions"], "");
-            EXPECT_EQ(jsonElement["path"], (std::filesystem::path(mockHomePath) / "mock-user/.config/google-chrome/Profile 1/Extensions/ext2/1.2.3").string());
+            EXPECT_EQ(jsonElement["path"],
+                      (std::filesystem::path(mockHomePath) /
+                       "mock-user/.config/google-chrome/Profile 1/Extensions/ext2/1.2.3")
+                          .string());
             EXPECT_EQ(jsonElement["permissions"],
-                      "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
+                      "identity, webview, https://www.google.com/, https://www.googleapis.com/*, "
+                      "https://payments.google.com/payments/v4/js/integrator.js, "
+                      "https://sandbox.google.com/payments/v4/js/integrator.js");
             EXPECT_EQ(jsonElement["persistent"], "0");
             EXPECT_EQ(jsonElement["profile"], "Your Chrome");
-            EXPECT_EQ(jsonElement["profile_path"], (std::filesystem::path(mockHomePath) / "mock-user/.config/google-chrome/Profile 1").string());
+            EXPECT_EQ(jsonElement["profile_path"],
+                      (std::filesystem::path(mockHomePath) / "mock-user/.config/google-chrome/Profile 1").string());
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
             EXPECT_EQ(jsonElement["state"], "1");
@@ -102,70 +110,70 @@ namespace
     // Builds a fake home with one Chrome profile in a temporary directory and removes it afterwards.
     class ChromeTempHomeTests : public ::testing::Test
     {
-        protected:
-            void SetUp() override
+    protected:
+        void SetUp() override
+        {
+            char tmpl[] = "/tmp/chrome_ext_test_XXXXXX";
+            ASSERT_NE(mkdtemp(tmpl), nullptr);
+            m_root = tmpl;
+            m_home = m_root + "/home";
+            m_profile = m_home + "/user/.config/google-chrome/Default";
+            m_outside = m_root + "/outside";
+            makeDirs(m_profile + "/Extensions");
+            makeDirs(m_outside);
+            writeFile(m_profile + "/Preferences", R"({"profile": {"name": "Test"}, "extensions": {"settings": {}}})");
+            writeFile(m_profile + "/Secure Preferences", "{}");
+        }
+
+        void TearDown() override
+        {
+            if (!m_root.empty())
             {
-                char tmpl[] = "/tmp/chrome_ext_test_XXXXXX";
-                ASSERT_NE(mkdtemp(tmpl), nullptr);
-                m_root = tmpl;
-                m_home = m_root + "/home";
-                m_profile = m_home + "/user/.config/google-chrome/Default";
-                m_outside = m_root + "/outside";
-                makeDirs(m_profile + "/Extensions");
-                makeDirs(m_outside);
-                writeFile(m_profile + "/Preferences", R"({"profile": {"name": "Test"}, "extensions": {"settings": {}}})");
-                writeFile(m_profile + "/Secure Preferences", "{}");
+                const std::string cmd = "rm -rf '" + m_root + "'";
+                (void)!std::system(cmd.c_str());
             }
+        }
 
-            void TearDown() override
+        // The helpers throw on failure, so that the calling test stops and is reported as failed
+        static void makeDirs(const std::string& path)
+        {
+            const std::string cmd = "mkdir -p '" + path + "'";
+
+            if (std::system(cmd.c_str()) != 0)
             {
-                if (!m_root.empty())
-                {
-                    const std::string cmd = "rm -rf '" + m_root + "'";
-                    (void)!std::system(cmd.c_str());
-                }
+                throw std::runtime_error("cannot create " + path);
             }
+        }
 
-            // The helpers throw on failure, so that the calling test stops and is reported as failed
-            static void makeDirs(const std::string& path)
+        static void writeFile(const std::string& path, const std::string& content)
+        {
+            std::ofstream file(path, std::ios::binary);
+            file << content;
+            file.close();
+
+            if (!file)
             {
-                const std::string cmd = "mkdir -p '" + path + "'";
-
-                if (std::system(cmd.c_str()) != 0)
-                {
-                    throw std::runtime_error("cannot create " + path);
-                }
+                throw std::runtime_error("cannot write " + path);
             }
+        }
 
-            static void writeFile(const std::string& path, const std::string& content)
-            {
-                std::ofstream file(path, std::ios::binary);
-                file << content;
-                file.close();
+        nlohmann::json collect()
+        {
+            auto mockWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
+            EXPECT_CALL(*mockWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_home));
+            EXPECT_CALL(*mockWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return(m_uid));
+            chrome::ChromeExtensionsProvider provider(mockWrapper);
+            return provider.collect();
+        }
 
-                if (!file)
-                {
-                    throw std::runtime_error("cannot write " + path);
-                }
-            }
-
-            nlohmann::json collect()
-            {
-                auto mockWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-                EXPECT_CALL(*mockWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_home));
-                EXPECT_CALL(*mockWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return(m_uid));
-                chrome::ChromeExtensionsProvider provider(mockWrapper);
-                return provider.collect();
-            }
-
-            std::string m_root;
-            std::string m_home;
-            std::string m_profile;
-            std::string m_outside;
-            // Owner reported for the profile, the files of the fake home belong to the current user
-            std::string m_uid = std::to_string(geteuid());
+        std::string m_root;
+        std::string m_home;
+        std::string m_profile;
+        std::string m_outside;
+        // Owner reported for the profile, the files of the fake home belong to the current user
+        std::string m_uid = std::to_string(geteuid());
     };
-}
+} // namespace
 
 TEST_F(ChromeTempHomeTests, UnreferencedRegularManifestIsReported)
 {
@@ -184,7 +192,8 @@ TEST_F(ChromeTempHomeTests, ReferencedAbsolutePathRegularManifestIsReported)
     makeDirs(m_outside + "/unpacked");
     writeFile(m_outside + "/unpacked/manifest.json", VALID_MANIFEST);
     writeFile(m_profile + "/Preferences",
-              R"({"profile": {"name": "Test"}, "extensions": {"settings": {"abc": {"path": ")" + m_outside + R"(/unpacked"}}}})");
+              R"({"profile": {"name": "Test"}, "extensions": {"settings": {"abc": {"path": ")" + m_outside +
+                  R"(/unpacked"}}}})");
 
     const auto result = collect();
     ASSERT_EQ(result.size(), static_cast<size_t>(1));
@@ -196,7 +205,8 @@ TEST_F(ChromeTempHomeTests, UnreferencedManifestSymlinkIsNotFollowed)
 {
     writeFile(m_outside + "/manifest.json", VALID_MANIFEST);
     makeDirs(m_profile + "/Extensions/abc/1.0");
-    ASSERT_EQ(symlink((m_outside + "/manifest.json").c_str(), (m_profile + "/Extensions/abc/1.0/manifest.json").c_str()), 0);
+    ASSERT_EQ(
+        symlink((m_outside + "/manifest.json").c_str(), (m_profile + "/Extensions/abc/1.0/manifest.json").c_str()), 0);
 
     EXPECT_EQ(collect().size(), static_cast<size_t>(0));
 }
@@ -207,7 +217,8 @@ TEST_F(ChromeTempHomeTests, ReferencedManifestSymlinkIsNotFollowed)
     writeFile(m_outside + "/real.json", VALID_MANIFEST);
     ASSERT_EQ(symlink((m_outside + "/real.json").c_str(), (m_outside + "/unpacked/manifest.json").c_str()), 0);
     writeFile(m_profile + "/Preferences",
-              R"({"profile": {"name": "Test"}, "extensions": {"settings": {"abc": {"path": ")" + m_outside + R"(/unpacked"}}}})");
+              R"({"profile": {"name": "Test"}, "extensions": {"settings": {"abc": {"path": ")" + m_outside +
+                  R"(/unpacked"}}}})");
 
     EXPECT_EQ(collect().size(), static_cast<size_t>(0));
 }
@@ -309,7 +320,8 @@ TEST_F(ChromeTempHomeTests, ManifestAtTheSizeLimitIsReported)
 {
     makeDirs(m_profile + "/Extensions/abc/1.0");
     const std::string manifest = VALID_MANIFEST;
-    writeFile(m_profile + "/Extensions/abc/1.0/manifest.json", manifest + std::string(16 * 1024 * 1024 - manifest.size(), ' '));
+    writeFile(m_profile + "/Extensions/abc/1.0/manifest.json",
+              manifest + std::string(16 * 1024 * 1024 - manifest.size(), ' '));
 
     EXPECT_EQ(collect().size(), static_cast<size_t>(1));
 }
@@ -372,64 +384,66 @@ TEST_F(ChromeTempHomeTests, OversizedManifestIsSkipped)
 
 class ChromeExtensionsMalformedFilesTests : public ::testing::Test
 {
-    protected:
-        std::filesystem::path m_homePath;
+protected:
+    std::filesystem::path m_homePath;
 
-        void SetUp() override
+    void SetUp() override
+    {
+        m_homePath =
+            std::filesystem::temp_directory_path() /
+            ("chrome_extensions_test_" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()));
+        std::filesystem::remove_all(m_homePath);
+    }
+
+    void TearDown() override
+    {
+        std::filesystem::remove_all(m_homePath);
+    }
+
+    void writeFile(const std::filesystem::path& relativePath, const std::string& content)
+    {
+        const auto fullPath = m_homePath / relativePath;
+        std::filesystem::create_directories(fullPath.parent_path());
+        std::ofstream file(fullPath);
+        file << content;
+    }
+
+    nlohmann::json collect()
+    {
+        auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
+        EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_homePath.string()));
+        EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::_))
+            .WillRepeatedly(::testing::Return(std::to_string(geteuid())));
+
+        chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
+        return chromeExtensionsProvider.collect();
+    }
+
+    static const nlohmann::json* findByName(const nlohmann::json& extensions, const std::string& name)
+    {
+        for (const auto& extension : extensions)
         {
-            m_homePath = std::filesystem::temp_directory_path() /
-                         ("chrome_extensions_test_" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()));
-            std::filesystem::remove_all(m_homePath);
-        }
-
-        void TearDown() override
-        {
-            std::filesystem::remove_all(m_homePath);
-        }
-
-        void writeFile(const std::filesystem::path& relativePath, const std::string& content)
-        {
-            const auto fullPath = m_homePath / relativePath;
-            std::filesystem::create_directories(fullPath.parent_path());
-            std::ofstream file(fullPath);
-            file << content;
-        }
-
-        nlohmann::json collect()
-        {
-            auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-            EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_homePath.string()));
-            EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return(std::to_string(geteuid())));
-
-            chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
-            return chromeExtensionsProvider.collect();
-        }
-
-        static const nlohmann::json* findByName(const nlohmann::json& extensions, const std::string& name)
-        {
-            for (const auto& extension : extensions)
+            if (extension["name"] == name)
             {
-                if (extension["name"] == name)
-                {
-                    return &extension;
-                }
+                return &extension;
             }
-
-            return nullptr;
         }
 
-        static const nlohmann::json* findByPathSuffix(const nlohmann::json& extensions, const std::string& suffix)
+        return nullptr;
+    }
+
+    static const nlohmann::json* findByPathSuffix(const nlohmann::json& extensions, const std::string& suffix)
+    {
+        for (const auto& extension : extensions)
         {
-            for (const auto& extension : extensions)
+            if (Utils::endsWith(extension["path"].get<std::string>(), suffix))
             {
-                if (Utils::endsWith(extension["path"].get<std::string>(), suffix))
-                {
-                    return &extension;
-                }
+                return &extension;
             }
-
-            return nullptr;
         }
+
+        return nullptr;
+    }
 };
 
 TEST_F(ChromeExtensionsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherExtensions)
@@ -445,17 +459,21 @@ TEST_F(ChromeExtensionsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherEx
         }}
     })");
     writeFile(profile + "Secure Preferences", "{}");
-    writeFile(profile + "Extensions/refbad/1.0/manifest.json", R"({"name": "Ref Bad", "version": "1.0", "background": {"persistent": "true"}})");
-    writeFile(profile + "Extensions/unrefbad/1.0/manifest.json",
-              R"({"name": ["x"], "version": 1, "description": {"a": 1}, "key": 7, "author": 3, "update_url": false, "default_locale": "en", "background": 1})");
+    writeFile(profile + "Extensions/refbad/1.0/manifest.json",
+              R"({"name": "Ref Bad", "version": "1.0", "background": {"persistent": "true"}})");
+    writeFile(
+        profile + "Extensions/unrefbad/1.0/manifest.json",
+        R"({"name": ["x"], "version": 1, "description": {"a": 1}, "key": 7, "author": 3, "update_url": false, "default_locale": "en", "background": 1})");
     writeFile(profile + "Extensions/unrefbad/1.0/_locales/en/messages.json", "{not json");
-    writeFile(profile + "Extensions/unreflocale/2.0/manifest.json", R"({"name": "__MSG_appName__", "version": "2.0", "default_locale": "en"})");
+    writeFile(profile + "Extensions/unreflocale/2.0/manifest.json",
+              R"({"name": "__MSG_appName__", "version": "2.0", "default_locale": "en"})");
     writeFile(profile + "Extensions/unreflocale/2.0/_locales/en/messages.json", R"({"appName": "not an object"})");
     writeFile(profile + "Extensions/broken/1.0/manifest.json", "{not json");
 
     writeFile("good-user/.config/google-chrome/Default/Preferences", R"({"extensions": "not an object"})");
     writeFile("good-user/.config/google-chrome/Default/Secure Preferences", "{}");
-    writeFile("good-user/.config/google-chrome/Default/Extensions/good/1.0/manifest.json", R"({"name": "Good", "version": "1.0"})");
+    writeFile("good-user/.config/google-chrome/Default/Extensions/good/1.0/manifest.json",
+              R"({"name": "Good", "version": "1.0"})");
 
     nlohmann::json extensionsJson;
     ASSERT_NO_THROW(extensionsJson = collect());
@@ -525,11 +543,14 @@ TEST_F(ChromeExtensionsMalformedFilesTests, DefaultLocaleMustBeAPlainLocaleName)
     writeFile(profile + "Preferences", "{}");
     writeFile(profile + "Secure Preferences", "{}");
 
-    writeFile(profile + "Extensions/nested/1.0/manifest.json", R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": "en/US"})");
+    writeFile(profile + "Extensions/nested/1.0/manifest.json",
+              R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": "en/US"})");
     writeFile(profile + "Extensions/nested/1.0/_locales/en/US/messages.json", messages);
-    writeFile(profile + "Extensions/empty/1.0/manifest.json", R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": ""})");
+    writeFile(profile + "Extensions/empty/1.0/manifest.json",
+              R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": ""})");
     writeFile(profile + "Extensions/empty/1.0/_locales/messages.json", messages);
-    writeFile(profile + "Extensions/valid/1.0/manifest.json", R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": "pt_BR"})");
+    writeFile(profile + "Extensions/valid/1.0/manifest.json",
+              R"({"name": "__MSG_appName__", "version": "1.0", "default_locale": "pt_BR"})");
     writeFile(profile + "Extensions/valid/1.0/_locales/pt_BR/messages.json", messages);
 
     nlohmann::json extensionsJson;

@@ -21,13 +21,14 @@
 
 rkconfig rootcheck;
 
-typedef struct {
-    const char *name;
+typedef struct
+{
+    const char* name;
     short flags;
 } fake_if_t;
 
 /* Interfaces reported by the wrapped ioctl() */
-static const fake_if_t *fake_ifs;
+static const fake_if_t* fake_ifs;
 static int fake_ifs_count;
 static int ifconf_ret;
 
@@ -52,29 +53,35 @@ int __wrap_ioctl(__attribute__((unused)) int fd, unsigned long request, ...)
 {
     va_list args;
     va_start(args, request);
-    void *arg = va_arg(args, void *);
+    void* arg = va_arg(args, void*);
     va_end(args);
 
-    if (request == SIOCGIFCONF) {
-        struct ifconf *ifc = arg;
-        struct ifreq *ifr = (struct ifreq *)ifc->ifc_buf;
+    if (request == SIOCGIFCONF)
+    {
+        struct ifconf* ifc = arg;
+        struct ifreq* ifr = (struct ifreq*)ifc->ifc_buf;
 
-        if (ifconf_ret < 0) {
+        if (ifconf_ret < 0)
+        {
             return ifconf_ret;
         }
 
-        for (int i = 0; i < fake_ifs_count; i++) {
+        for (int i = 0; i < fake_ifs_count; i++)
+        {
             strncpy(ifr[i].ifr_name, fake_ifs[i].name, IFNAMSIZ - 1);
         }
         ifc->ifc_len = fake_ifs_count * sizeof(struct ifreq);
         return 0;
     }
 
-    if (request == SIOCGIFFLAGS) {
-        struct ifreq *ifr = arg;
+    if (request == SIOCGIFFLAGS)
+    {
+        struct ifreq* ifr = arg;
 
-        for (int i = 0; i < fake_ifs_count; i++) {
-            if (ifr->ifr_name[0] != '\0' && strcmp(ifr->ifr_name, fake_ifs[i].name) == 0) {
+        for (int i = 0; i < fake_ifs_count; i++)
+        {
+            if (ifr->ifr_name[0] != '\0' && strcmp(ifr->ifr_name, fake_ifs[i].name) == 0)
+            {
                 ifr->ifr_flags = fake_ifs[i].flags;
                 return 0;
             }
@@ -88,24 +95,25 @@ int __wrap_ioctl(__attribute__((unused)) int fd, unsigned long request, ...)
 }
 
 /* The fix must never hand the interface name to a shell */
-int __wrap_system(const char *command)
+int __wrap_system(const char* command)
 {
     fail_msg("check_rc_if() invoked a shell: system(\"%s\")", command);
     return -1;
 }
 
-int __wrap_notify_rk(int rk_type, const char *msg)
+int __wrap_notify_rk(int rk_type, const char* msg)
 {
     check_expected(rk_type);
     check_expected(msg);
     return mock_type(int);
 }
 
-void __wrap__mterror(const char *tag,
-                     __attribute__((unused)) const char *file,
+void __wrap__mterror(const char* tag,
+                     __attribute__((unused)) const char* file,
                      __attribute__((unused)) int line,
-                     __attribute__((unused)) const char *func,
-                     const char *msg, ...)
+                     __attribute__((unused)) const char* func,
+                     const char* msg,
+                     ...)
 {
     char formatted_msg[OS_MAXSTR];
     va_list args;
@@ -119,20 +127,20 @@ void __wrap__mterror(const char *tag,
     check_expected(formatted_msg);
 }
 
-static void expect_notify_rk(int rk_type, const char *msg)
+static void expect_notify_rk(int rk_type, const char* msg)
 {
     expect_value(__wrap_notify_rk, rk_type, rk_type);
     expect_string(__wrap_notify_rk, msg, msg);
     will_return(__wrap_notify_rk, 0);
 }
 
-static void set_fake_ifs(const fake_if_t *ifs, int count)
+static void set_fake_ifs(const fake_if_t* ifs, int count)
 {
     fake_ifs = ifs;
     fake_ifs_count = count;
 }
 
-static int setup(void **state)
+static int setup(void** state)
 {
     (void)state;
     memset(&rootcheck, 0, sizeof(rkconfig));
@@ -148,7 +156,7 @@ static int setup(void **state)
  * check_rc_if() is a hard failure.
  * =================================================================== */
 
-static void test_no_promisc_alert_ok(void **state)
+static void test_no_promisc_alert_ok(void** state)
 {
     (void)state;
     static const fake_if_t ifs[] = {
@@ -163,7 +171,7 @@ static void test_no_promisc_alert_ok(void **state)
     check_rc_if();
 }
 
-static void test_promisc_alert(void **state)
+static void test_promisc_alert(void** state)
 {
     (void)state;
     static const fake_if_t ifs[] = {
@@ -178,7 +186,7 @@ static void test_promisc_alert(void **state)
     check_rc_if();
 }
 
-static void test_promisc_shell_metachar_name_not_executed(void **state)
+static void test_promisc_shell_metachar_name_not_executed(void** state)
 {
     (void)state;
     static const fake_if_t ifs[] = {
@@ -194,7 +202,7 @@ static void test_promisc_shell_metachar_name_not_executed(void **state)
     check_rc_if();
 }
 
-static void test_socket_fail(void **state)
+static void test_socket_fail(void** state)
 {
     (void)state;
 
@@ -205,7 +213,7 @@ static void test_socket_fail(void **state)
     check_rc_if();
 }
 
-static void test_ifconf_fail(void **state)
+static void test_ifconf_fail(void** state)
 {
     (void)state;
     ifconf_ret = -1;

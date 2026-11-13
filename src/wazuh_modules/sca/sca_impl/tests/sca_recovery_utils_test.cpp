@@ -16,9 +16,9 @@
 
 class SCARecoveryUtilsTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override {}
-        void TearDown() override {}
+protected:
+    void SetUp() override {}
+    void TearDown() override {}
 };
 
 // Tests for escapeSqlString
@@ -55,22 +55,18 @@ TEST_F(SCARecoveryUtilsTest, EscapeSqlStringOnlyQuote)
 // The recovery path reads the same dumped columns as the delta path, so it decodes them the same way.
 TEST_F(SCARecoveryUtilsTest, StringToJsonArraySerialisedJsonArray)
 {
-    const nlohmann::json references = nlohmann::json::array(
-    {
-        "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
-        "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
-    });
+    const nlohmann::json references =
+        nlohmann::json::array({"https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
+                               "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"});
 
     EXPECT_EQ(sca::recovery::stringToJsonArray(references.dump()), references);
 }
 
 TEST_F(SCARecoveryUtilsTest, StringToJsonArraySerialisedJsonArrayKeepsBackslashesAndCommas)
 {
-    const nlohmann::json rules = nlohmann::json::array(
-    {
-        "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs",
-        "f:/etc/security/limits.conf -> r:^\\s*\\*\\s+hard\\s+core\\s+0, tail"
-    });
+    const nlohmann::json rules =
+        nlohmann::json::array({"d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs",
+                               "f:/etc/security/limits.conf -> r:^\\s*\\*\\s+hard\\s+core\\s+0, tail"});
 
     EXPECT_EQ(sca::recovery::stringToJsonArray(rules.dump()), rules);
 }
@@ -240,7 +236,10 @@ TEST_F(SCARecoveryUtilsTest, NormalizeCheckInvalidComplianceJson)
 
 TEST_F(SCARecoveryUtilsTest, NormalizeCheckConvertMitre)
 {
-    nlohmann::json check = {{"mitre", R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"}, {"id", "123"}};
+    nlohmann::json check = {
+        {"mitre",
+         R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"},
+        {"id", "123"}};
     sca::recovery::normalizeCheckForStateful(check);
 
     EXPECT_TRUE(check.contains("mitre"));
@@ -280,16 +279,15 @@ TEST_F(SCARecoveryUtilsTest, NormalizeCheckRemovePolicyId)
 
 TEST_F(SCARecoveryUtilsTest, NormalizeCheckAllTransformations)
 {
-    nlohmann::json check =
-    {
+    nlohmann::json check = {
         {"refs", "ref1,ref2"},
         {"compliance", R"({"pci_dss":["7.1"]})"},
-        {"mitre", R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"},
+        {"mitre",
+         R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"},
         {"rules", "rule1"},
         {"policy_id", "policy1"},
         {"id", "123"},
-        {"name", "Test Check"}
-    };
+        {"name", "Test Check"}};
     sca::recovery::normalizeCheckForStateful(check);
 
     EXPECT_FALSE(check.contains("refs"));
@@ -335,19 +333,17 @@ TEST_F(SCARecoveryUtilsTest, GetPolicyByIdFound)
     auto mockDBSync = std::make_shared<MockDBSync>();
 
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json policy =
-        {
-            {"id", "policy1"},
-            {"name", "Test Policy"},
-            {"description", "A test policy"},
-            {"file", "/path/to/policy.yml"},
-            {"refs", "ref1"}
-        };
-        callback(SELECTED, policy);
-    }));
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json policy = {{"id", "policy1"},
+                                         {"name", "Test Policy"},
+                                         {"description", "A test policy"},
+                                         {"file", "/path/to/policy.yml"},
+                                         {"refs", "ref1"}};
+                callback(SELECTED, policy);
+            }));
 
     auto result = sca::recovery::getPolicyById("policy1", mockDBSync);
 
@@ -360,8 +356,7 @@ TEST_F(SCARecoveryUtilsTest, GetPolicyByIdNotFound)
 {
     auto mockDBSync = std::make_shared<MockDBSync>();
 
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return());
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillOnce(::testing::Return());
 
     auto result = sca::recovery::getPolicyById("nonexistent", mockDBSync);
     EXPECT_TRUE(result.empty());
@@ -370,18 +365,8 @@ TEST_F(SCARecoveryUtilsTest, GetPolicyByIdNotFound)
 // Tests for buildStatefulMessage
 TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageBasic)
 {
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"checksum", "abc123"},
-        {"version", 5},
-        {"name", "Test Check"}
-    };
-    nlohmann::json policy =
-    {
-        {"id", "policy1"},
-        {"name", "Test Policy"}
-    };
+    nlohmann::json check = {{"id", "check1"}, {"checksum", "abc123"}, {"version", 5}, {"name", "Test Check"}};
+    nlohmann::json policy = {{"id", "policy1"}, {"name", "Test Policy"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
 
@@ -408,22 +393,17 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageBasic)
 
 TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageWithNormalization)
 {
-    nlohmann::json check =
-    {
+    nlohmann::json check = {
         {"id", "check1"},
         {"checksum", "abc123"},
         {"version", 1},
         {"refs", "ref1,ref2"},
         {"compliance", R"({"pci_dss":["7.1"]})"},
-        {"mitre", R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}})"},
+        {"mitre",
+         R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}})"},
         {"rules", "rule1"},
-        {"policy_id", "policy1"}
-    };
-    nlohmann::json policy =
-    {
-        {"id", "policy1"},
-        {"refs", "policy_ref1"}
-    };
+        {"policy_id", "policy1"}};
+    nlohmann::json policy = {{"id", "policy1"}, {"refs", "policy_ref1"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
 
@@ -444,12 +424,7 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageWithNormalization)
 
 TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageEmptyChecksum)
 {
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"checksum", ""},
-        {"version", 1}
-    };
+    nlohmann::json check = {{"id", "check1"}, {"checksum", ""}, {"version", 1}};
     nlohmann::json policy = {{"id", "policy1"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
@@ -460,11 +435,7 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageEmptyChecksum)
 
 TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageNoVersion)
 {
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"checksum", "abc123"}
-    };
+    nlohmann::json check = {{"id", "check1"}, {"checksum", "abc123"}};
     nlohmann::json policy = {{"id", "policy1"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
@@ -476,14 +447,8 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageNoVersion)
 
 TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageDropsAnEmptyReason)
 {
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"checksum", "abc123"},
-        {"result", "Passed"},
-        {"reason", ""},
-        {"version", 1}
-    };
+    nlohmann::json check = {
+        {"id", "check1"}, {"checksum", "abc123"}, {"result", "Passed"}, {"reason", ""}, {"version", 1}};
     nlohmann::json policy = {{"id", "policy1"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
@@ -495,14 +460,8 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageKeepsAPopulatedReason)
 {
     const std::string reason = "Path '/etc/modprobe.d/' does not exist";
 
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"checksum", "abc123"},
-        {"result", "Not applicable"},
-        {"reason", reason},
-        {"version", 1}
-    };
+    nlohmann::json check = {
+        {"id", "check1"}, {"checksum", "abc123"}, {"result", "Not applicable"}, {"reason", reason}, {"version", 1}};
     nlohmann::json policy = {{"id", "policy1"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
@@ -512,14 +471,11 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageKeepsAPopulatedReason)
 
 TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageSanitizesAnUndecodableReason)
 {
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"checksum", "abc123"},
-        {"result", "Not applicable"},
-        {"reason", "Path '/tmp/\xff\xfe' does not exist"},
-        {"version", 1}
-    };
+    nlohmann::json check = {{"id", "check1"},
+                            {"checksum", "abc123"},
+                            {"result", "Not applicable"},
+                            {"reason", "Path '/tmp/\xff\xfe' does not exist"},
+                            {"version", 1}};
     nlohmann::json policy = {{"id", "policy1"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);
@@ -530,14 +486,11 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageSanitizesAnUndecodableReason)
 
 TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageCapsAnOversizedReason)
 {
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"checksum", "abc123"},
-        {"result", "Not applicable"},
-        {"reason", std::string(2000, 'x')},
-        {"version", 1}
-    };
+    nlohmann::json check = {{"id", "check1"},
+                            {"checksum", "abc123"},
+                            {"result", "Not applicable"},
+                            {"reason", std::string(2000, 'x')},
+                            {"version", 1}};
     nlohmann::json policy = {{"id", "policy1"}};
 
     auto result = sca::recovery::buildStatefulMessage(check, policy);

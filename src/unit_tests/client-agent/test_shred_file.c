@@ -37,26 +37,29 @@
 #include "agentd.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
-#define SECRET_LINE "hunter2-pass"
+#define SECRET_LINE  "hunter2-pass"
 #define SCRATCH_FILE "etc/shred_scratch"
 
 /* ---- fixtures ---- */
 
-static int group_setup(void **state) {
-    (void) state;
+static int group_setup(void** state)
+{
+    (void)state;
     mkdir("etc", 0755);
     return 0;
 }
 
-static int setup_test(void **state) {
-    (void) state;
+static int setup_test(void** state)
+{
+    (void)state;
     unlink(AUTHD_PASS);
     unlink(SCRATCH_FILE);
     return 0;
 }
 
-static int teardown_test(void **state) {
-    (void) state;
+static int teardown_test(void** state)
+{
+    (void)state;
     unlink(AUTHD_PASS);
     unlink(SCRATCH_FILE);
     return 0;
@@ -64,18 +67,21 @@ static int teardown_test(void **state) {
 
 /* ---- helpers ---- */
 
-static void write_file(const char *path, const char *contents, size_t length) {
-    FILE *fp = fopen(path, "wb");
+static void write_file(const char* path, const char* contents, size_t length)
+{
+    FILE* fp = fopen(path, "wb");
     assert_non_null(fp);
-    if (length > 0) {
+    if (length > 0)
+    {
         assert_int_equal(fwrite(contents, 1, length, fp), length);
     }
     fclose(fp);
 }
 
-static const char *read_all(const char *path) {
+static const char* read_all(const char* path)
+{
     static char buffer[256];
-    FILE *fp = fopen(path, "rb");
+    FILE* fp = fopen(path, "rb");
     size_t n;
 
     assert_non_null(fp);
@@ -85,27 +91,31 @@ static const char *read_all(const char *path) {
     return buffer;
 }
 
-static off_t size_of(const char *path) {
+static off_t size_of(const char* path)
+{
     struct stat info;
     assert_int_equal(stat(path, &info), 0);
     return info.st_size;
 }
 
 /* Asserts the file is exactly @p length bytes and every one of them is zero. */
-static void assert_all_zero(const char *path, size_t length) {
-    FILE *fp = fopen(path, "rb");
-    unsigned char *buffer;
+static void assert_all_zero(const char* path, size_t length)
+{
+    FILE* fp = fopen(path, "rb");
+    unsigned char* buffer;
     size_t i;
 
-    assert_int_equal((size_t) size_of(path), length);
+    assert_int_equal((size_t)size_of(path), length);
     assert_non_null(fp);
 
     os_malloc(length + 1, buffer);
     assert_int_equal(fread(buffer, 1, length, fp), length);
     fclose(fp);
 
-    for (i = 0; i < length; i++) {
-        if (buffer[i] != 0x00) {
+    for (i = 0; i < length; i++)
+    {
+        if (buffer[i] != 0x00)
+        {
             os_free(buffer);
             fail_msg("byte %zu of '%s' was not overwritten", i, path);
         }
@@ -118,8 +128,9 @@ static void assert_all_zero(const char *path, size_t length) {
 
 /* The length assertion inside assert_all_zero() is the regression test on the open mode: with a
  * truncating mode this file would come back at zero bytes instead of twelve. */
-static void test_overwrite_zeroes_every_byte_and_keeps_the_length(void **state) {
-    (void) state;
+static void test_overwrite_zeroes_every_byte_and_keeps_the_length(void** state)
+{
+    (void)state;
 
     write_file(SCRATCH_FILE, SECRET_LINE, strlen(SECRET_LINE));
     assert_int_equal(w_shred_file_in_place(SCRATCH_FILE), 0);
@@ -128,10 +139,11 @@ static void test_overwrite_zeroes_every_byte_and_keeps_the_length(void **state) 
 
 /* The overwrite loop writes a fixed-size buffer repeatedly, so a file larger than one chunk is the
  * case where an off-by-one leaves a tail of the secret behind. */
-static void test_overwrite_spans_more_than_one_chunk(void **state) {
-    (void) state;
+static void test_overwrite_spans_more_than_one_chunk(void** state)
+{
+    (void)state;
     const size_t length = 10000;
-    char *filler;
+    char* filler;
 
     os_malloc(length, filler);
     memset(filler, 'A', length);
@@ -144,8 +156,9 @@ static void test_overwrite_spans_more_than_one_chunk(void **state) {
 
 /* Nothing to overwrite is not a failure: the caller still has to unlink, and reporting this as an
  * error would send it down a fallback path for a file that holds no secret. */
-static void test_overwrite_of_an_empty_file_succeeds(void **state) {
-    (void) state;
+static void test_overwrite_of_an_empty_file_succeeds(void** state)
+{
+    (void)state;
 
     write_file(SCRATCH_FILE, "", 0);
     assert_int_equal(w_shred_file_in_place(SCRATCH_FILE), 0);
@@ -154,16 +167,18 @@ static void test_overwrite_of_an_empty_file_succeeds(void **state) {
 
 /* Unlinking belongs to the caller -- w_reenroll_secret_clear() logs its own line after it, and the
  * enrollment-password path reports its own failure -- so the file must survive this call. */
-static void test_overwrite_leaves_the_file_in_place(void **state) {
-    (void) state;
+static void test_overwrite_leaves_the_file_in_place(void** state)
+{
+    (void)state;
 
     write_file(SCRATCH_FILE, SECRET_LINE, strlen(SECRET_LINE));
     assert_int_equal(w_shred_file_in_place(SCRATCH_FILE), 0);
     assert_int_equal(w_is_file(SCRATCH_FILE), 1);
 }
 
-static void test_overwrite_reports_a_file_that_is_not_there(void **state) {
-    (void) state;
+static void test_overwrite_reports_a_file_that_is_not_there(void** state)
+{
+    (void)state;
     char expected[OS_SIZE_256];
 
     snprintf(expected, sizeof(expected), FOPEN_ERROR, SCRATCH_FILE, ENOENT, strerror(ENOENT));
@@ -177,9 +192,10 @@ static void test_overwrite_reports_a_file_that_is_not_there(void **state) {
 /* The shredder runs over credential paths, and one caller (the MSI's --shred-enrollment-password)
  * runs privileged, so a link swapped in at the target must be refused rather than written through.
  * Without the vetted open, this test would zero `decoy` instead of failing. */
-static void test_overwrite_refuses_a_symlink(void **state) {
-    (void) state;
-    const char *decoy = "etc/shred_decoy";
+static void test_overwrite_refuses_a_symlink(void** state)
+{
+    (void)state;
+    const char* decoy = "etc/shred_decoy";
     char expected[OS_SIZE_256];
 
     write_file(decoy, SECRET_LINE, strlen(SECRET_LINE));
@@ -198,9 +214,10 @@ static void test_overwrite_refuses_a_symlink(void **state) {
 /* A hard link is a regular file, so no file-type test can tell it apart -- the link count is what
  * rejects it. Worth its own case: it is the one a truncating open would already have destroyed
  * before anything could be checked. */
-static void test_overwrite_refuses_a_hard_link(void **state) {
-    (void) state;
-    const char *decoy = "etc/shred_decoy";
+static void test_overwrite_refuses_a_hard_link(void** state)
+{
+    (void)state;
+    const char* decoy = "etc/shred_decoy";
 
     write_file(decoy, SECRET_LINE, strlen(SECRET_LINE));
     assert_int_equal(link(decoy, SCRATCH_FILE), 0);
@@ -214,8 +231,9 @@ static void test_overwrite_refuses_a_hard_link(void **state) {
 
 /* ---- w_agent_shred_enrollment_password() ---- */
 
-static void test_shred_removes_the_enrollment_password(void **state) {
-    (void) state;
+static void test_shred_removes_the_enrollment_password(void** state)
+{
+    (void)state;
 
     write_file(AUTHD_PASS, SECRET_LINE, strlen(SECRET_LINE));
     assert_int_equal(w_agent_shred_enrollment_password(), 0);
@@ -225,8 +243,9 @@ static void test_shred_removes_the_enrollment_password(void **state) {
 /* A fresh 5.0 install never wrote one, and an upgrade that already ran has removed it, so the
  * installer calls this against nothing far more often than against a password. Reporting that as
  * a failure would push the MSI onto its fallback on every ordinary upgrade. */
-static void test_shred_without_a_password_is_a_silent_no_op(void **state) {
-    (void) state;
+static void test_shred_without_a_password_is_a_silent_no_op(void** state)
+{
+    (void)state;
 
     assert_int_equal(w_agent_shred_enrollment_password(), 0);
     assert_int_equal(w_is_file(AUTHD_PASS), 0);
@@ -234,17 +253,20 @@ static void test_shred_without_a_password_is_a_silent_no_op(void **state) {
 
 /* An empty authd.pass carries no secret but is still the file whose presence the manager-side
  * policy is about, so it goes the same way as a populated one. */
-static void test_shred_removes_an_empty_password_file(void **state) {
-    (void) state;
+static void test_shred_removes_an_empty_password_file(void** state)
+{
+    (void)state;
 
     write_file(AUTHD_PASS, "", 0);
     assert_int_equal(w_agent_shred_enrollment_password(), 0);
     assert_int_equal(w_is_file(AUTHD_PASS), 0);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_overwrite_zeroes_every_byte_and_keeps_the_length, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(
+            test_overwrite_zeroes_every_byte_and_keeps_the_length, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_overwrite_spans_more_than_one_chunk, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_overwrite_of_an_empty_file_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_overwrite_leaves_the_file_in_place, setup_test, teardown_test),

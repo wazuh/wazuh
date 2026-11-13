@@ -46,34 +46,37 @@
  */
 class CacertsClient
 {
-    public:
-        /// @param config Only the transport half is read (host, port, TLS material, timeout).
-        ///        The caller owns the TLS decision and has already put it here -- this class
-        ///        does not re-derive it, the same division of responsibility as EnrollClient
-        ///        trusting its config's TLS matrix as-is.
-        /// @param unverifiedByDesign Whether an absent verification is the point of this call
-        ///        rather than a misconfiguration. Only changes how validateTransport() reports
-        ///        it: the bootstrap's unverified leg is expected and logged as such, while a
-        ///        refresh that somehow arrived here with verification off is the warning it
-        ///        should be. Pass false for anything but the bootstrap.
-        CacertsClient(const ModuleConfig& config, IHttpPerformer& performer, const IFsProbe& fsProbe, LogFn logFn,
-                      bool unverifiedByDesign);
+public:
+    /// @param config Only the transport half is read (host, port, TLS material, timeout).
+    ///        The caller owns the TLS decision and has already put it here -- this class
+    ///        does not re-derive it, the same division of responsibility as EnrollClient
+    ///        trusting its config's TLS matrix as-is.
+    /// @param unverifiedByDesign Whether an absent verification is the point of this call
+    ///        rather than a misconfiguration. Only changes how validateTransport() reports
+    ///        it: the bootstrap's unverified leg is expected and logged as such, while a
+    ///        refresh that somehow arrived here with verification off is the warning it
+    ///        should be. Pass false for anything but the bootstrap.
+    CacertsClient(const ModuleConfig& config,
+                  IHttpPerformer& performer,
+                  const IFsProbe& fsProbe,
+                  LogFn logFn,
+                  bool unverifiedByDesign);
 
-        /// @return The raw HTTP response for the caller to interpret
-        ///         (validating/pin-comparing the body is a separate
-        ///         component's job, not this one's). status is TlsFail and
-        ///         httpCode stays 0 when the transport config itself is
-        ///         invalid (fail-closed policy) -- nothing was ever sent.
-        /// @param abortFlag Optional cooperative abort, normally a Waiter's stop flag. Without
-        ///        one a shutdown waits out the request timeout before the thread can join.
-        HttpResponse fetch(const std::atomic<bool>* abortFlag = nullptr);
+    /// @return The raw HTTP response for the caller to interpret
+    ///         (validating/pin-comparing the body is a separate
+    ///         component's job, not this one's). status is TlsFail and
+    ///         httpCode stays 0 when the transport config itself is
+    ///         invalid (fail-closed policy) -- nothing was ever sent.
+    /// @param abortFlag Optional cooperative abort, normally a Waiter's stop flag. Without
+    ///        one a shutdown waits out the request timeout before the thread can join.
+    HttpResponse fetch(const std::atomic<bool>* abortFlag = nullptr);
 
-    private:
-        ModuleConfig m_config;
-        IHttpPerformer& m_performer;
-        const IFsProbe& m_fsProbe;
-        LogFn m_logFn;
-        bool m_unverifiedByDesign;
+private:
+    ModuleConfig m_config;
+    IHttpPerformer& m_performer;
+    const IFsProbe& m_fsProbe;
+    LogFn m_logFn;
+    bool m_unverifiedByDesign;
 };
 
 #endif // _HC_CACERTS_CLIENT_HPP

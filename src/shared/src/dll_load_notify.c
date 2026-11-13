@@ -43,11 +43,13 @@ static int dll_notification_data_is_valid(PCUNICODE_STRING dll_name)
  */
 static w_err_t verify_module_with_guard(const wchar_t* module_path)
 {
-    if (!module_path || module_path[0] == L'\0') {
+    if (!module_path || module_path[0] == L'\0')
+    {
         return OS_INVALID;
     }
 
-    if (InterlockedCompareExchange(&g_signature_verification_lock, 1, 0) != 0) {
+    if (InterlockedCompareExchange(&g_signature_verification_lock, 1, 0) != 0)
+    {
         plain_mdebug1("Skipping nested DLL trust verification for '%S'.", module_path);
         return OS_SUCCESS;
     }
@@ -68,32 +70,36 @@ static void loaded_modules_verification()
     HANDLE handle_process = GetCurrentProcess();
     DWORD handle_bytes_needed = 0;
 
-    if (EnumProcessModules(handle_process,
-                           handle_module,
-                           sizeof(handle_module), &handle_bytes_needed)) {
+    if (EnumProcessModules(handle_process, handle_module, sizeof(handle_module), &handle_bytes_needed))
+    {
 
-        for (size_t i = 0; i < (handle_bytes_needed / sizeof(HMODULE)); i++) {
+        for (size_t i = 0; i < (handle_bytes_needed / sizeof(HMODULE)); i++)
+        {
             wchar_t module_name[MAX_PATH];
 
             // Get the full path to the module's file.
-            if (GetModuleFileNameExW(handle_process,
-                                     handle_module[i],
-                                     module_name,
-                                     sizeof(module_name) / sizeof(wchar_t))) {
+            if (GetModuleFileNameExW(
+                    handle_process, handle_module[i], module_name, sizeof(module_name) / sizeof(wchar_t)))
+            {
                 // Check if the images loaded are signed.
-                if (verify_module_with_guard(module_name) != OS_SUCCESS) {
+                if (verify_module_with_guard(module_name) != OS_SUCCESS)
+                {
                     const char* ERROR_MESSAGE = "The file '%S' is not signed or its signature is invalid.";
 #if IMAGE_TRUST_CHECKS == 2
                     plain_merror_exit(ERROR_MESSAGE, module_name);
 #else
                     plain_mwarn(ERROR_MESSAGE, module_name);
 #endif // IMAGE_TRUST_CHECKS == 2
-                } else {
+                }
+                else
+                {
                     plain_mdebug1("The file '%S' is signed and its signature is valid.", module_name);
                 }
             }
         }
-    } else {
+    }
+    else
+    {
         const char* ERROR_MESSAGE = "The mechanism of signature validation for loaded modules at startup failed because"
                                     " the modules of the process couldn't be enumerated. Error: %lu";
 #if IMAGE_TRUST_CHECKS == 2
@@ -101,7 +107,6 @@ static void loaded_modules_verification()
 #else
         plain_mwarn(ERROR_MESSAGE, GetLastError());
 #endif // IMAGE_TRUST_CHECKS == 2
-
     }
 #endif // IMAGE_TRUST_CHECKS != 0
 }
@@ -120,35 +125,42 @@ void CALLBACK dll_notification(ULONG reason,
     const wchar_t* dll_path = NULL;
 
     // Check for the reason
-    switch(reason)
+    switch (reason)
     {
-    case LDR_DLL_NOTIFICATION_REASON_LOADED:
+        case LDR_DLL_NOTIFICATION_REASON_LOADED:
 #if IMAGE_TRUST_CHECKS != 0
-        if (!notification_data || !dll_notification_data_is_valid(notification_data->loaded.full_dll_name)) {
-            plain_mwarn("Skipping DLL trust verification due to invalid notification payload.");
-            break;
-        }
+            if (!notification_data || !dll_notification_data_is_valid(notification_data->loaded.full_dll_name))
+            {
+                plain_mwarn("Skipping DLL trust verification due to invalid notification payload.");
+                break;
+            }
 
-        dll_path = notification_data->loaded.full_dll_name->Buffer;
+            dll_path = notification_data->loaded.full_dll_name->Buffer;
 
-        if (verify_module_with_guard(dll_path) != OS_SUCCESS) {
+            if (verify_module_with_guard(dll_path) != OS_SUCCESS)
+            {
 #if IMAGE_TRUST_CHECKS == 2
-            plain_merror_exit(ERROR_MESSAGE, dll_path);
+                plain_merror_exit(ERROR_MESSAGE, dll_path);
 #else
-            plain_mwarn(ERROR_MESSAGE, dll_path);
+                plain_mwarn(ERROR_MESSAGE, dll_path);
 #endif // IMAGE_TRUST_CHECKS == 2
-        } else {
-            plain_mdebug1("The file '%S' is signed and its signature is valid.", dll_path);
-        }
+            }
+            else
+            {
+                plain_mdebug1("The file '%S' is signed and its signature is valid.", dll_path);
+            }
 #endif // IMAGE_TRUST_CHECKS != 0
-        break;
-    case LDR_DLL_NOTIFICATION_REASON_UNLOADED:
-        if (notification_data && dll_notification_data_is_valid(notification_data->unloaded.full_dll_name)) {
-            plain_mdebug1("Unloaded: '%S'", notification_data->unloaded.full_dll_name->Buffer);
-        } else {
-            plain_mdebug1("Unloaded notification received without a valid DLL path.");
-        }
-        break;
+            break;
+        case LDR_DLL_NOTIFICATION_REASON_UNLOADED:
+            if (notification_data && dll_notification_data_is_valid(notification_data->unloaded.full_dll_name))
+            {
+                plain_mdebug1("Unloaded: '%S'", notification_data->unloaded.full_dll_name->Buffer);
+            }
+            else
+            {
+                plain_mdebug1("Unloaded notification received without a valid DLL path.");
+            }
+            break;
     }
 }
 
@@ -159,28 +171,33 @@ void enable_dll_verification()
 {
 #if IMAGE_TRUST_CHECKS != 0
     // Check if all loaded DLLs are signed.
-    if (ERROR_SUCCESS != check_ca_available()) {
-        const char* ERROR_MESSAGE = "The dynamic signature validation is not available because the CA name('"
-                                    CA_NAME
-                                    "') is not available.";
+    if (ERROR_SUCCESS != check_ca_available())
+    {
+        const char* ERROR_MESSAGE =
+            "The dynamic signature validation is not available because the CA name('" CA_NAME "') is not available.";
 #if IMAGE_TRUST_CHECKS == 2
         plain_merror_exit(ERROR_MESSAGE);
 #else
         plain_mwarn(ERROR_MESSAGE);
 #endif
-    } else {
+    }
+    else
+    {
         loaded_modules_verification();
 
         // Register for DLL load notifications.
         HMODULE handle_ntdll = GetModuleHandle("ntdll.dll");
-        if (handle_ntdll) {
-            LdrRegisterDllNotification = (_LdrRegisterDllNotification)GetProcAddress(handle_ntdll,
-                                                                                    "LdrRegisterDllNotification");
+        if (handle_ntdll)
+        {
+            LdrRegisterDllNotification =
+                (_LdrRegisterDllNotification)GetProcAddress(handle_ntdll, "LdrRegisterDllNotification");
             // If the function is available, the feature is available.
             if (LdrRegisterDllNotification)
             {
                 LdrRegisterDllNotification(0, &dll_notification, NULL, &cookie_dll_notification);
-            } else {
+            }
+            else
+            {
                 const char* ERROR_MESSAGE = "The dynamic signature validation is not available for this system. Error"
                                             " %lu: %s";
 #if IMAGE_TRUST_CHECKS == 2
@@ -189,7 +206,9 @@ void enable_dll_verification()
                 plain_mwarn(ERROR_MESSAGE, GetLastError(), win_strerror(GetLastError()));
 #endif // IMAGE_TRUST_CHECKS == 2
             }
-        } else {
+        }
+        else
+        {
             const char* ERROR_MESSAGE = "The mechanism of dynamic signature validation for loaded modules wasn't "
                                         "initiated because it wasn't possible to get the handle of 'ntdll.dll'. "
                                         "Error %lu: %s";

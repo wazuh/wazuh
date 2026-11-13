@@ -38,34 +38,34 @@ namespace
 
 class BrewWrapperTest : public ::testing::Test
 {
-    protected:
-        std::filesystem::path m_dir;
-        std::filesystem::path m_versionDir;
+protected:
+    std::filesystem::path m_dir;
+    std::filesystem::path m_versionDir;
 
-        void SetUp() override
-        {
-            const auto suffix {std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())};
-            m_dir = std::filesystem::temp_directory_path() / ("brew_wrapper_test_" + suffix);
-            m_versionDir = m_dir / "pkg" / "1.0";
-            std::filesystem::create_directories(m_versionDir / ".brew");
-        }
+    void SetUp() override
+    {
+        const auto suffix {std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())};
+        m_dir = std::filesystem::temp_directory_path() / ("brew_wrapper_test_" + suffix);
+        m_versionDir = m_dir / "pkg" / "1.0";
+        std::filesystem::create_directories(m_versionDir / ".brew");
+    }
 
-        void TearDown() override
-        {
-            std::error_code ec;
-            std::filesystem::remove_all(m_dir, ec);
-        }
+    void TearDown() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all(m_dir, ec);
+    }
 
-        BrewWrapper wrapper() const
-        {
-            return BrewWrapper(PackageContext {m_dir.string(), "pkg", "1.0"});
-        }
+    BrewWrapper wrapper() const
+    {
+        return BrewWrapper(PackageContext {m_dir.string(), "pkg", "1.0"});
+    }
 
-        static void writeFile(const std::filesystem::path& path, const std::string& content)
-        {
-            std::ofstream file {path};
-            file << content;
-        }
+    static void writeFile(const std::filesystem::path& path, const std::string& content)
+    {
+        std::ofstream file {path};
+        file << content;
+    }
 };
 
 TEST_F(BrewWrapperTest, ReceiptIsParsed)

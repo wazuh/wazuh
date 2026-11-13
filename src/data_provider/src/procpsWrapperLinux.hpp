@@ -26,4 +26,4 @@ namespace ProcpsWrapper
     // so concurrent iterations from different threads corrupt each other and
     // can crash inside stat2proc (see issue #36166).
     void scanProcesses(int flags, const ProcCallback& callback);
-}
+} // namespace ProcpsWrapper

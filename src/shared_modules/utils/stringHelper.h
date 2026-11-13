@@ -125,7 +125,9 @@ namespace Utils
                 const auto low {lead == 0xF0 ? 0x90u : 0x80u};
                 const auto high {lead == 0xF4 ? 0x8Fu : 0xBFu};
                 length = inRange(byteAt(pos + 1), low, high) && inRange(byteAt(pos + 2), 0x80, 0xBF) &&
-                         inRange(byteAt(pos + 3), 0x80, 0xBF) ? 4 : 0;
+                                 inRange(byteAt(pos + 3), 0x80, 0xBF)
+                             ? 4
+                             : 0;
             }
 
             if (length > 0)

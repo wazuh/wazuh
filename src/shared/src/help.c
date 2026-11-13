@@ -12,7 +12,6 @@
 
 #include "shared.h"
 
-
 void print_header()
 {
     print_out(" ");

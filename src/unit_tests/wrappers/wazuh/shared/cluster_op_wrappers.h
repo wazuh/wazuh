@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef CLUSTER_OP_WRAPPERS_H
 #define CLUSTER_OP_WRAPPERS_H
 

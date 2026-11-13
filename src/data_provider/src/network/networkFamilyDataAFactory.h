@@ -18,47 +18,44 @@
 #include "networkInterfaceWindows.h"
 #include "sharedDefs.h"
 
-template <OSPlatformType osType>
+template<OSPlatformType osType>
 class FactoryNetworkFamilyCreator final
 {
-    public:
-        static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& /*interface*/)
-        {
-            throw std::runtime_error
-            {
-                "Error creating network data retriever."
-            };
-        }
+public:
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& /*interface*/)
+    {
+        throw std::runtime_error {"Error creating network data retriever."};
+    }
 };
 
-template <>
+template<>
 class FactoryNetworkFamilyCreator<OSPlatformType::LINUX> final
 {
-    public:
-        static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
-        {
-            return FactoryLinuxNetwork::create(interfaceWrapper);
-        }
+public:
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
+    {
+        return FactoryLinuxNetwork::create(interfaceWrapper);
+    }
 };
 
-template <>
+template<>
 class FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED> final
 {
-    public:
-        static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
-        {
-            return FactoryBSDNetwork::create(interfaceWrapper);
-        }
+public:
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
+    {
+        return FactoryBSDNetwork::create(interfaceWrapper);
+    }
 };
 
-template <>
+template<>
 class FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS> final
 {
-    public:
-        static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
-        {
-            return FactoryWindowsNetwork::create(interfaceWrapper);
-        }
+public:
+    static std::shared_ptr<IOSNetwork> create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
+    {
+        return FactoryWindowsNetwork::create(interfaceWrapper);
+    }
 };
 
 #endif // _NETWORK_FAMILY_DATA_AFACTORY_H

@@ -34,33 +34,41 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 
-#define TEST_MAX_DATES 5
+#define TEST_MAX_DATES  5
 #define TEST_MAX_TENANT 3
 
-static wmodule *ms_graph_module;
-static OS_XML *lxml;
+static wmodule* ms_graph_module;
+static OS_XML* lxml;
 
-unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
+unsigned int __wrap_gmtime_r(__attribute__((__unused__)) const time_t* t, __attribute__((__unused__)) struct tm* tm)
+{
     return mock_type(unsigned int);
 }
 
-int __wrap_isDebug() {
+int __wrap_isDebug()
+{
     return mock();
 }
 
-static void wmodule_cleanup(wmodule *module){
+static void wmodule_cleanup(wmodule* module)
+{
     wm_ms_graph* module_data = (wm_ms_graph*)module->data;
-    if(module_data){
+    if (module_data)
+    {
         os_free(module_data->version);
-        for(unsigned int resource = 0; resource < module_data->num_resources; resource++){
-            for(unsigned int relationship = 0; relationship < module_data->resources[resource].num_relationships; relationship++){
+        for (unsigned int resource = 0; resource < module_data->num_resources; resource++)
+        {
+            for (unsigned int relationship = 0; relationship < module_data->resources[resource].num_relationships;
+                 relationship++)
+            {
                 os_free(module_data->resources[resource].relationships[relationship]);
             }
             os_free(module_data->resources[resource].relationships);
             os_free(module_data->resources[resource].name);
         }
         os_free(module_data->resources);
-        for(int i = 0; module_data->auth_config[i]; i++) {
+        for (int i = 0; module_data->auth_config[i]; i++)
+        {
             os_free(module_data->auth_config[i]->tenant_id);
             os_free(module_data->auth_config[i]->client_id);
             os_free(module_data->auth_config[i]->secret_value);
@@ -78,19 +86,22 @@ static void wmodule_cleanup(wmodule *module){
     os_free(module);
 }
 
-static int setup_test_read(void **state) {
-    test_structure *test = calloc(1, sizeof(test_structure));
-    test->module =  calloc(1, sizeof(wmodule));
+static int setup_test_read(void** state)
+{
+    test_structure* test = calloc(1, sizeof(test_structure));
+    test->module = calloc(1, sizeof(wmodule));
     *state = test;
     return 0;
 }
 
-static int teardown_test_read(void **state) {
-    test_structure *test = *state;
+static int teardown_test_read(void** state)
+{
+    test_structure* test = *state;
     OS_ClearNode(test->nodes);
     OS_ClearXML(&(test->xml));
     wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
-    if(module_data && &(module_data->scan_config)){
+    if (module_data && &(module_data->scan_config))
+    {
         sched_scan_free(&(module_data->scan_config));
     }
     wmodule_cleanup(test->module);
@@ -98,118 +109,119 @@ static int teardown_test_read(void **state) {
     return 0;
 }
 
-static int setup_conf(void **state) {
+static int setup_conf(void** state)
+{
     wm_ms_graph* init_data = NULL;
-    os_calloc(1,sizeof(wm_ms_graph), init_data);
+    os_calloc(1, sizeof(wm_ms_graph), init_data);
     test_mode = true;
     *state = init_data;
     return 0;
 }
 
-static int teardown_conf(void **state) {
-    wm_ms_graph *data  = (wm_ms_graph *)*state;
+static int teardown_conf(void** state)
+{
+    wm_ms_graph* data = (wm_ms_graph*)*state;
     test_mode = false;
     wm_ms_graph_destroy(data);
     return 0;
 }
 
 // XML reading tests
-void test_bad_tag(void **state) {
-    const char* config =
-        "<invalid>yes</invalid>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
+void test_bad_tag(void** state)
+{
+    const char* config = "<invalid>yes</invalid>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
+    expect_string(
+        __wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_empty_module(void **state) {
+void test_empty_module(void** state)
+{
     const char* config = "";
-    test_structure *test = *state;
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty configuration found in module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_invalid_enabled(void **state) {
-    const char* config =
-        "<enabled>invalid</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_enabled(void** state)
+{
+    const char* config = "<enabled>invalid</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'enabled' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_enabled_no(void **state) {
-    const char* config =
-        "<enabled>no</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_enabled_no(void** state)
+{
+    const char* config = "<enabled>no</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
-    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->enabled, 0);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
@@ -229,64 +241,62 @@ void test_enabled_no(void **state) {
     assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
-void test_invalid_only_future_events(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>invalid</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_only_future_events(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>invalid</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'only_future_events' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_disabled_only_future_events(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>no</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_disabled_only_future_events(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>no</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
-    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->only_future_events, 0);
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
@@ -305,155 +315,154 @@ void test_disabled_only_future_events(void **state) {
     assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
-void test_invalid_curl_max_size(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>invalid</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'ms-graph'. The minimum value allowed is 1KB.");
+void test_invalid_curl_max_size(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>invalid</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Invalid content for tag 'curl_max_size' at module 'ms-graph'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_invalid_negative_curl_max_size(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>-1</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'curl_max_size' at module 'ms-graph'. The minimum value allowed is 1KB.");
+void test_invalid_negative_curl_max_size(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>-1</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Invalid content for tag 'curl_max_size' at module 'ms-graph'. The minimum value allowed is 1KB.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_value_curl_max_size(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>4k</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_value_curl_max_size(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>4k</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
-    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->curl_max_size, 4096);
 }
 
-void test_invalid_run_on_start(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>invalid</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_run_on_start(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>invalid</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'run_on_start' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_disabled_run_on_start(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>no</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_disabled_run_on_start(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>no</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
-    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
@@ -472,624 +481,604 @@ void test_disabled_run_on_start(void **state) {
     assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
-void test_invalid_interval(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>invalid</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_interval(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>invalid</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'interval' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_INVALID);
 }
 
-void test_invalid_version(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>invalid</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_version(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>invalid</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'version' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_api_auth(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_api_auth(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'api_auth' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_empty_api_auth(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth></api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_empty_api_auth(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth></api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_auth' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_invalid_client_id(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id></client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_client_id(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id></client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'client_id' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_client_id(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_client_id(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'client_id' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_invalid_tenant_id(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id></tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_tenant_id(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id></tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'tenant_id' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_tenant_id(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_tenant_id(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'tenant_id' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_invalid_secret_value(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value></secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_secret_value(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value></secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'secret_value' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_secret_value(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_secret_value(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'secret_value' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_invalid_api_type(void **state){
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>invalid</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_invalid_api_type(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>invalid</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'api_type' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_api_type(void **state){
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_api_type(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'api_type' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_empty_api_type(void **state){
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type></api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_empty_api_type(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type></api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_type' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_invalid_attribute_api_type(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "  <invalid>attribute</invalid>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
+void test_invalid_attribute_api_type(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "  <invalid>attribute</invalid>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
+    expect_string(
+        __wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_resource(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_resource(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'resource' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_empty_resource(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource></resource>\n"
-    ;
-    test_structure *test = *state;
+void test_empty_resource(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource></resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'resource' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_name(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_name(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'name' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_empty_name(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name></name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_empty_name(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name></name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'name' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_missing_relationship(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_missing_relationship(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "(1228): Element 'relationship' without any option.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_NOTFOUND);
 }
 
-void test_empty_relationship(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship></relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_empty_relationship(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship></relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'relationship' at module 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
-void test_invalid_attribute_resource(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <invalid>resource</invalid>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
-    expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
+void test_invalid_attribute_resource(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <invalid>resource</invalid>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
+    expect_string(
+        __wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'ms-graph'.");
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_CFGERR);
 }
 
 // Main program tests
-void test_normal_config(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>global</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_normal_config(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>global</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
-    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
@@ -1108,34 +1097,33 @@ void test_normal_config(void **state) {
     assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
-void test_normal_config_api_type_gcc(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>gcc-high</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_normal_config_api_type_gcc(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>gcc-high</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
-    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
@@ -1156,34 +1144,33 @@ void test_normal_config_api_type_gcc(void **state) {
     assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
-void test_normal_config_api_type_dod(void **state) {
-    const char* config =
-        "<enabled>yes</enabled>\n"
-        "<only_future_events>yes</only_future_events>\n"
-        "<curl_max_size>1M</curl_max_size>\n"
-        "<run_on_start>yes</run_on_start>\n"
-        "<interval>5m</interval>\n"
-        "<version>v1.0</version>\n"
-        "<api_auth>\n"
-        "  <client_id>example_string</client_id>\n"
-        "  <tenant_id>example_string</tenant_id>\n"
-        "  <secret_value>example_string</secret_value>\n"
-        "  <api_type>dod</api_type>\n"
-        "</api_auth>\n"
-        "<resource>\n"
-        "  <name>security</name>\n"
-        "  <relationship>alerts_v2</relationship>\n"
-        "  <relationship>incidents</relationship>\n"
-        "</resource>\n"
-        "<resource>\n"
-        "  <name>identityProtection</name>\n"
-        "  <relationship>riskyUsers</relationship>\n"
-        "</resource>\n"
-    ;
-    test_structure *test = *state;
+void test_normal_config_api_type_dod(void** state)
+{
+    const char* config = "<enabled>yes</enabled>\n"
+                         "<only_future_events>yes</only_future_events>\n"
+                         "<curl_max_size>1M</curl_max_size>\n"
+                         "<run_on_start>yes</run_on_start>\n"
+                         "<interval>5m</interval>\n"
+                         "<version>v1.0</version>\n"
+                         "<api_auth>\n"
+                         "  <client_id>example_string</client_id>\n"
+                         "  <tenant_id>example_string</tenant_id>\n"
+                         "  <secret_value>example_string</secret_value>\n"
+                         "  <api_type>dod</api_type>\n"
+                         "</api_auth>\n"
+                         "<resource>\n"
+                         "  <name>security</name>\n"
+                         "  <relationship>alerts_v2</relationship>\n"
+                         "  <relationship>incidents</relationship>\n"
+                         "</resource>\n"
+                         "<resource>\n"
+                         "  <name>identityProtection</name>\n"
+                         "  <relationship>riskyUsers</relationship>\n"
+                         "</resource>\n";
+    test_structure* test = *state;
     test->nodes = string_to_xml_node(config, &(test->xml));
     assert_int_equal(wm_ms_graph_read(&(test->xml), test->nodes, test->module), OS_SUCCESS);
-    wm_ms_graph *module_data = (wm_ms_graph*)test->module->data;
+    wm_ms_graph* module_data = (wm_ms_graph*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->only_future_events, 1);
     assert_int_equal(module_data->curl_max_size, OS_SIZE_1048576);
@@ -1204,14 +1191,16 @@ void test_normal_config_api_type_dod(void **state) {
     assert_string_equal(module_data->resources[1].relationships[0], "riskyUsers");
 }
 
-void test_cleanup() {
+void test_cleanup()
+{
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Module shutdown.");
     wm_ms_graph_cleanup();
 }
 
-void test_setup_complete(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_setup_complete(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
 
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -1257,10 +1246,11 @@ void test_setup_complete(void **state) {
     wm_ms_graph_setup(module_data);
 }
 
-void test_main_token(void **state) {
+void test_main_token(void** state)
+{
     current_time = 1;
     unsigned int run_on_start = 1;
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -1321,7 +1311,10 @@ void test_main_token(void **state) {
     expect_string(__wrap__mtinfo, formatted_msg, "Obtaining access token.");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1337,9 +1330,10 @@ void test_main_token(void **state) {
     wm_ms_graph_main(module_data);
 }
 
-void test_main_relationships(void **state) {
+void test_main_relationships(void** state)
+{
     current_time = 1;
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -1407,7 +1401,7 @@ void test_main_relationships(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
@@ -1417,15 +1411,19 @@ void test_main_relationships(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and "
+                  "relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
     will_return(__wrap_FOREVER, 0);
 
     wm_ms_graph_main(module_data);
 }
 
-void test_disabled(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_disabled(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     module_data->enabled = false;
 
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
@@ -1434,26 +1432,32 @@ void test_disabled(void **state) {
     wm_ms_graph_main(module_data);
 }
 
-void test_no_resources(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_no_resources(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     module_data->enabled = true;
     module_data->num_resources = 0;
 
     expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+    expect_string(__wrap__mterror,
+                  formatted_msg,
+                  "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
 
     wm_ms_graph_main(module_data);
 }
 
-void test_no_relationships(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_no_relationships(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     module_data->enabled = true;
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
     module_data->resources[0].num_relationships = 0;
     module_data->num_resources = 1;
 
     expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
+    expect_string(__wrap__mterror,
+                  formatted_msg,
+                  "Invalid module configuration (Missing API info, resources, relationships). Exiting...");
 
     wm_ms_graph_main(module_data);
 
@@ -1461,7 +1465,8 @@ void test_no_relationships(void **state) {
     module_data->num_resources = 0;
 }
 
-void test_dump(void **state) {
+void test_dump(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -1481,7 +1486,7 @@ void test_dump(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -1506,13 +1511,19 @@ void test_dump(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"global\"}],\"resources\":[{\"name\":\"security\",\"relationship\":[\"alerts_v2\"]}]}}");
+    assert_string_equal(
+        dump_text,
+        "{\"ms_graph\":{\"enabled\":\"yes\",\"only_future_events\":\"no\",\"curl_max_size\":1024,\"page_size\":100,"
+        "\"time_delay\":10,\"run_on_start\":\"yes\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_"
+        "id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"global\"}],"
+        "\"resources\":[{\"name\":\"security\",\"relationship\":[\"alerts_v2\"]}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
 }
 
-void test_dump_gcc_configuration(void **state) {
+void test_dump_gcc_configuration(void** state)
+{
     /*
     <enabled>no</enabled>
     <only_future_events>yes</only_future_events>
@@ -1530,7 +1541,7 @@ void test_dump_gcc_configuration(void **state) {
     <resource>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = false;
@@ -1552,7 +1563,11 @@ void test_dump_gcc_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"gcc-high\"}]}}");
+    assert_string_equal(dump_text,
+                        "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,"
+                        "\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":"
+                        "\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\","
+                        "\"secret_value\":\"*****\",\"api_type\":\"gcc-high\"}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
@@ -1561,7 +1576,8 @@ void test_dump_gcc_configuration(void **state) {
     module_data->num_resources = 0;
 }
 
-void test_dump_dod_configuration(void **state) {
+void test_dump_dod_configuration(void** state)
+{
     /*
     <enabled>no</enabled>
     <only_future_events>yes</only_future_events>
@@ -1579,7 +1595,7 @@ void test_dump_dod_configuration(void **state) {
     <resource>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = false;
@@ -1598,14 +1614,20 @@ void test_dump_dod_configuration(void **state) {
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"dod\"}]}}");
+    assert_string_equal(
+        dump_text,
+        "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"yes\",\"curl_max_size\":1024,\"page_size\":100,"
+        "\"time_delay\":10,\"run_on_start\":\"no\",\"version\":\"v1.0\",\"wday\":\"sunday\",\"api_auth\":[{\"client_"
+        "id\":\"example_string\",\"tenant_id\":\"example_string\",\"secret_value\":\"*****\",\"api_type\":\"dod\"}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
 }
 
 // The id is used for both client_id and tenant_id, which is enough to tell tenants apart
-static wm_ms_graph_auth* new_tenant(const char* id, const char* secret_value, const char* login_fqdn, const char* query_fqdn) {
+static wm_ms_graph_auth*
+new_tenant(const char* id, const char* secret_value, const char* login_fqdn, const char* query_fqdn)
+{
     wm_ms_graph_auth* auth = NULL;
     os_calloc(1, sizeof(wm_ms_graph_auth), auth);
     os_strdup(id, auth->client_id);
@@ -1617,14 +1639,18 @@ static wm_ms_graph_auth* new_tenant(const char* id, const char* secret_value, co
 }
 
 // NULL-terminated, as wm_ms_graph_read() leaves it
-static void add_two_tenants(wm_ms_graph* module_data, const char* secret_a, const char* secret_b) {
+static void add_two_tenants(wm_ms_graph* module_data, const char* secret_a, const char* secret_b)
+{
     os_calloc(3, sizeof(wm_ms_graph_auth*), module_data->auth_config);
-    module_data->auth_config[0] = new_tenant("client_a", secret_a, WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN);
-    module_data->auth_config[1] = new_tenant("client_b", secret_b, WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN);
+    module_data->auth_config[0] =
+        new_tenant("client_a", secret_a, WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN);
+    module_data->auth_config[1] =
+        new_tenant("client_b", secret_b, WM_MS_GRAPH_GCC_HIGH_API_LOGIN_FQDN, WM_MS_GRAPH_GCC_HIGH_API_QUERY_FQDN);
 }
 
-void test_dump_never_prints_a_secret_value(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_dump_never_prints_a_secret_value(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     add_two_tenants(module_data, "fakeGraphSecretForTenantA", "fakeGraphSecretForTenantB");
 
     cJSON* dump = wm_ms_graph_dump(module_data);
@@ -1637,8 +1663,9 @@ void test_dump_never_prints_a_secret_value(void **state) {
     os_free(dump_text);
 }
 
-void test_dump_reports_secret_values_in_clear_when_unmasked(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_dump_reports_secret_values_in_clear_when_unmasked(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     add_two_tenants(module_data, "fakeGraphSecretForTenantA", "fakeGraphSecretForTenantB");
 
     wm_unmask_credentials = 1;
@@ -1653,24 +1680,30 @@ void test_dump_reports_secret_values_in_clear_when_unmasked(void **state) {
     os_free(dump_text);
 }
 
-void test_dump_reports_each_tenant_separately(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_dump_reports_each_tenant_separately(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     add_two_tenants(module_data, "fakeGraphSecretForTenantA", "fakeGraphSecretForTenantB");
 
     cJSON* dump = wm_ms_graph_dump(module_data);
     char* dump_text = cJSON_PrintUnformatted(dump);
 
     // One object per tenant: a single object repeated every key, and a JSON parser keeps the last one
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"no\",\"run_on_start\":\"no\",\"wday\":\"sunday\","
-                                   "\"api_auth\":[{\"client_id\":\"client_a\",\"tenant_id\":\"client_a\",\"secret_value\":\"*****\",\"api_type\":\"global\"},"
-                                   "{\"client_id\":\"client_b\",\"tenant_id\":\"client_b\",\"secret_value\":\"*****\",\"api_type\":\"gcc-high\"}]}}");
+    assert_string_equal(
+        dump_text,
+        "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"no\",\"run_on_start\":\"no\",\"wday\":\"sunday\","
+        "\"api_auth\":[{\"client_id\":\"client_a\",\"tenant_id\":\"client_a\",\"secret_value\":\"*****\",\"api_type\":"
+        "\"global\"},"
+        "{\"client_id\":\"client_b\",\"tenant_id\":\"client_b\",\"secret_value\":\"*****\",\"api_type\":\"gcc-high\"}]}"
+        "}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
 }
 
-void test_dump_reports_every_relationship_of_a_resource(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_dump_reports_every_relationship_of_a_resource(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_resource), module_data->resources);
     module_data->num_resources = 1;
     os_strdup("security", module_data->resources[0].name);
@@ -1683,14 +1716,17 @@ void test_dump_reports_every_relationship_of_a_resource(void **state) {
     char* dump_text = cJSON_PrintUnformatted(dump);
 
     // Both under the key the index maps; repeating the key kept only the last one
-    assert_string_equal(dump_text, "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"no\",\"run_on_start\":\"no\",\"wday\":\"sunday\","
-                                   "\"resources\":[{\"name\":\"security\",\"relationship\":[\"alerts_v2\",\"incidents\"]}]}}");
+    assert_string_equal(
+        dump_text,
+        "{\"ms_graph\":{\"enabled\":\"no\",\"only_future_events\":\"no\",\"run_on_start\":\"no\",\"wday\":\"sunday\","
+        "\"resources\":[{\"name\":\"security\",\"relationship\":[\"alerts_v2\",\"incidents\"]}]}}");
 
     cJSON_Delete(dump);
     os_free(dump_text);
 }
 
-void test_wm_ms_graph_get_access_token_no_response(void **state) {
+void test_wm_ms_graph_get_access_token_no_response(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -1710,7 +1746,7 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -1734,7 +1770,10 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     size_t max_size = OS_SIZE_8192;
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1753,7 +1792,8 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     assert_null(module_data->auth_config[0]->access_token);
 }
 
-void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
+void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -1773,7 +1813,7 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -1803,7 +1843,10 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1815,14 +1858,18 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to obtain access token: Status code was '400' & response was '{\"error\":\"bad_request\"}'");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Received unsuccessful status code when attempting to obtain access token: Status code was '400' & "
+                  "response was '{\"error\":\"bad_request\"}'");
 
     wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 
     assert_null(module_data->auth_config[0]->access_token);
 }
 
-void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
+void test_wm_ms_graph_get_access_token_curl_max_size(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -1842,7 +1889,7 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -1873,7 +1920,10 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1884,14 +1934,18 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of 'curl_max_size'.");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Reached maximum CURL size when attempting to obtain access token. Consider increasing the value of "
+                  "'curl_max_size'.");
 
     wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 
     assert_null(module_data->auth_config[0]->access_token);
 }
 
-void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
+void test_wm_ms_graph_get_access_token_parse_json_fail(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -1911,7 +1965,7 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -1942,7 +1996,10 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -1960,7 +2017,8 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     assert_null(module_data->auth_config[0]->access_token);
 }
 
-void test_wm_ms_graph_get_access_token_success(void **state) {
+void test_wm_ms_graph_get_access_token_success(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -1980,7 +2038,7 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -2012,7 +2070,10 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2033,7 +2094,8 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
 #endif
 }
 
-void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
+void test_wm_ms_graph_get_access_token_no_access_token(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2053,7 +2115,7 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -2084,7 +2146,10 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2096,12 +2161,14 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
+    expect_string(
+        __wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
 
     wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 }
 
-void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
+void test_wm_ms_graph_get_access_token_no_expire_time(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2121,7 +2188,7 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -2152,7 +2219,10 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2164,12 +2234,14 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
+    expect_string(
+        __wrap__mtwarn, formatted_msg, "Incomplete access token response, value or expiration time not present.");
 
     wm_ms_graph_get_access_token(module_data->auth_config[0], max_size);
 }
 
-void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
+void test_wm_ms_graph_scan_relationships_single_initial_only_no(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2189,7 +2261,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -2231,7 +2303,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
@@ -2241,12 +2313,16 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and "
+                  "relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void **state) {
+void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>yes</only_future_events>
@@ -2266,7 +2342,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -2310,12 +2386,16 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     will_return(__wrap_wm_state_io, -1);
 
     expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state for resource 'security' and relationship 'alerts_v2'. State file: 'var/wodles/ms-graph-example_tenant-security-alerts_v2'.");
+    expect_string(__wrap__mterror,
+                  formatted_msg,
+                  "Couldn't save running state for resource 'security' and relationship 'alerts_v2'. State file: "
+                  "'var/wodles/ms-graph-example_tenant-security-alerts_v2'.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_slash_in_relationship_name(void **state) {
+void test_wm_ms_graph_scan_relationships_slash_in_relationship_name(void** state)
+{
     /*
     Verifies that a relationship name containing '/' (e.g. "cases/eDiscoveryCases")
     has its slash replaced with '-' when constructing the state file name, preventing
@@ -2326,7 +2406,7 @@ void test_wm_ms_graph_scan_relationships_slash_in_relationship_name(void **state
       <relationship>cases/eDiscoveryCases</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -2379,12 +2459,16 @@ void test_wm_ms_graph_scan_relationships_slash_in_relationship_name(void **state
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'cases/eDiscoveryCases', waiting '60' seconds to run first scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and "
+                  "relationship 'cases/eDiscoveryCases', waiting '60' seconds to run first scan.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response(void **state) {
+void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2404,7 +2488,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -2444,22 +2528,27 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2471,12 +2560,16 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     will_return(__wrap_wurl_http_request, NULL);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to get relationship 'alerts_v2' from resource 'security' on API version 'v1.0'.");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "No response received when attempting to get relationship 'alerts_v2' from resource 'security' on "
+                  "API version 'v1.0'.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **state) {
+void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2496,7 +2589,7 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -2540,7 +2633,7 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
@@ -2550,12 +2643,16 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and "
+                  "relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **state) {
+void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2575,7 +2672,7 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -2621,22 +2718,27 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2648,12 +2750,16 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to get relationship 'alerts_v2' logs: Status code was '400' & response was '{\"error\":\"bad_request\"}'");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Received unsuccessful status code when attempting to get relationship 'alerts_v2' logs: Status code "
+                  "was '400' & response was '{\"error\":\"bad_request\"}'");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) {
+void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2673,7 +2779,7 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -2720,22 +2826,27 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2747,12 +2858,16 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to get relationship 'alerts_v2' logs. Consider increasing the value of 'curl_max_size'.");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Reached maximum CURL size when attempting to get relationship 'alerts_v2' logs. Consider increasing "
+                  "the value of 'curl_max_size'.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
+void test_wm_ms_graph_scan_relationships_single_failed_parse(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2772,7 +2887,7 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -2819,22 +2934,27 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=25&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=25&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2851,7 +2971,8 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
+void test_wm_ms_graph_scan_relationships_single_no_logs(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2871,7 +2992,7 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -2918,22 +3039,27 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=25&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=25&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2954,12 +3080,16 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and "
+                  "relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
+void test_wm_ms_graph_scan_relationships_single_success_one_log(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -2979,7 +3109,7 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -3027,22 +3157,27 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=10&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=10&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3054,13 +3189,20 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\","
+                  "\"relationship\":\"alerts_v2\"}}'");
 
     int result = 1;
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\","
+                  "\"relationship\":\"alerts_v2\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
@@ -3072,12 +3214,16 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and "
+                  "relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
+void test_wm_ms_graph_scan_relationships_single_success_two_logs(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -3097,7 +3243,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
       <relationship>detectedApps</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -3137,7 +3283,9 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_calloc(1, sizeof(curl_response), response2);
     response2->status_code = 200;
     response2->max_size_reached = false;
-    os_strdup("{\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/next_page\",\"value\":[{\"id\":\"2345\"},{\"name\":\"test\"}]}", response2->body);
+    os_strdup("{\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/"
+              "next_page\",\"value\":[{\"id\":\"2345\"},{\"name\":\"test\"}]}",
+              response2->body);
     os_strdup("test2", response2->header);
 
     os_calloc(1, sizeof(curl_response), response3);
@@ -3153,7 +3301,10 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 #endif
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=10'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=10'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3166,18 +3317,32 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\","
+                  "\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 #else
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\","
+                  "\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 #endif
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\","
+                  "\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\","
+                  "\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
@@ -3189,7 +3354,11 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/"
+                  "managedDevices?$top=10&$select=id,deviceName'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3201,7 +3370,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_wurl_http_request, response2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/next_page'");
+    expect_string(
+        __wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/next_page'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3214,17 +3384,35 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":"
+                  "\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 #else
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":"
+                  "\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 #endif
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":"
+                  "\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":"
+                  "\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
@@ -3233,7 +3421,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) {
+void test_wm_ms_graph_scan_relationships_single_success_two_pages(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -3253,7 +3442,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
       <relationship>managedDevices</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -3286,7 +3475,9 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     os_calloc(1, sizeof(curl_response), response);
     response->status_code = 200;
     response->max_size_reached = false;
-    os_strdup("{\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/next_page\",\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
+    os_strdup("{\"@odata.nextLink\":\"https://graph.microsoft.com/v1.0/"
+              "next_page\",\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}",
+              response->body);
     os_strdup("test", response->header);
 
 #ifdef TEST_WINAGENT
@@ -3302,7 +3493,10 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     os_strdup("test2", response2->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=200'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=200'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3315,18 +3509,32 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\","
+                  "\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
 #else
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
 #endif
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\","
+                  "\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
@@ -3339,24 +3547,39 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\","
+                  "\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
 #else
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
 #endif
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\","
+                  "\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/next_page'");
+    expect_string(
+        __wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/next_page'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3369,18 +3592,32 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\","
+                  "\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
 #else
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
 #endif
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\","
+                  "\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
 #endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
@@ -3389,8 +3626,9 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_next_page_out_of_host(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+void test_wm_ms_graph_scan_relationships_next_page_out_of_host(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -3421,7 +3659,8 @@ void test_wm_ms_graph_scan_relationships_next_page_out_of_host(void **state) {
     os_calloc(1, sizeof(curl_response), response);
     response->status_code = 200;
     response->max_size_reached = false;
-    os_strdup("{\"@odata.nextLink\":\"https://evil.tld/v1.0/next_page\",\"value\":[{\"full_log\":\"log1\"}]}", response->body);
+    os_strdup("{\"@odata.nextLink\":\"https://evil.tld/v1.0/next_page\",\"value\":[{\"full_log\":\"log1\"}]}",
+              response->body);
     os_strdup("test", response->header);
 
 #ifdef TEST_WINAGENT
@@ -3431,7 +3670,10 @@ void test_wm_ms_graph_scan_relationships_next_page_out_of_host(void **state) {
 #endif
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=200'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=200'");
 
     // Only one request must be issued: the hostile next page must not be followed
     expect_any(__wrap_wurl_http_request, method);
@@ -3460,7 +3702,8 @@ void test_wm_ms_graph_scan_relationships_next_page_out_of_host(void **state) {
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **state) {
+void test_wm_ms_graph_scan_relationships_single_success_two_resources(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -3484,7 +3727,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
       <relationship>auditEvents</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     wm_ms_graph_state_t relationship_state_struc_2;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
@@ -3538,22 +3781,27 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/identityProtection/riskDetections?$top=200&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/identityProtection/"
+                  "riskDetections?$top=200&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+"
+                  "2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3565,12 +3813,19 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"identityProtection\",\"relationship\":\"riskDetections\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":"
+                  "\"identityProtection\",\"relationship\":\"riskDetections\"}}'");
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"identityProtection\",\"relationship\":\"riskDetections\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":"
+                  "\"identityProtection\",\"relationship\":\"riskDetections\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
@@ -3582,7 +3837,10 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'identityProtection' and relationship 'riskDetections', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource "
+                  "'identityProtection' and relationship 'riskDetections', waiting '60' seconds to run next scan.");
 
     // resource auditlogs
     os_calloc(1, sizeof(curl_response), response);
@@ -3596,22 +3854,27 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc_2);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc_2);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/auditEvents?$top=200&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/deviceManagement/"
+                  "auditEvents?$top=200&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-"
+                  "02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3623,12 +3886,19 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"deviceManagement\",\"relationship\":\"auditEvents\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"auditEvents\"}}'");
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"deviceManagement\",\"relationship\":\"auditEvents\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":"
+                  "\"deviceManagement\",\"relationship\":\"auditEvents\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
@@ -3640,12 +3910,16 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wm_state_io, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state for resource 'deviceManagement' and relationship 'auditEvents'. State file: 'var/wodles/ms-graph-example_tenant-deviceManagement-auditEvents'.");
+    expect_string(__wrap__mterror,
+                  formatted_msg,
+                  "Couldn't save running state for resource 'deviceManagement' and relationship 'auditEvents'. State "
+                  "file: 'var/wodles/ms-graph-example_tenant-deviceManagement-auditEvents'.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_renew_token(void **state) {
+void test_wm_ms_graph_scan_relationships_renew_token(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -3665,7 +3939,7 @@ void test_wm_ms_graph_scan_relationships_renew_token(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -3713,29 +3987,37 @@ void test_wm_ms_graph_scan_relationships_renew_token(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=10&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=10&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     // -----------wm_ms_graph_ensure_valid_token-----------------------
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Access token expired or missing. Requesting new token.");
 
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     time_t new_token_expiration_time = time(NULL) + 3600;
     curl_response* response_new_token;
@@ -3743,8 +4025,10 @@ void test_wm_ms_graph_scan_relationships_renew_token(void **state) {
     response_new_token->status_code = 200;
     response_new_token->max_size_reached = false;
     char response_new_token_body[256];
-    snprintf(response_new_token_body, sizeof(response_new_token_body),
-            "{\"access_token\":\"new_token\",\"expires_in\":%ld}", (long)new_token_expiration_time);
+    snprintf(response_new_token_body,
+             sizeof(response_new_token_body),
+             "{\"access_token\":\"new_token\",\"expires_in\":%ld}",
+             (long)new_token_expiration_time);
 
     os_strdup(response_new_token_body, response_new_token->body);
     expect_any(__wrap_wurl_http_request, method);
@@ -3768,13 +4052,20 @@ void test_wm_ms_graph_scan_relationships_renew_token(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
+    expect_string(__wrap__mtdebug2,
+                  formatted_msg,
+                  "Sending log: "
+                  "'{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\","
+                  "\"relationship\":\"alerts_v2\"}}'");
 
     int result = 1;
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg,
+                  message,
+                  "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\","
+                  "\"relationship\":\"alerts_v2\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
@@ -3786,12 +4077,16 @@ void test_wm_ms_graph_scan_relationships_renew_token(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and "
+                  "relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-void test_wm_ms_graph_scan_relationships_renew_token_failed(void **state) {
+void test_wm_ms_graph_scan_relationships_renew_token_failed(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -3811,7 +4106,7 @@ void test_wm_ms_graph_scan_relationships_renew_token_failed(void **state) {
       <relationship>alerts_v2</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
@@ -3851,22 +4146,27 @@ void test_wm_ms_graph_scan_relationships_renew_token_failed(void **state) {
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
+    will_return(__wrap_wm_state_io, (void*)&relationship_state_struc);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
     will_return(__wrap_gmtime_r, 1);
 #endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, "2023-02-08T12:25:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/security/"
+                  "alerts_v2?$top=50&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-"
+                  "08T12:25:56Z'");
 
     // -----------wm_ms_graph_ensure_valid_token-----------------------
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
@@ -3881,7 +4181,10 @@ void test_wm_ms_graph_scan_relationships_renew_token_failed(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3899,12 +4202,15 @@ void test_wm_ms_graph_scan_relationships_renew_token_failed(void **state) {
     // -----------END wm_ms_graph_ensure_valid_token-----------------------
 
     expect_string(__wrap__mtwarn, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtwarn, formatted_msg, "Aborting scan of 'alerts_v2' for tenant 'example_tenant' due to access token error.");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Aborting scan of 'alerts_v2' for tenant 'example_tenant' due to access token error.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
-static void test_wm_ms_graph_scan_apps_devices_renew_token(void **state) {
+static void test_wm_ms_graph_scan_apps_devices_renew_token(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -3924,7 +4230,7 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token(void **state) {
       <relationship>detectedApps</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -3960,14 +4266,21 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/"
+                  "managedDevices?$top=10&$select=id,deviceName'");
 
     // -----------wm_ms_graph_ensure_valid_token-----------------------
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "Access token expired or missing. Requesting new token.");
 
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     time_t new_token_expiration_time = time(NULL) + 3600;
     curl_response* response_new_token;
@@ -3975,8 +4288,10 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token(void **state) {
     response_new_token->status_code = 200;
     response_new_token->max_size_reached = false;
     char response_new_token_body[256];
-    snprintf(response_new_token_body, sizeof(response_new_token_body),
-            "{\"access_token\":\"new_token\",\"expires_in\":%ld}", (long)new_token_expiration_time);
+    snprintf(response_new_token_body,
+             sizeof(response_new_token_body),
+             "{\"access_token\":\"new_token\",\"expires_in\":%ld}",
+             (long)new_token_expiration_time);
 
     os_strdup(response_new_token_body, response_new_token->body);
     expect_any(__wrap_wurl_http_request, method);
@@ -3999,13 +4314,14 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     // Prepare headers
-    char *headers[] = { NULL, NULL };
-    char auth_header[OS_SIZE_8192] = { '\0' };
+    char* headers[] = {NULL, NULL};
+    char auth_header[OS_SIZE_8192] = {'\0'};
     snprintf(auth_header, OS_SIZE_8192 - 1, "Authorization: Bearer %s", module_data->auth_config[0]->access_token);
     os_strdup(auth_header, headers[0]);
-    cJSON *app_id = cJSON_CreateString("12345");
+    cJSON* app_id = cJSON_CreateString("12345");
 
-    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+    cJSON* result = wm_ms_graph_scan_apps_devices(
+        module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
 
     assert_non_null(result);
     assert_string_equal(headers[0], "Authorization: Bearer new_token");
@@ -4014,7 +4330,8 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token(void **state) {
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void **state) {
+static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void** state)
+{
     /*
     <enabled>yes</enabled>
     <only_future_events>no</only_future_events>
@@ -4034,7 +4351,7 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void **state) 
       <relationship>detectedApps</relationship>
     </resource>
     */
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->enabled = true;
@@ -4063,7 +4380,11 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void **state) 
     wm_max_eps = 1;
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/"
+                  "managedDevices?$top=10&$select=id,deviceName'");
 
     // -----------wm_ms_graph_ensure_valid_token-----------------------
     expect_string(__wrap__mtinfo, tag, WM_MS_GRAPH_LOGTAG);
@@ -4078,7 +4399,10 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void **state) 
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4099,13 +4423,14 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void **state) 
     expect_string(__wrap__mtwarn, formatted_msg, "Aborting app-device scan due to access token error.");
 
     // Prepare headers
-    char *headers[] = { NULL, NULL };
-    char auth_header[OS_SIZE_8192] = { '\0' };
+    char* headers[] = {NULL, NULL};
+    char auth_header[OS_SIZE_8192] = {'\0'};
     snprintf(auth_header, OS_SIZE_8192 - 1, "Authorization: Bearer %s", module_data->auth_config[0]->access_token);
     os_strdup(auth_header, headers[0]);
-    cJSON *app_id = cJSON_CreateString("12345");
+    cJSON* app_id = cJSON_CreateString("12345");
 
-    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+    cJSON* result = wm_ms_graph_scan_apps_devices(
+        module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
 
     assert_non_null(result);
     assert_int_equal(cJSON_GetArraySize(result), 0);
@@ -4114,8 +4439,9 @@ static void test_wm_ms_graph_scan_apps_devices_renew_token_failed(void **state) 
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+static void test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->curl_max_size = 1024L;
@@ -4133,7 +4459,11 @@ static void test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code(void **s
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/"
+                  "managedDevices?$top=10&$select=id,deviceName'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4145,13 +4475,17 @@ static void test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code(void **s
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to get managed devices for app '12345': Status code was '400' & response was '{\"error\":\"bad_request\"}'");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Received unsuccessful status code when attempting to get managed devices for app '12345': Status "
+                  "code was '400' & response was '{\"error\":\"bad_request\"}'");
 
-    char *headers[] = { NULL, NULL };
+    char* headers[] = {NULL, NULL};
     os_strdup("Authorization: Bearer token", headers[0]);
-    cJSON *app_id = cJSON_CreateString("12345");
+    cJSON* app_id = cJSON_CreateString("12345");
 
-    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+    cJSON* result = wm_ms_graph_scan_apps_devices(
+        module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
 
     assert_non_null(result);
     assert_int_equal(cJSON_GetArraySize(result), 0);
@@ -4160,8 +4494,9 @@ static void test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code(void **s
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_scan_apps_devices_401_invalidates_token(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+static void test_wm_ms_graph_scan_apps_devices_401_invalidates_token(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->curl_max_size = 1024L;
@@ -4179,7 +4514,11 @@ static void test_wm_ms_graph_scan_apps_devices_401_invalidates_token(void **stat
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/"
+                  "managedDevices?$top=10&$select=id,deviceName'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4191,13 +4530,17 @@ static void test_wm_ms_graph_scan_apps_devices_401_invalidates_token(void **stat
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to get managed devices for app '12345': Status code was '401' & response was '{\"error\":\"unauthorized\"}'");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Received unsuccessful status code when attempting to get managed devices for app '12345': Status "
+                  "code was '401' & response was '{\"error\":\"unauthorized\"}'");
 
-    char *headers[] = { NULL, NULL };
+    char* headers[] = {NULL, NULL};
     os_strdup("Authorization: Bearer token", headers[0]);
-    cJSON *app_id = cJSON_CreateString("12345");
+    cJSON* app_id = cJSON_CreateString("12345");
 
-    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+    cJSON* result = wm_ms_graph_scan_apps_devices(
+        module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
 
     assert_non_null(result);
     assert_int_equal(cJSON_GetArraySize(result), 0);
@@ -4207,8 +4550,9 @@ static void test_wm_ms_graph_scan_apps_devices_401_invalidates_token(void **stat
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_scan_apps_devices_reached_curl_size(void **state) {
-    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+static void test_wm_ms_graph_scan_apps_devices_reached_curl_size(void** state)
+{
+    wm_ms_graph* module_data = (wm_ms_graph*)*state;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
     module_data->curl_max_size = 1024L;
@@ -4226,7 +4570,11 @@ static void test_wm_ms_graph_scan_apps_devices_reached_curl_size(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=10&$select=id,deviceName'");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Microsoft Graph API Log URL: "
+                  "'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/"
+                  "managedDevices?$top=10&$select=id,deviceName'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4238,13 +4586,17 @@ static void test_wm_ms_graph_scan_apps_devices_reached_curl_size(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to get managed devices for app '12345'. Consider increasing the value of 'curl_max_size'.");
+    expect_string(__wrap__mtwarn,
+                  formatted_msg,
+                  "Reached maximum CURL size when attempting to get managed devices for app '12345'. Consider "
+                  "increasing the value of 'curl_max_size'.");
 
-    char *headers[] = { NULL, NULL };
+    char* headers[] = {NULL, NULL};
     os_strdup("Authorization: Bearer token", headers[0]);
-    cJSON *app_id = cJSON_CreateString("12345");
+    cJSON* app_id = cJSON_CreateString("12345");
 
-    cJSON *result = wm_ms_graph_scan_apps_devices(module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
+    cJSON* result = wm_ms_graph_scan_apps_devices(
+        module_data, app_id, module_data->auth_config[0]->query_fqdn, headers, module_data->auth_config[0]);
 
     assert_non_null(result);
     assert_int_equal(cJSON_GetArraySize(result), 0);
@@ -4253,8 +4605,9 @@ static void test_wm_ms_graph_scan_apps_devices_reached_curl_size(void **state) {
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_http_get_with_retry_success_first_attempt(void **state) {
-    char *headers[] = { NULL, NULL };
+static void test_wm_ms_graph_http_get_with_retry_success_first_attempt(void** state)
+{
+    char* headers[] = {NULL, NULL};
     os_strdup("Authorization: Bearer token", headers[0]);
 
     curl_response* response;
@@ -4281,8 +4634,9 @@ static void test_wm_ms_graph_http_get_with_retry_success_first_attempt(void **st
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_http_get_with_retry_429_then_success(void **state) {
-    char *headers[] = { NULL, NULL };
+static void test_wm_ms_graph_http_get_with_retry_429_then_success(void** state)
+{
+    char* headers[] = {NULL, NULL};
     os_strdup("Authorization: Bearer token", headers[0]);
 
     curl_response* response_429;
@@ -4309,7 +4663,9 @@ static void test_wm_ms_graph_http_get_with_retry_429_then_success(void **state) 
     will_return(__wrap_wurl_http_request, response_429);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4328,8 +4684,9 @@ static void test_wm_ms_graph_http_get_with_retry_429_then_success(void **state) 
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
-    char *headers[] = { NULL, NULL };
+static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void** state)
+{
+    char* headers[] = {NULL, NULL};
     os_strdup("Authorization: Bearer token", headers[0]);
 
     // Attempt 1/3
@@ -4350,7 +4707,9 @@ static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
     will_return(__wrap_wurl_http_request, response_429_1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 1/3).");
 
     // Attempt 2/3
     curl_response* response_429_2;
@@ -4370,7 +4729,9 @@ static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
     will_return(__wrap_wurl_http_request, response_429_2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 2/3).");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 2/3).");
 
     // Attempt 3/3
     curl_response* response_429_3;
@@ -4390,7 +4751,9 @@ static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
     will_return(__wrap_wurl_http_request, response_429_3);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 3/3).");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 5s (attempt 3/3).");
 
     // Final attempt — retries exhausted, returns 429
     curl_response* response_final;
@@ -4417,8 +4780,9 @@ static void test_wm_ms_graph_http_get_with_retry_429_exhausted(void **state) {
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn(void **state) {
-    char *headers[] = { NULL, NULL };
+static void test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn(void** state)
+{
+    char* headers[] = {NULL, NULL};
     os_strdup("Authorization: Bearer token", headers[0]);
 
     curl_response* response_429;
@@ -4445,10 +4809,13 @@ static void test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn(vo
     will_return(__wrap_wurl_http_request, response_429);
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtwarn, formatted_msg, "Retry-After value (400s) for relationship 'alerts_v2' exceeds (300s).");
+    expect_string(
+        __wrap__mtwarn, formatted_msg, "Retry-After value (400s) for relationship 'alerts_v2' exceeds (300s).");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 300s (attempt 1/3).");
+    expect_string(__wrap__mtdebug1,
+                  formatted_msg,
+                  "Received HTTP 429 for relationship 'alerts_v2'. Retrying after 300s (attempt 1/3).");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4467,7 +4834,8 @@ static void test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn(vo
     os_free(headers[0]);
 }
 
-static void test_wm_ms_graph_ensure_valid_token_token_valid(void **state) {
+static void test_wm_ms_graph_ensure_valid_token_token_valid(void** state)
+{
     wm_ms_graph_auth auth = {0};
     auth.access_token = strdup("valid_token");
     auth.token_expiration_time = time(NULL) + 3600;
@@ -4478,7 +4846,8 @@ static void test_wm_ms_graph_ensure_valid_token_token_valid(void **state) {
     os_free(auth.access_token);
 }
 
-static void test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed(void **state) {
+static void test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed(void** state)
+{
     wm_ms_graph_auth auth = {0};
     auth.access_token = strdup("expired_token");
     auth.token_expiration_time = time(NULL) - 10;
@@ -4492,8 +4861,10 @@ static void test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed(void *
     response->status_code = 200;
     response->max_size_reached = false;
     char response_body[256];
-    snprintf(response_body, sizeof(response_body),
-            "{\"access_token\":\"new_token\",\"expires_in\":%ld}", (long)new_token_expiration_time);
+    snprintf(response_body,
+             sizeof(response_body),
+             "{\"access_token\":\"new_token\",\"expires_in\":%ld}",
+             (long)new_token_expiration_time);
 
     os_strdup(response_body, response->body);
 
@@ -4501,7 +4872,10 @@ static void test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed(void *
     expect_string(__wrap__mtinfo, formatted_msg, "Access token expired or missing. Requesting new token.");
 
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4524,7 +4898,8 @@ static void test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed(void *
     os_free(auth.query_fqdn);
 }
 
-static void test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed(void **state) {
+static void test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed(void** state)
+{
     wm_ms_graph_auth auth = {0};
     auth.token_expiration_time = time(NULL) - 10;
     auth.login_fqdn = strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN);
@@ -4537,8 +4912,10 @@ static void test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed(void *
     response->status_code = 200;
     response->max_size_reached = false;
     char response_body[256];
-    snprintf(response_body, sizeof(response_body),
-            "{\"access_token\":\"new_token\",\"expires_in\":%ld}", (long)new_token_expiration_time);
+    snprintf(response_body,
+             sizeof(response_body),
+             "{\"access_token\":\"new_token\",\"expires_in\":%ld}",
+             (long)new_token_expiration_time);
 
     os_strdup(response_body, response->body);
 
@@ -4546,7 +4923,10 @@ static void test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed(void *
     expect_string(__wrap__mtinfo, formatted_msg, "Access token expired or missing. Requesting new token.");
 
     expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
+    expect_string(
+        __wrap__mtdebug1,
+        formatted_msg,
+        "Microsoft Graph API Access Token URL: 'https://login.microsoftonline.com/example_tenant/oauth2/v2.0/token'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -4569,7 +4949,8 @@ static void test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed(void *
     os_free(auth.query_fqdn);
 }
 
-static void test_wm_ms_graph_ensure_valid_token_token_renewal_failed(void **state) {
+static void test_wm_ms_graph_ensure_valid_token_token_renewal_failed(void** state)
+{
     wm_ms_graph_auth auth = {0};
     auth.access_token = strdup("expired_token");
     auth.token_expiration_time = 0;
@@ -4600,7 +4981,8 @@ static void test_wm_ms_graph_ensure_valid_token_token_renewal_failed(void **stat
     os_free(auth.access_token);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test(test_cleanup),
         cmocka_unit_test_setup_teardown(test_bad_tag, setup_test_read, teardown_test_read),
@@ -4636,8 +5018,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_invalid_attribute_resource, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_normal_config, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_normal_config_api_type_gcc, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_normal_config_api_type_dod, setup_test_read, teardown_test_read)
-    };
+        cmocka_unit_test_setup_teardown(test_normal_config_api_type_dod, setup_test_read, teardown_test_read)};
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_setup_complete, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_main_token, setup_conf, teardown_conf),
@@ -4649,45 +5030,71 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_dump_gcc_configuration, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_dod_configuration, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_never_prints_a_secret_value, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_dump_reports_secret_values_in_clear_when_unmasked, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_dump_reports_secret_values_in_clear_when_unmasked, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_reports_each_tenant_separately, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_dump_reports_every_relationship_of_a_resource, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_response, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_unsuccessful_status_code, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_get_access_token_unsuccessful_status_code, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_curl_max_size, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_parse_json_fail, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_success, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_access_token, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_expire_time, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_initial_only_no, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_slash_in_relationship_name, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_reached_curl_size, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_failed_parse, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_initial_only_no, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_slash_in_relationship_name, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response,
+            setup_conf,
+            teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_reached_curl_size, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_failed_parse, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_no_logs, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_one_log, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_logs, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_pages, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_next_page_out_of_host, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_resources, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_success_one_log, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_success_two_logs, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_success_two_pages, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_next_page_out_of_host, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_single_success_two_resources, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_renew_token, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_renew_token_failed, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_relationships_renew_token_failed, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_renew_token, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_renew_token_failed, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_401_invalidates_token, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_apps_devices_reached_curl_size, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_success_first_attempt, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_then_success, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_apps_devices_renew_token_failed, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_apps_devices_unsuccessful_status_code, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_apps_devices_401_invalidates_token, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_scan_apps_devices_reached_curl_size, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_http_get_with_retry_success_first_attempt, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_http_get_with_retry_429_then_success, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_exhausted, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_http_get_with_retry_429_retry_after_exceeds_warn, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_ensure_valid_token_token_valid, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed, setup_conf, teardown_conf),
-        cmocka_unit_test_setup_teardown(test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed, setup_conf, teardown_conf)
-    };
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_ensure_valid_token_token_expired_and_renewed, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(
+            test_wm_ms_graph_ensure_valid_token_token_missing_and_renewed, setup_conf, teardown_conf)};
     int result = 0;
     result = cmocka_run_group_tests(tests_without_startup, NULL, NULL);
     result += cmocka_run_group_tests(tests_with_startup, NULL, NULL);

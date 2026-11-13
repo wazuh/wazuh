@@ -201,8 +201,7 @@ static void test_reloadAgent_gives_up_after_max_retries(void** state)
 
 int main(void)
 {
-    const struct CMUnitTest tests[] =
-    {
+    const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_reloadAgent_fails_immediately_on_ENOTCONN),
         cmocka_unit_test(test_reloadAgent_retries_on_ENOENT_then_succeeds),
         cmocka_unit_test(test_reloadAgent_retries_on_ECONNREFUSED_then_succeeds),

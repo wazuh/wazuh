@@ -112,61 +112,59 @@ namespace
     /// exit, since both are process-wide.
     class FileSizeCap final
     {
-        public:
-            explicit FileSizeCap(rlim_t bytes)
-            {
-                getrlimit(RLIMIT_FSIZE, &m_previous);
-                m_previousHandler = signal(SIGXFSZ, SIG_IGN); // Else the write kills the process.
-                rlimit capped {bytes, m_previous.rlim_max};
-                m_applied = setrlimit(RLIMIT_FSIZE, &capped) == 0;
-            }
+    public:
+        explicit FileSizeCap(rlim_t bytes)
+        {
+            getrlimit(RLIMIT_FSIZE, &m_previous);
+            m_previousHandler = signal(SIGXFSZ, SIG_IGN); // Else the write kills the process.
+            rlimit capped {bytes, m_previous.rlim_max};
+            m_applied = setrlimit(RLIMIT_FSIZE, &capped) == 0;
+        }
 
-            ~FileSizeCap()
-            {
-                setrlimit(RLIMIT_FSIZE, &m_previous);
-                signal(SIGXFSZ, m_previousHandler);
-            }
+        ~FileSizeCap()
+        {
+            setrlimit(RLIMIT_FSIZE, &m_previous);
+            signal(SIGXFSZ, m_previousHandler);
+        }
 
-            FileSizeCap(const FileSizeCap&) = delete;
-            FileSizeCap& operator=(const FileSizeCap&) = delete;
+        FileSizeCap(const FileSizeCap&) = delete;
+        FileSizeCap& operator=(const FileSizeCap&) = delete;
 
-            bool applied() const
-            {
-                return m_applied;
-            }
+        bool applied() const
+        {
+            return m_applied;
+        }
 
-        private:
-            rlimit m_previous {};
-            void (*m_previousHandler)(int)
-            {
-                SIG_DFL
-            };
-            bool m_applied {false};
+    private:
+        rlimit m_previous {};
+        void (*m_previousHandler)(int) {SIG_DFL};
+        bool m_applied {false};
     };
 } // namespace
 
 class SyncIntakeComponentTest : public ::testing::Test
 {
-    protected:
-        SyncIntakeComponentTest()
-            : m_intake(socketPath(), ::testing::TempDir(),
-                       [this](const std::string & id, const std::string & path, uint64_t size)
-        {
-            std::lock_guard<std::mutex> lock(m_received.mutex);
-            m_received.id = id;
-            m_received.path = path;
-            m_received.size = size;
-            m_received.count++;
-            m_received.cv.notify_all();
-            return m_accept.load(); // Flipped by the back-pressure test.
-        })
-        {
-        }
+protected:
+    SyncIntakeComponentTest()
+        : m_intake(socketPath(),
+                   ::testing::TempDir(),
+                   [this](const std::string& id, const std::string& path, uint64_t size)
+                   {
+                       std::lock_guard<std::mutex> lock(m_received.mutex);
+                       m_received.id = id;
+                       m_received.path = path;
+                       m_received.size = size;
+                       m_received.count++;
+                       m_received.cv.notify_all();
+                       return m_accept.load(); // Flipped by the back-pressure test.
+                   })
+    {
+    }
 
-        std::atomic<bool> m_accept {true};
+    std::atomic<bool> m_accept {true};
 
-        Received m_received;
-        SyncIntake m_intake;
+    Received m_received;
+    SyncIntake m_intake;
 };
 
 TEST_F(SyncIntakeComponentTest, StreamsAMultiMegabyteSessionThroughTheSocket)
@@ -232,7 +230,11 @@ TEST_F(SyncIntakeComponentTest, StopReturnsWhileAProducerIsStalledMidFrame)
     std::this_thread::sleep_for(std::chrono::milliseconds {500});
 
     std::atomic<bool> returned {false};
-    std::thread stopper {[this, &returned] { m_intake.stop(); returned = true; }};
+    std::thread stopper {[this, &returned]
+                         {
+                             m_intake.stop();
+                             returned = true;
+                         }};
 
     // Generous: this is a hang detector, not a timing assertion, and a real
     // hang is unbounded. Valgrind cannot make a correct stop() miss this.
@@ -334,8 +336,8 @@ TEST_F(SyncIntakeComponentTest, StartTwiceIsSafeAndStopIsIdempotent)
 TEST(SyncIntakeSenderTest, SendToAMissingSocketFails)
 {
     const std::string body = "x";
-    EXPECT_FALSE(sendSyncSession("/tmp/hc_si_nonexistent.sock", "s",
-                                 reinterpret_cast<const uint8_t*>(body.data()), body.size()));
+    EXPECT_FALSE(sendSyncSession(
+        "/tmp/hc_si_nonexistent.sock", "s", reinterpret_cast<const uint8_t*>(body.data()), body.size()));
 }
 
 TEST(SyncIntakePathTest, APathTooLongForSunPathIsRefusedOnBothSides)
@@ -344,16 +346,11 @@ TEST(SyncIntakePathTest, APathTooLongForSunPathIsRefusedOnBothSides)
     // form while unlink() targets the long one would strand a stale socket and
     // break the next start with EADDRINUSE. Both sides refuse instead.
     const std::string tooLong = "/tmp/" + std::string(120, 'p') + ".sock";
-    SyncIntake intake {tooLong, ::testing::TempDir(),
-                       [](const std::string&, const std::string&, uint64_t)
-    {
-        return true;
-    }};
+    SyncIntake intake {
+        tooLong, ::testing::TempDir(), [](const std::string&, const std::string&, uint64_t) { return true; }};
     EXPECT_FALSE(intake.start());
 
     const std::string body = "x";
-    EXPECT_FALSE(sendSyncSession(tooLong, "s", reinterpret_cast<const uint8_t*>(body.data()),
-                                 body.size()));
-    EXPECT_FALSE(sendSyncSession("", "s", reinterpret_cast<const uint8_t*>(body.data()),
-                                 body.size()));
+    EXPECT_FALSE(sendSyncSession(tooLong, "s", reinterpret_cast<const uint8_t*>(body.data()), body.size()));
+    EXPECT_FALSE(sendSyncSession("", "s", reinterpret_cast<const uint8_t*>(body.data()), body.size()));
 }

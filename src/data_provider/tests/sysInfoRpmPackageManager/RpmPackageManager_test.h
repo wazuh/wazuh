@@ -15,13 +15,12 @@
 
 class RpmLibTest : public ::testing::Test
 {
-    protected:
+protected:
+    RpmLibTest() = default;
+    virtual ~RpmLibTest() = default;
 
-        RpmLibTest() = default;
-        virtual ~RpmLibTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SYSINFO_PACKAGES_BERKELEY_DB_TEST_H

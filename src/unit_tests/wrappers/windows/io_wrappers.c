@@ -12,6 +12,7 @@
 #include <cmocka.h>
 #include "io_wrappers.h"
 
-char * wrap_mktemp_s(__attribute__((unused)) const char *path, __attribute__((unused)) ssize_t length) {
+char* wrap_mktemp_s(__attribute__((unused)) const char* path, __attribute__((unused)) ssize_t length)
+{
     return mock_type(char*);
 }

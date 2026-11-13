@@ -21,13 +21,8 @@
 
 #include <stdarg.h>
 
-typedef void (*full_log_fnc_t)(int level,
-                               const char* tag,
-                               const char* file,
-                               int line,
-                               const char* func,
-                               const char* msg,
-                               va_list args);
+typedef void (*full_log_fnc_t)(
+    int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args);
 
 void __wrap_remoted_module_start(full_log_fnc_t callback_log, const void* configuration)
 {
@@ -35,6 +30,4 @@ void __wrap_remoted_module_start(full_log_fnc_t callback_log, const void* config
     (void)configuration;
 }
 
-void __wrap_remoted_module_stop(void)
-{
-}
+void __wrap_remoted_module_stop(void) {}

@@ -13,9 +13,9 @@
 #ifndef WIN32
 #include <sys/resource.h>
 
-int __wrap_getrlimit(int resource, struct rlimit *rlim);
+int __wrap_getrlimit(int resource, struct rlimit* rlim);
 
-int __wrap_setrlimit(int resource, const struct rlimit *rlim);
+int __wrap_setrlimit(int resource, const struct rlimit* rlim);
 #endif
 
 #endif

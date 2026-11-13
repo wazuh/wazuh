@@ -19,16 +19,16 @@
 
 class LoggedInUsersProvider
 {
-    public:
-        explicit LoggedInUsersProvider(std::shared_ptr<IUtmpxWrapper> utmpxWrapper);
+public:
+    explicit LoggedInUsersProvider(std::shared_ptr<IUtmpxWrapper> utmpxWrapper);
 
-        LoggedInUsersProvider();
+    LoggedInUsersProvider();
 
-        nlohmann::json collect();
+    nlohmann::json collect();
 
-    private:
-        std::shared_ptr<IUtmpxWrapper> m_utmpxWrapper;
+private:
+    std::shared_ptr<IUtmpxWrapper> m_utmpxWrapper;
 
-        static std::mutex utmpxMutex;
-        static const std::map<size_t, std::string> loginTypes;
+    static std::mutex utmpxMutex;
+    static const std::map<size_t, std::string> loginTypes;
 };

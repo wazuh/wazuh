@@ -24,16 +24,16 @@
 
 #ifdef WIN32
 
-char *get_release_from_build(char *os_build);
+char* get_release_from_build(char* os_build);
 
-os_info *get_win_version()
+os_info* get_win_version()
 {
-    os_info *info;
+    os_info* info;
     unsigned int i;
     char temp[1024];
     DWORD dwRet;
     HKEY RegistryKey;
-    char * subkey;
+    char* subkey;
     const DWORD vsize = 1024;
     TCHAR value[vsize];
     DWORD dwCount = vsize;
@@ -44,10 +44,10 @@ os_info *get_win_version()
     size_t ver_length = 60;
     size_t v_length = 20;
 
-    os_calloc(1,sizeof(os_info),info);
+    os_calloc(1, sizeof(os_info), info);
     os_calloc(vsize, sizeof(char), subkey);
 
-    typedef void (WINAPI * PGNSI)(LPSYSTEM_INFO);
+    typedef void(WINAPI * PGNSI)(LPSYSTEM_INFO);
 
     OSVERSIONINFOEX osvi;
     BOOL bOsVersionInfoEx;
@@ -58,9 +58,11 @@ os_info *get_win_version()
     ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
+    if (bOsVersionInfoEx = GetVersionEx((OSVERSIONINFO*)&osvi), !bOsVersionInfoEx)
+    {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-        if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+        if (!GetVersionEx((OSVERSIONINFO*)&osvi))
+        {
             free(info);
             free(subkey);
             return (NULL);
@@ -71,23 +73,28 @@ os_info *get_win_version()
     snprintf(version, 63, "%i.%i", (int)osvi.dwMajorVersion, (int)osvi.dwMinorVersion);
     info->version = strdup(version);
 
-    if (osvi.dwMajorVersion == 6) {
+    if (osvi.dwMajorVersion == 6)
+    {
 
         // Read Windows Version from registry
 
         snprintf(subkey, vsize - 1, "%s", "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
 
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS) {
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS)
+        {
             merror(SK_REG_OPEN, subkey);
             info->os_name = strdup("Microsoft Windows undefined version");
         }
-        else {
+        else
+        {
             dwRet = RegQueryValueEx(RegistryKey, TEXT("ProductName"), NULL, NULL, (LPBYTE)value, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'ProductName' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            if (dwRet != ERROR_SUCCESS)
+            {
+                merror("Error reading 'ProductName' from Windows registry. (Error %u)", (unsigned int)dwRet);
                 info->os_name = strdup("Microsoft Windows undefined version");
             }
-            else {
+            else
+            {
                 memset(temp, '\0', sizeof(temp));
                 strcpy(temp, "Microsoft ");
                 strncat(temp, value, 1022);
@@ -106,35 +113,48 @@ os_info *get_win_version()
         DWORD winMinor = 0;
         dwCount = size;
 
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS) {
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS)
+        {
             merror(SK_REG_OPEN, subkey);
         }
 
         // Windows 10
-        dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMajorVersionNumber"), NULL, &type, (LPBYTE)&winMajor, &dwCount);
-        if (dwRet == ERROR_SUCCESS) {
+        dwRet =
+            RegQueryValueEx(RegistryKey, TEXT("CurrentMajorVersionNumber"), NULL, &type, (LPBYTE)&winMajor, &dwCount);
+        if (dwRet == ERROR_SUCCESS)
+        {
             dwCount = size;
-            dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentMinorVersionNumber"), NULL, &type, (LPBYTE)&winMinor, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'CurrentMinorVersionNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            dwRet = RegQueryValueEx(
+                RegistryKey, TEXT("CurrentMinorVersionNumber"), NULL, &type, (LPBYTE)&winMinor, &dwCount);
+            if (dwRet != ERROR_SUCCESS)
+            {
+                merror("Error reading 'CurrentMinorVersionNumber' from Windows registry. (Error %u)",
+                       (unsigned int)dwRet);
             }
-            else {
+            else
+            {
                 snprintf(vn_temp, 63, "%d", (unsigned int)winMajor);
                 info->os_major = strdup(vn_temp);
                 snprintf(vn_temp, 63, "%d", (unsigned int)winMinor);
                 info->os_minor = strdup(vn_temp);
                 dwCount = size;
                 dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
-                if (dwRet != ERROR_SUCCESS) {
-                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                if (dwRet != ERROR_SUCCESS)
+                {
+                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)", (unsigned int)dwRet);
                 }
-                else {
+                else
+                {
                     DWORD ubr = 0;
                     DWORD ubr_size = sizeof(DWORD);
                     // Try to read UBR (Update Build Revision) for full patch version
-                    if (RegQueryValueEx(RegistryKey, TEXT("UBR"), NULL, &type, (LPBYTE)&ubr, &ubr_size) == ERROR_SUCCESS) {
+                    if (RegQueryValueEx(RegistryKey, TEXT("UBR"), NULL, &type, (LPBYTE)&ubr, &ubr_size) ==
+                        ERROR_SUCCESS)
+                    {
                         snprintf(vn_temp, 63, "%s.%u", wincomp, (unsigned int)ubr);
-                    } else {
+                    }
+                    else
+                    {
                         snprintf(vn_temp, 63, "%s", wincomp);
                     }
                     info->os_build = strdup(vn_temp);
@@ -143,36 +163,44 @@ os_info *get_win_version()
 
             dwCount = vsize;
             dwRet = RegQueryValueEx(RegistryKey, TEXT("ReleaseId"), NULL, NULL, (LPBYTE)value, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                mdebug1("Could not read the 'ReleaseId' key from Windows registry. (Error %u)",(unsigned int)dwRet);
+            if (dwRet != ERROR_SUCCESS)
+            {
+                mdebug1("Could not read the 'ReleaseId' key from Windows registry. (Error %u)", (unsigned int)dwRet);
                 info->os_release = get_release_from_build(info->os_build);
             }
-            else {
+            else
+            {
                 info->os_release = strdup(value);
             }
 
             RegCloseKey(RegistryKey);
         }
         // Windows 6.2 or 6.3
-        else {
+        else
+        {
             dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentVersion"), NULL, NULL, (LPBYTE)winver, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'Current Version' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            if (dwRet != ERROR_SUCCESS)
+            {
+                merror("Error reading 'Current Version' from Windows registry. (Error %u)", (unsigned int)dwRet);
             }
-            else {
-                char ** parts = OS_StrBreak('.', winver, 2);
+            else
+            {
+                char** parts = OS_StrBreak('.', winver, 2);
                 info->os_major = strdup(parts[0]);
                 info->os_minor = strdup(parts[1]);
-                for (i = 0; parts[i]; i++){
+                for (i = 0; parts[i]; i++)
+                {
                     free(parts[i]);
                 }
                 free(parts);
                 dwCount = size;
                 dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
-                if (dwRet != ERROR_SUCCESS) {
-                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                if (dwRet != ERROR_SUCCESS)
+                {
+                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)", (unsigned int)dwRet);
                 }
-                else {
+                else
+                {
                     snprintf(vn_temp, 63, "%s", wincomp);
                     info->os_build = strdup(vn_temp);
                 }
@@ -184,60 +212,80 @@ os_info *get_win_version()
         info->os_version = strdup(version);
 
         // Detect Windows 11 based on build number (Windows 11 starts at build 22000)
-        if (info->os_name && strstr(info->os_name, "Windows 10") && atoi(info->os_build) >= 22000) {
-            char *pos = strstr(info->os_name, "Windows 10");
-            if (pos) {
+        if (info->os_name && strstr(info->os_name, "Windows 10") && atoi(info->os_build) >= 22000)
+        {
+            char* pos = strstr(info->os_name, "Windows 10");
+            if (pos)
+            {
                 pos[9] = '1'; // Change "Windows 10" to "Windows 11"
             }
         }
     }
-    else {
-        if (osvi.dwMajorVersion == 5) {
-            if (osvi.dwMinorVersion == 0) {
+    else
+    {
+        if (osvi.dwMajorVersion == 5)
+        {
+            if (osvi.dwMinorVersion == 0)
+            {
                 info->os_name = strdup("Microsoft Windows 2000");
             }
-            else if (osvi.dwMinorVersion == 1) {
+            else if (osvi.dwMinorVersion == 1)
+            {
                 info->os_name = strdup("Microsoft Windows XP");
             }
-            else if (osvi.dwMinorVersion == 2) {
-                pGNSI = (PGNSI)(LPSYSTEM_INFO)GetProcAddress(GetModuleHandle("kernel32.dll"),"GetNativeSystemInfo");
-                if (NULL != pGNSI) {
+            else if (osvi.dwMinorVersion == 2)
+            {
+                pGNSI = (PGNSI)(LPSYSTEM_INFO)GetProcAddress(GetModuleHandle("kernel32.dll"), "GetNativeSystemInfo");
+                if (NULL != pGNSI)
+                {
                     pGNSI(&si);
-                } else {
+                }
+                else
+                {
                     mwarn("It was not possible to retrieve GetNativeSystemInfo from kernek32.dll");
                 }
-                if (osvi.wProductType == VER_NT_WORKSTATION && si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
+                if (osvi.wProductType == VER_NT_WORKSTATION &&
+                    si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
+                {
                     info->os_name = strdup("Microsoft Windows XP Professional x64 Edition");
                 }
-                else {
-                    if ( GetSystemMetrics(89) != 0 ) {
+                else
+                {
+                    if (GetSystemMetrics(89) != 0)
+                    {
                         info->os_name = strdup("Microsoft Windows Server 2003 R2");
                     }
-                    else {
+                    else
+                    {
                         info->os_name = strdup("Microsoft Windows Server 2003");
                     }
                 }
             }
-        } else if (osvi.dwMajorVersion == 4) {
-            switch (osvi.dwPlatformId) {
-                case VER_PLATFORM_WIN32_NT:
-                    info->os_name = strdup("Microsoft Windows NT");
-                    break;
+        }
+        else if (osvi.dwMajorVersion == 4)
+        {
+            switch (osvi.dwPlatformId)
+            {
+                case VER_PLATFORM_WIN32_NT: info->os_name = strdup("Microsoft Windows NT"); break;
 
                 case VER_PLATFORM_WIN32_WINDOWS:
-                    if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 0) {
+                    if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 0)
+                    {
                         info->os_name = strdup("Microsoft Windows 95");
                     }
-                    if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 10) {
+                    if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 10)
+                    {
                         info->os_name = strdup("Microsoft Windows 98");
                     }
-                    if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 90) {
+                    if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 90)
+                    {
                         info->os_name = strdup("Microsoft Windows ME");
                     }
                     break;
             }
         }
-        else {
+        else
+        {
             info->os_name = strdup("Microsoft Windows");
         }
 
@@ -246,52 +294,46 @@ os_info *get_win_version()
         os_calloc(v_length + 1, sizeof(char), info->os_minor);
         os_calloc(v_length + 1, sizeof(char), info->os_build);
 
-        snprintf(info->os_major, v_length, "%i",(int)osvi.dwMajorVersion);
-        snprintf(info->os_minor, v_length, "%i",(int)osvi.dwMinorVersion);
-        snprintf(info->os_build, v_length, "%d",(int)osvi.dwBuildNumber & 0xFFFF);
-        snprintf(info->os_version, ver_length, "%i.%i.%d",
+        snprintf(info->os_major, v_length, "%i", (int)osvi.dwMajorVersion);
+        snprintf(info->os_minor, v_length, "%i", (int)osvi.dwMinorVersion);
+        snprintf(info->os_build, v_length, "%d", (int)osvi.dwBuildNumber & 0xFFFF);
+        snprintf(info->os_version,
+                 ver_length,
+                 "%i.%i.%d",
                  (int)osvi.dwMajorVersion,
                  (int)osvi.dwMinorVersion,
-                 (int)osvi.dwBuildNumber & 0xFFFF );
-
+                 (int)osvi.dwBuildNumber & 0xFFFF);
     }
 
     // Read Service Pack
-    if(!info->os_release) {
+    if (!info->os_release)
+    {
         DWORD service_pack = 0;
         dwCount = sizeof(DWORD);
         snprintf(subkey, vsize - 1, "%s", "SYSTEM\\CurrentControlSet\\Control\\Windows");
 
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS) {
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS)
+        {
             merror(SK_REG_OPEN, subkey);
         }
-        else {
+        else
+        {
             dwRet = RegQueryValueEx(RegistryKey, TEXT("CSDVersion"), NULL, &type, (LPBYTE)&service_pack, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'CSDVersion' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            if (dwRet != ERROR_SUCCESS)
+            {
+                merror("Error reading 'CSDVersion' from Windows registry. (Error %u)", (unsigned int)dwRet);
             }
-            else {
-                switch(service_pack) {
-                case 256:
-                    info->os_release = strdup("sp1");
-                    break;
-                case 512:
-                    info->os_release = strdup("sp2");
-                    break;
-                case 768:
-                    info->os_release = strdup("sp3");
-                    break;
-                case 1024:
-                    info->os_release = strdup("sp4");
-                    break;
-                case 1280:
-                    info->os_release = strdup("sp5");
-                    break;
-                case 1536:
-                    info->os_release = strdup("sp6");
-                    break;
-                default:
-                    mdebug2("The value of CSDVersion is not a recognizable service pack.: %lu.", service_pack);
+            else
+            {
+                switch (service_pack)
+                {
+                    case 256: info->os_release = strdup("sp1"); break;
+                    case 512: info->os_release = strdup("sp2"); break;
+                    case 768: info->os_release = strdup("sp3"); break;
+                    case 1024: info->os_release = strdup("sp4"); break;
+                    case 1280: info->os_release = strdup("sp5"); break;
+                    case 1536: info->os_release = strdup("sp6"); break;
+                    default: mdebug2("The value of CSDVersion is not a recognizable service pack.: %lu.", service_pack);
                 }
             }
             RegCloseKey(RegistryKey);
@@ -302,26 +344,34 @@ os_info *get_win_version()
 
     snprintf(subkey, vsize - 1, "%s", "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
 
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS) {
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS)
+    {
         merror(SK_REG_OPEN, subkey);
-    } else {
+    }
+    else
+    {
         char arch[64] = "";
         dwCount = sizeof(arch);
         dwRet = RegQueryValueEx(RegistryKey, TEXT("PROCESSOR_ARCHITECTURE"), NULL, NULL, (LPBYTE)&arch, &dwCount);
 
-        if (dwRet != ERROR_SUCCESS) {
-            merror("Error reading 'Architecture' from Windows registry. (Error %u)",(unsigned int)dwRet);
-        } else {
-            const char *machine = win_processor_arch_to_machine(arch);
+        if (dwRet != ERROR_SUCCESS)
+        {
+            merror("Error reading 'Architecture' from Windows registry. (Error %u)", (unsigned int)dwRet);
+        }
+        else
+        {
+            const char* machine = win_processor_arch_to_machine(arch);
 
-            if (machine) {
+            if (machine)
+            {
                 info->machine = strdup(machine);
             }
         }
         RegCloseKey(RegistryKey);
     }
 
-    if (!info->machine) {
+    if (!info->machine)
+    {
         info->machine = strdup("unknown");
     }
 
@@ -329,21 +379,28 @@ os_info *get_win_version()
 
     snprintf(subkey, vsize - 1, "%s", "System\\CurrentControlSet\\Control\\ComputerName\\ActiveComputerName");
     char nodename[1024] = "";
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS) {
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &RegistryKey) != ERROR_SUCCESS)
+    {
         merror(SK_REG_OPEN, subkey);
-    } else {
+    }
+    else
+    {
         dwCount = size;
         dwRet = RegQueryValueEx(RegistryKey, TEXT("ComputerName"), NULL, NULL, (LPBYTE)&nodename, &dwCount);
 
-        if (dwRet != ERROR_SUCCESS) {
-            merror("Error reading 'hostname' from Windows registry. (Error %u)",(unsigned int)dwRet);
-        } else {
+        if (dwRet != ERROR_SUCCESS)
+        {
+            merror("Error reading 'hostname' from Windows registry. (Error %u)", (unsigned int)dwRet);
+        }
+        else
+        {
             info->nodename = strdup(nodename);
         }
         RegCloseKey(RegistryKey);
     }
 
-    if (!info->nodename) {
+    if (!info->nodename)
+    {
         info->nodename = strdup("unknown");
     }
 
@@ -352,29 +409,50 @@ os_info *get_win_version()
     return info;
 }
 
-char *get_release_from_build(char *os_build) {
-    char *retval = NULL;
+char* get_release_from_build(char* os_build)
+{
+    char* retval = NULL;
 
-    if (os_build) {
-        if (!strcmp(os_build, "10240")) {
+    if (os_build)
+    {
+        if (!strcmp(os_build, "10240"))
+        {
             os_strdup("1507", retval);
-        } else if (!strcmp(os_build, "10586")) {
+        }
+        else if (!strcmp(os_build, "10586"))
+        {
             os_strdup("1511", retval);
-        } else if (!strcmp(os_build, "14393")) {
+        }
+        else if (!strcmp(os_build, "14393"))
+        {
             os_strdup("1607", retval);
-        } else if (!strcmp(os_build, "15063")) {
+        }
+        else if (!strcmp(os_build, "15063"))
+        {
             os_strdup("1703", retval);
-        } else if (!strcmp(os_build, "16299")) {
+        }
+        else if (!strcmp(os_build, "16299"))
+        {
             os_strdup("1709", retval);
-        } else if (!strcmp(os_build, "17134")) {
+        }
+        else if (!strcmp(os_build, "17134"))
+        {
             os_strdup("1803", retval);
-        } else if (!strcmp(os_build, "17763")) {
+        }
+        else if (!strcmp(os_build, "17763"))
+        {
             os_strdup("1809", retval);
-        } else if (!strcmp(os_build, "18362")) {
+        }
+        else if (!strcmp(os_build, "18362"))
+        {
             os_strdup("1903", retval);
-        } else if (!strcmp(os_build, "18363")) {
+        }
+        else if (!strcmp(os_build, "18363"))
+        {
             os_strdup("1909", retval);
-        } else {
+        }
+        else
+        {
             mdebug1("The release associated with the %s build is not recognized.", os_build);
         }
     }
@@ -384,106 +462,134 @@ char *get_release_from_build(char *os_build) {
 
 #else
 
-const char *OSX_ReleaseName(int version) {
-    const char *R_NAMES[] = {
-    /* 10 */ "Snow Leopard",
-    /* 11 */ "Lion",
-    /* 12 */ "Mountain Lion",
-    /* 13 */ "Mavericks",
-    /* 14 */ "Yosemite",
-    /* 15 */ "El Capitan",
-    /* 16 */ "Sierra",
-    /* 17 */ "High Sierra",
-    /* 18 */ "Mojave",
-    /* 19 */ "Catalina",
-    /* 20 */ "Big Sur",
-    /* 21 */ "Monterey",
-    /* 22 */ "Ventura",
-    /* 23 */ "Sonoma",
-    /* 24 */ "Sequoia",
-    /* 25 */ "Tahoe",
-    /* 26 */ OSX_UNKNOWN_RELEASE_NAME, /* No macOS release uses Darwin 26 */
-    /* 27 */ "Golden Gate",
+const char* OSX_ReleaseName(int version)
+{
+    const char* R_NAMES[] = {
+        /* 10 */ "Snow Leopard",
+        /* 11 */ "Lion",
+        /* 12 */ "Mountain Lion",
+        /* 13 */ "Mavericks",
+        /* 14 */ "Yosemite",
+        /* 15 */ "El Capitan",
+        /* 16 */ "Sierra",
+        /* 17 */ "High Sierra",
+        /* 18 */ "Mojave",
+        /* 19 */ "Catalina",
+        /* 20 */ "Big Sur",
+        /* 21 */ "Monterey",
+        /* 22 */ "Ventura",
+        /* 23 */ "Sonoma",
+        /* 24 */ "Sequoia",
+        /* 25 */ "Tahoe",
+        /* 26 */ OSX_UNKNOWN_RELEASE_NAME, /* No macOS release uses Darwin 26 */
+        /* 27 */ "Golden Gate",
     };
 
     version -= 10;
 
-    if (version >= 0 && (unsigned)version < sizeof(R_NAMES) / sizeof(char *)) {
+    if (version >= 0 && (unsigned)version < sizeof(R_NAMES) / sizeof(char*))
+    {
         return R_NAMES[version];
-    } else {
+    }
+    else
+    {
         return OSX_UNKNOWN_RELEASE_NAME;
     }
 }
 
-
-os_info *get_unix_version()
+os_info* get_unix_version()
 {
     FILE *os_release, *cmd_output, *version_release, *cmd_output_ver;
     char buff[OS_SIZE_256];
     char *tag, *end;
-    char *name = NULL;
-    char *id = NULL;
-    char *version = NULL;
-    char *version_id = NULL;
-    char *codename = NULL;
-    char *rhel_version = NULL;
-    char *save_ptr = NULL;
+    char* name = NULL;
+    char* id = NULL;
+    char* version = NULL;
+    char* version_id = NULL;
+    char* codename = NULL;
+    char* rhel_version = NULL;
+    char* save_ptr = NULL;
     regmatch_t match[2];
     int match_size;
     struct utsname uts_buf;
-    os_info *info;
+    os_info* info;
 
-    os_calloc(1,sizeof(os_info),info);
+    os_calloc(1, sizeof(os_info), info);
 
     // Try to open /etc/os-release
     os_release = wfopen("/etc/os-release", "r");
     // Try to open /usr/lib/os-release
-    if (!os_release) os_release = wfopen("/usr/lib/os-release", "r");
+    if (!os_release)
+        os_release = wfopen("/usr/lib/os-release", "r");
 
-    if (os_release) {
-        while (fgets(buff, sizeof(buff)- 1, os_release)) {
+    if (os_release)
+    {
+        while (fgets(buff, sizeof(buff) - 1, os_release))
+        {
             tag = strtok_r(buff, "=", &save_ptr);
-            if (tag) {
-                if (strcmp (tag,"NAME") == 0) {
-                    if (!name) {
+            if (tag)
+            {
+                if (strcmp(tag, "NAME") == 0)
+                {
+                    if (!name)
+                    {
                         name = strtok_r(NULL, "\n", &save_ptr);
-                        if (name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
+                        if (name[0] == '\"' && (end = strchr(++name, '\"'), end))
+                        {
                             *end = '\0';
                         }
                         info->os_name = strdup(name);
                     }
-                } else if (strcmp (tag,"VERSION") == 0) {
-                    if (!version) {
-                        if (version_id) {
+                }
+                else if (strcmp(tag, "VERSION") == 0)
+                {
+                    if (!version)
+                    {
+                        if (version_id)
+                        {
                             os_free(info->os_version);
                         }
                         version = strtok_r(NULL, "\n", &save_ptr);
-                        if (version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
+                        if (version[0] == '\"' && (end = strchr(++version, '\"'), end))
+                        {
                             *end = '\0';
                         }
                         info->os_version = strdup(version);
                     }
-                } else if (strcmp (tag,"VERSION_ID") == 0) {
-                    if (!version && !version_id) {
+                }
+                else if (strcmp(tag, "VERSION_ID") == 0)
+                {
+                    if (!version && !version_id)
+                    {
                         version_id = strtok_r(NULL, "\n", &save_ptr);
-                        if (version_id[0] == '\"' && (end = strchr(++version_id, '\"'), end)) {
+                        if (version_id[0] == '\"' && (end = strchr(++version_id, '\"'), end))
+                        {
                             *end = '\0';
                         }
                         info->os_version = strdup(version_id);
                     }
-                } else if (strcmp (tag,"ID") == 0) {
-                    if (!id) {
+                }
+                else if (strcmp(tag, "ID") == 0)
+                {
+                    if (!id)
+                    {
                         id = strtok_r(NULL, " \n", &save_ptr);
-                        if (id[0] == '\"' && (end = strchr(++id, '\"'), end)) {
+                        if (id[0] == '\"' && (end = strchr(++id, '\"'), end))
+                        {
                             *end = '\0';
                         }
                         info->os_platform = strdup(id);
                     }
-                } else if (strcmp (tag,"RHEL_VERSION") == 0) {
-                    if (!rhel_version) {
-                        char *value = strtok_r(NULL, "\n", &save_ptr);
-                        if (value) {
-                            if (value[0] == '\"' && (end = strchr(++value, '\"'), end)) {
+                }
+                else if (strcmp(tag, "RHEL_VERSION") == 0)
+                {
+                    if (!rhel_version)
+                    {
+                        char* value = strtok_r(NULL, "\n", &save_ptr);
+                        if (value)
+                        {
+                            if (value[0] == '\"' && (end = strchr(++value, '\"'), end))
+                            {
                                 *end = '\0';
                             }
                             os_strdup(value, rhel_version);
@@ -496,55 +602,72 @@ os_info *get_unix_version()
 
         // If the OS is CentOS, try to get the version from the 'centos-release' file.
         // If the OS is Arch Linux, openSUSE Tumbleweed set os_version as empty string.
-        if (info->os_platform) {
-            if (strcmp(info->os_platform, "centos") == 0) {
+        if (info->os_platform)
+        {
+            if (strcmp(info->os_platform, "centos") == 0)
+            {
                 regex_t regexCompiled;
                 regmatch_t match[2];
                 int match_size;
-                if (version_release = wfopen("/etc/centos-release","r"), version_release){
+                if (version_release = wfopen("/etc/centos-release", "r"), version_release)
+                {
                     os_free(info->os_version);
-                    static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
-                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                    static const char* pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+                    if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+                    {
                         merror_exit("Cannot compile regular expression.");
                     }
-                    while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                        if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    while (fgets(buff, sizeof(buff) - 1, version_release))
+                    {
+                        if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                        {
                             match_size = match[1].rm_eo - match[1].rm_so;
                             os_malloc(match_size + 1, info->os_version);
-                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                            snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                             break;
                         }
                     }
                     regfree(&regexCompiled);
                     fclose(version_release);
                 }
-            } else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0 ||
-                          strcmp(info->os_platform, "arch") == 0) {
+            }
+            else if (strcmp(info->os_platform, "opensuse-tumbleweed") == 0 || strcmp(info->os_platform, "arch") == 0)
+            {
                 os_free(info->os_version);
                 os_strdup("", info->os_version);
-            } else if (strcmp(info->os_platform, "sles") == 0 ||
-                          strcmp(info->os_platform, "sled") == 0) {
+            }
+            else if (strcmp(info->os_platform, "sles") == 0 || strcmp(info->os_platform, "sled") == 0)
+            {
                 // SUSE Linux Enterprise (Server/Desktop) reports VERSION as
                 // "<major>-SP<minor>" (e.g. "15-SP6") instead of the host-readable
                 // "<major>.<minor>" (e.g. "15.6") used by VERSION_ID.
-                if (info->os_version) {
+                if (info->os_version)
+                {
                     regmatch_t match[3];
-                    if (w_regexec("^([0-9]+)-[Ss][Pp]([0-9]+)$", info->os_version, 3, match)) {
+                    if (w_regexec("^([0-9]+)-[Ss][Pp]([0-9]+)$", info->os_version, 3, match))
+                    {
                         int major_size = match[1].rm_eo - match[1].rm_so;
                         int minor_size = match[2].rm_eo - match[2].rm_so;
-                        char *new_version;
+                        char* new_version;
                         os_malloc(major_size + minor_size + 2, new_version);
-                        snprintf(new_version, major_size + minor_size + 2, "%.*s.%.*s",
-                                 major_size, info->os_version + match[1].rm_so,
-                                 minor_size, info->os_version + match[2].rm_so);
+                        snprintf(new_version,
+                                 major_size + minor_size + 2,
+                                 "%.*s.%.*s",
+                                 major_size,
+                                 info->os_version + match[1].rm_so,
+                                 minor_size,
+                                 info->os_version + match[2].rm_so);
                         os_free(info->os_version);
                         info->os_version = new_version;
                     }
                 }
-            } else if (strcmp(info->os_platform, "rhcos") == 0) {
+            }
+            else if (strcmp(info->os_platform, "rhcos") == 0)
+            {
                 // RHCOS up to OpenShift 4.19 reports the OpenShift release in VERSION/VERSION_ID;
                 // the RHEL base is only in RHEL_VERSION.
-                if (rhel_version && w_regexec("^[0-9]+", rhel_version, 0, NULL)) {
+                if (rhel_version && w_regexec("^[0-9]+", rhel_version, 0, NULL))
+                {
                     os_free(info->os_version);
                     os_strdup(rhel_version, info->os_version);
                 }
@@ -553,7 +676,8 @@ os_info *get_unix_version()
         os_free(rhel_version);
     }
 
-    if (!info->os_name || (!info->os_version && !info->os_build) || !info->os_platform) {
+    if (!info->os_name || (!info->os_version && !info->os_build) || !info->os_platform)
+    {
         os_free(info->os_name);
         os_free(info->os_version);
         os_free(info->os_platform);
@@ -563,254 +687,335 @@ os_info *get_unix_version()
         int match_size;
 
         // CentOS
-        if (version_release = wfopen("/etc/centos-release","r"), version_release){
+        if (version_release = wfopen("/etc/centos-release", "r"), version_release)
+        {
             info->os_name = strdup("CentOS Linux");
             info->os_platform = strdup("centos");
-            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Can not compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        // Fedora
-        } else if (version_release = wfopen("/etc/fedora-release","r"), version_release){
+            // Fedora
+        }
+        else if (version_release = wfopen("/etc/fedora-release", "r"), version_release)
+        {
             info->os_name = strdup("Fedora");
             info->os_platform = strdup("fedora");
-            static const char *pattern = " ([0-9][0-9]*) ";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = " ([0-9][0-9]*) ";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Can not compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf(info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        // RedHat
-        } else if (version_release = wfopen("/etc/redhat-release","r"), version_release){
-            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            // RedHat
+        }
+        else if (version_release = wfopen("/etc/redhat-release", "r"), version_release)
+        {
+            static const char* pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Can not compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if (strstr(buff, "CentOS")){
-                        info->os_name = strdup("CentOS Linux");
-                        info->os_platform = strdup("centos");
-                } else if (strstr(buff, "Fedora")){
-                        info->os_name = strdup("Fedora");
-                        info->os_platform = strdup("fedora");
-                } else {
-                    if (strstr(buff, "Server")){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (strstr(buff, "CentOS"))
+                {
+                    info->os_name = strdup("CentOS Linux");
+                    info->os_platform = strdup("centos");
+                }
+                else if (strstr(buff, "Fedora"))
+                {
+                    info->os_name = strdup("Fedora");
+                    info->os_platform = strdup("fedora");
+                }
+                else
+                {
+                    if (strstr(buff, "Server"))
+                    {
                         info->os_name = strdup("Red Hat Enterprise Linux Server");
-                    } else {
+                    }
+                    else
+                    {
                         info->os_name = strdup("Red Hat Enterprise Linux");
                     }
                     info->os_platform = strdup("rhel");
                 }
 
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        // Arch
-        } else if (version_release = wfopen("/etc/arch-release","r"), version_release){
+            // Arch
+        }
+        else if (version_release = wfopen("/etc/arch-release", "r"), version_release)
+        {
             info->os_name = strdup("Arch Linux");
             info->os_platform = strdup("arch");
-            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Cannot compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
-            if (info->os_version == NULL) {
+            if (info->os_version == NULL)
+            {
                 os_strdup("", info->os_version);
             }
 
             regfree(&regexCompiled);
             fclose(version_release);
-        // Gentoo
-        } else if (version_release = wfopen("/etc/gentoo-release","r"), version_release){
+            // Gentoo
+        }
+        else if (version_release = wfopen("/etc/gentoo-release", "r"), version_release)
+        {
             info->os_name = strdup("Gentoo");
             info->os_platform = strdup("gentoo");
-            static const char *pattern = " ([0-9][0-9]*\\.?[0-9]*)\\.*";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = " ([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Cannot compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        // SuSE
-        } else if (version_release = wfopen("/etc/SuSE-release","r"), version_release){
+            // SuSE
+        }
+        else if (version_release = wfopen("/etc/SuSE-release", "r"), version_release)
+        {
             info->os_name = strdup("SuSE Linux");
             info->os_platform = strdup("suse");
-            static const char *pattern = ".*VERSION = ([0-9][0-9]*)";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = ".*VERSION = ([0-9][0-9]*)";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Cannot compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        // Ubuntu
-        } else if (version_release = wfopen("/etc/lsb-release","r"), version_release){
+            // Ubuntu
+        }
+        else if (version_release = wfopen("/etc/lsb-release", "r"), version_release)
+        {
             info->os_name = strdup("Ubuntu");
             info->os_platform = strdup("ubuntu");
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
                 tag = strtok_r(buff, "=", &save_ptr);
-                if (tag && strcmp(tag,"DISTRIB_RELEASE") == 0){
+                if (tag && strcmp(tag, "DISTRIB_RELEASE") == 0)
+                {
                     info->os_version = strdup(strtok_r(NULL, "\n", &save_ptr));
                     break;
                 }
             }
             fclose(version_release);
-        // Debian
-        } else if (version_release = wfopen("/etc/debian_version","r"), version_release){
+            // Debian
+        }
+        else if (version_release = wfopen("/etc/debian_version", "r"), version_release)
+        {
             info->os_name = strdup("Debian GNU/Linux");
             info->os_platform = strdup("debian");
-            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Cannot compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        // Slackware
-        } else if (version_release = wfopen("/etc/slackware-version","r"), version_release){
+            // Slackware
+        }
+        else if (version_release = wfopen("/etc/slackware-version", "r"), version_release)
+        {
             info->os_name = strdup("Slackware");
             info->os_platform = strdup("slackware");
-            static const char *pattern = " ([0-9][0-9]*\\.?[0-9]*)\\.*";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = " ([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Cannot compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 2, match, 0) == 0)
+                {
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        // Alpine
-        } else if (version_release = wfopen("/etc/alpine-release","r"), version_release){
+            // Alpine
+        }
+        else if (version_release = wfopen("/etc/alpine-release", "r"), version_release)
+        {
             info->os_name = strdup("Alpine Linux");
             info->os_platform = strdup("alpine");
-            static const char *pattern = "([0-9]+\\.)?([0-9]+\\.)?([0-9]+)";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+            static const char* pattern = "([0-9]+\\.)?([0-9]+\\.)?([0-9]+)";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED))
+            {
                 merror_exit("Cannot compile regular expression.");
             }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 4, match, 0) == 0){
+            while (fgets(buff, sizeof(buff) - 1, version_release))
+            {
+                if (regexec(&regexCompiled, buff, 4, match, 0) == 0)
+                {
                     match_size = match[0].rm_eo - match[0].rm_so;
                     os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[0].rm_so);
+                    snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[0].rm_so);
                     break;
                 }
             }
             regfree(&regexCompiled);
             fclose(version_release);
-        } else {
-            char *uname_path = NULL;
+        }
+        else
+        {
+            char* uname_path = NULL;
 
-            if (get_binary_path("uname", &uname_path) < 0) {
+            if (get_binary_path("uname", &uname_path) < 0)
+            {
                 mdebug1("Binary '%s' not found in default paths, the full path will not be used.", uname_path);
             }
 
-            if (cmd_output = popen(uname_path, "r"), cmd_output) {
+            if (cmd_output = popen(uname_path, "r"), cmd_output)
+            {
                 char full_cmd[OS_MAXSTR] = {0};
 
-                if (fgets(buff,sizeof(buff) - 1, cmd_output) == NULL) {
+                if (fgets(buff, sizeof(buff) - 1, cmd_output) == NULL)
+                {
                     mdebug1("Cannot read from command output (uname).");
-                // MacOSX
-                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Darwin") == 0) {
-                    char *cmd_path = NULL;
+                    // MacOSX
+                }
+                else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Darwin") == 0)
+                {
+                    char* cmd_path = NULL;
                     info->os_platform = strdup("darwin");
 
-                    if (get_binary_path("system_profiler", &cmd_path) < 0) {
+                    if (get_binary_path("system_profiler", &cmd_path) < 0)
+                    {
                         mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
                     }
 
                     snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "SPSoftwareDataType");
-                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                        while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL) {
-                            char *key = strtok_r(buff, ":", &save_ptr);
-                            if (key) {
-                                const char *expected_key = "System Version";
-                                char *trimmed_key = w_strtrim(key);
-                                if (NULL != trimmed_key && strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0) {
-                                    char *value = strtok_r(NULL, " ", &save_ptr);
-                                    if (value) {
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver)
+                    {
+                        while (fgets(buff, sizeof(buff), cmd_output_ver) != NULL)
+                        {
+                            char* key = strtok_r(buff, ":", &save_ptr);
+                            if (key)
+                            {
+                                const char* expected_key = "System Version";
+                                char* trimmed_key = w_strtrim(key);
+                                if (NULL != trimmed_key &&
+                                    strncmp(trimmed_key, expected_key, strlen(expected_key)) == 0)
+                                {
+                                    char* value = strtok_r(NULL, " ", &save_ptr);
+                                    if (value)
+                                    {
                                         w_strdup(value, info->os_name);
-                                    } else {
-                                        mdebug1("Cannot parse System Version value (system_profiler SPSoftwareDataType).");
+                                    }
+                                    else
+                                    {
+                                        mdebug1(
+                                            "Cannot parse System Version value (system_profiler SPSoftwareDataType).");
                                     }
                                 }
-                                if(info->os_name) {
+                                if (info->os_name)
+                                {
                                     break;
                                 }
                             }
                         }
-                        if (NULL == info->os_name) {
+                        if (NULL == info->os_name)
+                        {
                             mdebug1("Cannot read from command output (system_profiler SPSoftwareDataType).");
                         }
                         pclose(cmd_output_ver);
                     }
 
                     os_free(cmd_path);
-                    if (get_binary_path("sw_vers", &cmd_path) < 0) {
+                    if (get_binary_path("sw_vers", &cmd_path) < 0)
+                    {
                         mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
                     }
 
                     memset(full_cmd, '\0', OS_MAXSTR);
                     snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-productVersion");
-                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver)
+                    {
+                        if (fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL)
+                        {
                             mdebug1("Cannot read from command output (sw_vers -productVersion).");
-                        } else {
+                        }
+                        else
+                        {
                             w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_version);
                         }
                         pclose(cmd_output_ver);
@@ -818,10 +1023,14 @@ os_info *get_unix_version()
 
                     memset(full_cmd, '\0', OS_MAXSTR);
                     snprintf(full_cmd, sizeof(full_cmd), "%s %s", cmd_path, "-buildVersion");
-                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver)
+                    {
+                        if (fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL)
+                        {
                             mdebug1("Cannot read from command output (sw_vers -buildVersion).");
-                        } else {
+                        }
+                        else
+                        {
                             w_strdup(strtok_r(buff, "\n", &save_ptr), info->os_build);
                         }
                         pclose(cmd_output_ver);
@@ -829,19 +1038,24 @@ os_info *get_unix_version()
 
                     memset(full_cmd, '\0', OS_MAXSTR);
                     snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
-                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver)
+                    {
+                        if (fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL)
+                        {
                             mdebug1("Cannot read from command output (uname -r).");
-                        } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
+                        }
+                        else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match))
+                        {
                             match_size = match[1].rm_eo - match[1].rm_so;
-                            char *kern = NULL;
+                            char* kern = NULL;
                             os_malloc(match_size + 1, kern);
-                            snprintf(kern, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                            const char *release_name = OSX_ReleaseName(atoi(kern));
+                            snprintf(kern, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
+                            const char* release_name = OSX_ReleaseName(atoi(kern));
                             /* Leave the codename unset for Darwin versions that are not in the release
                              * name table yet, so the reported version stays clean instead of showing
                              * "<version> (Unknown)" on every macOS release newer than the table. */
-                            if (strcmp(release_name, OSX_UNKNOWN_RELEASE_NAME) != 0) {
+                            if (strcmp(release_name, OSX_UNKNOWN_RELEASE_NAME) != 0)
+                            {
                                 w_strdup(release_name, info->os_codename);
                             }
                             free(kern);
@@ -849,41 +1063,55 @@ os_info *get_unix_version()
                         pclose(cmd_output_ver);
                     }
                     os_free(cmd_path);
-                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"OpenBSD") == 0 ||
-                        strcmp(strtok_r(buff, "\n", &save_ptr),"NetBSD")  == 0 ||
-                        strcmp(strtok_r(buff, "\n", &save_ptr),"FreeBSD") == 0 ){ // BSD
+                }
+                else if (strcmp(strtok_r(buff, "\n", &save_ptr), "OpenBSD") == 0 ||
+                         strcmp(strtok_r(buff, "\n", &save_ptr), "NetBSD") == 0 ||
+                         strcmp(strtok_r(buff, "\n", &save_ptr), "FreeBSD") == 0)
+                { // BSD
                     info->os_name = strdup("BSD");
                     info->os_platform = strdup("bsd");
 
                     memset(full_cmd, '\0', OS_MAXSTR);
                     snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
-                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver)
+                    {
+                        if (fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL)
+                        {
                             mdebug1("Cannot read from command output (uname -r).");
-                        } else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match)){
+                        }
+                        else if (w_regexec("([0-9][0-9]*\\.?[0-9]*)\\.*", buff, 2, match))
+                        {
                             match_size = match[1].rm_eo - match[1].rm_so;
                             os_malloc(match_size + 1, info->os_version);
-                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                            snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                         }
                         pclose(cmd_output_ver);
                     }
-                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"ZscalerOS") == 0) {
+                }
+                else if (strcmp(strtok_r(buff, "\n", &save_ptr), "ZscalerOS") == 0)
+                {
                     info->os_name = strdup("BSD");
                     info->os_platform = strdup("bsd");
 
                     memset(full_cmd, '\0', OS_MAXSTR);
                     snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
-                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver)
+                    {
+                        if (fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL)
+                        {
                             mdebug1("Cannot read from command output (uname -r).");
-                        } else if (w_regexec("([0-9]+-\\S*).*", buff, 2, match)){
+                        }
+                        else if (w_regexec("([0-9]+-\\S*).*", buff, 2, match))
+                        {
                             match_size = match[1].rm_eo - match[1].rm_so;
                             os_malloc(match_size + 1, info->os_version);
-                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                            snprintf(info->os_version, match_size + 1, "%.*s", match_size, buff + match[1].rm_so);
                         }
                         pclose(cmd_output_ver);
                     }
-                } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0) { // Linux undefined
+                }
+                else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0)
+                { // Linux undefined
                     info->os_name = strdup("Linux");
                     info->os_platform = strdup("linux");
                 }
@@ -893,21 +1121,27 @@ os_info *get_unix_version()
         }
     }
 
-    if (uname(&uts_buf) >= 0) {
+    if (uname(&uts_buf) >= 0)
+    {
         os_strdup(uts_buf.sysname, info->sysname);
         os_strdup(uts_buf.nodename, info->nodename);
         os_strdup(uts_buf.release, info->release);
         os_strdup(uts_buf.version, info->version);
         os_strdup(uts_buf.machine, info->machine);
-    } else {
+    }
+    else
+    {
         goto free_os_info;
     }
 
-    if (info->os_version) { // Parsing version
-        if (strcmp(info->os_version, "") != 0) {
+    if (info->os_version)
+    { // Parsing version
+        if (strcmp(info->os_version, "") != 0)
+        {
             // os_major.os_minor (os_codename)
             os_strdup(info->os_version, version);
-            if (codename = strstr(version, " ("), codename){
+            if (codename = strstr(version, " ("), codename)
+            {
                 *codename = '\0';
                 codename += 2;
                 *(codename + strlen(codename) - 1) = '\0';
@@ -915,27 +1149,32 @@ os_info *get_unix_version()
             }
             free(version);
             // Get os_major
-            if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match)) {
+            if (w_regexec("^([0-9]+)\\.*", info->os_version, 2, match))
+            {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, info->os_major);
                 snprintf(info->os_major, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
             }
             // Get os_minor
-            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match)) {
+            if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", info->os_version, 2, match))
+            {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, info->os_minor);
                 snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
             }
             // Get os_patch
-            if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match)) {
+            if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)*", info->os_version, 2, match))
+            {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, info->os_patch);
                 snprintf(info->os_patch, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
             }
             // Get OSX codename
-            if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
-                if (info->os_codename) {
-                    char * tmp_os_version;
+            if (info->os_platform && strcmp(info->os_platform, "darwin") == 0)
+            {
+                if (info->os_codename)
+                {
+                    char* tmp_os_version;
                     size_t len = 4;
                     len += strlen(info->os_version);
                     len += strlen(info->os_codename);
@@ -946,7 +1185,9 @@ os_info *get_unix_version()
                 }
             }
         }
-    } else {
+    }
+    else
+    {
         // Empty version
         os_strdup("0.0", info->os_version);
     }
@@ -959,26 +1200,33 @@ free_os_info:
 
 #endif /* WIN32 */
 
-
-const char *win_processor_arch_to_machine(const char *processor_arch) {
-    if (!processor_arch) {
+const char* win_processor_arch_to_machine(const char* processor_arch)
+{
+    if (!processor_arch)
+    {
         return NULL;
     }
 
-    if (!strcmp(processor_arch, "AMD64") || !strcmp(processor_arch, "IA64")) {
+    if (!strcmp(processor_arch, "AMD64") || !strcmp(processor_arch, "IA64"))
+    {
         return "x86_64";
-    } else if (!strcmp(processor_arch, "ARM64")) {
+    }
+    else if (!strcmp(processor_arch, "ARM64"))
+    {
         return "arm64";
-    } else if (!strcmp(processor_arch, "x86")) {
+    }
+    else if (!strcmp(processor_arch, "x86"))
+    {
         return "i686";
     }
 
     return NULL;
 }
 
-
-void free_osinfo(os_info * osinfo) {
-    if (osinfo) {
+void free_osinfo(os_info* osinfo)
+{
+    if (osinfo)
+    {
         free(osinfo->os_name);
         free(osinfo->os_major);
         free(osinfo->os_minor);
@@ -996,12 +1244,13 @@ void free_osinfo(os_info * osinfo) {
     }
 }
 
-
 #ifdef __linux__
 // Convert a CFS quota/period pair into a whole number of cores (ceil, min 1).
 // Returns 0 when there is no limit (quota <= 0) or the input is invalid.
-static int cores_from_quota(long long quota, long long period) {
-    if (quota <= 0 || period <= 0) {
+static int cores_from_quota(long long quota, long long period)
+{
+    if (quota <= 0 || period <= 0)
+    {
         return 0;
     }
 
@@ -1011,17 +1260,20 @@ static int cores_from_quota(long long quota, long long period) {
 
 // Detect the effective CPU limit imposed by cgroups (v2 first, then v1).
 // Returns the number of cores allowed by the CPU quota, or 0 when no limit is set.
-static int cgroup_cpu_limit() {
-    FILE *fp;
+static int cgroup_cpu_limit()
+{
+    FILE* fp;
 
     // cgroups v2: /sys/fs/cgroup/cpu.max -> "<quota> <period>" or "max <period>"
-    if ((fp = wfopen("/sys/fs/cgroup/cpu.max", "r"))) {
+    if ((fp = wfopen("/sys/fs/cgroup/cpu.max", "r")))
+    {
         char quota_str[64] = {0};
         long long period = 0;
         int matched = fscanf(fp, "%63s %lld", quota_str, &period);
         fclose(fp);
 
-        if (matched == 2 && strcmp(quota_str, "max") != 0) {
+        if (matched == 2 && strcmp(quota_str, "max") != 0)
+        {
             return cores_from_quota(atoll(quota_str), period);
         }
         return 0;
@@ -1033,17 +1285,20 @@ static int cgroup_cpu_limit() {
     int have_quota = 0;
     int have_period = 0;
 
-    if ((fp = wfopen("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", "r"))) {
+    if ((fp = wfopen("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", "r")))
+    {
         have_quota = (fscanf(fp, "%lld", &quota) == 1);
         fclose(fp);
     }
 
-    if ((fp = wfopen("/sys/fs/cgroup/cpu/cpu.cfs_period_us", "r"))) {
+    if ((fp = wfopen("/sys/fs/cgroup/cpu/cpu.cfs_period_us", "r")))
+    {
         have_period = (fscanf(fp, "%lld", &period) == 1);
         fclose(fp);
     }
 
-    if (have_quota && have_period) {
+    if (have_quota && have_period)
+    {
         return cores_from_quota(quota, period);
     }
 
@@ -1051,53 +1306,64 @@ static int cgroup_cpu_limit() {
 }
 #endif
 
-int get_nproc() {
+int get_nproc()
+{
 #ifdef __linux__
-    #ifdef CPU_COUNT
+#ifdef CPU_COUNT
     cpu_set_t set;
     CPU_ZERO(&set);
 
-    if (sched_getaffinity(getpid(), sizeof(set), &set) < 0) {
+    if (sched_getaffinity(getpid(), sizeof(set), &set) < 0)
+    {
         mwarn("sched_getaffinity(): %s (%d).", strerror(errno), errno);
         return 1;
     }
 
     int affinity = CPU_COUNT(&set);
-    if (affinity < 1) {
+    if (affinity < 1)
+    {
         affinity = 1;
     }
 
     int limit = cgroup_cpu_limit();
     return (limit > 0 && limit < affinity) ? limit : affinity;
-    #else
-    FILE *fp;
+#else
+    FILE* fp;
     char string[OS_MAXSTR];
     int cpu_cores = 0;
 
-    if (!(fp = wfopen("/proc/cpuinfo", "r"))) {
+    if (!(fp = wfopen("/proc/cpuinfo", "r")))
+    {
         mwarn("Unable to read cpuinfo file");
-    } else {
-        while (fgets(string, OS_MAXSTR, fp) != NULL){
-            if (!strncmp(string, "processor", 9)){
+    }
+    else
+    {
+        while (fgets(string, OS_MAXSTR, fp) != NULL)
+        {
+            if (!strncmp(string, "processor", 9))
+            {
                 cpu_cores++;
             }
         }
         fclose(fp);
     }
 
-    if(!cpu_cores)
+    if (!cpu_cores)
         cpu_cores = 1;
 
     return cpu_cores;
-    #endif
+#endif
 #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
     unsigned int cpu_cores;
-    int mib[] = { CTL_HW, HW_NCPU };
+    int mib[] = {CTL_HW, HW_NCPU};
     size_t len = sizeof(cpu_cores);
 
-    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)) {
+    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0))
+    {
         return cpu_cores;
-    } else {
+    }
+    else
+    {
         mwarn("sysctl failed getting CPU cores: %s (%d)", strerror(errno), errno);
         return 1;
     }
@@ -1110,40 +1376,47 @@ int get_nproc() {
 /* Read a version as up to three dot-separated numbers, starting after the first 'v' when there is one.
  * Missing or non-numeric parts are 0, empty parts are skipped, a suffix such as "-rc1" is ignored and a
  * number that does not fit an int saturates. The input is read in place: no copy, no strtok(). */
-static void parse_wazuh_version(const char *version, int parts[3]) {
-    const char *cursor;
+static void parse_wazuh_version(const char* version, int parts[3])
+{
+    const char* cursor;
     int index;
 
     parts[0] = parts[1] = parts[2] = 0;
 
-    if (!version) {
+    if (!version)
+    {
         return;
     }
 
     cursor = strchr(version, 'v');
     cursor = cursor ? cursor + 1 : version;
 
-    for (index = 0; index < 3; index++) {
+    for (index = 0; index < 3; index++)
+    {
         long value;
 
-        while (*cursor == '.') {
+        while (*cursor == '.')
+        {
             cursor++;
         }
 
-        if (*cursor == '\0') {
+        if (*cursor == '\0')
+        {
             return;
         }
 
         value = strtol(cursor, NULL, 10);
         parts[index] = value > INT_MAX ? INT_MAX : value < 0 ? 0 : (int)value;
 
-        if (cursor = strchr(cursor, '.'), !cursor) {
+        if (cursor = strchr(cursor, '.'), !cursor)
+        {
             return;
         }
     }
 }
 
-int compare_wazuh_versions(const char *version1, const char *version2, bool compare_patch) {
+int compare_wazuh_versions(const char* version1, const char* version2, bool compare_patch)
+{
     int ver1[3];
     int ver2[3];
     int result = 0;
@@ -1154,24 +1427,41 @@ int compare_wazuh_versions(const char *version1, const char *version2, bool comp
     const int major1 = ver1[0], minor1 = ver1[1], patch1 = ver1[2];
     const int major2 = ver2[0], minor2 = ver2[1], patch2 = ver2[2];
 
-    if (major1 > major2) {
+    if (major1 > major2)
+    {
         result = 1;
-    } else if (major1 < major2){
+    }
+    else if (major1 < major2)
+    {
         result = -1;
-    } else {
-        if(minor1 > minor2) {
+    }
+    else
+    {
+        if (minor1 > minor2)
+        {
             result = 1;
-        } else if (minor1 < minor2) {
+        }
+        else if (minor1 < minor2)
+        {
             result = -1;
-        } else if (compare_patch) {
-            if (patch1 > patch2) {
+        }
+        else if (compare_patch)
+        {
+            if (patch1 > patch2)
+            {
                 result = 1;
-            } else if (patch1 < patch2) {
+            }
+            else if (patch1 < patch2)
+            {
                 result = -1;
-            } else {
+            }
+            else
+            {
                 result = 0;
             }
-        } else {
+        }
+        else
+        {
             result = 0;
         }
     }

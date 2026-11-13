@@ -15,8 +15,9 @@
 #include <string.h>
 #include <stdio.h>
 
-int __wrap_kill(pid_t pid, int sig){
-    
+int __wrap_kill(pid_t pid, int sig)
+{
+
     check_expected(sig);
     check_expected(pid);
     return mock();

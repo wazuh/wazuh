@@ -28,28 +28,28 @@
  */
 class TaskIdStoreAdapter final : public ITaskIdStore
 {
-    public:
-        TaskIdStoreAdapter(hc_check_and_record_task_fn callback, void* userData)
-            : m_callback(callback)
-            , m_userData(userData)
+public:
+    TaskIdStoreAdapter(hc_check_and_record_task_fn callback, void* userData)
+        : m_callback(callback)
+        , m_userData(userData)
+    {
+    }
+
+    bool checkAndRecord(const std::string& taskId) override
+    {
+        if (m_callback == nullptr)
         {
+            // No bridge wired (e.g. a test double harness): fail closed
+            // rather than silently treating everything as new.
+            return false;
         }
 
-        bool checkAndRecord(const std::string& taskId) override
-        {
-            if (m_callback == nullptr)
-            {
-                // No bridge wired (e.g. a test double harness): fail closed
-                // rather than silently treating everything as new.
-                return false;
-            }
+        return m_callback(taskId.c_str(), m_userData) == 1;
+    }
 
-            return m_callback(taskId.c_str(), m_userData) == 1;
-        }
-
-    private:
-        hc_check_and_record_task_fn m_callback;
-        void* m_userData;
+private:
+    hc_check_and_record_task_fn m_callback;
+    void* m_userData;
 };
 
 #endif // _HC_TASK_ID_STORE_ADAPTER_HPP

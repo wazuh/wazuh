@@ -18,10 +18,10 @@
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
-        MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD(std::string, getUserId, (std::string), (override));
+public:
+    MOCK_METHOD(std::string, getApplicationsPath, (), (override));
+    MOCK_METHOD(std::string, getHomePath, (), (override));
+    MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
 TEST(SafariExtensionsTests, IgnoresNonExtensionApp)
@@ -50,7 +50,8 @@ TEST(SafariExtensionsTests, CollectReturnsExpectedJson)
     // The darker Info.plist file is in standard XML format
     std::string darkerPath = appsPath + "/darker.app/Contents/PlugIns/darker Extension.appex/Contents/Info.plist";
     // The JSONPeep Info.plist file is in binary format
-    std::string jsonPeepsPath = appsPath + "/JSONPeep.app/Contents/PlugIns/JSONPeep Extension.appex/Contents/Info.plist";
+    std::string jsonPeepsPath =
+        appsPath + "/JSONPeep.app/Contents/PlugIns/JSONPeep Extension.appex/Contents/Info.plist";
     // Testing darker extension
     EXPECT_EQ(extensionsJson[0]["bundle_version"], "6");
     EXPECT_EQ(extensionsJson[0]["copyright"], "");
@@ -65,7 +66,8 @@ TEST(SafariExtensionsTests, CollectReturnsExpectedJson)
     // Testing JSONPeep extension
     EXPECT_EQ(extensionsJson[1]["bundle_version"], "13");
     EXPECT_EQ(extensionsJson[1]["copyright"], "Copyright © 2019 Lev Bruk. All rights reserved.");
-    EXPECT_EQ(extensionsJson[1]["description"], "A Safari Extension to view JSON in a readable format. Smooth and simple. Nothing more.");
+    EXPECT_EQ(extensionsJson[1]["description"],
+              "A Safari Extension to view JSON in a readable format. Smooth and simple. Nothing more.");
     EXPECT_EQ(extensionsJson[1]["identifier"], "com.levbruk.JSONPeep.Extension");
     EXPECT_EQ(extensionsJson[1]["name"], "JSON Peep");
     EXPECT_EQ(extensionsJson[1]["path"], jsonPeepsPath);

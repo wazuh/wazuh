@@ -17,15 +17,22 @@
 
 #include <pthread.h>
 
-#define RWLOCK_LOCK_READ(rwlock, stmt) rwlock_lock_read(rwlock); stmt; rwlock_unlock(rwlock);
-#define RWLOCK_LOCK_WRITE(rwlock, stmt) rwlock_lock_write(rwlock); stmt; rwlock_unlock(rwlock);
+#define RWLOCK_LOCK_READ(rwlock, stmt)                                                                                 \
+    rwlock_lock_read(rwlock);                                                                                          \
+    stmt;                                                                                                              \
+    rwlock_unlock(rwlock);
+#define RWLOCK_LOCK_WRITE(rwlock, stmt)                                                                                \
+    rwlock_lock_write(rwlock);                                                                                         \
+    stmt;                                                                                                              \
+    rwlock_unlock(rwlock);
 
 /**
  * @brief Read-write lock
  *
  * This structure provides a read-write lock with FIFO queueing.
  */
-typedef struct {
+typedef struct
+{
     pthread_mutex_t mutex;
     pthread_rwlock_t rwlock;
 } rwlock_t;
@@ -36,7 +43,7 @@ typedef struct {
  * @param rwlock Pointer to a rwlock_t structure.
  * @post Dies with critical error if the lock is initialized twice.
  */
-void rwlock_init(rwlock_t * rwlock);
+void rwlock_init(rwlock_t* rwlock);
 
 /**
  * @brief Lock a read-write lock for reading.
@@ -44,7 +51,7 @@ void rwlock_init(rwlock_t * rwlock);
  * @param rwlock Pointer to a rwlock_t structure.
  * @post Dies with critical error if a deadlock is detected.
  */
-void rwlock_lock_read(rwlock_t * rwlock);
+void rwlock_lock_read(rwlock_t* rwlock);
 
 /**
  * @brief Lock a read-write lock for writing.
@@ -52,7 +59,7 @@ void rwlock_lock_read(rwlock_t * rwlock);
  * @param rwlock Pointer to a rwlock_t structure.
  * @post Dies with critical error if a deadlock is detected.
  */
-void rwlock_lock_write(rwlock_t * rwlock);
+void rwlock_lock_write(rwlock_t* rwlock);
 
 /**
  * @brief Unlock a read-write lock.
@@ -60,7 +67,7 @@ void rwlock_lock_write(rwlock_t * rwlock);
  * @param rwlock Pointer to a rwlock_t structure.
  * @post Dies with critical error if the current thread does not lock this lock.
  */
-void rwlock_unlock(rwlock_t * rwlock);
+void rwlock_unlock(rwlock_t* rwlock);
 
 /**
  * @brief Free a read-write lock.
@@ -68,6 +75,6 @@ void rwlock_unlock(rwlock_t * rwlock);
  * @param rwlock Pointer to a rwlock_t structure.
  * @post Dies with critical error if the lock is currently locked.
  */
-void rwlock_destroy(rwlock_t * rwlock);
+void rwlock_destroy(rwlock_t* rwlock);
 
 #endif

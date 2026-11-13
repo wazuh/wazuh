@@ -36,7 +36,7 @@ PCCERT_CONTEXT wrap_CertEnumCertificatesInStore(HCERTSTORE hCertStore, PCCERT_CO
 DWORD wrap_CertGetNameString(PCCERT_CONTEXT pCertContext,
                              DWORD dwType,
                              DWORD dwFlags,
-                             void *pvTypePara,
+                             void* pvTypePara,
                              LPSTR pszNameString,
                              DWORD cchNameString);
 
@@ -44,12 +44,12 @@ BOOL wrap_CertCloseStore(HCERTSTORE hCertStore, DWORD dwFlags);
 
 BOOL wrap_CertFreeCertificateContext(PCCERT_CONTEXT pCertContext);
 
-LONG wrap_WinVerifyTrust(HWND hwnd, GUID *pgActionID, LPVOID pWVTData);
+LONG wrap_WinVerifyTrust(HWND hwnd, GUID* pgActionID, LPVOID pWVTData);
 
 DWORD wrap_GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 
-void expect_CertGetNameString_call(const char *name);
+void expect_CertGetNameString_call(const char* name);
 
-void expect_WinVerifyTrust_call(const wchar_t *file_path, LONG result);
+void expect_WinVerifyTrust_call(const wchar_t* file_path, LONG result);
 
 #endif

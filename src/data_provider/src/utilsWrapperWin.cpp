@@ -8,13 +8,13 @@
  * Foundation
  */
 
-#include <algorithm>      // For std::min/std::max
+#include <algorithm> // For std::min/std::max
 #include <regex>
-#include <sstream>        // For std::ostringstream
-#include <stdexcept>      // For std::runtime_error
-#include <string>         // For std::string and std::wstring
-#include <locale>         // For localization utilities (if needed for string conversion)
-#include <chrono>         // For the bounded WMI enumeration wait (issue #38370)
+#include <sstream>   // For std::ostringstream
+#include <stdexcept> // For std::runtime_error
+#include <string>    // For std::string and std::wstring
+#include <locale>    // For localization utilities (if needed for string conversion)
+#include <chrono>    // For the bounded WMI enumeration wait (issue #38370)
 
 // encodingWindowsHelper.h brings in winsock2.h, which has to precede the windows.h that
 // utilsWrapperWin.hpp's WMI headers pull in.
@@ -28,26 +28,29 @@ namespace
     // from whichever throw site or normal return exits the function that owns it.
     // Centralizes the per-throw-site "if (p) p->Release();" pattern that would
     // otherwise be duplicated at every early-exit point.
-    template <typename T>
+    template<typename T>
     class ComReleaseGuard
     {
-        public:
-            explicit ComReleaseGuard(T*& ptr) : m_ptr(ptr) {}
-            ~ComReleaseGuard()
+    public:
+        explicit ComReleaseGuard(T*& ptr)
+            : m_ptr(ptr)
+        {
+        }
+        ~ComReleaseGuard()
+        {
+            if (m_ptr)
             {
-                if (m_ptr)
-                {
-                    m_ptr->Release();
-                    m_ptr = nullptr;
-                }
+                m_ptr->Release();
+                m_ptr = nullptr;
             }
-            ComReleaseGuard(const ComReleaseGuard&) = delete;
-            ComReleaseGuard& operator=(const ComReleaseGuard&) = delete;
+        }
+        ComReleaseGuard(const ComReleaseGuard&) = delete;
+        ComReleaseGuard& operator=(const ComReleaseGuard&) = delete;
 
-        private:
-            T*& m_ptr;
+    private:
+        T*& m_ptr;
     };
-}
+} // namespace
 
 // Implement WMI functions
 HRESULT ComHelper::CreateWmiLocator(IWbemLocator*& pLoc)
@@ -67,8 +70,8 @@ HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, 
     IWbemContext* pCtx = NULL;
     ComReleaseGuard<IWbemContext> ctxGuard(pCtx);
 
-    bool contextUsable = SUCCEEDED(CoCreateInstance(CLSID_WbemContext, 0, CLSCTX_INPROC_SERVER,
-                                                    IID_IWbemContext, (LPVOID*)&pCtx));
+    bool contextUsable =
+        SUCCEEDED(CoCreateInstance(CLSID_WbemContext, 0, CLSCTX_INPROC_SERVER, IID_IWbemContext, (LPVOID*)&pCtx));
 
     if (contextUsable)
     {
@@ -78,26 +81,35 @@ HRESULT ComHelper::ConnectToWmiServer(IWbemLocator* pLoc, IWbemServices*& pSvc, 
 
     const long connectFlags = contextUsable ? WBEM_FLAG_CONNECT_USE_MAX_WAIT : 0;
     IWbemContext* const ctxArg = contextUsable ? pCtx : NULL;
-    return pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL,
-                               connectFlags, NULL, ctxArg, &pSvc);
+    return pLoc->ConnectServer(_bstr_t(L"ROOT\\CIMV2"), NULL, NULL, NULL, connectFlags, NULL, ctxArg, &pSvc);
 }
 
 HRESULT ComHelper::SetProxyBlanket(IWbemServices* pSvc)
 {
-    return CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL,
-                             RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
+    return CoSetProxyBlanket(pSvc,
+                             RPC_C_AUTHN_WINNT,
+                             RPC_C_AUTHZ_NONE,
+                             NULL,
+                             RPC_C_AUTHN_LEVEL_CALL,
+                             RPC_C_IMP_LEVEL_IMPERSONATE,
+                             NULL,
+                             EOAC_NONE);
 }
 
 HRESULT ComHelper::ExecuteWmiQuery(IWbemServices* pSvc, IEnumWbemClassObject*& pEnumerator)
 {
-    return pSvc->ExecQuery(bstr_t("WQL"), bstr_t("SELECT * FROM Win32_QuickFixEngineering"),
-                           WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnumerator);
+    return pSvc->ExecQuery(bstr_t("WQL"),
+                           bstr_t("SELECT * FROM Win32_QuickFixEngineering"),
+                           WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+                           NULL,
+                           &pEnumerator);
 }
 
 // Implement Windows Update API functions
 HRESULT ComHelper::CreateUpdateSearcher(IUpdateSearcher*& pUpdateSearcher)
 {
-    return CoCreateInstance(CLSID_UpdateSearcher, NULL, CLSCTX_INPROC_SERVER, IID_IUpdateSearcher, (LPVOID*)&pUpdateSearcher);
+    return CoCreateInstance(
+        CLSID_UpdateSearcher, NULL, CLSCTX_INPROC_SERVER, IID_IUpdateSearcher, (LPVOID*)&pUpdateSearcher);
 }
 
 HRESULT ComHelper::GetTotalHistoryCount(IUpdateSearcher* pUpdateSearcher, LONG& count)
@@ -137,7 +149,7 @@ namespace _com_util
         MultiByteToWideChar(CP_ACP, 0, str, -1, bstr, len);
         return bstr;
     }
-}
+} // namespace _com_util
 
 // The BstrToString function takes a Windows-specific string (BSTR) and converts it into
 // a standard C++ string (std::string) that can be more easily used in the application.
@@ -148,8 +160,11 @@ std::string BstrToString(BSTR bstr)
     return converter.to_bytes(wstr);
 }
 
-void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet, IComHelper& comHelper,
-                             long perCallTimeoutMs, long overallTimeoutMs, long connectMaxWaitMs)
+void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet,
+                             IComHelper& comHelper,
+                             long perCallTimeoutMs,
+                             long overallTimeoutMs,
+                             long connectMaxWaitMs)
 {
     HRESULT hres;
     IWbemLocator* pLoc = NULL;
@@ -217,7 +232,8 @@ void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet, IComHelper& comHe
         // now < deadline still holds; per WMI's docs, Next(0, ...) is a non-blocking
         // poll rather than a wait, so clamp to at least 1 ms to keep this an actual wait.
         const auto remainingMs = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now).count();
-        const long callTimeoutMs = static_cast<long>(std::max<long long>(1, std::min<long long>(perCallTimeoutMs, remainingMs)));
+        const long callTimeoutMs =
+            static_cast<long>(std::max<long long>(1, std::min<long long>(perCallTimeoutMs, remainingMs)));
 
         // Declared fresh each iteration so a provider that fails without touching
         // these out-params can't leave a stale, already-Release()'d pclsObj or a
@@ -269,8 +285,8 @@ void QueryWMIHotFixesBounded(std::set<std::string>& hotfixSet, IComHelper& comHe
 
 void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
 {
-    QueryWMIHotFixesBounded(hotfixSet, comHelper, WMI_HOTFIX_NEXT_TIMEOUT_MS,
-                            WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS, WMI_CONNECT_MAX_WAIT_MS);
+    QueryWMIHotFixesBounded(
+        hotfixSet, comHelper, WMI_HOTFIX_NEXT_TIMEOUT_MS, WMI_HOTFIX_ENUM_OVERALL_TIMEOUT_MS, WMI_CONNECT_MAX_WAIT_MS);
 }
 
 ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
@@ -284,15 +300,19 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
 
     // Convert full command line from UTF-16 to UTF-8
     const int utf8Size = WideCharToMultiByte(
-                             CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
-                             nullptr, 0, nullptr, nullptr);
+        CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()), nullptr, 0, nullptr, nullptr);
 
     if (utf8Size > 0)
     {
         result.cmd.assign(static_cast<std::size_t>(utf8Size), '\0');
-        const int written = WideCharToMultiByte(
-                                CP_UTF8, 0, fullCmdLineW.c_str(), static_cast<int>(fullCmdLineW.size()),
-                                result.cmd.data(), utf8Size, nullptr, nullptr);
+        const int written = WideCharToMultiByte(CP_UTF8,
+                                                0,
+                                                fullCmdLineW.c_str(),
+                                                static_cast<int>(fullCmdLineW.size()),
+                                                result.cmd.data(),
+                                                utf8Size,
+                                                nullptr,
+                                                nullptr);
 
         if (written > 0)
         {
@@ -315,14 +335,13 @@ ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW)
     {
         for (int i = 1; i < argc; ++i)
         {
-            const int argSize = WideCharToMultiByte(
-                                    CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
+            const int argSize = WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, nullptr, 0, nullptr, nullptr);
 
             if (argSize > 0)
             {
                 std::string arg(argSize, '\0');
-                const int convertedSize = WideCharToMultiByte(
-                                              CP_UTF8, 0, argv[i], -1, arg.data(), argSize, nullptr, nullptr);
+                const int convertedSize =
+                    WideCharToMultiByte(CP_UTF8, 0, argv[i], -1, arg.data(), argSize, nullptr, nullptr);
 
                 // convertedSize includes the null terminator, so 1 is an empty argument (""),
                 // which is skipped like on Linux and macOS.
@@ -361,7 +380,7 @@ bool isSystemProcess(const DWORD pid)
 static std::string processName(const PROCESSENTRY32& processEntry)
 {
     std::string ret;
-    const DWORD pId { processEntry.th32ProcessID };
+    const DWORD pId {processEntry.th32ProcessID};
 
     if (isSystemProcess(pId))
     {
@@ -380,10 +399,10 @@ nlohmann::json buildProcessSnapshotRecord(const PROCESSENTRY32& processEntry)
     // Assigned from json::object(): a braced or empty-brace initialiser would give an array
     // or a null, and update() rejects both.
     auto jsProcessInfo = nlohmann::json::object();
-    const DWORD pId { processEntry.th32ProcessID };
+    const DWORD pId {processEntry.th32ProcessID};
 
     jsProcessInfo["name"] = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
-    jsProcessInfo["pid"]  = std::to_string(pId);
+    jsProcessInfo["pid"] = std::to_string(pId);
 
     // The snapshot reports pid 0 as its own parent; emitting that would leave a self-referential
     // edge that loops any parent-child walk of the inventory.
@@ -432,7 +451,8 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
 
     if (FAILED(hres))
     {
-        if (pUpdateSearcher) pUpdateSearcher->Release();
+        if (pUpdateSearcher)
+            pUpdateSearcher->Release();
 
         oss << "WUA: Error getting total update history count. Code: 0x" << std::hex << hres;
         throw std::runtime_error(oss.str());
@@ -442,7 +462,8 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
 
     if (FAILED(hres))
     {
-        if (pUpdateSearcher) pUpdateSearcher->Release();
+        if (pUpdateSearcher)
+            pUpdateSearcher->Release();
 
         oss << "WUA: Error querying update history. Code: 0x" << std::hex << hres;
         throw std::runtime_error(oss.str());
@@ -472,12 +493,15 @@ void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper)
             }
         }
 
-        if (pEntry) pEntry->Release();
+        if (pEntry)
+            pEntry->Release();
 
         SysFreeString(title);
     }
 
-    if (pHistory) pHistory->Release();
+    if (pHistory)
+        pHistory->Release();
 
-    if (pUpdateSearcher) pUpdateSearcher->Release();
+    if (pUpdateSearcher)
+        pUpdateSearcher->Release();
 }

@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
@@ -19,15 +18,21 @@
 #include "os_net.h"
 #include "queue_wrappers.h"
 
-size_t __wrap_rem_get_input_bytes_used() {
+size_t __wrap_rem_get_input_bytes_used()
+{
     return mock();
 }
 
-size_t __wrap_rem_get_input_max_bytes() {
+size_t __wrap_rem_get_input_max_bytes()
+{
     return mock();
 }
 
-int __wrap_rem_msgpush(__attribute__((unused)) const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
+int __wrap_rem_msgpush(__attribute__((unused)) const char* buffer,
+                       unsigned long size,
+                       struct sockaddr_storage* addr,
+                       int sock)
+{
     check_expected(sock);
     check_expected_ptr(addr);
     check_expected(size);

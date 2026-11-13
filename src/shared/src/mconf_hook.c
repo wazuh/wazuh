@@ -14,12 +14,15 @@
 
 static w_mconf_section_fn s_provider = NULL;
 
-void w_mconf_hook_set(w_mconf_section_fn fn) {
+void w_mconf_hook_set(w_mconf_section_fn fn)
+{
     s_provider = fn;
 }
 
-struct cJSON *w_mconf_hook_section(const char *section) {
-    if (s_provider == NULL || section == NULL) {
+struct cJSON* w_mconf_hook_section(const char* section)
+{
+    if (s_provider == NULL || section == NULL)
+    {
         return NULL;
     }
     return s_provider(section);

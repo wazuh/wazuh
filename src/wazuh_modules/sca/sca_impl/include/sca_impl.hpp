@@ -33,7 +33,7 @@ enum class RecoveryOutcome
     COMPLETED, ///< The manager received the whole snapshot.
     QUEUED,    ///< The index was cleared and the snapshot queued, but sending it failed; the next
     ///< regular synchronization delivers it.
-    FAILED     ///< Nothing was queued; the recovery is retried in the next integrity_interval.
+    FAILED ///< Nothing was queued; the recovery is retried in the next integrity_interval.
 };
 
 /// @brief Result of SecurityConfigurationAssessment::synchronizeDatabaseSnapshot().
@@ -42,407 +42,416 @@ struct SnapshotSyncResult
     SyncModuleResult sync;
     /// @brief True once the index was cleared and the snapshot queued, so a failure after that
     /// point is delivered by the next regular synchronization.
-    bool queued{false};
+    bool queued {false};
 };
 
 class SecurityConfigurationAssessment
 {
-    public:
-        /// @brief Constructor
-        /// @param dbPath Path to the database file
-        /// @param dbSync Pointer to IDBSync for database synchronization
-        /// @param fileSystemWrapper File system wrapper for file operations
-        SecurityConfigurationAssessment(std::string dbPath,
-                                        std::shared_ptr<IDBSync> dbSync = nullptr,
-                                        std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
-
-        /// @brief Destructor
-        ~SecurityConfigurationAssessment();
-
-        /// @brief Deleted copy constructor
-        SecurityConfigurationAssessment(const SecurityConfigurationAssessment&) = delete;
-
-        /// @brief Deleted copy assignment operator
-        SecurityConfigurationAssessment& operator=(const SecurityConfigurationAssessment&) = delete;
-
-        /// @copydoc IModule::Run
-        void Run() ;
-
-        /// @copydoc IModule::Setup
-        void Setup(bool enabled,
-                   bool scanOnStart,
-                   std::chrono::seconds scanInterval,
-                   const int commandsTimeout,
-                   const bool remoteEnabled,
-                   const std::vector<sca::PolicyData>& policies,
-                   const YamlToJsonFunc& yamlToJsonFunc = nullptr);
-
-        /// @copydoc IModule::Stop
-        void Stop() ;
-
-        /// @brief Signals the module to stop and waits for in-flight operations
-        /// to finish, but does not release owned resources (e.g. m_dBSync).
-        /// Safe to call while the sync worker thread is still running.
-        void quiesce();
-
-        /// @brief Releases owned resources after the sync worker thread has exited.
-        /// Must be called only after all threads that may use those resources
-        /// (in particular the sync worker thread) have been joined.
-        /// @note Every member that holds a copy of m_dBSync must be reset here (currently
-        /// m_syncManager). Missing one keeps the DBSync refcount above zero, so the SQLite
-        /// connection to sca.db is neither committed nor closed and the database stays locked
-        /// for the next process.
-        void releaseResources();
-
-        /// @copydoc IModule::Name
-        const std::string& Name() const ;
-
-        /// @brief Set the function to be called for stateless messages
-        /// @param pushMessage Function to push stateless messages
-        void SetPushStatelessMessageFunction(const std::function<int(const std::string&)>& pushMessage);
-
-        /// @brief Set the function to be called for stateful messages
-        /// @param pushMessage Function to push stateful messages
-        void SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>& pushMessage);
-
-        /// @brief Set the global wm_exec function pointer (static)
-        /// @param wmExecFunc Function pointer to wm_exec
-        static void SetGlobalWmExecFunction(int (*wmExecFunc)(char*, char**, int*, int, const char*));
-
-        /// @brief Get the global wm_exec function pointer (static)
-        /// @return Function pointer to wm_exec or nullptr if not set
-        static int (*GetGlobalWmExecFunction())(char*, char**, int*, int, const char*);
-
-        /// @brief Initialize the sync protocol
-        /// @param moduleName Name of the module
-        /// @param syncDbPath Path to the sync database
-        /// @param timeout Timeout for synchronization responses
-        /// @param retries Number of retries for synchronization
-        /// @param integrityInterval Interval in seconds between integrity checks (0 = disabled)
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath,
-                              std::chrono::seconds integrityInterval);
-
-        /// @brief Synchronize the module
-        /// @param mode Synchronization mode
-        /// @return true on success, false on failure (a WARNING with the reason is logged internally).
-        bool syncModule(Mode mode);
-
-        /// @brief Persist a difference
-        /// @param id Identifier of the record
-        /// @param operation Operation type
-        /// @param index Index of the record
-        /// @param data Data to be persisted
-        /// @param version Version of the data
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
-
-        /// @brief Parse a sync response buffer
-        /// @param data Pointer to the data buffer
-        /// @param length Length of the data buffer
-        /// @return true if parsing was successful, false otherwise
-        bool parseResponseBuffer(const uint8_t* data, size_t length);
-
-        /// @brief Set the sync limit for SCA documents.
-        /// @param syncLimit Maximum number of synced checks (0 = unlimited)
-        void setSyncLimit(uint64_t syncLimit);
-
-        /// @brief Notify that data associated with specified indices needs to be cleaned.
-        /// @param indices Vector of indices whose data needs to be cleaned.
-        /// @return true if the operation succeeds, false otherwise.
-        bool notifyDataClean(const std::vector<std::string>& indices);
-
-        /// @brief Delete the database
-        void deleteDatabase();
-
-        /// @brief Get the maximum version from the sca_check table
-        /// @return Maximum version number, or -1 on error, 0 if table is empty
-        int getMaxVersion();
-
-        /// @brief Set the version for all rows in the sca_check table
-        /// @param version Version number to set
-        /// @return 0 on success, -1 on error
-        int setVersion(int version);
-
-        /// @brief Pause SCA scanning operations for coordination
-        void pause();
-
-        /// @brief Flush pending sync protocol messages
-        /// @return 0 on success, -1 on error
-        int flush();
-
-        /// @brief Resume SCA scanning operations after coordination
-        void resume();
-
-        /// @brief Handles query commands for the SCA module
-        /// @param jsonQuery JSON-formatted query command string
-        /// @return JSON-formatted response string
-        std::string query(const std::string& jsonQuery);
-
-    protected:
-        /// @brief List of policies
-        std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
-
-        /// @brief Sync protocol for module synchronization
-        std::shared_ptr<IAgentSyncProtocol> m_spSyncProtocol;
-
-        /// @brief Flag indicating if a sync operation is currently in progress
-        std::atomic<bool> m_syncInProgress {false};
-
-        /// @brief Set while a flush sends. syncModule() stands back from it; pause() does not wait
-        /// for it.
-        std::atomic<bool> m_flushInProgress {false};
-
-        /// @brief Set while a DataClean outside the sync cycle runs (the integrity recovery, the
-        /// all-policies-removed cleanup). A flush waits for it; it stands back from a flush.
-        std::atomic<bool> m_recoveryInProgress {false};
-
-        /// @brief Agent id change resends actually started. Reported by get_identity_changed so the
-        /// sync thread backs off only after a real attempt, not after a cycle that never tried.
-        std::atomic<uint32_t> m_identityResyncAttempts {0};
-
-        /// @brief Set once Run() has initialized the document limits, before its first scan. The
-        /// identity resend waits for it.
-        std::atomic<bool> m_runInitialized {false};
-
-        /// @brief Cached first-sync completion state used to gate initial stateful publication.
-        std::atomic<bool> m_firstSyncCompleted {false};
-
-        /// @brief Cached first-scan completion state, persisted independent of
-        /// first_sync_completed. Its absence means a scan_on_start scan is still
-        /// owed -- e.g. an earlier Run() got interrupted before completing one
-        /// (issue 38428) -- so the next opportunity retries it immediately
-        /// instead of waiting a full m_scanInterval.
-        std::atomic<bool> m_firstScanCompleted {false};
-
-        /// @brief In-memory flag set after each complete scan iteration, cleared at Run() startup.
-        /// Polled by the C sync thread (via get_scan_completed query) to avoid triggering the
-        /// first snapshot before any check has had a chance to run. Note that "Not run" rows
-        /// are additionally filtered out of the snapshot SELECT to handle timeouts, which
-        /// legitimately leave checks in that state past scan completion. Non-zero means completed.
-        std::atomic<int64_t> m_scanCompleted {0};
-
-        /// @brief Condition variable for pause/resume coordination
-        std::condition_variable m_pauseCv;
-
-        /// @brief Mutex for pause/resume coordination
-        std::mutex m_pauseMutex;
-
-        /// @brief Execute the blocking flush work for the module.
-        /// @return 0 on success, -1 on error.
-        /// @note Protected (rather than private) so test subclasses can drive the flush path
-        ///       deterministically without spinning the asynchronous flush controller.
-        int executeFlushSync();
-
-        /// @brief Perform full recovery: load all checks and resync
-        /// @return How the recovery ended; see RecoveryOutcome.
-        /// @note Protected (rather than private) so test subclasses can drive recovery
-        ///       deterministically, same reason as executeFlushSync() above.
-        RecoveryOutcome performRecovery();
-
-        /// @brief Handle case when all policies are removed from config
-        /// Sends DataClean, clears DB, syncs, and signals exit
-        /// @return true if DataClean was sent and handled successfully
-        /// @note Protected (rather than private) so test subclasses can drive its retries
-        ///       against a flush, same reason as executeFlushSync() above.
-        bool handleAllPoliciesRemoved();
-
-    private:
-        /// @brief Get the create statement for the database
-        std::string GetCreateStatement() const;
-
-        /// @brief Calculate checksum for synced checks only (sync=1).
-        std::string calculateSyncedChecksChecksum();
-
-        /// @brief Integrity check interval in seconds (0 = disabled)
-        std::chrono::seconds m_integrityInterval = std::chrono::seconds(0);
-
-        /// @brief Check if integrity interval has elapsed
-        /// @param currentTime Current timestamp
-        /// @return true if check should run
-        bool integrityIntervalElapsed(int64_t currentTime);
-
-        /// @brief Get last integrity check timestamp from DB
-        /// @return Timestamp in seconds since epoch, 0 if never checked
-        int64_t getLastIntegrityCheckTime();
-
-        /// @brief Update last integrity check timestamp in DB
-        /// @param timestamp Current time
-        void updateLastIntegrityCheckTime(int64_t timestamp);
-
-        /// @brief Get a metadata value from the local SCA database.
-        /// @param key Metadata key.
-        /// @param value Output value. Defaults to 0 when the key is absent.
-        /// @return true on success, false on error.
-        bool getMetadataValue(const std::string& key, int64_t& value);
-
-        /// @brief Update a metadata value in the local SCA database.
-        /// @param key Metadata key.
-        /// @param value Value to persist.
-        /// @return true on success, false on error.
-        bool updateMetadataValue(const std::string& key, int64_t value);
-
-        /// @brief Re-sends everything when this agent's id has changed since the last sync.
-        ///
-        /// An agent deleted on the manager re-enrolls under a new id, but its local databases --
-        /// including first_sync_completed -- survive untouched, so every later cycle sends a
-        /// delta against a baseline the manager no longer has for this identity. Comparing the
-        /// id each cycle turns that into a full snapshot on the first cycle after the change,
-        /// instead of waiting for integrity_interval to notice through a checksum mismatch.
-        ///
-        /// Reads the id from the shared-memory metadata provider, which is the same value, via
-        /// the same call, that stamps the outgoing session -- so a resync can never be sent
-        /// under an id different from the one it was compared against.
-        /// @return false when the resend could not run (the module is stopping, Run() did not
-        ///         apply the document limits in time) or did not reach the manager: nothing else is
-        ///         sent then, not even a delta.
-        bool checkAgentIdentity();
-
-        /// @brief Whether the agent id differs from the one SCA last synchronized as.
-        ///
-        /// Read-only twin of checkAgentIdentity()'s decision, for the sync thread to poll.
-        /// @return 1 when it changed; 0 when it did not, or was never recorded (adopted, not a
-        ///         change); -1 when it cannot tell: no id published yet, a failed read, or no sync
-        ///         protocol to resend with. The sync thread keeps its retry state on -1.
-        int agentIdentityChangeState();
-
-        /// @brief What checkAgentIdentity() and agentIdentityChangeState() both decide on.
-        enum class AgentIdentity
-        {
-            Unknown,    ///< No id published yet, or the marker could not be read.
-            Unrecorded, ///< No id recorded yet: adopted, never resynced.
-            Unchanged,  ///< Recorded and equal to the current one.
-            Changed     ///< Recorded and different: the manager has nothing under this id.
-        };
-
-        /// @brief Reads the current and the recorded agent id and classifies them.
-        /// @param currentId Set to the id the metadata provider publishes (0 when unknown).
-        /// @param syncedId Set to the id last recorded as synchronized (0 when none).
-        AgentIdentity readAgentIdentity(long& currentId, int64_t& syncedId);
-
-        /// @brief Refresh the cached first-sync completion flag from metadata.
-        void refreshFirstSyncCompletedState();
-
-        /// @brief Refresh the cached first-scan completion flag from metadata.
-        void refreshFirstScanCompletedState();
-
-        /// @brief Synchronize the current DB snapshot using FULL mode.
-        /// @param increaseVersions Whether to bump versions before building the snapshot.
-        /// @param syncReason Reason used in logs.
-        /// @return The sync result, and whether the snapshot was queued before it ended.
-        SnapshotSyncResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
-
-        /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
-        /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or
-        /// @p genericFailureLevel) otherwise. Shared by syncModule(), performRecovery() and
-        /// executeFlushSync() so all three apply the same tolerance policy to any failure a
-        /// sync/recovery/flush attempt returns, including one from synchronizeDatabaseSnapshot()'s
-        /// DataClean step. (#38579)
-        /// @param result The failed result (caller must not call this when result.success is true).
-        /// @param operationLabel Noun used in the log message, e.g. "synchronization" or "recovery".
-        /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated
-        /// to manager-not-ready/local-transport). executeFlushSync() keeps that case at LOG_ERROR,
-        /// since it is an on-demand operation rather than a periodic cycle that retries on its own.
-        /// @param retryNote Sentence saying when the operation is retried. Unset keeps the periodic
-        /// cycle's "Will retry next cycle." on a deferral and says nothing on a failure; recovery sets it,
-        /// since it is retried in the next integrity_interval, not the next cycle.
-        void logSyncFailure(const SyncModuleResult& result, const std::string& operationLabel,
-                            modules_log_level_t genericFailureLevel = LOG_WARNING,
-                            const std::optional<std::string>& retryNote = std::nullopt);
-
-        /// @brief Check with manager if full sync required via checksum
-        /// @param checksum Local checksum to validate
-        /// @return MISMATCH if recovery is needed, VALID if the checksum matches, NOT_CHECKED (with the
-        ///         reason) if the check did not complete.
-        IntegrityCheckResult checkIfRecoveryRequired(const std::string& checksum);
-
-        /// @brief The configured integrity_interval in the largest whole unit that fits (86400 -> "24h").
-        std::string integrityIntervalText() const;
-
-        /// @brief Check if DB has data (policies or checks)
-        /// @return true if DB contains any policies or checks
-        bool hasDataInDatabase();
-
-        /// @brief Handle the case when no policies are available (either at startup or runtime).
-        /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
-        /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
-        bool handleNoPoliciesAvailable();
-
-        /// @brief Handle report events when internal limit changed
-        /// @param demotedIds Check ids demoted by the limit change
-        /// @param promotedIds Check ids promoted by the limit change
-        void handleLimitEvents(const std::vector<std::string>& demotedIds, const std::vector<std::string>& promotedIds);
-
-        /// @brief SCA module name
-        std::string m_name = "SCA";
-
-        /// @brief Pointer to IDBSync
-        std::shared_ptr<IDBSync> m_dBSync;
-
-        /// @brief SCA sync manager (document limits)
-        /// @note Co-owns m_dBSync (it is constructed with a copy of it), so it must be reset in
-        /// releaseResources() for the sca.db connection to actually be closed.
-        std::shared_ptr<SCASyncManager> m_syncManager;
-
-        /// @brief Function for pushing stateless event messages
-        std::function<int(const std::string&)> m_pushStatelessMessage;
-
-        /// @brief Function for pushing stateful event messages
-        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_pushStatefulMessage;
-
-        /// @brief Pointer to a file system wrapper
-        std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
-
-        /// @brief Flag indicating whether the module is enabled
-        bool m_enabled = true;
-
-        /// @brief Flag indicating whether to scan on start
-        bool m_scanOnStart = true;
-
-        /// @brief Scan interval in seconds
-        std::chrono::seconds m_scanInterval = std::chrono::seconds(3600);
-
-        /// @brief Flag to keep the module running
-        std::atomic<bool> m_keepRunning {true};
-
-        /// @brief Flag indicating if scanning is paused for coordination
-        std::atomic<bool> m_paused {false};
-
-        /// @brief Flag indicating if a scan is currently in progress
-        std::atomic<bool> m_scanInProgress {false};
-
-        /// @brief Condition variable for sleep interruption
-        std::condition_variable m_cv;
-
-        /// @brief Mutex for condition variable
-        std::mutex m_mutex;
-
-        /// @brief Controller for asynchronous flush requests.
-        std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
-
-        /// @brief Serializes releaseResources() against the entry points that other threads
-        /// keep driving while the module tears down: wcom's dispatcher (query() and
-        /// parseResponseBuffer()) is detached and never joined, and agent-info's coordination
-        /// queries call query() in-process from its own module thread. Those entry points take
-        /// it shared around each access; releaseResources() resets the members under the
-        /// exclusive lock. The sync worker and the flush worker do not take it: the former is
-        /// joined before releaseResources() runs and the latter is joined by the flush
-        /// controller destruction before m_spSyncProtocol/m_dBSync are reset.
-        mutable std::shared_mutex m_resourcesMutex;
-
-        /// @brief Commands timeout for policy execution
-        int m_commandsTimeout = 0;
-
-        /// @brief Flag indicating whether remote policies are enabled
-        bool m_remoteEnabled = false;
-
-        /// @brief Vector of policy data
-        std::vector<sca::PolicyData> m_policiesData;
-
-        /// @brief YAML to JSON conversion function
-        YamlToJsonFunc m_yamlToJsonFunc;
-
-        /// @brief Flag indicating module should exit after DataClean (all policies removed)
-        std::atomic<bool> m_exitAfterDataClean {false};
-
-        /// @brief Static/global function pointer to wm_exec
-        static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);
+public:
+    /// @brief Constructor
+    /// @param dbPath Path to the database file
+    /// @param dbSync Pointer to IDBSync for database synchronization
+    /// @param fileSystemWrapper File system wrapper for file operations
+    SecurityConfigurationAssessment(std::string dbPath,
+                                    std::shared_ptr<IDBSync> dbSync = nullptr,
+                                    std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
+
+    /// @brief Destructor
+    ~SecurityConfigurationAssessment();
+
+    /// @brief Deleted copy constructor
+    SecurityConfigurationAssessment(const SecurityConfigurationAssessment&) = delete;
+
+    /// @brief Deleted copy assignment operator
+    SecurityConfigurationAssessment& operator=(const SecurityConfigurationAssessment&) = delete;
+
+    /// @copydoc IModule::Run
+    void Run();
+
+    /// @copydoc IModule::Setup
+    void Setup(bool enabled,
+               bool scanOnStart,
+               std::chrono::seconds scanInterval,
+               const int commandsTimeout,
+               const bool remoteEnabled,
+               const std::vector<sca::PolicyData>& policies,
+               const YamlToJsonFunc& yamlToJsonFunc = nullptr);
+
+    /// @copydoc IModule::Stop
+    void Stop();
+
+    /// @brief Signals the module to stop and waits for in-flight operations
+    /// to finish, but does not release owned resources (e.g. m_dBSync).
+    /// Safe to call while the sync worker thread is still running.
+    void quiesce();
+
+    /// @brief Releases owned resources after the sync worker thread has exited.
+    /// Must be called only after all threads that may use those resources
+    /// (in particular the sync worker thread) have been joined.
+    /// @note Every member that holds a copy of m_dBSync must be reset here (currently
+    /// m_syncManager). Missing one keeps the DBSync refcount above zero, so the SQLite
+    /// connection to sca.db is neither committed nor closed and the database stays locked
+    /// for the next process.
+    void releaseResources();
+
+    /// @copydoc IModule::Name
+    const std::string& Name() const;
+
+    /// @brief Set the function to be called for stateless messages
+    /// @param pushMessage Function to push stateless messages
+    void SetPushStatelessMessageFunction(const std::function<int(const std::string&)>& pushMessage);
+
+    /// @brief Set the function to be called for stateful messages
+    /// @param pushMessage Function to push stateful messages
+    void SetPushStatefulMessageFunction(
+        const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>&
+            pushMessage);
+
+    /// @brief Set the global wm_exec function pointer (static)
+    /// @param wmExecFunc Function pointer to wm_exec
+    static void SetGlobalWmExecFunction(int (*wmExecFunc)(char*, char**, int*, int, const char*));
+
+    /// @brief Get the global wm_exec function pointer (static)
+    /// @return Function pointer to wm_exec or nullptr if not set
+    static int (*GetGlobalWmExecFunction())(char*, char**, int*, int, const char*);
+
+    /// @brief Initialize the sync protocol
+    /// @param moduleName Name of the module
+    /// @param syncDbPath Path to the sync database
+    /// @param timeout Timeout for synchronization responses
+    /// @param retries Number of retries for synchronization
+    /// @param integrityInterval Interval in seconds between integrity checks (0 = disabled)
+    void initSyncProtocol(const std::string& moduleName,
+                          const std::string& syncDbPath,
+                          std::chrono::seconds integrityInterval);
+
+    /// @brief Synchronize the module
+    /// @param mode Synchronization mode
+    /// @return true on success, false on failure (a WARNING with the reason is logged internally).
+    bool syncModule(Mode mode);
+
+    /// @brief Persist a difference
+    /// @param id Identifier of the record
+    /// @param operation Operation type
+    /// @param index Index of the record
+    /// @param data Data to be persisted
+    /// @param version Version of the data
+    void persistDifference(const std::string& id,
+                           Operation operation,
+                           const std::string& index,
+                           const std::string& data,
+                           uint64_t version);
+
+    /// @brief Parse a sync response buffer
+    /// @param data Pointer to the data buffer
+    /// @param length Length of the data buffer
+    /// @return true if parsing was successful, false otherwise
+    bool parseResponseBuffer(const uint8_t* data, size_t length);
+
+    /// @brief Set the sync limit for SCA documents.
+    /// @param syncLimit Maximum number of synced checks (0 = unlimited)
+    void setSyncLimit(uint64_t syncLimit);
+
+    /// @brief Notify that data associated with specified indices needs to be cleaned.
+    /// @param indices Vector of indices whose data needs to be cleaned.
+    /// @return true if the operation succeeds, false otherwise.
+    bool notifyDataClean(const std::vector<std::string>& indices);
+
+    /// @brief Delete the database
+    void deleteDatabase();
+
+    /// @brief Get the maximum version from the sca_check table
+    /// @return Maximum version number, or -1 on error, 0 if table is empty
+    int getMaxVersion();
+
+    /// @brief Set the version for all rows in the sca_check table
+    /// @param version Version number to set
+    /// @return 0 on success, -1 on error
+    int setVersion(int version);
+
+    /// @brief Pause SCA scanning operations for coordination
+    void pause();
+
+    /// @brief Flush pending sync protocol messages
+    /// @return 0 on success, -1 on error
+    int flush();
+
+    /// @brief Resume SCA scanning operations after coordination
+    void resume();
+
+    /// @brief Handles query commands for the SCA module
+    /// @param jsonQuery JSON-formatted query command string
+    /// @return JSON-formatted response string
+    std::string query(const std::string& jsonQuery);
+
+protected:
+    /// @brief List of policies
+    std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
+
+    /// @brief Sync protocol for module synchronization
+    std::shared_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+
+    /// @brief Flag indicating if a sync operation is currently in progress
+    std::atomic<bool> m_syncInProgress {false};
+
+    /// @brief Set while a flush sends. syncModule() stands back from it; pause() does not wait
+    /// for it.
+    std::atomic<bool> m_flushInProgress {false};
+
+    /// @brief Set while a DataClean outside the sync cycle runs (the integrity recovery, the
+    /// all-policies-removed cleanup). A flush waits for it; it stands back from a flush.
+    std::atomic<bool> m_recoveryInProgress {false};
+
+    /// @brief Agent id change resends actually started. Reported by get_identity_changed so the
+    /// sync thread backs off only after a real attempt, not after a cycle that never tried.
+    std::atomic<uint32_t> m_identityResyncAttempts {0};
+
+    /// @brief Set once Run() has initialized the document limits, before its first scan. The
+    /// identity resend waits for it.
+    std::atomic<bool> m_runInitialized {false};
+
+    /// @brief Cached first-sync completion state used to gate initial stateful publication.
+    std::atomic<bool> m_firstSyncCompleted {false};
+
+    /// @brief Cached first-scan completion state, persisted independent of
+    /// first_sync_completed. Its absence means a scan_on_start scan is still
+    /// owed -- e.g. an earlier Run() got interrupted before completing one
+    /// (issue 38428) -- so the next opportunity retries it immediately
+    /// instead of waiting a full m_scanInterval.
+    std::atomic<bool> m_firstScanCompleted {false};
+
+    /// @brief In-memory flag set after each complete scan iteration, cleared at Run() startup.
+    /// Polled by the C sync thread (via get_scan_completed query) to avoid triggering the
+    /// first snapshot before any check has had a chance to run. Note that "Not run" rows
+    /// are additionally filtered out of the snapshot SELECT to handle timeouts, which
+    /// legitimately leave checks in that state past scan completion. Non-zero means completed.
+    std::atomic<int64_t> m_scanCompleted {0};
+
+    /// @brief Condition variable for pause/resume coordination
+    std::condition_variable m_pauseCv;
+
+    /// @brief Mutex for pause/resume coordination
+    std::mutex m_pauseMutex;
+
+    /// @brief Execute the blocking flush work for the module.
+    /// @return 0 on success, -1 on error.
+    /// @note Protected (rather than private) so test subclasses can drive the flush path
+    ///       deterministically without spinning the asynchronous flush controller.
+    int executeFlushSync();
+
+    /// @brief Perform full recovery: load all checks and resync
+    /// @return How the recovery ended; see RecoveryOutcome.
+    /// @note Protected (rather than private) so test subclasses can drive recovery
+    ///       deterministically, same reason as executeFlushSync() above.
+    RecoveryOutcome performRecovery();
+
+    /// @brief Handle case when all policies are removed from config
+    /// Sends DataClean, clears DB, syncs, and signals exit
+    /// @return true if DataClean was sent and handled successfully
+    /// @note Protected (rather than private) so test subclasses can drive its retries
+    ///       against a flush, same reason as executeFlushSync() above.
+    bool handleAllPoliciesRemoved();
+
+private:
+    /// @brief Get the create statement for the database
+    std::string GetCreateStatement() const;
+
+    /// @brief Calculate checksum for synced checks only (sync=1).
+    std::string calculateSyncedChecksChecksum();
+
+    /// @brief Integrity check interval in seconds (0 = disabled)
+    std::chrono::seconds m_integrityInterval = std::chrono::seconds(0);
+
+    /// @brief Check if integrity interval has elapsed
+    /// @param currentTime Current timestamp
+    /// @return true if check should run
+    bool integrityIntervalElapsed(int64_t currentTime);
+
+    /// @brief Get last integrity check timestamp from DB
+    /// @return Timestamp in seconds since epoch, 0 if never checked
+    int64_t getLastIntegrityCheckTime();
+
+    /// @brief Update last integrity check timestamp in DB
+    /// @param timestamp Current time
+    void updateLastIntegrityCheckTime(int64_t timestamp);
+
+    /// @brief Get a metadata value from the local SCA database.
+    /// @param key Metadata key.
+    /// @param value Output value. Defaults to 0 when the key is absent.
+    /// @return true on success, false on error.
+    bool getMetadataValue(const std::string& key, int64_t& value);
+
+    /// @brief Update a metadata value in the local SCA database.
+    /// @param key Metadata key.
+    /// @param value Value to persist.
+    /// @return true on success, false on error.
+    bool updateMetadataValue(const std::string& key, int64_t value);
+
+    /// @brief Re-sends everything when this agent's id has changed since the last sync.
+    ///
+    /// An agent deleted on the manager re-enrolls under a new id, but its local databases --
+    /// including first_sync_completed -- survive untouched, so every later cycle sends a
+    /// delta against a baseline the manager no longer has for this identity. Comparing the
+    /// id each cycle turns that into a full snapshot on the first cycle after the change,
+    /// instead of waiting for integrity_interval to notice through a checksum mismatch.
+    ///
+    /// Reads the id from the shared-memory metadata provider, which is the same value, via
+    /// the same call, that stamps the outgoing session -- so a resync can never be sent
+    /// under an id different from the one it was compared against.
+    /// @return false when the resend could not run (the module is stopping, Run() did not
+    ///         apply the document limits in time) or did not reach the manager: nothing else is
+    ///         sent then, not even a delta.
+    bool checkAgentIdentity();
+
+    /// @brief Whether the agent id differs from the one SCA last synchronized as.
+    ///
+    /// Read-only twin of checkAgentIdentity()'s decision, for the sync thread to poll.
+    /// @return 1 when it changed; 0 when it did not, or was never recorded (adopted, not a
+    ///         change); -1 when it cannot tell: no id published yet, a failed read, or no sync
+    ///         protocol to resend with. The sync thread keeps its retry state on -1.
+    int agentIdentityChangeState();
+
+    /// @brief What checkAgentIdentity() and agentIdentityChangeState() both decide on.
+    enum class AgentIdentity
+    {
+        Unknown,    ///< No id published yet, or the marker could not be read.
+        Unrecorded, ///< No id recorded yet: adopted, never resynced.
+        Unchanged,  ///< Recorded and equal to the current one.
+        Changed     ///< Recorded and different: the manager has nothing under this id.
+    };
+
+    /// @brief Reads the current and the recorded agent id and classifies them.
+    /// @param currentId Set to the id the metadata provider publishes (0 when unknown).
+    /// @param syncedId Set to the id last recorded as synchronized (0 when none).
+    AgentIdentity readAgentIdentity(long& currentId, int64_t& syncedId);
+
+    /// @brief Refresh the cached first-sync completion flag from metadata.
+    void refreshFirstSyncCompletedState();
+
+    /// @brief Refresh the cached first-scan completion flag from metadata.
+    void refreshFirstScanCompletedState();
+
+    /// @brief Synchronize the current DB snapshot using FULL mode.
+    /// @param increaseVersions Whether to bump versions before building the snapshot.
+    /// @param syncReason Reason used in logs.
+    /// @return The sync result, and whether the snapshot was queued before it ended.
+    SnapshotSyncResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+
+    /// @brief Logs a failed SyncModuleResult at the right level: INFO for an expected
+    /// shutdown/prerequisite/manager-not-ready-within-tolerance hiccup, WARNING (or
+    /// @p genericFailureLevel) otherwise. Shared by syncModule(), performRecovery() and
+    /// executeFlushSync() so all three apply the same tolerance policy to any failure a
+    /// sync/recovery/flush attempt returns, including one from synchronizeDatabaseSnapshot()'s
+    /// DataClean step. (#38579)
+    /// @param result The failed result (caller must not call this when result.success is true).
+    /// @param operationLabel Noun used in the log message, e.g. "synchronization" or "recovery".
+    /// @param genericFailureLevel Level for the final fallback branch (a real failure unrelated
+    /// to manager-not-ready/local-transport). executeFlushSync() keeps that case at LOG_ERROR,
+    /// since it is an on-demand operation rather than a periodic cycle that retries on its own.
+    /// @param retryNote Sentence saying when the operation is retried. Unset keeps the periodic
+    /// cycle's "Will retry next cycle." on a deferral and says nothing on a failure; recovery sets it,
+    /// since it is retried in the next integrity_interval, not the next cycle.
+    void logSyncFailure(const SyncModuleResult& result,
+                        const std::string& operationLabel,
+                        modules_log_level_t genericFailureLevel = LOG_WARNING,
+                        const std::optional<std::string>& retryNote = std::nullopt);
+
+    /// @brief Check with manager if full sync required via checksum
+    /// @param checksum Local checksum to validate
+    /// @return MISMATCH if recovery is needed, VALID if the checksum matches, NOT_CHECKED (with the
+    ///         reason) if the check did not complete.
+    IntegrityCheckResult checkIfRecoveryRequired(const std::string& checksum);
+
+    /// @brief The configured integrity_interval in the largest whole unit that fits (86400 -> "24h").
+    std::string integrityIntervalText() const;
+
+    /// @brief Check if DB has data (policies or checks)
+    /// @return true if DB contains any policies or checks
+    bool hasDataInDatabase();
+
+    /// @brief Handle the case when no policies are available (either at startup or runtime).
+    /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
+    /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
+    bool handleNoPoliciesAvailable();
+
+    /// @brief Handle report events when internal limit changed
+    /// @param demotedIds Check ids demoted by the limit change
+    /// @param promotedIds Check ids promoted by the limit change
+    void handleLimitEvents(const std::vector<std::string>& demotedIds, const std::vector<std::string>& promotedIds);
+
+    /// @brief SCA module name
+    std::string m_name = "SCA";
+
+    /// @brief Pointer to IDBSync
+    std::shared_ptr<IDBSync> m_dBSync;
+
+    /// @brief SCA sync manager (document limits)
+    /// @note Co-owns m_dBSync (it is constructed with a copy of it), so it must be reset in
+    /// releaseResources() for the sca.db connection to actually be closed.
+    std::shared_ptr<SCASyncManager> m_syncManager;
+
+    /// @brief Function for pushing stateless event messages
+    std::function<int(const std::string&)> m_pushStatelessMessage;
+
+    /// @brief Function for pushing stateful event messages
+    std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>
+        m_pushStatefulMessage;
+
+    /// @brief Pointer to a file system wrapper
+    std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
+
+    /// @brief Flag indicating whether the module is enabled
+    bool m_enabled = true;
+
+    /// @brief Flag indicating whether to scan on start
+    bool m_scanOnStart = true;
+
+    /// @brief Scan interval in seconds
+    std::chrono::seconds m_scanInterval = std::chrono::seconds(3600);
+
+    /// @brief Flag to keep the module running
+    std::atomic<bool> m_keepRunning {true};
+
+    /// @brief Flag indicating if scanning is paused for coordination
+    std::atomic<bool> m_paused {false};
+
+    /// @brief Flag indicating if a scan is currently in progress
+    std::atomic<bool> m_scanInProgress {false};
+
+    /// @brief Condition variable for sleep interruption
+    std::condition_variable m_cv;
+
+    /// @brief Mutex for condition variable
+    std::mutex m_mutex;
+
+    /// @brief Controller for asynchronous flush requests.
+    std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
+
+    /// @brief Serializes releaseResources() against the entry points that other threads
+    /// keep driving while the module tears down: wcom's dispatcher (query() and
+    /// parseResponseBuffer()) is detached and never joined, and agent-info's coordination
+    /// queries call query() in-process from its own module thread. Those entry points take
+    /// it shared around each access; releaseResources() resets the members under the
+    /// exclusive lock. The sync worker and the flush worker do not take it: the former is
+    /// joined before releaseResources() runs and the latter is joined by the flush
+    /// controller destruction before m_spSyncProtocol/m_dBSync are reset.
+    mutable std::shared_mutex m_resourcesMutex;
+
+    /// @brief Commands timeout for policy execution
+    int m_commandsTimeout = 0;
+
+    /// @brief Flag indicating whether remote policies are enabled
+    bool m_remoteEnabled = false;
+
+    /// @brief Vector of policy data
+    std::vector<sca::PolicyData> m_policiesData;
+
+    /// @brief YAML to JSON conversion function
+    YamlToJsonFunc m_yamlToJsonFunc;
+
+    /// @brief Flag indicating module should exit after DataClean (all policies removed)
+    std::atomic<bool> m_exitAfterDataClean {false};
+
+    /// @brief Static/global function pointer to wm_exec
+    static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);
 };

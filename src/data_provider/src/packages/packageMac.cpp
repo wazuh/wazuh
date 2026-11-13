@@ -26,13 +26,11 @@ namespace
     // The registry holds no size column, and `location` points at the compressed archive the port
     // was built into rather than at installed content, so the installed paths are gathered here and
     // summed by the wrapper. char(1) separates them because a path may legally contain a newline.
-    const std::string MACPORTS_QUERY
-    {
+    const std::string MACPORTS_QUERY {
         "SELECT p.name, p.version, p.date, p.location, p.archs, "
         "(SELECT group_concat(f.actual_path, char(1)) FROM files f WHERE f.id = p.id AND f.active = 1) "
-        "FROM ports p WHERE p.state = 'installed';"
-    };
-}
+        "FROM ports p WHERE p.state = 'installed';"};
+} // namespace
 
 std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageContext, int>& ctx)
 {
@@ -48,7 +46,7 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     }
     else
     {
-        throw std::runtime_error { "Error creating BSD package data retriever." };
+        throw std::runtime_error {"Error creating BSD package data retriever."};
     }
 
     return ret;
@@ -64,7 +62,7 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<SQLite::ISta
     }
     else
     {
-        throw std::runtime_error { "Error creating BSD package data retriever." };
+        throw std::runtime_error {"Error creating BSD package data retriever."};
     }
 
     return ret;
@@ -72,7 +70,8 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<SQLite::ISta
 
 BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
     : m_packageWrapper(packageWrapper)
-{ }
+{
+}
 
 void BSDPackageImpl::buildPackageData(nlohmann::json& package)
 {
@@ -102,7 +101,10 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["multiarch"] = m_packageWrapper->multiarch();
 }
 
-void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback, bool rejectSymlinks)
+void getPackagesFromPath(const std::string& pkgDirectory,
+                         const int pkgType,
+                         std::function<void(nlohmann::json&)> callback,
+                         bool rejectSymlinks)
 {
     const file_system::FileSystemWrapper fs;
 
@@ -112,22 +114,21 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
         {
             try
             {
-                std::shared_ptr<SQLite::IConnection> sqliteConnection = std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
+                std::shared_ptr<SQLite::IConnection> sqliteConnection =
+                    std::make_shared<SQLite::Connection>(pkgDirectory + "/" + MACPORTS_DB_NAME);
 
-                SQLite::Statement stmt
-                {
-                    sqliteConnection,
-                    MACPORTS_QUERY
-                };
+                SQLite::Statement stmt {sqliteConnection, MACPORTS_QUERY};
 
-                std::pair<SQLite::IStatement&, const int&> pkgContext {std::make_pair(std::ref(stmt), std::cref(pkgType))};
+                std::pair<SQLite::IStatement&, const int&> pkgContext {
+                    std::make_pair(std::ref(stmt), std::cref(pkgType))};
 
                 while (SQLITE_ROW == stmt.step())
                 {
                     try
                     {
                         nlohmann::json jsPackage;
-                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)->buildPackageData(jsPackage);
+                        FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(pkgContext)
+                            ->buildPackageData(jsPackage);
 
                         if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                         {
@@ -149,19 +150,21 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
     }
     else
     {
-        const auto packages { fs.list_directory(pkgDirectory) };
+        const auto packages {fs.list_directory(pkgDirectory)};
 
         // Shared by every branch below: build one package's data and hand it to the caller,
         // discarding anything with an empty name and logging (not propagating) any failure
         // so one bad entry never aborts the rest of the scan.
-        const auto buildAndReportPackage
-        {
-            [&callback, pkgType](const std::string & filePath, const std::string & packageName, const std::string& version = "")
+        const auto buildAndReportPackage {
+            [&callback,
+             pkgType](const std::string& filePath, const std::string& packageName, const std::string& version = "")
             {
                 try
                 {
                     nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{filePath, packageName, version}, pkgType))->buildPackageData(jsPackage);
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(
+                        std::make_pair(PackageContext {filePath, packageName, version}, pkgType))
+                        ->buildPackageData(jsPackage);
 
                     if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                     {
@@ -173,8 +176,7 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
                 {
                     std::cerr << e.what() << std::endl;
                 }
-            }
-        };
+            }};
 
         // Only meaningful when rejectSymlinks is true, for a caller scanning a user-writable
         // root: there, a symlink can point anywhere else that user does not own, another
@@ -191,21 +193,18 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
         // home-manager, an app kept on an external volume) links into /Applications the same
         // way. Rejecting those there would silently drop real, already-installed software from
         // the inventory, which is the opposite of this fix's intent.
-        const auto isSymlinkOrUnknown
-        {
-            [&fs](const std::filesystem::path & entryPath)
-            {
-                try
-                {
-                    return fs.is_symlink(entryPath);
-                }
-                catch (const std::exception& e)
-                {
-                    std::cerr << e.what() << std::endl;
-                    return true;
-                }
-            }
-        };
+        const auto isSymlinkOrUnknown {[&fs](const std::filesystem::path& entryPath)
+                                       {
+                                           try
+                                           {
+                                               return fs.is_symlink(entryPath);
+                                           }
+                                           catch (const std::exception& e)
+                                           {
+                                               std::cerr << e.what() << std::endl;
+                                               return true;
+                                           }
+                                       }};
 
         for (const auto& package : packages)
         {
@@ -215,7 +214,7 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
             }
 
             if ((PKG == pkgType && Utils::endsWith(package, ".app")) ||
-                    (RCP == pkgType && Utils::endsWith(package, ".plist")))
+                (RCP == pkgType && Utils::endsWith(package, ".plist")))
             {
                 buildAndReportPackage(pkgDirectory, package.filename().string());
             }
@@ -224,7 +223,7 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
                 if (fs.is_directory(package) && !Utils::startsWith(package.filename().string(), "."))
 
                 {
-                    const auto packageVersions { fs.list_directory(package) };
+                    const auto packageVersions {fs.list_directory(package)};
 
                     for (const auto& versionPath : packageVersions)
                     {
@@ -246,7 +245,8 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
 
                 try
                 {
-                    isEligibleSubdirectory = fs.is_directory(package) && !Utils::startsWith(package.filename().string(), ".");
+                    isEligibleSubdirectory =
+                        fs.is_directory(package) && !Utils::startsWith(package.filename().string(), ".");
                 }
                 catch (const std::exception& e)
                 {
@@ -258,12 +258,14 @@ void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std
                     try
                     {
                         // Vendors sometimes group their apps one level down (e.g. /Applications/<Vendor>/<App>.app).
-                        // Look exactly one level below, no further, so nested helper bundles inside a .app are not walked into.
-                        const auto nestedEntries { fs.list_directory(package) };
+                        // Look exactly one level below, no further, so nested helper bundles inside a .app are not
+                        // walked into.
+                        const auto nestedEntries {fs.list_directory(package)};
 
                         for (const auto& nestedEntry : nestedEntries)
                         {
-                            if (Utils::endsWith(nestedEntry, ".app") && (!rejectSymlinks || !isSymlinkOrUnknown(nestedEntry)))
+                            if (Utils::endsWith(nestedEntry, ".app") &&
+                                (!rejectSymlinks || !isSymlinkOrUnknown(nestedEntry)))
                             {
                                 buildAndReportPackage(package.string(), nestedEntry.filename().string());
                             }

@@ -25,7 +25,8 @@ nlohmann::json SysInfo::getNetworks() const
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
 
 #ifdef __APPLE__
-    const auto dhcpLeaseInterfaces { std::make_shared<const std::set<std::string>>(NetworkBSDInterface::queryDhcpLeaseInterfaces()) };
+    const auto dhcpLeaseInterfaces {
+        std::make_shared<const std::set<std::string>>(NetworkBSDInterface::queryDhcpLeaseInterfaces())};
 #else
     const std::shared_ptr<const std::set<std::string>> dhcpLeaseInterfaces;
 #endif
@@ -36,7 +37,8 @@ nlohmann::json SysInfo::getNetworks() const
 
         for (const auto addr : interface.second)
         {
-            const auto networkInterfacePtr { FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_shared<NetworkBSDInterface>(addr, dhcpLeaseInterfaces)) };
+            const auto networkInterfacePtr {FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(
+                std::make_shared<NetworkBSDInterface>(addr, dhcpLeaseInterfaces))};
 
             if (networkInterfacePtr)
             {
@@ -49,4 +51,3 @@ nlohmann::json SysInfo::getNetworks() const
 
     return networks;
 }
-

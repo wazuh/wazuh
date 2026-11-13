@@ -27,14 +27,14 @@ TEST_F(NPMTest, getPackages_ValidPackagesTest)
     nlohmann::json fakePackageJson2 = {{"name", "TestPackage2"}, {"version", "2.0.0"}};
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
-    .WillOnce(Return(fakePackageJson1));
+        .WillOnce(Return(fakePackageJson1));
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package2/package.json")))
-    .WillOnce(Return(fakePackageJson2));
+        .WillOnce(Return(fakePackageJson2));
 
     bool foundPackage1 = false;
     bool foundPackage2 = false;
 
-    auto callback = [&](nlohmann::json & json)
+    auto callback = [&](nlohmann::json& json)
     {
         if (json.at("name") == "TestPackage1" && json.at("version_") == "1.0.0")
         {
@@ -65,10 +65,7 @@ TEST_F(NPMTest, getPackages_NoPackagesFoundTest)
 
     std::set<std::string> folders = {"/fake"};
 
-    npm->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    npm->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -83,16 +80,13 @@ TEST_F(NPMTest, getPackages_NoPackageJsonTest)
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
-    .WillOnce(Return(nlohmann::json()));
+        .WillOnce(Return(nlohmann::json()));
 
     bool callbackCalled = false;
 
     std::set<std::string> folders = {"/fake"};
 
-    npm->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    npm->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -107,16 +101,13 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonNameTest)
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
-    .WillOnce(Return(nlohmann::json::parse(R"({"name": 1})")));
+        .WillOnce(Return(nlohmann::json::parse(R"({"name": 1})")));
 
     bool callbackCalled = false;
 
     std::set<std::string> folders = {"/fake"};
 
-    npm->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    npm->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -131,16 +122,13 @@ TEST_F(NPMTest, getPackages_InvalidPackageJsonVersionTest)
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillRepeatedly(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
-    .WillOnce(Return(nlohmann::json::parse(R"({"name": "TestPackage1", "version": 1})")));
+        .WillOnce(Return(nlohmann::json::parse(R"({"name": "TestPackage1", "version": 1})")));
 
     bool callbackCalled = false;
 
     std::set<std::string> folders = {"/fake"};
 
-    npm->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    npm->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -155,10 +143,10 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_)).WillOnce(Return(fakePackages));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package1/package.json")))
-    .WillOnce(Return(nlohmann::json::parse(R"({"name": "TestPackage1", "version": "1.0.0"})")));
+        .WillOnce(Return(nlohmann::json::parse(R"({"name": "TestPackage1", "version": "1.0.0"})")));
 
     EXPECT_CALL(*npm, readJson(std::filesystem::path("/fake/node_modules/package2/package.json")))
-    .WillOnce(Return(nlohmann::json::parse(R"({"name": "TestPackage2", "version": "1.0.0"})")));
+        .WillOnce(Return(nlohmann::json::parse(R"({"name": "TestPackage2", "version": "1.0.0"})")));
 
     bool callbackCalledFirst = false;
     bool callbackCalledSecond = false;
@@ -166,21 +154,21 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
     std::set<std::string> folders = {"/fake"};
 
     npm->getPackages(folders,
-                     [&](nlohmann::json & j)
-    {
-        if (j.at("name") == "TestPackage1" && j.at("version_") == "1.0.0")
-        {
-            callbackCalledFirst = true;
-        }
-        else if (j.at("name") == "TestPackage2" && j.at("version_") == "1.0.0")
-        {
-            callbackCalledSecond = true;
-        }
-        else
-        {
-            FAIL();
-        }
-    });
+                     [&](nlohmann::json& j)
+                     {
+                         if (j.at("name") == "TestPackage1" && j.at("version_") == "1.0.0")
+                         {
+                             callbackCalledFirst = true;
+                         }
+                         else if (j.at("name") == "TestPackage2" && j.at("version_") == "1.0.0")
+                         {
+                             callbackCalledSecond = true;
+                         }
+                         else
+                         {
+                             FAIL();
+                         }
+                     });
 
     EXPECT_TRUE(callbackCalledFirst);
     EXPECT_TRUE(callbackCalledSecond);
@@ -200,10 +188,7 @@ TEST_F(NPMTest, getPackages_NonRegularPackageJsonIsSkipped)
 
     std::set<std::string> folders = {"/fake"};
 
-    npm->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    npm->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -216,17 +201,14 @@ TEST_F(NPMTest, getPackages_SizeIsTheMeasuredPackageFolder)
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_))
-    .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
     EXPECT_CALL(*npm, readJson(packageFolder / "package.json"))
-    .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
+        .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
     EXPECT_CALL(*mockFileSystem, directory_size(packageFolder, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE))
-    .WillOnce(Return(std::optional<std::uintmax_t> {4096}));
+        .WillOnce(Return(std::optional<std::uintmax_t> {4096}));
 
     nlohmann::json capturedJson;
-    npm->getPackages({"/fake"}, [&](nlohmann::json & json)
-    {
-        capturedJson = json;
-    });
+    npm->getPackages({"/fake"}, [&](nlohmann::json& json) { capturedJson = json; });
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage1");
     EXPECT_EQ(capturedJson.at("size"), 4096);
@@ -240,18 +222,14 @@ TEST_F(NPMTest, getPackages_UnmeasurableFolderSizeIsAbsent)
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_))
-    .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
     EXPECT_CALL(*npm, readJson(packageFolder / "package.json"))
-    .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
+        .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
     // The walk hit the entry cap or the deadline, or failed
-    EXPECT_CALL(*mockFileSystem, directory_size(packageFolder, testing::_, testing::_))
-    .WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*mockFileSystem, directory_size(packageFolder, testing::_, testing::_)).WillOnce(Return(std::nullopt));
 
     nlohmann::json capturedJson;
-    npm->getPackages({"/fake"}, [&](nlohmann::json & json)
-    {
-        capturedJson = json;
-    });
+    npm->getPackages({"/fake"}, [&](nlohmann::json& json) { capturedJson = json; });
 
     // Unknown, never zero
     EXPECT_EQ(capturedJson.at("name"), "TestPackage1");
@@ -266,17 +244,14 @@ TEST_F(NPMTest, getPackages_EmptyFolderSizeIsAbsent)
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_))
-    .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
     EXPECT_CALL(*npm, readJson(packageFolder / "package.json"))
-    .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
+        .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
     EXPECT_CALL(*mockFileSystem, directory_size(packageFolder, testing::_, testing::_))
-    .WillOnce(Return(std::optional<std::uintmax_t> {0}));
+        .WillOnce(Return(std::optional<std::uintmax_t> {0}));
 
     nlohmann::json capturedJson;
-    npm->getPackages({"/fake"}, [&](nlohmann::json & json)
-    {
-        capturedJson = json;
-    });
+    npm->getPackages({"/fake"}, [&](nlohmann::json& json) { capturedJson = json; });
 
     EXPECT_FALSE(capturedJson.contains("size"));
 }
@@ -290,17 +265,14 @@ TEST_F(NPMTest, getPackages_LinkedPackageFolderSizeIsAbsent)
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_))
-    .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
     EXPECT_CALL(*npm, readJson(packageFolder / "package.json"))
-    .WillOnce(Return(nlohmann::json {{"name", "linked"}, {"version", "1.0.0"}}));
+        .WillOnce(Return(nlohmann::json {{"name", "linked"}, {"version", "1.0.0"}}));
     EXPECT_CALL(*mockFileSystem, is_symlink(packageFolder)).WillOnce(Return(true));
     EXPECT_CALL(*mockFileSystem, directory_size(testing::_, testing::_, testing::_)).Times(0);
 
     nlohmann::json capturedJson;
-    npm->getPackages({"/fake"}, [&](nlohmann::json & json)
-    {
-        capturedJson = json;
-    });
+    npm->getPackages({"/fake"}, [&](nlohmann::json& json) { capturedJson = json; });
 
     // Still inventoried, only its size is unknown
     EXPECT_EQ(capturedJson.at("name"), "linked");
@@ -315,18 +287,16 @@ TEST_F(NPMTest, getPackages_UninspectableFolderIsReportedUnsized)
     EXPECT_CALL(*mockFileSystem, is_directory(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(testing::_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(testing::_))
-    .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {packageFolder}));
     EXPECT_CALL(*npm, readJson(packageFolder / "package.json"))
-    .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
+        .WillOnce(Return(nlohmann::json {{"name", "TestPackage1"}, {"version", "1.0.0"}}));
     EXPECT_CALL(*mockFileSystem, is_symlink(packageFolder))
-    .WillOnce(testing::Throw(std::filesystem::filesystem_error("denied", std::make_error_code(std::errc::permission_denied))));
+        .WillOnce(testing::Throw(
+            std::filesystem::filesystem_error("denied", std::make_error_code(std::errc::permission_denied))));
     EXPECT_CALL(*mockFileSystem, directory_size(testing::_, testing::_, testing::_)).Times(0);
 
     nlohmann::json capturedJson;
-    npm->getPackages({"/fake"}, [&](nlohmann::json & json)
-    {
-        capturedJson = json;
-    });
+    npm->getPackages({"/fake"}, [&](nlohmann::json& json) { capturedJson = json; });
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage1");
     EXPECT_FALSE(capturedJson.contains("size"));

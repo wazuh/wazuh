@@ -15,29 +15,31 @@
 #include "authd-config.h"
 
 /* Attempts to send a message through the cluster */
-#define CLUSTER_SEND_MESSAGE_ATTEMPTS   10
+#define CLUSTER_SEND_MESSAGE_ATTEMPTS 10
 
 /* Read the agent name for the current agent
  * Returns NULL on error
  */
-char *os_read_agent_name(void);
+char* os_read_agent_name(void);
 
 /* Read the agent profile name for the current agent
  * Returns NULL on error
  */
-char *os_read_agent_profile(void);
+char* os_read_agent_profile(void);
 
 /* Write the agent info inside the queue, for the other processes to read
  * Returns 1 on success or <= 0 on failure
  */
-int os_write_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id,
-                        const char *cfg_profile_name) __attribute__((nonnull(1, 3)));
+int os_write_agent_info(const char* agent_name,
+                        const char* agent_ip,
+                        const char* agent_id,
+                        const char* cfg_profile_name) __attribute__((nonnull(1, 3)));
 
 /* Validates the group name
  * @params response must be a 2048 buffer or NULL
  * Returns 0 on success or  -x on failure
  */
-int w_validate_group_name(const char *group, char *response);
+int w_validate_group_name(const char* group, char* response);
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect();
@@ -72,21 +74,22 @@ int auth_close(int sock);
  * @return 0 on success or a negative code on error.
  */
 int w_request_agent_add_local(int sock,
-                              char *id,
-                              const char *name,
-                              const char *ip,
-                              const char * groups,
-                              const char *key,
-                              authd_force_options_t *force_options,
+                              char* id,
+                              const char* name,
+                              const char* ip,
+                              const char* groups,
+                              const char* key,
+                              authd_force_options_t* force_options,
                               const int json_format,
-                              const char *agent_id,
+                              const char* agent_id,
                               int exit_on_error);
 
 #ifndef WIN32
 
 /**
  * @brief Send a clustered agent "add" request.
- * @param err_response A buffer where the error message will be stored in case of failure. If NULL, the message is ignored.
+ * @param err_response A buffer where the error message will be stored in case of failure. If NULL, the message is
+ * ignored.
  * @param name Name of the agent to request the new key.
  * @param ip IP of the agent to request the new key.
  * @param groups Groups list of the agent to request the new key.
@@ -112,46 +115,46 @@ int w_request_agent_add_local(int sock,
  *        written unless the return value indicates that specific case.
  * @return 0 on success or a negative code on error.
  */
-int w_request_agent_add_clustered(char *err_response,
-                                  const char *name,
-                                  const char *ip,
-                                  const char *groups,
-                                  const char *key_hash,
-                                  char **id,
-                                  char **key,
-                                  char **reenroll_secret,
-                                  authd_force_options_t *force_options,
-                                  const char *agent_id,
-                                  const char *token_id,
-                                  const char *reenroll_kid,
-                                  const char *reenroll_bearer,
-                                  const char *source,
-                                  int *master_error_code);
+int w_request_agent_add_clustered(char* err_response,
+                                  const char* name,
+                                  const char* ip,
+                                  const char* groups,
+                                  const char* key_hash,
+                                  char** id,
+                                  char** key,
+                                  char** reenroll_secret,
+                                  authd_force_options_t* force_options,
+                                  const char* agent_id,
+                                  const char* token_id,
+                                  const char* reenroll_kid,
+                                  const char* reenroll_bearer,
+                                  const char* source,
+                                  int* master_error_code);
 
 // Send a clustered agent remove request.
-int w_request_agent_remove_clustered(char *err_response, const char* agent_id, int purge);
+int w_request_agent_remove_clustered(char* err_response, const char* agent_id, int purge);
 
 // Sends message thru the cluster
 int w_send_clustered_message(const char* command, const char* payload, char* response);
 
 // Alloc and create sendsync command payload
-cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
+cJSON* w_create_sendsync_payload(const char* daemon_name, cJSON* message);
 
 #endif
 
 // Get the agent id
-char * get_agent_id_from_name(const char *agent_name);
+char* get_agent_id_from_name(const char* agent_name);
 
 /**
-* @brief Returns an authd force options structure translated into a cJSON object
-* @param force_options The structure to be converted
-* @returns A cJSON object with all the parameters of the structure
-**/
-cJSON* w_force_options_to_json(authd_force_options_t *force_options);
+ * @brief Returns an authd force options structure translated into a cJSON object
+ * @param force_options The structure to be converted
+ * @returns A cJSON object with all the parameters of the structure
+ **/
+cJSON* w_force_options_to_json(authd_force_options_t* force_options);
 
 /* Get the primary IP address of the host */
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
-char *getPrimaryIP();
+#if defined(__linux__) || defined(__MACH__) || defined(sun) || defined(FreeBSD) || defined(OpenBSD)
+char* getPrimaryIP();
 #endif
 
 #endif /* AGENT_OP_H */

@@ -28,10 +28,10 @@ class ContentCodingGuard;
 enum class CurlOption
 {
     Url,
-    Post,           ///< long 1
-    PostFields,     ///< ptr to the in-memory body
-    PostFieldSize,  ///< long body length
-    Get,            ///< long 1: CURLOPT_HTTPGET. Also clears any prior POST state, but
+    Post,          ///< long 1
+    PostFields,    ///< ptr to the in-memory body
+    PostFieldSize, ///< long body length
+    Get,           ///< long 1: CURLOPT_HTTPGET. Also clears any prior POST state, but
     ///< that's moot -- every handle is built fresh per request (CurlHandleFactory).
     TimeoutMs,      ///< long per-request timeout
     VerifyPeer,     ///< long 0/1
@@ -102,73 +102,73 @@ struct HeaderCapture
  */
 class ICurlHandle
 {
-    public:
-        virtual ~ICurlHandle() = default;
+public:
+    virtual ~ICurlHandle() = default;
 
-        virtual bool setOptionLong(CurlOption option, long value) = 0;
-        virtual bool setOptionString(CurlOption option, const std::string& value) = 0;
-        virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
-        virtual void appendHeader(const std::string& header) = 0;
+    virtual bool setOptionLong(CurlOption option, long value) = 0;
+    virtual bool setOptionString(CurlOption option, const std::string& value) = 0;
+    virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
+    virtual void appendHeader(const std::string& header) = 0;
 
-        /// Sets X509_V_FLAG_PARTIAL_CHAIN so a self-signed CaInfo root echoed back
-        /// in the peer's own chain verifies instead of failing with
-        /// X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN. Trusts nothing beyond CaInfo.
-        /// @return false if the underlying option was rejected by libcurl.
-        virtual bool trustSelfSignedRoot() = 0;
+    /// Sets X509_V_FLAG_PARTIAL_CHAIN so a self-signed CaInfo root echoed back
+    /// in the peer's own chain verifies instead of failing with
+    /// X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN. Trusts nothing beyond CaInfo.
+    /// @return false if the underlying option was rejected by libcurl.
+    virtual bool trustSelfSignedRoot() = 0;
 
-        /// @return false if the underlying option(s) were rejected by libcurl;
-        ///         the caller must not proceed to perform() in that case, since
-        ///         the requested behavior (e.g. capturing the response) would
-        ///         silently not be in effect.
-        virtual bool captureResponseBody(std::string* output, uint64_t maxBytes) = 0;
-        virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
+    /// @return false if the underlying option(s) were rejected by libcurl;
+    ///         the caller must not proceed to perform() in that case, since
+    ///         the requested behavior (e.g. capturing the response) would
+    ///         silently not be in effect.
+    virtual bool captureResponseBody(std::string* output, uint64_t maxBytes) = 0;
+    virtual bool captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
 
-        /// Installs the one HEADERFUNCTION/HEADERDATA pair libcurl allows per
-        /// handle: capture.retryAfter receives the parsed Retry-After header
-        /// (0 = absent), capture.serverDate receives the parsed Date header
-        /// (0 = absent/unparsed) -- the manager's own transport stamps Date
-        /// on every response it builds, including every 401, which is what
-        /// lets the agent detect and correct clock skew instead of assuming
-        /// a 401 always means a dead credential.
-        /// @return false if the underlying option(s) were rejected by libcurl;
-        ///         the caller must not proceed to perform() in that case.
-        virtual bool captureResponseHeaders(HeaderCapture capture) = 0;
+    /// Installs the one HEADERFUNCTION/HEADERDATA pair libcurl allows per
+    /// handle: capture.retryAfter receives the parsed Retry-After header
+    /// (0 = absent), capture.serverDate receives the parsed Date header
+    /// (0 = absent/unparsed) -- the manager's own transport stamps Date
+    /// on every response it builds, including every 401, which is what
+    /// lets the agent detect and correct clock skew instead of assuming
+    /// a 401 always means a dead credential.
+    /// @return false if the underlying option(s) were rejected by libcurl;
+    ///         the caller must not proceed to perform() in that case.
+    virtual bool captureResponseHeaders(HeaderCapture capture) = 0;
 
-        virtual bool streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
-        virtual bool wireAbort(const std::atomic<bool>* abortFlag) = 0;
+    virtual bool streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
+    virtual bool wireAbort(const std::atomic<bool>* abortFlag) = 0;
 
-        virtual TransportStatus perform() = 0;
-        virtual long responseCode() = 0;
-        virtual std::string localIp() = 0; ///< CURLINFO_LOCAL_IP after perform().
-        /// libcurl's own reason for the last perform(), empty when it succeeded.
-        /// The error class plus, when libcurl supplied one, the TLS/OpenSSL detail
-        /// behind it -- the part TransportStatus cannot carry.
-        virtual std::string curlError() = 0;
+    virtual TransportStatus perform() = 0;
+    virtual long responseCode() = 0;
+    virtual std::string localIp() = 0; ///< CURLINFO_LOCAL_IP after perform().
+    /// libcurl's own reason for the last perform(), empty when it succeeded.
+    /// The error class plus, when libcurl supplied one, the TLS/OpenSSL detail
+    /// behind it -- the part TransportStatus cannot carry.
+    virtual std::string curlError() = 0;
 
-        /// The classified cause behind the last perform(), when it failed with
-        /// TransportStatus::TlsFail and the OpenSSL verify callback identified it as a
-        /// hostname mismatch or a certificate-date problem (see tlsCertDiagnostics.hpp).
-        /// Default-constructed (kind == None) after a success, after any other failure,
-        /// and after an ordinary chain/CA-trust TlsFail, which stays generic.
-        virtual TlsFailureDetail tlsFailureDetail() = 0;
+    /// The classified cause behind the last perform(), when it failed with
+    /// TransportStatus::TlsFail and the OpenSSL verify callback identified it as a
+    /// hostname mismatch or a certificate-date problem (see tlsCertDiagnostics.hpp).
+    /// Default-constructed (kind == None) after a success, after any other failure,
+    /// and after an ordinary chain/CA-trust TlsFail, which stays generic.
+    virtual TlsFailureDetail tlsFailureDetail() = 0;
 
-        /// Whether the last perform() failed because libcurl could not LOAD the CA file
-        /// set via CurlOption::CaInfo (CURLE_SSL_CACERT_BADFILE) -- missing, unreadable,
-        /// or not a certificate it can parse -- as opposed to loading it fine and then
-        /// failing to verify the peer against it. False after a success and after any
-        /// other failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
-        /// is kept separate from tlsFailureDetail().
-        virtual bool caFileLoadFailed() = 0;
+    /// Whether the last perform() failed because libcurl could not LOAD the CA file
+    /// set via CurlOption::CaInfo (CURLE_SSL_CACERT_BADFILE) -- missing, unreadable,
+    /// or not a certificate it can parse -- as opposed to loading it fine and then
+    /// failing to verify the peer against it. False after a success and after any
+    /// other failure. See HttpResponse::caFileLoadFailed (httpTypes.hpp) for why this
+    /// is kept separate from tlsFailureDetail().
+    virtual bool caFileLoadFailed() = 0;
 
-        /// Whether the last perform() failed because libcurl couldn't decode the reply's
-        /// Content-Encoding (CURLE_BAD_CONTENT_ENCODING): a corrupt frame, or a coding it wasn't
-        /// built with. False after a success and after any other failure.
-        virtual bool contentDecodingFailed() = 0;
+    /// Whether the last perform() failed because libcurl couldn't decode the reply's
+    /// Content-Encoding (CURLE_BAD_CONTENT_ENCODING): a corrupt frame, or a coding it wasn't
+    /// built with. False after a success and after any other failure.
+    virtual bool contentDecodingFailed() = 0;
 
-        /// Whether the libcurl behind this handle was built to decode `coding` ("zstd", "br", "gzip"
-        /// or "deflate"). curl sends an Accept-Encoding offer for any coding, then fails every
-        /// reply in one it can't decode.
-        virtual bool decodes(const std::string& coding) = 0;
+    /// Whether the libcurl behind this handle was built to decode `coding` ("zstd", "br", "gzip"
+    /// or "deflate"). curl sends an Accept-Encoding offer for any coding, then fails every
+    /// reply in one it can't decode.
+    virtual bool decodes(const std::string& coding) = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;

@@ -24,32 +24,32 @@
 /// in JSON format.
 class GroupsProvider
 {
-    public:
-        /// @brief Constructor that initializes the GroupsProvider with specific wrappers.
-        /// @param groupWrapper A shared pointer to an IGroupWrapperDarwin instance for group operations.
-        /// @param uuidWrapper A shared pointer to an IUUIDWrapper instance for GID-to-UUID conversion.
-        /// @param odWrapper A shared pointer to an IODUtilsWrapper instance for Open Directory operations.
-        /// @note If the wrappers are not provided, default implementations will be used.
-        explicit GroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
-                                std::shared_ptr<IUUIDWrapper> uuidWrapper,
-                                std::shared_ptr<IODUtilsWrapper> odWrapper);
+public:
+    /// @brief Constructor that initializes the GroupsProvider with specific wrappers.
+    /// @param groupWrapper A shared pointer to an IGroupWrapperDarwin instance for group operations.
+    /// @param uuidWrapper A shared pointer to an IUUIDWrapper instance for GID-to-UUID conversion.
+    /// @param odWrapper A shared pointer to an IODUtilsWrapper instance for Open Directory operations.
+    /// @note If the wrappers are not provided, default implementations will be used.
+    explicit GroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
+                            std::shared_ptr<IUUIDWrapper> uuidWrapper,
+                            std::shared_ptr<IODUtilsWrapper> odWrapper);
 
-        /// @brief Default constructor that initializes the GroupsProvider with default wrappers.
-        /// @note This constructor uses default implementations of IGroupWrapperDarwin and IODUtilsWrapper.
-        GroupsProvider();
+    /// @brief Default constructor that initializes the GroupsProvider with default wrappers.
+    /// @note This constructor uses default implementations of IGroupWrapperDarwin and IODUtilsWrapper.
+    GroupsProvider();
 
-        /// @brief Collects group information based on the provided set of GIDs.
-        /// @param gids A set of GIDs to filter the groups. If empty, all groups will be collected.
-        /// @return A JSON array containing group information, where each group is represented as a JSON object.
-        nlohmann::json collect(const std::set<gid_t>& gids = {});
+    /// @brief Collects group information based on the provided set of GIDs.
+    /// @param gids A set of GIDs to filter the groups. If empty, all groups will be collected.
+    /// @return A JSON array containing group information, where each group is represented as a JSON object.
+    nlohmann::json collect(const std::set<gid_t>& gids = {});
 
-    private:
-        std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
-        std::shared_ptr<IUUIDWrapper> m_uuidWrapper;
-        std::shared_ptr<IODUtilsWrapper> m_odWrapper;
+private:
+    std::shared_ptr<IGroupWrapperDarwin> m_groupWrapper;
+    std::shared_ptr<IUUIDWrapper> m_uuidWrapper;
+    std::shared_ptr<IODUtilsWrapper> m_odWrapper;
 
-        /// @brief Generates a row of group information.
-        /// @param group A pointer to the group structure containing the group information.
-        /// @return A JSON object representing the group information.
-        nlohmann::json genGroupJson(const struct group* group);
+    /// @brief Generates a row of group information.
+    /// @param group A pointer to the group structure containing the group information.
+    /// @return A JSON object representing the group information.
+    nlohmann::json genGroupJson(const struct group* group);
 };

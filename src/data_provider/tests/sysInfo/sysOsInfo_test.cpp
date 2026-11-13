@@ -19,29 +19,25 @@ using ::testing::Return;
 
 class SysOsInfoProviderWrapper : public ISysOsInfoProvider
 {
-    public:
-        SysOsInfoProviderWrapper() = default;
-        ~SysOsInfoProviderWrapper() = default;
-        MOCK_METHOD(std::string, name, (), (const override));
-        MOCK_METHOD(std::string, version, (), (const override));
-        MOCK_METHOD(std::string, majorVersion, (), (const override));
-        MOCK_METHOD(std::string, minorVersion, (), (const override));
-        MOCK_METHOD(std::string, build, (), (const override));
-        MOCK_METHOD(std::string, release, (), (const override));
-        MOCK_METHOD(std::string, displayVersion, (), (const override));
-        MOCK_METHOD(std::string, machine, (), (const override));
-        MOCK_METHOD(std::string, nodeName, (), (const override));
+public:
+    SysOsInfoProviderWrapper() = default;
+    ~SysOsInfoProviderWrapper() = default;
+    MOCK_METHOD(std::string, name, (), (const override));
+    MOCK_METHOD(std::string, version, (), (const override));
+    MOCK_METHOD(std::string, majorVersion, (), (const override));
+    MOCK_METHOD(std::string, minorVersion, (), (const override));
+    MOCK_METHOD(std::string, build, (), (const override));
+    MOCK_METHOD(std::string, release, (), (const override));
+    MOCK_METHOD(std::string, displayVersion, (), (const override));
+    MOCK_METHOD(std::string, machine, (), (const override));
+    MOCK_METHOD(std::string, nodeName, (), (const override));
 };
-
 
 TEST_F(SysOsInfoTest, setOsInfoSchema)
 {
     nlohmann::json output;
-    const auto pOsInfoProvider{new SysOsInfoProviderWrapper};
-    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider
-    {
-        pOsInfoProvider
-    };
+    const auto pOsInfoProvider {new SysOsInfoProviderWrapper};
+    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider {pOsInfoProvider};
     EXPECT_CALL(*pOsInfoProvider, name()).WillOnce(Return("Microsoft Windows 10 Home"));
     EXPECT_CALL(*pOsInfoProvider, version()).WillOnce(Return("10.0.18362"));
     EXPECT_CALL(*pOsInfoProvider, majorVersion()).WillOnce(Return("10"));
@@ -81,11 +77,8 @@ static void expectCommonFields(SysOsInfoProviderWrapper& provider, const std::st
 TEST_F(SysOsInfoTest, setOsInfoDisplayVersionFallsBackToRelease)
 {
     nlohmann::json output;
-    const auto pOsInfoProvider{new SysOsInfoProviderWrapper};
-    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider
-    {
-        pOsInfoProvider
-    };
+    const auto pOsInfoProvider {new SysOsInfoProviderWrapper};
+    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider {pOsInfoProvider};
     expectCommonFields(*pOsInfoProvider, "Microsoft Windows 10 Pro");
     EXPECT_CALL(*pOsInfoProvider, displayVersion()).WillOnce(Return(""));
     EXPECT_CALL(*pOsInfoProvider, release()).WillOnce(Return("1607"));
@@ -97,11 +90,8 @@ TEST_F(SysOsInfoTest, setOsInfoDisplayVersionFallsBackToRelease)
 TEST_F(SysOsInfoTest, setOsInfoWithoutDisplayVersionOrRelease)
 {
     nlohmann::json output;
-    const auto pOsInfoProvider{new SysOsInfoProviderWrapper};
-    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider
-    {
-        pOsInfoProvider
-    };
+    const auto pOsInfoProvider {new SysOsInfoProviderWrapper};
+    const std::shared_ptr<ISysOsInfoProvider> spOsInfoProvider {pOsInfoProvider};
     expectCommonFields(*pOsInfoProvider, "Microsoft Windows Server 2012 R2 Standard");
     EXPECT_CALL(*pOsInfoProvider, displayVersion()).WillOnce(Return(""));
     EXPECT_CALL(*pOsInfoProvider, release()).WillOnce(Return(""));

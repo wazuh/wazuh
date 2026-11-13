@@ -106,7 +106,12 @@ int wdb_update_agent_keepalive(int id, const char* connection_status, const char
  * @retval OS_SUCCESS on success.
  * @retval OS_INVALID on errors.
  */
-int wdb_set_agent_credentials(int id, const char* name, const char* register_ip, const char* internal_key, const char* reenroll_secret, int* sock);
+int wdb_set_agent_credentials(int id,
+                              const char* name,
+                              const char* register_ip,
+                              const char* internal_key,
+                              const char* reenroll_secret,
+                              int* sock);
 
 /**
  * @brief Commit the open transaction of global.db.

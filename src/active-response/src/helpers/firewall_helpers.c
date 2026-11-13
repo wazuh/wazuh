@@ -11,13 +11,10 @@
 #include "active_responses.h"
 #include <errno.h>
 
-firewall_result_t check_binary_available(
-    const char *binary_name,
-    char **path_out,
-    const char *log_prefix
-) {
+firewall_result_t check_binary_available(const char* binary_name, char** path_out, const char* log_prefix)
+{
     char log_msg[OS_MAXSTR];
-    char *binary_path = NULL;
+    char* binary_path = NULL;
 
 #ifdef WIN32
     // On Windows, resolve the tool from the system directory instead of searching %PATH%,
@@ -27,29 +24,31 @@ firewall_result_t check_binary_available(
     char sys_dir[MAX_PATH];
     char full_path[OS_MAXSTR];
 
-    if (GetSystemDirectoryA(sys_dir, sizeof(sys_dir)) == 0) {
+    if (GetSystemDirectoryA(sys_dir, sizeof(sys_dir)) == 0)
+    {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1,
-                 "Could not determine the system directory to resolve '%s'", binary_name);
+        snprintf(log_msg, OS_MAXSTR - 1, "Could not determine the system directory to resolve '%s'", binary_name);
         write_debug_file(log_prefix, log_msg);
         return FIREWALL_NOT_AVAILABLE;
     }
 
     snprintf(full_path, OS_MAXSTR - 1, "%s\\%s", sys_dir, binary_name);
 
-    if (IsFile(full_path) != 0) {
+    if (IsFile(full_path) != 0)
+    {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1,
-                 "Binary '%s' not found under the system directory '%s'", binary_name, sys_dir);
+        snprintf(log_msg, OS_MAXSTR - 1, "Binary '%s' not found under the system directory '%s'", binary_name, sys_dir);
         write_debug_file(log_prefix, log_msg);
         return FIREWALL_NOT_AVAILABLE;
     }
 
     os_strdup(full_path, binary_path);
 #else
-    if (get_binary_path(binary_name, &binary_path) < 0) {
+    if (get_binary_path(binary_name, &binary_path) < 0)
+    {
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1,
+        snprintf(log_msg,
+                 OS_MAXSTR - 1,
                  "Binary '%s' not found in default paths: %s (%d)",
                  binary_name,
                  binary_path ? binary_path : "null",
@@ -60,9 +59,12 @@ firewall_result_t check_binary_available(
     }
 #endif
 
-    if (path_out) {
+    if (path_out)
+    {
         *path_out = binary_path;
-    } else {
+    }
+    else
+    {
         os_free(binary_path);
     }
 
@@ -70,22 +72,21 @@ firewall_result_t check_binary_available(
 }
 
 firewall_result_t execute_with_retry(
-    const char *binary_path,
-    char **args,
-    int bind_flags,
-    const retry_config_t *config,
-    const char *log_prefix
-) {
+    const char* binary_path, char** args, int bind_flags, const retry_config_t* config, const char* log_prefix)
+{
     int count = 0;
     bool flag = true;
     char log_msg[OS_MAXSTR];
 
-    while (flag && count <= config->max_retries) {
-        wfd_t *wfd = wpopenv(binary_path, args, bind_flags);
+    while (flag && count <= config->max_retries)
+    {
+        wfd_t* wfd = wpopenv(binary_path, args, bind_flags);
 
-        if (wfd) {
+        if (wfd)
+        {
             // Read and discard output if STDOUT/STDERR bound
-            if (bind_flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+            if (bind_flags & (W_BIND_STDOUT | W_BIND_STDERR))
+            {
                 char buffer[4096];
                 while (fgets(buffer, sizeof(buffer), wfd->file_out));
             }
@@ -93,38 +94,39 @@ firewall_result_t execute_with_retry(
             int wp_closefd = wpclose(wfd);
 
 #ifndef WIN32
-            if (WIFEXITED(wp_closefd)) {
+            if (WIFEXITED(wp_closefd))
+            {
                 int wstatus = WEXITSTATUS(wp_closefd);
-                if (wstatus == 0) {
+                if (wstatus == 0)
+                {
                     return FIREWALL_SUCCESS;
                 }
             }
 #else
             // On Windows, wpclose returns the exit code directly
-            if (wp_closefd == 0) {
+            if (wp_closefd == 0)
+            {
                 return FIREWALL_SUCCESS;
             }
 #endif
         }
 
         count++;
-        if (count > config->max_retries) {
+        if (count > config->max_retries)
+        {
             flag = false;
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1,
-                     "Command failed after %d retry attempts",
-                     config->max_retries);
+            snprintf(log_msg, OS_MAXSTR - 1, "Command failed after %d retry attempts", config->max_retries);
             write_debug_file(log_prefix, log_msg);
-        } else {
+        }
+        else
+        {
             // Calculate backoff sleep time
-            int sleep_time = config->exponential_backoff ?
-                           (config->backoff_base_seconds * count) :
-                           config->backoff_base_seconds;
+            int sleep_time =
+                config->exponential_backoff ? (config->backoff_base_seconds * count) : config->backoff_base_seconds;
 
             memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1,
-                     "Retry attempt %d after %d seconds",
-                     count, sleep_time);
+            snprintf(log_msg, OS_MAXSTR - 1, "Retry attempt %d after %d seconds", count, sleep_time);
             write_debug_file(log_prefix, log_msg);
 
             sleep(sleep_time);
@@ -134,11 +136,13 @@ firewall_result_t execute_with_retry(
     return FIREWALL_EXECUTION_FAILED;
 }
 
-int acquire_ar_lock(lock_context_t *ctx) {
+int acquire_ar_lock(lock_context_t* ctx)
+{
 #ifndef WIN32
     char log_msg[OS_MAXSTR];
 
-    if (lock(ctx->lock_path, ctx->lock_pid_path, ctx->log_prefix, "block-ip") == OS_INVALID) {
+    if (lock(ctx->lock_path, ctx->lock_pid_path, ctx->log_prefix, "block-ip") == OS_INVALID)
+    {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Unable to acquire lock at %s", ctx->lock_path);
         write_debug_file(ctx->log_prefix, log_msg);
@@ -155,9 +159,11 @@ int acquire_ar_lock(lock_context_t *ctx) {
 #endif
 }
 
-void release_ar_lock(lock_context_t *ctx) {
+void release_ar_lock(lock_context_t* ctx)
+{
 #ifndef WIN32
-    if (ctx->acquired) {
+    if (ctx->acquired)
+    {
         unlock(ctx->lock_path, ctx->log_prefix);
         ctx->acquired = false;
     }
@@ -168,17 +174,14 @@ void release_ar_lock(lock_context_t *ctx) {
 }
 
 void log_firewall_action(
-    const char *ar_name,
-    log_level_t level,
-    const char *method,
-    const char *action,
-    const char *details
-) {
+    const char* ar_name, log_level_t level, const char* method, const char* action, const char* details)
+{
     char log_msg[OS_MAXSTR];
-    const char *level_str[] = {"INFO", "WARNING", "ERROR", "DEBUG"};
+    const char* level_str[] = {"INFO", "WARNING", "ERROR", "DEBUG"};
 
     memset(log_msg, '\0', OS_MAXSTR);
-    snprintf(log_msg, OS_MAXSTR - 1,
+    snprintf(log_msg,
+             OS_MAXSTR - 1,
              "[%s] Method=%s Action=%s Details=%s",
              level_str[level],
              method ? method : "unknown",
@@ -188,39 +191,34 @@ void log_firewall_action(
     write_debug_file(ar_name, log_msg);
 }
 
-const char* firewall_result_to_string(firewall_result_t result) {
-    switch (result) {
-        case FIREWALL_SUCCESS:
-            return "SUCCESS";
-        case FIREWALL_NOT_AVAILABLE:
-            return "NOT_AVAILABLE";
-        case FIREWALL_EXECUTION_FAILED:
-            return "EXECUTION_FAILED";
-        case FIREWALL_INVALID_STATE:
-            return "INVALID_STATE";
-        default:
-            return "UNKNOWN";
+const char* firewall_result_to_string(firewall_result_t result)
+{
+    switch (result)
+    {
+        case FIREWALL_SUCCESS: return "SUCCESS";
+        case FIREWALL_NOT_AVAILABLE: return "NOT_AVAILABLE";
+        case FIREWALL_EXECUTION_FAILED: return "EXECUTION_FAILED";
+        case FIREWALL_INVALID_STATE: return "INVALID_STATE";
+        default: return "UNKNOWN";
     }
 }
 
 int execute_firewall_chain(
-    const firewall_method_t *methods,
-    const char *srcip,
-    int action,
-    int ip_version,
-    const char *argv0
-) {
+    const firewall_method_t* methods, const char* srcip, int action, int ip_version, const char* argv0)
+{
     char log_msg[OS_MAXSTR];
     int methods_attempted = 0;
     int methods_unavailable = 0;
     int methods_failed = 0;
 
-    for (int i = 0; methods[i].name != NULL; i++) {
+    for (int i = 0; methods[i].name != NULL; i++)
+    {
         methods_attempted++;
 
         // Log attempt
         memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1,
+        snprintf(log_msg,
+                 OS_MAXSTR - 1,
                  "Attempting method: %s (lock=%s)",
                  methods[i].name,
                  methods[i].requires_lock ? "yes" : "no");
@@ -229,40 +227,49 @@ int execute_firewall_chain(
         // Execute method
         firewall_result_t result = methods[i].execute(srcip, action, ip_version, argv0);
 
-        switch (result) {
+        switch (result)
+        {
             case FIREWALL_SUCCESS:
                 memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1,
+                snprintf(log_msg,
+                         OS_MAXSTR - 1,
                          "IP %s successfully %s",
                          srcip,
                          action == ENABLE_COMMAND ? "blocked" : "unblocked");
                 log_firewall_action(argv0, LOG_LEVEL_INFO, methods[i].name, "success", log_msg);
                 write_debug_file(argv0, "Ended");
-                return OS_SUCCESS;  // Early exit on first success
+                return OS_SUCCESS; // Early exit on first success
 
             case FIREWALL_NOT_AVAILABLE:
                 methods_unavailable++;
-                log_firewall_action(argv0, LOG_LEVEL_WARNING, methods[i].name, "skipped",
-                                  "Method not available on this system - trying next");
+                log_firewall_action(argv0,
+                                    LOG_LEVEL_WARNING,
+                                    methods[i].name,
+                                    "skipped",
+                                    "Method not available on this system - trying next");
                 break;
 
             case FIREWALL_EXECUTION_FAILED:
                 methods_failed++;
-                log_firewall_action(argv0, LOG_LEVEL_WARNING, methods[i].name, "failed",
-                                  "Command execution failed - trying next");
+                log_firewall_action(
+                    argv0, LOG_LEVEL_WARNING, methods[i].name, "failed", "Command execution failed - trying next");
                 break;
 
             case FIREWALL_INVALID_STATE:
                 methods_failed++;
-                log_firewall_action(argv0, LOG_LEVEL_WARNING, methods[i].name, "invalid_state",
-                                  "Service or firewall in invalid state - trying next");
+                log_firewall_action(argv0,
+                                    LOG_LEVEL_WARNING,
+                                    methods[i].name,
+                                    "invalid_state",
+                                    "Service or firewall in invalid state - trying next");
                 break;
         }
     }
 
     // All methods exhausted without success
     memset(log_msg, '\0', OS_MAXSTR);
-    snprintf(log_msg, OS_MAXSTR - 1,
+    snprintf(log_msg,
+             OS_MAXSTR - 1,
              "WARNING: All %d firewall methods failed or unavailable (%d unavailable, %d execution errors)",
              methods_attempted,
              methods_unavailable,

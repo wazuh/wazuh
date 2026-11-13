@@ -18,23 +18,24 @@
  * data so the thread entry point can wait on the startup gate before
  * invoking it. Exposed here (rather than kept private to win_utils.c) so
  * unit tests can construct one directly. */
-typedef struct win_module_start_ctx {
+typedef struct win_module_start_ctx
+{
     wm_routine routine;
-    void *data;
+    void* data;
     char name[OS_SIZE_128];
 } win_module_start_ctx_t;
 
 #ifdef WIN32
 DWORD WINAPI skthread(LPVOID arg);
 DWORD WINAPI logcollector_thread(LPVOID arg);
-DWORD WINAPI win_module_thread(void *arg);
+DWORD WINAPI win_module_thread(void* arg);
 
 /* Takes the service-restart lock file, retrying while another restart holds it */
-HANDLE acquire_restart_lock(DWORD wait_ms, int *timed_out);
+HANDLE acquire_restart_lock(DWORD wait_ms, int* timed_out);
 #endif
 
 /* Install the Wazuh agent service */
-int InstallService(char *path);
+int InstallService(char* path);
 
 /* Uninstall the Wazuh agent service */
 int UninstallService();
@@ -51,7 +52,7 @@ int os_start_service();
 int os_stop_service();
 
 /* Start the process from the services */
-int os_WinMain(int argc, char **argv);
+int os_WinMain(int argc, char** argv);
 
 /* Locally start the process (after the services initialization) */
 int local_start();

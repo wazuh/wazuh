@@ -86,8 +86,7 @@ namespace
 
     void recordProducerPause(bool paused, const char* reason, void* userData)
     {
-        recordTag(std::string("pause:") + (paused ? "on:" : "off:") +
-                  (reason != nullptr ? reason : "(null)"),
+        recordTag(std::string("pause:") + (paused ? "on:" : "off:") + (reason != nullptr ? reason : "(null)"),
                   static_cast<Record*>(userData));
     }
 
@@ -201,26 +200,19 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     waitForCount(record, 8);
     dispatcher.stop();
 
-    EXPECT_NE(record.order.end(),
-              std::find(record.order.begin(), record.order.end(), "startup:ok"));
+    EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "startup:ok"));
     EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
+    EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "failed:t2"));
+    EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "reenroll"));
+    EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "sync:sess-1"));
     EXPECT_NE(record.order.end(),
-              std::find(record.order.begin(), record.order.end(), "failed:t2"));
+              std::find(record.order.begin(), record.order.end(), "state:" + std::to_string(HC_STATE_REGISTERED)));
     EXPECT_NE(record.order.end(),
-              std::find(record.order.begin(), record.order.end(), "reenroll"));
-    EXPECT_NE(record.order.end(),
-              std::find(record.order.begin(), record.order.end(), "sync:sess-1"));
-    EXPECT_NE(record.order.end(),
-              std::find(record.order.begin(), record.order.end(),
-                        "state:" + std::to_string(HC_STATE_REGISTERED)));
-    EXPECT_NE(record.order.end(),
-              std::find(record.order.begin(), record.order.end(),
-                        "buffer:" + std::to_string(HC_BUFFER_WARNING)));
+              std::find(record.order.begin(), record.order.end(), "buffer:" + std::to_string(HC_BUFFER_WARNING)));
     // The reason crosses the ABI as const char*: assert the text survives the hop
     // to the worker thread, not just that the callback fired.
     EXPECT_NE(record.order.end(),
-              std::find(record.order.begin(), record.order.end(),
-                        "pause:on:(7) Couldn't connect to server"));
+              std::find(record.order.begin(), record.order.end(), "pause:on:(7) Couldn't connect to server"));
 }
 
 namespace
@@ -245,8 +237,7 @@ namespace
 
     std::string makeTempConfigFile(const std::string& content)
     {
-        const std::string path =
-            ::testing::TempDir() + "hc_dispatcher_config_" + std::to_string(::getpid()) + ".tmp";
+        const std::string path = ::testing::TempDir() + "hc_dispatcher_config_" + std::to_string(::getpid()) + ".tmp";
         std::ofstream file {path, std::ios::binary};
         file << content;
         return path;
@@ -320,8 +311,7 @@ TEST(CallbackDispatcherBinaryTest, ASyncResponseBodyKeepsItsNulBytes)
     } captured;
 
     hc_callbacks_t callbacks {};
-    callbacks.on_sync_response = [](const char*, int, const char* body, size_t bodyLen,
-                                    void* userData)
+    callbacks.on_sync_response = [](const char*, int, const char* body, size_t bodyLen, void* userData)
     {
         auto* sink = static_cast<Captured*>(userData);
         std::lock_guard<std::mutex> lock(sink->mutex);

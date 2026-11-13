@@ -21,10 +21,12 @@
 static int unlink_errno_after_call = 0;
 static bool unlink_should_set_errno = false;
 
-int __wrap_unlink(const char *file) {
+int __wrap_unlink(const char* file)
+{
     check_expected_ptr(file);
     int ret = mock();
-    if (unlink_should_set_errno) {
+    if (unlink_should_set_errno)
+    {
         errno = unlink_errno_after_call;
         unlink_should_set_errno = false;
     }
@@ -36,61 +38,73 @@ int __wrap_unlink(const char *file) {
  * failure). Setting errno directly in the test body before the call isn't reliable:
  * nothing guarantees it survives the cmocka bookkeeping in check_expected()/mock() that
  * runs first. */
-void expect_unlink_errno(int err) {
+void expect_unlink_errno(int err)
+{
     unlink_errno_after_call = err;
     unlink_should_set_errno = true;
 }
 
 #ifdef WIN32
-int wrap__unlink(const char *file) {
+int wrap__unlink(const char* file)
+{
     check_expected_ptr(file);
     return mock();
 }
 #endif
 
-int __wrap_close(__attribute__ ((__unused__)) int fd) {
+int __wrap_close(__attribute__((__unused__)) int fd)
+{
     return 1;
 }
 
 extern int __real_getpid();
-int __wrap_getpid() {
-    if (test_mode) {
+int __wrap_getpid()
+{
+    if (test_mode)
+    {
         return 2345;
     }
     return __real_getpid();
 }
 
 #ifndef WIN32
-__attribute__((weak)) void __wrap_sleep_hook(unsigned int seconds) {
+__attribute__((weak)) void __wrap_sleep_hook(unsigned int seconds)
+{
     (void)seconds;
 }
 
-void __wrap_sleep(unsigned int seconds) {
+void __wrap_sleep(unsigned int seconds)
+{
     check_expected(seconds);
     __wrap_sleep_hook(seconds);
     return;
 }
 
-int __wrap_usleep(__attribute__((unused)) useconds_t usec) {
+int __wrap_usleep(__attribute__((unused)) useconds_t usec)
+{
     function_called();
     return 0;
 }
 #endif
 
-int __wrap_sysconf(__attribute__((unused)) int name) {
+int __wrap_sysconf(__attribute__((unused)) int name)
+{
     return mock();
 }
 
-ssize_t __wrap_read(__attribute__((unused)) int fildes,
-                    void *buf,
-                    size_t nbyte) {
-    char * buffer = mock_type(char *);
+ssize_t __wrap_read(__attribute__((unused)) int fildes, void* buf, size_t nbyte)
+{
+    char* buffer = mock_type(char*);
     size_t n = mock_type(size_t);
-    if(buffer) {
-        if (nbyte > n){
+    if (buffer)
+    {
+        if (nbyte > n)
+        {
             memcpy(buf, buffer, n);
             return n;
-        } else {
+        }
+        else
+        {
             memcpy(buf, buffer, nbyte);
             return nbyte;
         }
@@ -99,20 +113,24 @@ ssize_t __wrap_read(__attribute__((unused)) int fildes,
     return -1;
 }
 
-int __wrap_gethostname(char *name, int len) {
-    snprintf(name, len, "%s",mock_type(char*));
+int __wrap_gethostname(char* name, int len)
+{
+    snprintf(name, len, "%s", mock_type(char*));
     return mock_type(int);
 }
 
-ssize_t __wrap_readlink(__attribute__((unused)) const char *path, __attribute__((unused)) char *buf, size_t bufsiz) {
+ssize_t __wrap_readlink(__attribute__((unused)) const char* path, __attribute__((unused)) char* buf, size_t bufsiz)
+{
     ssize_t ret = mock();
     return ret > (ssize_t)bufsiz ? (ssize_t)bufsiz : ret;
 }
 
-ssize_t __wrap_readlinkat(__attribute__((unused)) int dirfd, const char *path, char *buf, size_t bufsiz) {
+ssize_t __wrap_readlinkat(__attribute__((unused)) int dirfd, const char* path, char* buf, size_t bufsiz)
+{
     check_expected(path);
-    const char *target = mock_ptr_type(const char *);
-    if (target == NULL) {
+    const char* target = mock_ptr_type(const char*);
+    if (target == NULL)
+    {
         return -1;
     }
     const size_t len = strlen(target);
@@ -121,18 +139,21 @@ ssize_t __wrap_readlinkat(__attribute__((unused)) int dirfd, const char *path, c
     return (ssize_t)copied;
 }
 
-int __wrap_symlink(const char *path1, const char *path2) {
+int __wrap_symlink(const char* path1, const char* path2)
+{
     check_expected(path1);
     check_expected(path2);
     return mock();
 }
 
-int __wrap_rmdir(const char *path) {
+int __wrap_rmdir(const char* path)
+{
     check_expected(path);
     return mock();
 }
 
-int __wrap_access (const char *__name, int __type) {
+int __wrap_access(const char* __name, int __type)
+{
     check_expected(__name);
     check_expected(__type);
     return mock();

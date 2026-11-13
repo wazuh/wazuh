@@ -44,585 +44,595 @@
 
 class EXPORTED Syscollector final
 {
-    public:
-        static Syscollector& instance()
-        {
-            static Syscollector s_instance;
-            return s_instance;
-        }
+public:
+    static Syscollector& instance()
+    {
+        static Syscollector s_instance;
+        return s_instance;
+    }
 
-        using AgentdQueryFunc = std::function<bool(const char*, char*, size_t)>;
+    using AgentdQueryFunc = std::function<bool(const char*, char*, size_t)>;
 
-        void init(const std::shared_ptr<ISysInfo>& spInfo,
-                  const std::function<void(const std::string&)> reportDiffFunction,
-                  const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> persistDiffFunction,
-                  const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
-                  const std::string& dbPath,
-                  const std::string& normalizerConfigPath,
-                  const std::string& normalizerType,
-                  const unsigned int inverval = 3600ul,
-                  const bool scanOnStart = true,
-                  const bool hardware = true,
-                  const bool os = true,
-                  const bool network = true,
-                  const bool packages = true,
-                  const bool ports = true,
-                  const bool portsAll = true,
-                  const bool processes = true,
-                  const bool hotfixes = true,
-                  const bool groups = true,
-                  const bool users = true,
-                  const bool services = true,
-                  const bool browserExtensions = true,
-                  const bool notifyOnFirstScan = false);
+    void
+    init(const std::shared_ptr<ISysInfo>& spInfo,
+         const std::function<void(const std::string&)> reportDiffFunction,
+         const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>
+             persistDiffFunction,
+         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
+         const std::string& dbPath,
+         const std::string& normalizerConfigPath,
+         const std::string& normalizerType,
+         const unsigned int inverval = 3600ul,
+         const bool scanOnStart = true,
+         const bool hardware = true,
+         const bool os = true,
+         const bool network = true,
+         const bool packages = true,
+         const bool ports = true,
+         const bool portsAll = true,
+         const bool processes = true,
+         const bool hotfixes = true,
+         const bool groups = true,
+         const bool users = true,
+         const bool services = true,
+         const bool browserExtensions = true,
+         const bool notifyOnFirstScan = false);
 
-        /**
-         * @brief Set agentd query function for agentd communication (cross-platform)
-         *
-         * This function is used to send commands to agentd and receive JSON responses.
-         * Works on both Unix/Linux (socket) and Windows (agcom_dispatch).
-         * Should be set before calling start().
-         *
-         * @param queryFunc Function to query agentd (returns JSON string or nullptr)
-         */
-        void setAgentdQueryFunction(AgentdQueryFunc queryFunc);
+    /**
+     * @brief Set agentd query function for agentd communication (cross-platform)
+     *
+     * This function is used to send commands to agentd and receive JSON responses.
+     * Works on both Unix/Linux (socket) and Windows (agcom_dispatch).
+     * Should be set before calling start().
+     *
+     * @param queryFunc Function to query agentd (returns JSON string or nullptr)
+     */
+    void setAgentdQueryFunction(AgentdQueryFunc queryFunc);
 
-        void start();
-        void quiesce();
-        void releaseResources();
+    void start();
+    void quiesce();
+    void releaseResources();
 
-        /**
-         * @brief Signal stop, then release resources synchronously if the scan isn't busy.
-         *
-         * Must be called from the same thread that called start(), since releaseResources()
-         * releases per-thread resources (e.g. the Windows hotfixes() COM context) on the
-         * calling thread. Calling this from a different thread releases the wrong thread's
-         * resources and leaves start()'s thread never explicitly released.
-         */
-        void destroy();
+    /**
+     * @brief Signal stop, then release resources synchronously if the scan isn't busy.
+     *
+     * Must be called from the same thread that called start(), since releaseResources()
+     * releases per-thread resources (e.g. the Windows hotfixes() COM context) on the
+     * calling thread. Calling this from a different thread releases the wrong thread's
+     * resources and leaves start()'s thread never explicitly released.
+     */
+    void destroy();
 
-        // Sync protocol methods
-        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD,
-                              uint32_t integrityInterval);
+    // Sync protocol methods
+    void initSyncProtocol(const std::string& moduleName,
+                          const std::string& syncDbPath,
+                          const std::string& syncDbPathVD,
+                          uint32_t integrityInterval);
 
-        SyncModuleResult syncModule(Mode mode);
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
-        bool parseResponseBuffer(const uint8_t* data, size_t length);
-        bool parseResponseBufferVD(const uint8_t* data, size_t length);
-        bool notifyDataClean(const std::vector<std::string>& indices);
-        void deleteDatabase();
-        std::string query(const std::string& jsonQuery);
-        bool notifyDisableCollectorsDataClean();
-        void deleteDisableCollectorsData();
+    SyncModuleResult syncModule(Mode mode);
+    void persistDifference(const std::string& id,
+                           Operation operation,
+                           const std::string& index,
+                           const std::string& data,
+                           uint64_t version,
+                           bool isDataContext = false);
+    bool parseResponseBuffer(const uint8_t* data, size_t length);
+    bool parseResponseBufferVD(const uint8_t* data, size_t length);
+    bool notifyDataClean(const std::vector<std::string>& indices);
+    void deleteDatabase();
+    std::string query(const std::string& jsonQuery);
+    bool notifyDisableCollectorsDataClean();
+    void deleteDisableCollectorsData();
 
-        // Mutex access for external synchronization (e.g., from wm_sync_module)
-        void lockScanMutex();
-        void unlockScanMutex();
-        bool isScanning() const
-        {
-            return m_scanning.load();
-        }
+    // Mutex access for external synchronization (e.g., from wm_sync_module)
+    void lockScanMutex();
+    void unlockScanMutex();
+    bool isScanning() const
+    {
+        return m_scanning.load();
+    }
 
-        // Recovery functions
-        void runRecoveryProcess();
+    // Recovery functions
+    void runRecoveryProcess();
 
-    private:
-        SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS;
+private:
+    SYSCOLLECTOR_FRIEND_TEST_DECLARATIONS;
 
-        Syscollector();
-        ~Syscollector() = default;
-        Syscollector(const Syscollector&) = delete;
-        Syscollector& operator=(const Syscollector&) = delete;
+    Syscollector();
+    ~Syscollector() = default;
+    Syscollector(const Syscollector&) = delete;
+    Syscollector& operator=(const Syscollector&) = delete;
 
-        std::string getCreateStatement() const;
-        nlohmann::json getOSData();
-        nlohmann::json getHardwareData();
-        nlohmann::json getNetworkData();
-        nlohmann::json getPortsData();
-        nlohmann::json getGroupsData();
-        nlohmann::json getUsersData();
-        nlohmann::json getServicesData();
-        nlohmann::json getBrowserExtensionsData();
+    std::string getCreateStatement() const;
+    nlohmann::json getOSData();
+    nlohmann::json getHardwareData();
+    nlohmann::json getNetworkData();
+    nlohmann::json getPortsData();
+    nlohmann::json getGroupsData();
+    nlohmann::json getUsersData();
+    nlohmann::json getServicesData();
+    nlohmann::json getBrowserExtensionsData();
 
-        std::pair<nlohmann::json, uint64_t> ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
-        nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
+    std::pair<nlohmann::json, uint64_t>
+    ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
+    nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
 
-        /**
-         * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
-         * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")
-         * @param excludeIds Set of hash IDs to exclude from results (items already in DataValue)
-         * @param forceAll If true, fetch all records regardless of document limits (ignores sync flag)
-         * @return Vector of JSON objects representing all rows in the table (excluding specified IDs)
-         */
-        std::vector<nlohmann::json> fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds, bool forceAll = false);
+    /**
+     * @brief Fetches all items from a VD table (OS, Packages, or Hotfixes) excluding specified IDs
+     * @param tableName Name of the table to query ("dbsync_osinfo", "dbsync_packages", "dbsync_hotfixes")
+     * @param excludeIds Set of hash IDs to exclude from results (items already in DataValue)
+     * @param forceAll If true, fetch all records regardless of document limits (ignores sync flag)
+     * @return Vector of JSON objects representing all rows in the table (excluding specified IDs)
+     */
+    std::vector<nlohmann::json>
+    fetchAllFromTable(const std::string& tableName, const std::set<std::string>& excludeIds, bool forceAll = false);
 
-        /**
-         * @brief Determines which DataContext items to include based on platform-specific rules
-         * @param operation The operation type (CREATE, MODIFY, DELETE_)
-         * @param index The index being modified (system, packages, hotfixes)
-         * @return Vector of table names that should be included as DataContext
-         */
-        std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
+    /**
+     * @brief Determines which DataContext items to include based on platform-specific rules
+     * @param operation The operation type (CREATE, MODIFY, DELETE_)
+     * @param index The index being modified (system, packages, hotfixes)
+     * @return Vector of table names that should be included as DataContext
+     */
+    std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
 
-        /**
-         * @brief Checks if the first VD sync has been completed.
-         * @details The state is persisted in @c table_metadata under the
-         *          @c vd_first_sync_completed key as an epoch-seconds timestamp;
-         *          any value > 0 means the first VD sync already completed.
-         * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
-         */
-        bool isVDFirstSyncDone();
+    /**
+     * @brief Checks if the first VD sync has been completed.
+     * @details The state is persisted in @c table_metadata under the
+     *          @c vd_first_sync_completed key as an epoch-seconds timestamp;
+     *          any value > 0 means the first VD sync already completed.
+     * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
+     */
+    bool isVDFirstSyncDone();
 
-        /// @brief Body of deleteDatabase() without taking m_resourcesMutex.
-        /// @note The caller must already hold m_resourcesMutex. Exists so callers that
-        /// already hold it shared do not acquire it a second time on the same thread.
-        void deleteDatabaseUnlocked();
-        void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
+    /// @brief Body of deleteDatabase() without taking m_resourcesMutex.
+    /// @note The caller must already hold m_resourcesMutex. Exists so callers that
+    /// already hold it shared do not acquire it a second time on the same thread.
+    void deleteDatabaseUnlocked();
+    void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
 
-        /**
-         * @brief Synchronizes the VD tables (system, packages and hotfixes) and persists the
-         *        VDFirst marker when the session succeeds.
-         * @details Picks the sync option that fits the current state: SYNC when the agent's own
-         *          collectors rule VD scanning out, VDFIRST/VDSYNC otherwise. The session is
-         *          sent regardless of the VD feed offset the agent has heard about; what to do
-         *          with one built against an offset the node does not have is the manager's
-         *          decision.
-         * @param mode Synchronization mode to use for the session.
-         * @return The result of the session.
-         */
-        SyncModuleResult synchronizeVDTables(const Mode mode);
-        /**
-         * @brief Processes VD DataContext after scan completes
-         * @details Queries the VD sync protocol database for pending DataValue items,
-         *          applies platform-specific rules to determine what DataContext to include,
-         *          and submits the DataContext items to the sync protocol
-         */
-        void processVDDataContext();
-        nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsPackageData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsProcessesData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsPortData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsNetworkInterfaceData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsNetworkProtocolData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsNetworkAddressData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsUsersData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsGroupsData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsServicesData(const nlohmann::json& originalData, bool createFields = true);
-        nlohmann::json ecsBrowserExtensionsData(const nlohmann::json& originalData, bool createFields = true);
+    /**
+     * @brief Synchronizes the VD tables (system, packages and hotfixes) and persists the
+     *        VDFirst marker when the session succeeds.
+     * @details Picks the sync option that fits the current state: SYNC when the agent's own
+     *          collectors rule VD scanning out, VDFIRST/VDSYNC otherwise. The session is
+     *          sent regardless of the VD feed offset the agent has heard about; what to do
+     *          with one built against an offset the node does not have is the manager's
+     *          decision.
+     * @param mode Synchronization mode to use for the session.
+     * @return The result of the session.
+     */
+    SyncModuleResult synchronizeVDTables(const Mode mode);
+    /**
+     * @brief Processes VD DataContext after scan completes
+     * @details Queries the VD sync protocol database for pending DataValue items,
+     *          applies platform-specific rules to determine what DataContext to include,
+     *          and submits the DataContext items to the sync protocol
+     */
+    void processVDDataContext();
+    nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsPackageData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsProcessesData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsPortData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsNetworkInterfaceData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsNetworkProtocolData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsNetworkAddressData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsUsersData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsGroupsData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsServicesData(const nlohmann::json& originalData, bool createFields = true);
+    nlohmann::json ecsBrowserExtensionsData(const nlohmann::json& originalData, bool createFields = true);
 
-        std::string getPrimaryKeys(const nlohmann::json& data, const std::string& table);
-        std::string calculateHashId(const nlohmann::json& data, const std::string& table);
-        nlohmann::json addPreviousFields(nlohmann::json& current, const nlohmann::json& previous);
+    std::string getPrimaryKeys(const nlohmann::json& data, const std::string& table);
+    std::string calculateHashId(const nlohmann::json& data, const std::string& table);
+    nlohmann::json addPreviousFields(nlohmann::json& current, const nlohmann::json& previous);
 
-        void updateChanges(const std::string& table,
-                           const nlohmann::json& values);
-        void notifyChange(ReturnTypeCallback result,
-                          const nlohmann::json& data,
-                          const std::string& table);
-        void processEvent(ReturnTypeCallback result,
-                          const nlohmann::json& data,
-                          const std::string& table);
+    void updateChanges(const std::string& table, const nlohmann::json& values);
+    void notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table);
+    void processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table);
 
-        void scanHardware();
-        void scanOs();
-        void scanNetwork();
-        void scanPackages();
-        void scanHotfixes();
-        void scanPorts();
-        void scanProcesses();
-        void scanGroups();
-        void scanUsers();
-        void scanServices();
-        void scanBrowserExtensions();
-        void scan();
-        void syncLoop(std::unique_lock<std::mutex>& scan_lock);
-        bool pause();
-        void resume();
-        int flush();
-        int executeFlushSync();
-        int getMaxVersion();
-        int setVersion(int version);
+    void scanHardware();
+    void scanOs();
+    void scanNetwork();
+    void scanPackages();
+    void scanHotfixes();
+    void scanPorts();
+    void scanProcesses();
+    void scanGroups();
+    void scanUsers();
+    void scanServices();
+    void scanBrowserExtensions();
+    void scan();
+    void syncLoop(std::unique_lock<std::mutex>& scan_lock);
+    bool pause();
+    void resume();
+    int flush();
+    int executeFlushSync();
+    int getMaxVersion();
+    int setVersion(int version);
 
-        void setJsonField(nlohmann::json& target,
-                          const nlohmann::json& source,
-                          const std::string& keyPath,
-                          const std::string& jsonKey,
-                          bool createFields,
-                          bool is_boolean = false);
-        void setJsonFieldArray(nlohmann::json& target,
-                               const nlohmann::json& source,
-                               const std::string& destPath,
-                               const std::string& sourceKey,
-                               bool createFields);
-        void setJsonFieldArrayFromJsonString(nlohmann::json& target,
-                                             const nlohmann::json& source,
-                                             const std::string& destPath,
-                                             const std::string& sourceKey,
-                                             bool createFields);
+    void setJsonField(nlohmann::json& target,
+                      const nlohmann::json& source,
+                      const std::string& keyPath,
+                      const std::string& jsonKey,
+                      bool createFields,
+                      bool is_boolean = false);
+    void setJsonFieldArray(nlohmann::json& target,
+                           const nlohmann::json& source,
+                           const std::string& destPath,
+                           const std::string& sourceKey,
+                           bool createFields);
+    void setJsonFieldArrayFromJsonString(nlohmann::json& target,
+                                         const nlohmann::json& source,
+                                         const std::string& destPath,
+                                         const std::string& sourceKey,
+                                         bool createFields);
 
-        bool hasDataInTable(const std::string& tableName);
-        void checkDisabledCollectorsIndicesWithData();
-        void clearTablesForIndices(const std::vector<std::string>& indices);
-        bool handleNotifyDataClean();
+    bool hasDataInTable(const std::string& tableName);
+    void checkDisabledCollectorsIndicesWithData();
+    void clearTablesForIndices(const std::vector<std::string>& indices);
+    bool handleNotifyDataClean();
 
-        /**
-         * @brief Whether any disabled collector still has data the manager must be told to clean.
-         */
-        bool hasDisabledCollectorsData();
+    /**
+     * @brief Whether any disabled collector still has data the manager must be told to clean.
+     */
+    bool hasDisabledCollectorsData();
 
-        // Recovery functions
-        /**
-         * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
-         * @param table_name The table to check
-         * @returns MISMATCH if a full sync is required, VALID if a delta sync is sufficient, NOT_CHECKED
-         *          (with the reason) if the check did not complete.
-         */
-        IntegrityCheckResult checkIfFullSyncRequired(const std::string& tableName);
+    // Recovery functions
+    /**
+     * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it
+     * with the manager's
+     * @param table_name The table to check
+     * @returns MISMATCH if a full sync is required, VALID if a delta sync is sufficient, NOT_CHECKED
+     *          (with the reason) if the check did not complete.
+     */
+    IntegrityCheckResult checkIfFullSyncRequired(const std::string& tableName);
 
-        /**
-         * @brief Get a metadata value from table_metadata.
-         *
-         * @param key Metadata key to query.
-         * @param value Output value. Defaults to 0 when the key is absent.
-         * @return true on success, false on error.
-         */
-        bool getMetadataValue(const std::string& key, int64_t& value);
+    /**
+     * @brief Get a metadata value from table_metadata.
+     *
+     * @param key Metadata key to query.
+     * @param value Output value. Defaults to 0 when the key is absent.
+     * @return true on success, false on error.
+     */
+    bool getMetadataValue(const std::string& key, int64_t& value);
 
-        /**
-         * @brief Update a metadata value in table_metadata.
-         *
-         * @param key Metadata key to update.
-         * @param value Value to persist.
-         * @return true on success, false on error.
-         */
-        bool updateMetadataValue(const std::string& key, int64_t value);
+    /**
+     * @brief Update a metadata value in table_metadata.
+     *
+     * @param key Metadata key to update.
+     * @param value Value to persist.
+     * @return true on success, false on error.
+     */
+    bool updateMetadataValue(const std::string& key, int64_t value);
 
-        /**
-         * @brief Get the last_sync_time for a given table.
-         *
-         * @param tableName Name of the table to query.
-         * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
-         */
-        int64_t getLastSyncTime(const std::string& tableName);
+    /**
+     * @brief Get the last_sync_time for a given table.
+     *
+     * @param tableName Name of the table to query.
+     * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
+     */
+    int64_t getLastSyncTime(const std::string& tableName);
 
-        /**
-         * @brief Update the last_sync_time for a given table.
-         *
-         * @param tableName Name of the table to update.
-         * @param timestamp The sync timestamp to set (UNIX format).
-         */
-        void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
+    /**
+     * @brief Update the last_sync_time for a given table.
+     *
+     * @param tableName Name of the table to update.
+     * @param timestamp The sync timestamp to set (UNIX format).
+     */
+    void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
 
-        /**
-         * @brief Check if the integrity interval has elapsed for a given table.
-         *
-         * @param tableName Name of the table to check.
-         * @param integrityInterval Integrity check interval in seconds.
-         * @return true if interval has elapsed, false otherwise.
-         */
-        bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
+    /**
+     * @brief Check if the integrity interval has elapsed for a given table.
+     *
+     * @param tableName Name of the table to check.
+     * @param integrityInterval Integrity check interval in seconds.
+     * @return true if interval has elapsed, false otherwise.
+     */
+    bool recoveryIntervalHasEllapsed(const std::string& tableName, int64_t integrityInterval);
 
-        /**
-         * @brief Get the configured document limit for a given index, thread-safely.
-         *
-         * @param index Index name to look up (e.g. "wazuh-states-inventory-packages").
-         * @return The configured limit, or 0 if unlimited/not configured.
-         */
-        size_t getDocumentLimit(const std::string& index);
+    /**
+     * @brief Get the configured document limit for a given index, thread-safely.
+     *
+     * @param index Index name to look up (e.g. "wazuh-states-inventory-packages").
+     * @return The configured limit, or 0 if unlimited/not configured.
+     */
+    size_t getDocumentLimit(const std::string& index);
 
-        /**
-         * @brief Validates a JSON message against schema and logs validation errors
-         *
-         * This helper function encapsulates the common pattern of schema validation
-         * used across different parts of syscollector. It validates the message against
-         * the schema for the given index and logs detailed error messages if validation fails.
-         *
-         * @param data JSON string to validate
-         * @param index Index name for schema lookup (e.g., "wazuh-states-inventory-packages")
-         * @param context Context string for logging (e.g., "table: dbsync_packages")
-         * @return true if validation passed or validator not initialized, false if validation failed
-         */
-        bool validateSchemaAndLog(const std::string& data, const std::string& index, const std::string& context) const;
+    /**
+     * @brief Validates a JSON message against schema and logs validation errors
+     *
+     * This helper function encapsulates the common pattern of schema validation
+     * used across different parts of syscollector. It validates the message against
+     * the schema for the given index and logs detailed error messages if validation fails.
+     *
+     * @param data JSON string to validate
+     * @param index Index name for schema lookup (e.g., "wazuh-states-inventory-packages")
+     * @param context Context string for logging (e.g., "table: dbsync_packages")
+     * @return true if validation passed or validator not initialized, false if validation failed
+     */
+    bool validateSchemaAndLog(const std::string& data, const std::string& index, const std::string& context) const;
 
-        /**
-         * @brief Deletes failed items from DBSync in a batch transaction
-         *
-         * This helper function encapsulates the common pattern of deleting items that failed
-         * schema validation. It uses a DBSync transaction to ensure all deletions are atomic
-         * and properly committed to disk.
-         *
-         * @param failedItems Vector of (table_name, json_data) pairs to delete
-         */
-        void deleteFailedItemsFromDB(const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const;
+    /**
+     * @brief Deletes failed items from DBSync in a batch transaction
+     *
+     * This helper function encapsulates the common pattern of deleting items that failed
+     * schema validation. It uses a DBSync transaction to ensure all deletions are atomic
+     * and properly committed to disk.
+     *
+     * @param failedItems Vector of (table_name, json_data) pairs to delete
+     */
+    void deleteFailedItemsFromDB(const std::vector<std::pair<std::string, nlohmann::json>>& failedItems) const;
 
-        /**
-         * @brief Updates sync flag for items in database
-         *
-         * This helper function updates the sync flag (0 or 1) for all items in the vector.
-         * It uses a DBSync transaction to ensure all updates are atomic and properly committed to disk.
-         *
-         * @param itemsToUpdate Vector of (table_name, json_data) pairs to update
-         * @param syncValue Value to set for sync flag (0 or 1)
-         */
-        void updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate, int syncValue) const;
+    /**
+     * @brief Updates sync flag for items in database
+     *
+     * This helper function updates the sync flag (0 or 1) for all items in the vector.
+     * It uses a DBSync transaction to ensure all updates are atomic and properly committed to disk.
+     *
+     * @param itemsToUpdate Vector of (table_name, json_data) pairs to update
+     * @param syncValue Value to set for sync flag (0 or 1)
+     */
+    void updateSyncFlagInDB(const std::vector<std::pair<std::string, nlohmann::json>>& itemsToUpdate,
+                            int syncValue) const;
 
-        /**
-         * @brief Promotes unsynced items with deterministic ordering
-         *
-         * Selects up to maxToPromote items with sync=0, ordered by the table's ordering fields
-         * (using ORDER BY with COLLATE NOCASE), generates INSERT events, and marks them as sync=1.
-         * Used by both setDocumentLimits and promoteItemsAfterScan to avoid code duplication.
-         *
-         * @param index Index name (e.g., "packages")
-         * @param tableName Table name (e.g., "dbsync_packages")
-         * @param maxToPromote Maximum number of items to promote
-         * @param reason Descriptive reason for logging purposes
-         * @return Number of items actually promoted
-         */
-        size_t promoteUnsyncedItems(const std::string& index,
-                                    const std::string& tableName,
-                                    size_t maxToPromote,
-                                    const std::string& reason);
+    /**
+     * @brief Promotes unsynced items with deterministic ordering
+     *
+     * Selects up to maxToPromote items with sync=0, ordered by the table's ordering fields
+     * (using ORDER BY with COLLATE NOCASE), generates INSERT events, and marks them as sync=1.
+     * Used by both setDocumentLimits and promoteItemsAfterScan to avoid code duplication.
+     *
+     * @param index Index name (e.g., "packages")
+     * @param tableName Table name (e.g., "dbsync_packages")
+     * @param maxToPromote Maximum number of items to promote
+     * @param reason Descriptive reason for logging purposes
+     * @return Number of items actually promoted
+     */
+    size_t promoteUnsyncedItems(const std::string& index,
+                                const std::string& tableName,
+                                size_t maxToPromote,
+                                const std::string& reason);
 
-        /**
-         * @brief Promotes items after scan to fill available slots
-         *
-         * After a scan completes, calculates available space (limit - currentCount) for each index
-         * and promotes unsynced items with deterministic ordering to fill those slots.
-         * Uses the database as source of truth for current counts (m_documentCounts already reflects deletes).
-         * Generates INSERT events for promoted items and marks them as sync=1.
-         */
-        void promoteItemsAfterScan();
+    /**
+     * @brief Promotes items after scan to fill available slots
+     *
+     * After a scan completes, calculates available space (limit - currentCount) for each index
+     * and promotes unsynced items with deterministic ordering to fill those slots.
+     * Uses the database as source of truth for current counts (m_documentCounts already reflects deletes).
+     * Generates INSERT events for promoted items and marks them as sync=1.
+     */
+    void promoteItemsAfterScan();
 
-        /**
-         * @brief Gets simplified ordering fields for a table
-         *
-         * Returns the field(s) to use for simplified ordering when managing document limits.
-         * Most tables use only the first PK field, but some (like packages) use multiple
-         * fields for more stable ordering (e.g., "name, type").
-         *
-         * @param tableName Name of the table (e.g., "dbsync_packages")
-         * @return Ordering field(s) as string (e.g., "name, type"), empty if table unknown
-         */
-        std::string getFirstPrimaryKeyField(const std::string& tableName) const;
+    /**
+     * @brief Gets simplified ordering fields for a table
+     *
+     * Returns the field(s) to use for simplified ordering when managing document limits.
+     * Most tables use only the first PK field, but some (like packages) use multiple
+     * fields for more stable ordering (e.g., "name, type").
+     *
+     * @param tableName Name of the table (e.g., "dbsync_packages")
+     * @return Ordering field(s) as string (e.g., "name, type"), empty if table unknown
+     */
+    std::string getFirstPrimaryKeyField(const std::string& tableName) const;
 
-        /**
-         * @brief Builds ORDER BY clause with COLLATE NOCASE for case-insensitive ordering
-         *
-         * Constructs an ORDER BY clause from comma-separated field names with COLLATE NOCASE
-         * for case-insensitive ordering. This ensures consistent ordering across different cases.
-         *
-         * @param fields Comma-separated field names (e.g., "name, type")
-         * @param ascending True for ASC order (default), false for DESC order
-         * @return ORDER BY clause string (e.g., "name COLLATE NOCASE, type COLLATE NOCASE ASC")
-         */
-        std::string buildOrderByClause(const std::string& fields, bool ascending = true) const;
+    /**
+     * @brief Builds ORDER BY clause with COLLATE NOCASE for case-insensitive ordering
+     *
+     * Constructs an ORDER BY clause from comma-separated field names with COLLATE NOCASE
+     * for case-insensitive ordering. This ensures consistent ordering across different cases.
+     *
+     * @param fields Comma-separated field names (e.g., "name, type")
+     * @param ascending True for ASC order (default), false for DESC order
+     * @return ORDER BY clause string (e.g., "name COLLATE NOCASE, type COLLATE NOCASE ASC")
+     */
+    std::string buildOrderByClause(const std::string& fields, bool ascending = true) const;
 
-        /**
-         * @brief Sets document limits for configured indices
-         *
-         * @param limits JSON object mapping index names to limit values (0 = unlimited)
-         * @return true if limits were set successfully, false otherwise
-         */
-        bool setDocumentLimits(const nlohmann::json& limits);
+    /**
+     * @brief Sets document limits for configured indices
+     *
+     * @param limits JSON object mapping index names to limit values (0 = unlimited)
+     * @return true if limits were set successfully, false otherwise
+     */
+    bool setDocumentLimits(const nlohmann::json& limits);
 
-        /**
-         * @brief Fetches document limits from agentd
-         *
-         * Queries agentd for document limits configuration for the syscollector module.
-         * Sends the command "getdoclimits syscollector" to agentd.
-         *
-         * Works on both Unix/Linux (via socket) and Windows (via agcom_dispatch).
-         *
-         * If agentd is not available or limits are not configured for
-         * syscollector, returns an empty optional.
-         *
-         * Expected response format from agentd:
-         * "ok {\"wazuh-states-inventory-packages\": 10000, ...}"
-         *
-         * @return Optional JSON with limits if available, empty optional otherwise
-         */
-        std::optional<nlohmann::json> fetchDocumentLimitsFromAgentd();
+    /**
+     * @brief Fetches document limits from agentd
+     *
+     * Queries agentd for document limits configuration for the syscollector module.
+     * Sends the command "getdoclimits syscollector" to agentd.
+     *
+     * Works on both Unix/Linux (via socket) and Windows (via agcom_dispatch).
+     *
+     * If agentd is not available or limits are not configured for
+     * syscollector, returns an empty optional.
+     *
+     * Expected response format from agentd:
+     * "ok {\"wazuh-states-inventory-packages\": 10000, ...}"
+     *
+     * @return Optional JSON with limits if available, empty optional otherwise
+     */
+    std::optional<nlohmann::json> fetchDocumentLimitsFromAgentd();
 
-        /**
-         * @brief Initializes document counts from database for all tables
-         */
-        void initializeDocumentCounts();
+    /**
+     * @brief Initializes document counts from database for all tables
+     */
+    void initializeDocumentCounts();
 
-        /// @brief Picks the sync protocol an index's data belongs on.
-        ///
-        /// The system, packages and hotfixes indices ride the VD protocol: the manager routes a
-        /// VD session through the scan lane, which both indexes the documents and feeds them to
-        /// the vulnerability scanner, so sending them on the plain protocol still populates
-        /// wazuh-states-inventory-* but silently leaves the scanner with nothing to evaluate.
-        /// Every path that hands rows to the manager has to make the same choice, hence one
-        /// place to make it.
-        ///
-        /// @param index Destination index name.
-        /// @return The VD protocol for a VD index when one exists, the plain protocol otherwise;
-        ///         nullptr if neither is initialized.
-        IAgentSyncProtocol* protocolForIndex(const std::string& index) const;
+    /// @brief Picks the sync protocol an index's data belongs on.
+    ///
+    /// The system, packages and hotfixes indices ride the VD protocol: the manager routes a
+    /// VD session through the scan lane, which both indexes the documents and feeds them to
+    /// the vulnerability scanner, so sending them on the plain protocol still populates
+    /// wazuh-states-inventory-* but silently leaves the scanner with nothing to evaluate.
+    /// Every path that hands rows to the manager has to make the same choice, hence one
+    /// place to make it.
+    ///
+    /// @param index Destination index name.
+    /// @return The VD protocol for a VD index when one exists, the plain protocol otherwise;
+    ///         nullptr if neither is initialized.
+    IAgentSyncProtocol* protocolForIndex(const std::string& index) const;
 
-        /// @brief Whether an index's data rides the VD protocol (system, packages, hotfixes).
-        static bool isVDIndex(const std::string& index);
+    /// @brief Whether an index's data rides the VD protocol (system, packages, hotfixes).
+    static bool isVDIndex(const std::string& index);
 
-        /// @brief Replaces the manager's copy of one table with what this agent currently holds.
-        ///
-        /// Bumps every row's version, clears the manager's index, re-persists the whole table and
-        /// syncs it. Extracted from runRecoveryProcess() so the same work can be driven by more
-        /// than one trigger; it makes no decision about *whether* a resync is needed, only about
-        /// carrying one out.
-        ///
-        /// @param tableName Source dbsync table.
-        /// @param index Destination index name.
-        /// @return false when the table could not be resynced at all (version bump failed, rows
-        ///         could not be read, no protocol, or the manager refused the DataClean); when the
-        ///         caller tries again is the caller's decision, and @p retryNote says it. A failure
-        ///         of the final synchronization itself returns true: the data reached the queue
-        ///         and the ordinary sync cycle will drain it.
-        /// @param syncNow When false, the table is cleared and re-persisted but no session is
-        ///                opened, leaving the caller to send the queue. The identity resync uses
-        ///                that for the VD lane: its three indices have to reach the manager in
-        ///                one VDFirst session, which is the only one whose scan chain suppresses
-        ///                alerts, and each VDFirst session begins by deleting what the previous
-        ///                one indexed.
-        /// @param retryNote Appended to the message logged when the resync cannot be carried out,
-        ///                  saying when the caller will try again.
-        bool resyncTableToManager(const std::string& tableName,
-                                  const std::string& index,
-                                  bool syncNow,
-                                  const std::string& retryNote);
+    /// @brief Replaces the manager's copy of one table with what this agent currently holds.
+    ///
+    /// Bumps every row's version, clears the manager's index, re-persists the whole table and
+    /// syncs it. Extracted from runRecoveryProcess() so the same work can be driven by more
+    /// than one trigger; it makes no decision about *whether* a resync is needed, only about
+    /// carrying one out.
+    ///
+    /// @param tableName Source dbsync table.
+    /// @param index Destination index name.
+    /// @return false when the table could not be resynced at all (version bump failed, rows
+    ///         could not be read, no protocol, or the manager refused the DataClean); when the
+    ///         caller tries again is the caller's decision, and @p retryNote says it. A failure
+    ///         of the final synchronization itself returns true: the data reached the queue
+    ///         and the ordinary sync cycle will drain it.
+    /// @param syncNow When false, the table is cleared and re-persisted but no session is
+    ///                opened, leaving the caller to send the queue. The identity resync uses
+    ///                that for the VD lane: its three indices have to reach the manager in
+    ///                one VDFirst session, which is the only one whose scan chain suppresses
+    ///                alerts, and each VDFirst session begins by deleting what the previous
+    ///                one indexed.
+    /// @param retryNote Appended to the message logged when the resync cannot be carried out,
+    ///                  saying when the caller will try again.
+    bool resyncTableToManager(const std::string& tableName,
+                              const std::string& index,
+                              bool syncNow,
+                              const std::string& retryNote);
 
-        /// @brief Whether the collector that owns a table is enabled in the configuration.
-        /// @param tableName dbsync table to check.
-        /// @return false when its collector is switched off, so callers iterating INDEX_MAP skip it.
-        bool isCollectorEnabledForTable(const std::string& tableName) const;
+    /// @brief Whether the collector that owns a table is enabled in the configuration.
+    /// @param tableName dbsync table to check.
+    /// @return false when its collector is switched off, so callers iterating INDEX_MAP skip it.
+    bool isCollectorEnabledForTable(const std::string& tableName) const;
 
-        /// @brief Re-sends every table when this agent's id has changed since the last sync.
-        ///
-        /// An agent deleted on the manager re-enrolls under a new id, but its local databases --
-        /// including first_sync_completed -- survive untouched, so every later cycle sends a
-        /// delta against a baseline the manager no longer has for this identity. Comparing the
-        /// id repairs that on the next cycle instead of waiting for integrity_interval to notice
-        /// it one table at a time.
-        ///
-        /// Reads the id from the shared-memory metadata provider, which is the same value, via
-        /// the same call, that stamps the outgoing session -- so a resync can never be sent
-        /// under an id different from the one it was compared against.
-        void checkAgentIdentity();
+    /// @brief Re-sends every table when this agent's id has changed since the last sync.
+    ///
+    /// An agent deleted on the manager re-enrolls under a new id, but its local databases --
+    /// including first_sync_completed -- survive untouched, so every later cycle sends a
+    /// delta against a baseline the manager no longer has for this identity. Comparing the
+    /// id repairs that on the next cycle instead of waiting for integrity_interval to notice
+    /// it one table at a time.
+    ///
+    /// Reads the id from the shared-memory metadata provider, which is the same value, via
+    /// the same call, that stamps the outgoing session -- so a resync can never be sent
+    /// under an id different from the one it was compared against.
+    void checkAgentIdentity();
 
-        /// @brief Whether the agent id differs from the one Syscollector last synchronized as.
-        ///
-        /// Read-only twin of checkAgentIdentity()'s decision, for the sync thread to poll.
-        /// @return 1 when it changed; 0 when it did not, or was never recorded (adopted, not a
-        ///         change); -1 when it cannot tell: no id published yet, a failed read, or no sync
-        ///         protocol to resend with. The sync thread keeps its retry state on -1.
-        int agentIdentityChangeState();
+    /// @brief Whether the agent id differs from the one Syscollector last synchronized as.
+    ///
+    /// Read-only twin of checkAgentIdentity()'s decision, for the sync thread to poll.
+    /// @return 1 when it changed; 0 when it did not, or was never recorded (adopted, not a
+    ///         change); -1 when it cannot tell: no id published yet, a failed read, or no sync
+    ///         protocol to resend with. The sync thread keeps its retry state on -1.
+    int agentIdentityChangeState();
 
-        /// @brief What checkAgentIdentity() and agentIdentityChangeState() both decide on.
-        enum class AgentIdentity
-        {
-            Unknown,    ///< No id published yet, or the marker could not be read.
-            Unrecorded, ///< No id recorded yet: adopted, never resynced.
-            Unchanged,  ///< Recorded and equal to the current one.
-            Changed     ///< Recorded and different: the manager has nothing under this id.
-        };
+    /// @brief What checkAgentIdentity() and agentIdentityChangeState() both decide on.
+    enum class AgentIdentity
+    {
+        Unknown,    ///< No id published yet, or the marker could not be read.
+        Unrecorded, ///< No id recorded yet: adopted, never resynced.
+        Unchanged,  ///< Recorded and equal to the current one.
+        Changed     ///< Recorded and different: the manager has nothing under this id.
+    };
 
-        /// @brief Reads the current and the recorded agent id and classifies them.
-        /// @param currentId Set to the id the metadata provider publishes (0 when unknown).
-        /// @param syncedId Set to the id last recorded as synchronized (0 when none).
-        AgentIdentity readAgentIdentity(long& currentId, int64_t& syncedId);
+    /// @brief Reads the current and the recorded agent id and classifies them.
+    /// @param currentId Set to the id the metadata provider publishes (0 when unknown).
+    /// @param syncedId Set to the id last recorded as synchronized (0 when none).
+    AgentIdentity readAgentIdentity(long& currentId, int64_t& syncedId);
 
-        /**
-         * @brief Checks if document limit has been reached for a given table/index
-         *
-         * @param table Table name to check
-         * @param data JSON data for the record
-         * @param result Callback result type (INSERTED, MODIFIED, DELETED)
-         * @return true if within limit and should process, false if limit reached
-         */
-        bool checkDocumentLimit(const std::string& table, const nlohmann::json& data, ReturnTypeCallback result);
+    /**
+     * @brief Checks if document limit has been reached for a given table/index
+     *
+     * @param table Table name to check
+     * @param data JSON data for the record
+     * @param result Callback result type (INSERTED, MODIFIED, DELETED)
+     * @return true if within limit and should process, false if limit reached
+     */
+    bool checkDocumentLimit(const std::string& table, const nlohmann::json& data, ReturnTypeCallback result);
 
-        std::shared_ptr<ISysInfo>                                                m_spInfo;
-        std::function<void(const std::string&)>                                  m_reportDiffFunction;
-        std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> m_persistDiffFunction;
-        std::function<void(const modules_log_level_t, const std::string&)>       m_logFunction;
+    std::shared_ptr<ISysInfo> m_spInfo;
+    std::function<void(const std::string&)> m_reportDiffFunction;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>
+        m_persistDiffFunction;
+    std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
 
-        AgentdQueryFunc                                                          m_agentdQuery;
-        unsigned int                                                             m_intervalValue;
-        std::atomic<uint32_t>                                                    m_integrityIntervalValue;
-        bool                                                                     m_scanOnStart;
-        bool                                                                     m_hardware;
-        bool                                                                     m_os;
-        bool                                                                     m_network;
-        bool                                                                     m_packages;
-        bool                                                                     m_ports;
-        bool                                                                     m_portsAll;
-        bool                                                                     m_processes;
-        bool                                                                     m_hotfixes;
-        std::atomic<bool>                                                        m_stopping;
-        bool                                                                     m_initialized;
-        bool                                                                     m_notify;
-        std::atomic<bool>                                                        m_paused;
-        std::atomic<bool>                                                        m_scanning;
-        std::atomic<bool>                                                        m_syncing;
-        /// @brief Set while a flush sends. syncModule() and runRecoveryProcess() stand back from
-        /// it; pause() does not wait for it.
-        std::atomic<bool>                                                        m_flushInProgress {false};
-        /// @brief Set while runRecoveryProcess() or the start-up DataClean for disabled collectors
-        /// runs; each stands back from the other. A flush waits for it: the identity resync, the
-        /// integrity recovery and that DataClean clear the manager's indices, which would reset the
-        /// flush's session under it.
-        std::atomic<bool>                                                        m_recoveryInProgress {false};
-        /// @brief Set while the start-up DataClean for disabled collectors sends and deletes, on top
-        /// of m_recoveryInProgress. syncModule() stands back from it: it cannot use
-        /// m_recoveryInProgress for that, since runRecoveryProcess() calls it while holding the slot.
-        std::atomic<bool>                                                        m_startupDataCleanInProgress {false};
-        /// @brief Agent id change resends actually started, plus synchronizations that ran and failed
-        /// (the resend only follows a successful one). Reported by get_identity_changed so the sync
-        /// thread backs off only after a real attempt, not after a cycle that was skipped.
-        std::atomic<uint32_t>                                                    m_identityResyncAttempts {0};
-        bool                                                                     m_groups;
-        bool                                                                     m_users;
-        bool                                                                     m_services;
-        bool                                                                     m_browserExtensions;
-        std::atomic<unsigned int>                                                m_dataCleanRetries;
-        std::atomic<bool>                                                        m_allCollectorsDisabled;
-        bool                                                                     m_vdSyncEnabled;
-        std::unique_ptr<DBSync>                                                  m_spDBSync;
-        std::condition_variable                                                  m_cv;
-        std::mutex                                                               m_scan_mutex;
-        std::condition_variable                                                  m_pauseCv;
-        std::mutex                                                               m_pauseMutex;
-        std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
-        std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
-        std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
-        std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
-        std::unique_ptr<Utils::AsyncFlushController>                             m_asyncFlushController;
-        std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
-        std::vector<std::pair<std::string, nlohmann::json>>*                     m_itemsToUpdateSync;  // Pointer to list of items that passed limit check (for deferred sync=1 update)
+    AgentdQueryFunc m_agentdQuery;
+    unsigned int m_intervalValue;
+    std::atomic<uint32_t> m_integrityIntervalValue;
+    bool m_scanOnStart;
+    bool m_hardware;
+    bool m_os;
+    bool m_network;
+    bool m_packages;
+    bool m_ports;
+    bool m_portsAll;
+    bool m_processes;
+    bool m_hotfixes;
+    std::atomic<bool> m_stopping;
+    bool m_initialized;
+    bool m_notify;
+    std::atomic<bool> m_paused;
+    std::atomic<bool> m_scanning;
+    std::atomic<bool> m_syncing;
+    /// @brief Set while a flush sends. syncModule() and runRecoveryProcess() stand back from
+    /// it; pause() does not wait for it.
+    std::atomic<bool> m_flushInProgress {false};
+    /// @brief Set while runRecoveryProcess() or the start-up DataClean for disabled collectors
+    /// runs; each stands back from the other. A flush waits for it: the identity resync, the
+    /// integrity recovery and that DataClean clear the manager's indices, which would reset the
+    /// flush's session under it.
+    std::atomic<bool> m_recoveryInProgress {false};
+    /// @brief Set while the start-up DataClean for disabled collectors sends and deletes, on top
+    /// of m_recoveryInProgress. syncModule() stands back from it: it cannot use
+    /// m_recoveryInProgress for that, since runRecoveryProcess() calls it while holding the slot.
+    std::atomic<bool> m_startupDataCleanInProgress {false};
+    /// @brief Agent id change resends actually started, plus synchronizations that ran and failed
+    /// (the resend only follows a successful one). Reported by get_identity_changed so the sync
+    /// thread backs off only after a real attempt, not after a cycle that was skipped.
+    std::atomic<uint32_t> m_identityResyncAttempts {0};
+    bool m_groups;
+    bool m_users;
+    bool m_services;
+    bool m_browserExtensions;
+    std::atomic<unsigned int> m_dataCleanRetries;
+    std::atomic<bool> m_allCollectorsDisabled;
+    bool m_vdSyncEnabled;
+    std::unique_ptr<DBSync> m_spDBSync;
+    std::condition_variable m_cv;
+    std::mutex m_scan_mutex;
+    std::condition_variable m_pauseCv;
+    std::mutex m_pauseMutex;
+    std::unique_ptr<SysNormalizer> m_spNormalizer;
+    std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+    std::vector<std::string> m_disabledCollectorsIndicesWithData;
+    std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocolVD;
+    std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
+    std::vector<std::pair<std::string, nlohmann::json>>*
+        m_failedItems; // Pointer to list of items that failed validation (for deferred deletion)
+    std::vector<std::pair<std::string, nlohmann::json>>*
+        m_itemsToUpdateSync; // Pointer to list of items that passed limit check (for deferred sync=1 update)
 
-        // Document limits configuration (0 = unlimited)
-        std::map<std::string, size_t>                                            m_documentLimits;
+    // Document limits configuration (0 = unlimited)
+    std::map<std::string, size_t> m_documentLimits;
 
-        // Current document counts per index (tracks items with sync=1)
-        std::map<std::string, size_t>                                            m_documentCounts;
+    // Current document counts per index (tracks items with sync=1)
+    std::map<std::string, size_t> m_documentCounts;
 
-        // Mutex for thread-safe access to limits and counts
-        std::mutex                                                               m_limitsMutex;
+    // Mutex for thread-safe access to limits and counts
+    std::mutex m_limitsMutex;
 
-        /// @brief Serializes releaseResources() against the entry points that other threads
-        /// keep driving while the module tears down: wcom's dispatcher is detached and never
-        /// joined, and agent-info's coordination polls call query() in-process from its own
-        /// module thread (e.g. the get_first_sync_completed guard, which reaches
-        /// getMetadataValue() and dereferences m_spDBSync). Those entry points take it shared
-        /// around each access; initSyncProtocol() publishes the protocols under the exclusive
-        /// lock and releaseResources() resets the members under it. The scan and sync workers
-        /// do not take it: they are joined before releaseResources() runs. Mirrors
-        /// SecurityConfigurationAssessment::m_resourcesMutex, added for the same defect.
-        mutable std::shared_mutex                                                m_resourcesMutex;
+    /// @brief Serializes releaseResources() against the entry points that other threads
+    /// keep driving while the module tears down: wcom's dispatcher is detached and never
+    /// joined, and agent-info's coordination polls call query() in-process from its own
+    /// module thread (e.g. the get_first_sync_completed guard, which reaches
+    /// getMetadataValue() and dereferences m_spDBSync). Those entry points take it shared
+    /// around each access; initSyncProtocol() publishes the protocols under the exclusive
+    /// lock and releaseResources() resets the members under it. The scan and sync workers
+    /// do not take it: they are joined before releaseResources() runs. Mirrors
+    /// SecurityConfigurationAssessment::m_resourcesMutex, added for the same defect.
+    mutable std::shared_mutex m_resourcesMutex;
 };
-
 
 #endif //_SYSCOLLECTOR_HPP

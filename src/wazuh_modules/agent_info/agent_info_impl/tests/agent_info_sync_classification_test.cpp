@@ -31,7 +31,7 @@ namespace
                                                                    const std::shared_ptr<MockDBSync>& mockDBSync,
                                                                    const SyncModuleResult& result)
     {
-        auto logFunc = [&logOutput](modules_log_level_t /* level */, const std::string & msg)
+        auto logFunc = [&logOutput](modules_log_level_t /* level */, const std::string& msg)
         {
             logOutput += msg + "\n";
         };
@@ -39,20 +39,19 @@ namespace
         // A null handle makes updateDbMetadata() (called unconditionally at the end of the
         // integrity check to record the last-run timestamp) a safe no-op -- it isn't what this
         // test is about.
-        EXPECT_CALL(*mockDBSync, handle())
-        .WillRepeatedly(testing::Return(nullptr));
+        EXPECT_CALL(*mockDBSync, handle()).WillRepeatedly(testing::Return(nullptr));
 
-        auto agentInfo = std::make_unique<AgentInfoImplMock>(":memory:", nullptr, logFunc, noopQueryModuleFunction,
-                                                             mockDBSync);
+        auto agentInfo =
+            std::make_unique<AgentInfoImplMock>(":memory:", nullptr, logFunc, noopQueryModuleFunction, mockDBSync);
 
         auto mockSyncProtocol = std::make_unique<MockAgentSyncProtocol>();
         EXPECT_CALL(*mockSyncProtocol, synchronizeMetadataOrGroups(testing::_, testing::_, testing::_))
-        .WillOnce(testing::Return(result));
+            .WillOnce(testing::Return(result));
         agentInfo->setSyncProtocol(std::move(mockSyncProtocol));
 
         return agentInfo;
     }
-}
+} // namespace
 
 // While the local sync intake itself isn't reachable yet (streak within tolerance), the
 // integrity check is reported at INFO as deferred, not as a WARNING.
@@ -60,16 +59,18 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailableWit
 {
     std::string logOutput;
     auto mockDBSync = std::make_shared<MockDBSync>();
-    auto agentInfo = makeAgentInfoWithMockedSync(
-                         logOutput, mockDBSync,
-                         SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
-                                          .consecutiveFailures = 1u,
-                                          .localTransportUnavailable = true});
+    auto agentInfo = makeAgentInfoWithMockedSync(logOutput,
+                                                 mockDBSync,
+                                                 SyncModuleResult {.failureReason = "Local sync intake is unreachable.",
+                                                                   .consecutiveFailures = 1u,
+                                                                   .localTransportUnavailable = true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
-    EXPECT_THAT(logOutput, ::testing::HasSubstr(
-                    "Integrity check for agent_metadata deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(
+        logOutput,
+        ::testing::HasSubstr(
+            "Integrity check for agent_metadata deferred: Local sync intake is unreachable. Will retry next cycle."));
     EXPECT_THAT(logOutput, ::testing::Not(::testing::HasSubstr("Integrity check for agent_metadata failed")));
 }
 
@@ -78,16 +79,19 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailableAtT
 {
     std::string logOutput;
     auto mockDBSync = std::make_shared<MockDBSync>();
-    auto agentInfo = makeAgentInfoWithMockedSync(
-                         logOutput, mockDBSync,
-                         SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
-                                          .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
-                                          .localTransportUnavailable = true});
+    auto agentInfo =
+        makeAgentInfoWithMockedSync(logOutput,
+                                    mockDBSync,
+                                    SyncModuleResult {.failureReason = "Local sync intake is unreachable.",
+                                                      .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
+                                                      .localTransportUnavailable = true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
-    EXPECT_THAT(logOutput, ::testing::HasSubstr(
-                    "Integrity check for agent_metadata deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(
+        logOutput,
+        ::testing::HasSubstr(
+            "Integrity check for agent_metadata deferred: Local sync intake is unreachable. Will retry next cycle."));
     EXPECT_THAT(logOutput, ::testing::Not(::testing::HasSubstr("Integrity check for agent_metadata failed")));
 }
 
@@ -97,15 +101,15 @@ TEST(AgentInfoSyncClassificationTest, IntegritySync_LocalTransportUnavailablePas
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     std::string logOutput;
     auto mockDBSync = std::make_shared<MockDBSync>();
-    auto agentInfo = makeAgentInfoWithMockedSync(
-                         logOutput, mockDBSync,
-                         SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
-                                          .consecutiveFailures = streak,
-                                          .localTransportUnavailable = true});
+    auto agentInfo = makeAgentInfoWithMockedSync(logOutput,
+                                                 mockDBSync,
+                                                 SyncModuleResult {.failureReason = "Local sync intake is unreachable.",
+                                                                   .consecutiveFailures = streak,
+                                                                   .localTransportUnavailable = true});
 
     EXPECT_FALSE(agentInfo->callPerformIntegritySync(kAgentMetadataTable));
 
-    EXPECT_THAT(logOutput, ::testing::HasSubstr(
-                    "Integrity check for agent_metadata failed " + std::to_string(streak) +
-                    " times in a row: Local sync intake is unreachable."));
+    EXPECT_THAT(logOutput,
+                ::testing::HasSubstr("Integrity check for agent_metadata failed " + std::to_string(streak) +
+                                     " times in a row: Local sync intake is unreachable."));
 }

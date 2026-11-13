@@ -21,36 +21,36 @@ namespace
     /// keeps a future early return from reintroducing the leak.
     class ScopedDBusConnection final
     {
-        public:
-            ScopedDBusConnection(std::shared_ptr<IDBusWrapper> dbusWrapper, DBusConnection* connection)
-                : m_dbusWrapper(std::move(dbusWrapper))
-                , m_connection(connection)
+    public:
+        ScopedDBusConnection(std::shared_ptr<IDBusWrapper> dbusWrapper, DBusConnection* connection)
+            : m_dbusWrapper(std::move(dbusWrapper))
+            , m_connection(connection)
+        {
+        }
+
+        ~ScopedDBusConnection()
+        {
+            if (m_connection)
             {
+                m_dbusWrapper->connection_close(m_connection);
+                m_dbusWrapper->connection_unref(m_connection);
             }
+        }
 
-            ~ScopedDBusConnection()
-            {
-                if (m_connection)
-                {
-                    m_dbusWrapper->connection_close(m_connection);
-                    m_dbusWrapper->connection_unref(m_connection);
-                }
-            }
+        ScopedDBusConnection(const ScopedDBusConnection&) = delete;
+        ScopedDBusConnection& operator=(const ScopedDBusConnection&) = delete;
 
-            ScopedDBusConnection(const ScopedDBusConnection&) = delete;
-            ScopedDBusConnection& operator=(const ScopedDBusConnection&) = delete;
+        /// @brief Returns the owned connection, or nullptr if it could not be acquired.
+        DBusConnection* get() const
+        {
+            return m_connection;
+        }
 
-            /// @brief Returns the owned connection, or nullptr if it could not be acquired.
-            DBusConnection* get() const
-            {
-                return m_connection;
-            }
-
-        private:
-            std::shared_ptr<IDBusWrapper> m_dbusWrapper;
-            DBusConnection* m_connection;
+    private:
+        std::shared_ptr<IDBusWrapper> m_dbusWrapper;
+        DBusConnection* m_connection;
     };
-}
+} // namespace
 
 SystemdUnitsProvider::SystemdUnitsProvider(std::shared_ptr<IDBusWrapper> dbusWrapper)
     : m_dbusWrapper(std::move(dbusWrapper))
@@ -114,7 +114,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
     }
 
     DBusMessage* msg = m_dbusWrapper->message_new_method_call(
-                           "org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "ListUnits");
+        "org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "ListUnits");
 
     if (!msg)
     {
@@ -212,7 +212,7 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             std::string value;
 
             if (m_dbusWrapper->getProperty(
-                        conn, "org.freedesktop.systemd1", unit.objectPath, query.interface, query.propertyName, value))
+                    conn, "org.freedesktop.systemd1", unit.objectPath, query.interface, query.propertyName, value))
             {
                 if (query.columnName == "fragment_path")
                 {

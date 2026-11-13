@@ -12,9 +12,9 @@
 
 #include "macos_log.h"
 
-void __wrap_w_macos_set_last_log_timestamp(char * timestamp);
+void __wrap_w_macos_set_last_log_timestamp(char* timestamp);
 
-void __wrap_w_macos_set_log_settings(char * settings);
+void __wrap_w_macos_set_log_settings(char* settings);
 
 bool __wrap_w_is_macos_sierra();
 

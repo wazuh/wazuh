@@ -19,50 +19,51 @@
  */
 class AgentInfoHelperFunctionsTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
+protected:
+    void SetUp() override
+    {
+        m_logOutput.clear();
+
+        // Create the logging function to capture log messages
+        m_logFunction = [this](const modules_log_level_t /* level */, const std::string& log)
         {
-            m_logOutput.clear();
+            m_logOutput += log;
+            m_logOutput += "\n";
+        };
 
-            // Create the logging function to capture log messages
-            m_logFunction = [this](const modules_log_level_t /* level */, const std::string & log)
-            {
-                m_logOutput += log;
-                m_logOutput += "\n";
-            };
-
-            // Create a mock query module function
-            m_queryModuleFunction = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
-            {
-                // Mock implementation that returns success
-                if (response)
-                {
-                    *response = nullptr;
-                }
-
-                return 0;
-            };
-
-            m_mockDBSync = std::make_shared<MockDBSync>();
-
-            // Configure expected calls to avoid warnings
-            EXPECT_CALL(*m_mockDBSync, handle())
-            .WillRepeatedly(::testing::Return(nullptr));
-
-            m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync);
-        }
-
-        void TearDown() override
+        // Create a mock query module function
+        m_queryModuleFunction =
+            [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
         {
-            m_agentInfo.reset();
-            m_mockDBSync.reset();
-        }
+            // Mock implementation that returns success
+            if (response)
+            {
+                *response = nullptr;
+            }
 
-        std::shared_ptr<MockDBSync> m_mockDBSync;
-        std::shared_ptr<AgentInfoImpl> m_agentInfo;
-        std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
-        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunction;
-        std::string m_logOutput;
+            return 0;
+        };
+
+        m_mockDBSync = std::make_shared<MockDBSync>();
+
+        // Configure expected calls to avoid warnings
+        EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+
+        m_agentInfo =
+            std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync);
+    }
+
+    void TearDown() override
+    {
+        m_agentInfo.reset();
+        m_mockDBSync.reset();
+    }
+
+    std::shared_ptr<MockDBSync> m_mockDBSync;
+    std::shared_ptr<AgentInfoImpl> m_agentInfo;
+    std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
+    std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunction;
+    std::string m_logOutput;
 };
 
 TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)

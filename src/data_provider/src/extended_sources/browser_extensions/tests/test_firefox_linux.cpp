@@ -19,12 +19,11 @@
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
-        MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD(std::string, getUserId, (std::string), (override));
+public:
+    MOCK_METHOD(std::string, getApplicationsPath, (), (override));
+    MOCK_METHOD(std::string, getHomePath, (), (override));
+    MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
-
 
 // The fixture files must belong to the profile owner, so the owner reported is whoever owns the checkout
 static std::string fixtureOwner(const std::string& path)
@@ -39,7 +38,8 @@ TEST(FirefoxAddonsTests, NumberOfExtensions)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson = firefoxAddonsProvider.collect();
@@ -52,7 +52,8 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson = firefoxAddonsProvider.collect();
@@ -69,7 +70,9 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["identifier"], "langpack-en-US@firefox.mozilla.org");
             EXPECT_EQ(jsonElement["location"], "app-profile");
             EXPECT_EQ(jsonElement["name"], "Language: English (US)");
-            EXPECT_EQ(jsonElement["path"], "/linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi");
+            EXPECT_EQ(jsonElement["path"],
+                      "/linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/"
+                      "langpack-en-US@firefox.mozilla.org.xpi");
             EXPECT_EQ(jsonElement["source_url"], "");
             EXPECT_EQ(jsonElement["type"], "locale");
             EXPECT_EQ(jsonElement["uid"], fixtureOwner(mockHomePath));
@@ -94,7 +97,8 @@ namespace
     // Creates a fake home with one Firefox profile, collects it and returns the number of add-ons reported.
     // Returns (size_t)-1 if the fake home cannot be created.
     // If `homeOwner` is not the current user, the fake home is given to that user before collecting.
-    size_t collectFromTempHome(AddonsLayout layout, const std::string& ownerUid = std::to_string(geteuid()),
+    size_t collectFromTempHome(AddonsLayout layout,
+                               const std::string& ownerUid = std::to_string(geteuid()),
                                uid_t homeOwner = geteuid())
     {
         char tmpl[] = "/tmp/firefox_ext_test_XXXXXX";
@@ -107,12 +111,14 @@ namespace
         const std::string root = tmpl;
         const std::string firefoxDir = root + "/home/user/snap/firefox/common/.mozilla/firefox";
         const std::string profile = firefoxDir + "/abc.default";
-        const std::string realProfile = layout == AddonsLayout::SYMLINKED_PROFILE ? root + "/outside/abc.default" : profile;
+        const std::string realProfile =
+            layout == AddonsLayout::SYMLINKED_PROFILE ? root + "/outside/abc.default" : profile;
         const std::string mkdirCmd = "mkdir -p '" + firefoxDir + "' '" + realProfile + "'";
 
-        const std::string source = (std::filesystem::path(__FILE__).parent_path() /
-                                    "linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions.json")
-                                   .string();
+        const std::string source =
+            (std::filesystem::path(__FILE__).parent_path() /
+             "linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions.json")
+                .string();
         bool ready = std::system(mkdirCmd.c_str()) == 0;
 
         if (ready && layout == AddonsLayout::SYMLINKED_FILE)
@@ -155,7 +161,7 @@ namespace
         (void)!std::system(rmCmd.c_str());
         return count;
     }
-}
+} // namespace
 
 TEST(FirefoxAddonsTests, RegularExtensionsFileInTempHomeIsReported)
 {
@@ -187,28 +193,29 @@ TEST(FirefoxAddonsTests, UnknownUserNameUsesHomeDirectoryOwner)
 
 class FirefoxAddonsMalformedFilesTests : public ::testing::Test
 {
-    protected:
-        std::filesystem::path m_homePath;
+protected:
+    std::filesystem::path m_homePath;
 
-        void SetUp() override
-        {
-            m_homePath = std::filesystem::temp_directory_path() /
-                         ("firefox_addons_test_" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()));
-            std::filesystem::remove_all(m_homePath);
-        }
+    void SetUp() override
+    {
+        m_homePath =
+            std::filesystem::temp_directory_path() /
+            ("firefox_addons_test_" + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name()));
+        std::filesystem::remove_all(m_homePath);
+    }
 
-        void TearDown() override
-        {
-            std::filesystem::remove_all(m_homePath);
-        }
+    void TearDown() override
+    {
+        std::filesystem::remove_all(m_homePath);
+    }
 
-        void writeFile(const std::filesystem::path& relativePath, const std::string& content)
-        {
-            const auto fullPath = m_homePath / relativePath;
-            std::filesystem::create_directories(fullPath.parent_path());
-            std::ofstream file(fullPath);
-            file << content;
-        }
+    void writeFile(const std::filesystem::path& relativePath, const std::string& content)
+    {
+        const auto fullPath = m_homePath / relativePath;
+        std::filesystem::create_directories(fullPath.parent_path());
+        std::ofstream file(fullPath);
+        file << content;
+    }
 };
 
 TEST_F(FirefoxAddonsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherAddons)
@@ -227,7 +234,8 @@ TEST_F(FirefoxAddonsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherAddon
 
     auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(m_homePath.string()));
-    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::_)).WillRepeatedly(::testing::Return(std::to_string(geteuid())));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::_))
+        .WillRepeatedly(::testing::Return(std::to_string(geteuid())));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson;
@@ -235,7 +243,7 @@ TEST_F(FirefoxAddonsMalformedFilesTests, UnexpectedFieldTypesDoNotDropOtherAddon
 
     ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(5));
 
-    const auto findById = [&extensionsJson](const std::string & id) -> const nlohmann::json *
+    const auto findById = [&extensionsJson](const std::string& id) -> const nlohmann::json*
     {
         for (const auto& extension : extensionsJson)
         {

@@ -17,7 +17,7 @@
 std::string IEExtensionsProvider::getValueFromHKey(HKEY hKey)
 {
     // If no subKeys, then get the value name
-    const DWORD MAX_VALUE_NAME = 16384;  // MAX_VALUE_NAME + 1
+    const DWORD MAX_VALUE_NAME = 16384;   // MAX_VALUE_NAME + 1
     const DWORD MAX_VALUE_DATA = 1048576; // 1MB for registry data
 
     std::vector<char> valueName(MAX_VALUE_NAME);
@@ -31,15 +31,7 @@ std::string IEExtensionsProvider::getValueFromHKey(HKEY hKey)
     dataSize = static_cast<DWORD>(data.size());
 
     LONG valResult = m_ieExtensionsWrapper->RegEnumValueAWrapper(
-                         hKey,
-                         0,
-                         valueName.data(),
-                         &valueNameSize,
-                         nullptr,
-                         &valueType,
-                         data.data(),
-                         &dataSize
-                     );
+        hKey, 0, valueName.data(), &valueNameSize, nullptr, &valueType, data.data(), &dataSize);
 
     if (valResult == ERROR_SUCCESS)
     {
@@ -70,14 +62,13 @@ std::string IEExtensionsProvider::getDefaultValueFromHKey(HKEY hKey)
     DWORD valueType;
 
     // Query the default value by passing empty string as value name
-    LONG result = m_ieExtensionsWrapper->RegQueryValueExAWrapper(
-                      hKey,
-                      "",          // Empty string for default value
-                      nullptr,     // Reserved
-                      &valueType,  // Type of data
-                      data.data(), // Data buffer
-                      &dataSize    // Size of data
-                  );
+    LONG result = m_ieExtensionsWrapper->RegQueryValueExAWrapper(hKey,
+                                                                 "",          // Empty string for default value
+                                                                 nullptr,     // Reserved
+                                                                 &valueType,  // Type of data
+                                                                 data.data(), // Data buffer
+                                                                 &dataSize    // Size of data
+    );
 
     if (result == ERROR_SUCCESS && valueType == REG_SZ)
     {
@@ -120,14 +111,7 @@ std::string IEExtensionsProvider::getSubKeyNameFromHKey(HKEY hKey)
 
     keyNameSize = static_cast<DWORD>(keyName.size()); // Reset for each call
     LONG result = m_ieExtensionsWrapper->RegEnumKeyExAWrapper(
-                      hKey,
-                      0,
-                      keyName.data(),
-                      &keyNameSize,
-                      nullptr,
-                      nullptr,
-                      nullptr,
-                      &lastWriteTime);
+        hKey, 0, keyName.data(), &keyNameSize, nullptr, nullptr, nullptr, &lastWriteTime);
 
     if (result == ERROR_SUCCESS)
     {
@@ -161,8 +145,9 @@ std::string IEExtensionsProvider::HKeyToString(HKEY hKey)
     return "UNKNOWN_HKEY";
 }
 
-
-void IEExtensionsProvider::getRegistryPathsFromKeys(HKEY hive, const std::vector<std::string>& clsidKeys, std::vector<std::string>& regPaths)
+void IEExtensionsProvider::getRegistryPathsFromKeys(HKEY hive,
+                                                    const std::vector<std::string>& clsidKeys,
+                                                    std::vector<std::string>& regPaths)
 {
     for (const auto& subKey : clsidKeys)
     {
@@ -187,7 +172,7 @@ void IEExtensionsProvider::getRegistryPathsFromKeys(HKEY hive, const std::vector
 
             if (std::find(regPaths.begin(), regPaths.end(), registryPath) == regPaths.end())
             {
-                regPaths.push_back(registryPath);  // Insert only if not already present
+                regPaths.push_back(registryPath); // Insert only if not already present
             }
 
             // Close the key
@@ -207,7 +192,8 @@ std::vector<std::string> IEExtensionsProvider::listSubKeys(HKEY hive)
     FILETIME ft;
 
     // Enumerate all SIDs under hive
-    while (m_ieExtensionsWrapper->RegEnumKeyExAWrapper(hive, index, subKey.data(), &subKeySize, nullptr, nullptr, nullptr, &ft) == ERROR_SUCCESS)
+    while (m_ieExtensionsWrapper->RegEnumKeyExAWrapper(
+               hive, index, subKey.data(), &subKeySize, nullptr, nullptr, nullptr, &ft) == ERROR_SUCCESS)
     {
         // Ensure null termination and validate size
         if (subKeySize < subKey.size())
@@ -261,7 +247,9 @@ std::vector<std::string> IEExtensionsProvider::getRegistryPaths()
     return regPaths;
 }
 
-void IEExtensionsProvider::getExecutablesFromKey(HKEY hive, const std::string& registryPath, std::vector<std::string>& executables)
+void IEExtensionsProvider::getExecutablesFromKey(HKEY hive,
+                                                 const std::string& registryPath,
+                                                 std::vector<std::string>& executables)
 {
     HKEY hKey = getHKeyFromKeyString(hive, registryPath);
 
@@ -297,7 +285,8 @@ std::vector<std::string> IEExtensionsProvider::getExecutables(const std::string&
 
     for (const auto& subKey : CLASS_EXECUTABLES_SUBKEYS)
     {
-        getExecutablesFromKey(HKEY_LOCAL_MACHINE, EXECUTABLES_BASE_KEY + SEPARATOR + clsid + SEPARATOR + subKey, executables);
+        getExecutablesFromKey(
+            HKEY_LOCAL_MACHINE, EXECUTABLES_BASE_KEY + SEPARATOR + clsid + SEPARATOR + subKey, executables);
 
         for (const auto& userKey : expandedUserKeys)
         {
@@ -373,16 +362,20 @@ std::string IEExtensionsProvider::getExecutableName(const std::string& registryP
     return execName;
 }
 
-IEExtensionsProvider::IEExtensionsProvider(std::shared_ptr<IIEExtensionsWrapper> ieExtensionsWrapper) : m_ieExtensionsWrapper(std::move(ieExtensionsWrapper)) {}
+IEExtensionsProvider::IEExtensionsProvider(std::shared_ptr<IIEExtensionsWrapper> ieExtensionsWrapper)
+    : m_ieExtensionsWrapper(std::move(ieExtensionsWrapper))
+{
+}
 
-IEExtensionsProvider::IEExtensionsProvider() : m_ieExtensionsWrapper(std::make_shared<IEExtensionsWrapper>()) {}
+IEExtensionsProvider::IEExtensionsProvider()
+    : m_ieExtensionsWrapper(std::make_shared<IEExtensionsWrapper>())
+{
+}
 
 bool IEExtensionsProvider::isValidPath(const std::string& path)
 {
-    if (path.empty() ||
-            path.find("..") != std::string::npos ||
-            path.find("//") != std::string::npos ||
-            path.length() > MAX_PATH_LENGTH)
+    if (path.empty() || path.find("..") != std::string::npos || path.find("//") != std::string::npos ||
+        path.length() > MAX_PATH_LENGTH)
     {
         return false;
     }

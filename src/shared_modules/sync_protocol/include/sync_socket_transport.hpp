@@ -33,15 +33,15 @@ void setInProcessSyncSessionSender(asp_sync_session_sender_fn sender);
  */
 class ISyncSessionTransport
 {
-    public:
-        virtual ~ISyncSessionTransport() = default;
+public:
+    virtual ~ISyncSessionTransport() = default;
 
-        /// @brief Whether the transport can carry a session right now.
-        virtual bool checkStatus() = 0;
+    /// @brief Whether the transport can carry a session right now.
+    virtual bool checkStatus() = 0;
 
-        /// @brief Hands one whole session over. True only once the far side
-        ///        confirms it took it.
-        virtual bool sendSession(uint64_t session, const std::vector<uint8_t>& message) = 0;
+    /// @brief Hands one whole session over. True only once the far side
+    ///        confirms it took it.
+    virtual bool sendSession(uint64_t session, const std::vector<uint8_t>& message) = 0;
 };
 
 /**
@@ -72,37 +72,39 @@ class ISyncSessionTransport
  */
 class SyncSocketTransport final : public ISyncSessionTransport
 {
-    public:
-        /// @param socketPath The agent's queue-sync intake socket.
-        /// @param moduleName Prefixed onto the frame's session id, which is how
-        ///        agentd knows which module's *com socket the manager's answer
-        ///        belongs to - it never parses the session itself.
-        /// @param logger Logger function.
-        /// @param ioTimeout Bound on each socket send/receive, so a wedged
-        ///        intake fails the attempt instead of hanging the sync worker
-        ///        forever. The default is generous because the intake spools
-        ///        the whole body to disk before it answers.
-        SyncSocketTransport(std::string socketPath, std::string moduleName, LoggerFunc logger,
-                            std::chrono::milliseconds ioTimeout = std::chrono::seconds {60});
+public:
+    /// @param socketPath The agent's queue-sync intake socket.
+    /// @param moduleName Prefixed onto the frame's session id, which is how
+    ///        agentd knows which module's *com socket the manager's answer
+    ///        belongs to - it never parses the session itself.
+    /// @param logger Logger function.
+    /// @param ioTimeout Bound on each socket send/receive, so a wedged
+    ///        intake fails the attempt instead of hanging the sync worker
+    ///        forever. The default is generous because the intake spools
+    ///        the whole body to disk before it answers.
+    SyncSocketTransport(std::string socketPath,
+                        std::string moduleName,
+                        LoggerFunc logger,
+                        std::chrono::milliseconds ioTimeout = std::chrono::seconds {60});
 
-        /// @brief Whether the intake socket is reachable.
-        bool checkStatus() override;
+    /// @brief Whether the intake socket is reachable.
+    bool checkStatus() override;
 
-        /// @brief Streams one whole session across and waits for the intake's
-        ///        status byte.
-        /// @param session Session id; also becomes the frame's id, in decimal.
-        /// @param message The serialized FullSession message.
-        /// @return True only once the agent confirms it queued the session.
-        bool sendSession(uint64_t session, const std::vector<uint8_t>& message) override;
+    /// @brief Streams one whole session across and waits for the intake's
+    ///        status byte.
+    /// @param session Session id; also becomes the frame's id, in decimal.
+    /// @param message The serialized FullSession message.
+    /// @return True only once the agent confirms it queued the session.
+    bool sendSession(uint64_t session, const std::vector<uint8_t>& message) override;
 
-        /// @brief The id put on the wire for a session: "<module>-<session>".
-        ///        Kept public so the response router can be tested against the
-        ///        exact string the producer sends.
-        std::string frameSessionId(uint64_t session) const;
+    /// @brief The id put on the wire for a session: "<module>-<session>".
+    ///        Kept public so the response router can be tested against the
+    ///        exact string the producer sends.
+    std::string frameSessionId(uint64_t session) const;
 
-    private:
-        std::string m_socketPath;
-        std::string m_moduleName;
-        LoggerFunc m_logger;
-        std::chrono::milliseconds m_ioTimeout;
+private:
+    std::string m_socketPath;
+    std::string m_moduleName;
+    LoggerFunc m_logger;
+    std::chrono::milliseconds m_ioTimeout;
 };

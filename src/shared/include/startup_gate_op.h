@@ -20,7 +20,8 @@
  * - previously the gate released on shutdown exactly as if it had opened
  * normally, with no way for the caller to tell the two apart).
  */
-typedef enum startup_gate_wait_result {
+typedef enum startup_gate_wait_result
+{
     STARTUP_GATE_READY = 0,             /**< Gate opened normally; proceed with startup. */
     STARTUP_GATE_SHUTDOWN_REQUESTED = 1 /**< Shutdown already in progress; abort startup, do not run the module. */
 } startup_gate_wait_result_t;
@@ -36,6 +37,6 @@ typedef enum startup_gate_wait_result {
  *         startup, or STARTUP_GATE_SHUTDOWN_REQUESTED if a shutdown is
  *         already in progress and the caller must abort cleanly instead.
  */
-startup_gate_wait_result_t startup_gate_wait_for_ready(const char *module_name);
+startup_gate_wait_result_t startup_gate_wait_for_ready(const char* module_name);
 
 #endif /* STARTUP_GATE_OP_H */

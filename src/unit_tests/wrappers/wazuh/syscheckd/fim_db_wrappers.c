@@ -14,26 +14,30 @@
 #include <stdbool.h>
 #include <cmocka.h>
 
-int __wrap_fim_db_get_count_file_entry(){
+int __wrap_fim_db_get_count_file_entry()
+{
     return mock();
 }
 
-int __wrap_fim_db_get_count_registry_data(){
+int __wrap_fim_db_get_count_registry_data()
+{
     return mock();
 }
 
-int __wrap_fim_db_get_count_registry_key(){
+int __wrap_fim_db_get_count_registry_key()
+{
     return mock();
 }
 
-FIMDBErrorCode __wrap_fim_db_get_path(const char* file_path,
-                                     __attribute__((unused))callback_context_t callback) {
+FIMDBErrorCode __wrap_fim_db_get_path(const char* file_path, __attribute__((unused)) callback_context_t callback)
+{
     check_expected(file_path);
 
     return mock();
 }
 
-void expect_fim_db_get_path(const char* path, int ret_val) {
+void expect_fim_db_get_path(const char* path, int ret_val)
+{
     expect_value(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, ret_val);
 }
@@ -41,7 +45,8 @@ void expect_fim_db_get_path(const char* path, int ret_val) {
 FIMDBErrorCode __wrap_fim_db_init(int storage,
                                   __attribute__((unused)) logging_callback_t log_callback,
                                   int file_limit,
-                                  int value_limit) {
+                                  int value_limit)
+{
     check_expected(storage);
     check_expected(file_limit);
     check_expected(value_limit);
@@ -49,9 +54,8 @@ FIMDBErrorCode __wrap_fim_db_init(int storage,
     return mock_type(int);
 }
 
-void expect_wrapper_fim_db_init(int storage,
-                                int file_limit,
-                                int value_limit) {
+void expect_wrapper_fim_db_init(int storage, int file_limit, int value_limit)
+{
     expect_value(__wrap_fim_db_init, storage, storage);
     expect_value(__wrap_fim_db_init, file_limit, file_limit);
     expect_value(__wrap_fim_db_init, value_limit, value_limit);
@@ -59,37 +63,42 @@ void expect_wrapper_fim_db_init(int storage,
     will_return(__wrap_fim_db_init, FIMDB_OK);
 }
 
-FIMDBErrorCode __wrap_fim_db_remove_path(const char *path) {
+FIMDBErrorCode __wrap_fim_db_remove_path(const char* path)
+{
     check_expected(path);
 
     return mock_type(int);
 }
 
-void expect_wrapper_fim_db_get_count_file_entry(int ret) {
+void expect_wrapper_fim_db_get_count_file_entry(int ret)
+{
     will_return(__wrap_fim_db_get_count_file_entry, ret);
 }
 
-void expect_fim_db_remove_path(const char *path, int ret_val) {
+void expect_fim_db_remove_path(const char* path, int ret_val)
+{
     expect_string(__wrap_fim_db_remove_path, path, path);
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
 static bool drive_fim_db_file_update_callback = false;
 
-void expect_fim_db_file_update_invoking_callback(void) {
+void expect_fim_db_file_update_invoking_callback(void)
+{
     drive_fim_db_file_update_callback = true;
 }
 
-void reset_fim_db_file_update_invoking_callback(void) {
+void reset_fim_db_file_update_invoking_callback(void)
+{
     drive_fim_db_file_update_callback = false;
 }
 
-FIMDBErrorCode __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
-                              callback_context_t callback)
+FIMDBErrorCode __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new, callback_context_t callback)
 {
     FIMDBErrorCode ret = mock_type(int);
 
-    if (drive_fim_db_file_update_callback) {
+    if (drive_fim_db_file_update_callback)
+    {
         drive_fim_db_file_update_callback = false;
         ReturnTypeCallback result_type = mock_type(int);
         cJSON* result_json = mock_ptr_type(cJSON*);
@@ -100,104 +109,122 @@ FIMDBErrorCode __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
 }
 
 FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
-                                      __attribute__((unused)) callback_context_t callback) {
+                                                 __attribute__((unused)) callback_context_t callback)
+{
     check_expected(pattern);
 
     return mock();
 }
 
-void expect_fim_db_file_pattern_search(const char* pattern, int ret_val) {
+void expect_fim_db_file_pattern_search(const char* pattern, int ret_val)
+{
     expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
     will_return(__wrap_fim_db_file_pattern_search, ret_val);
 }
 
 FIMDBErrorCode __wrap_fim_db_file_inode_search(const unsigned long inode,
-                                    const unsigned long dev,
-                                    __attribute__((unused)) callback_context_t callback) {
+                                               const unsigned long dev,
+                                               __attribute__((unused)) callback_context_t callback)
+{
     check_expected(inode);
     check_expected(dev);
     return mock_type(int);
 }
 
-void expect_fim_db_file_inode_search(const unsigned long inode,
-                                     const unsigned long dev,
-                                     int retval) {
+void expect_fim_db_file_inode_search(const unsigned long inode, const unsigned long dev, int retval)
+{
     expect_value(__wrap_fim_db_file_inode_search, inode, inode);
     expect_value(__wrap_fim_db_file_inode_search, dev, dev);
     will_return(__wrap_fim_db_file_inode_search, retval);
 }
 
-int __wrap_fim_db_get_count_file_inode() {
+int __wrap_fim_db_get_count_file_inode()
+{
     return mock();
 }
 
-void __wrap_fim_run_integrity() {
+void __wrap_fim_run_integrity()
+{
     function_called();
 }
 
-void __wrap_is_fim_shutdown() {
+void __wrap_is_fim_shutdown()
+{
     function_called();
 }
 
-void __wrap_fim_db_teardown() {
+void __wrap_fim_db_teardown()
+{
     function_called();
 }
 
-void __wrap__imp__dbsync_initialize() {
+void __wrap__imp__dbsync_initialize()
+{
     function_called();
 }
 
-void __wrap_fim_db_close_and_delete_database() {
+void __wrap_fim_db_close_and_delete_database()
+{
     function_called();
 }
 
-void __wrap_fim_db_clean_file_table() {
+void __wrap_fim_db_clean_file_table()
+{
     function_called();
 }
 
-int __wrap_fim_db_get_max_version_file() {
+int __wrap_fim_db_get_max_version_file()
+{
     return mock_type(int);
 }
 
-int __wrap_fim_db_set_version_file() {
+int __wrap_fim_db_set_version_file()
+{
     return mock_type(int);
 }
 
-FIMDBErrorCode __wrap_fim_db_file_delete(const char *path) {
+FIMDBErrorCode __wrap_fim_db_file_delete(const char* path)
+{
     check_expected(path);
     return mock_type(int);
 }
 
-cJSON* __wrap_fim_db_get_documents_to_promote(char* table_name, int count) {
+cJSON* __wrap_fim_db_get_documents_to_promote(char* table_name, int count)
+{
     check_expected(table_name);
     check_expected(count);
     return mock_ptr_type(cJSON*);
 }
 
-cJSON* __wrap_fim_db_get_documents_to_demote(char* table_name, int count) {
+cJSON* __wrap_fim_db_get_documents_to_demote(char* table_name, int count)
+{
     check_expected(table_name);
     check_expected(count);
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_fim_db_count_synced_docs(char* table_name) {
+int __wrap_fim_db_count_synced_docs(char* table_name)
+{
     check_expected(table_name);
     return mock_type(int);
 }
 
-int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value) {
+int __wrap_fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value)
+{
     check_expected_ptr(table_name);
     check_expected_ptr(item);
     check_expected(sync_value);
     return mock_type(int);
 }
 
-int __wrap_fim_db_increase_each_entry_version(const char* table_name) {
+int __wrap_fim_db_increase_each_entry_version(const char* table_name)
+{
     check_expected(table_name);
     return mock_type(int);
 }
 
-cJSON* __wrap_fim_db_get_every_element(const char* table_name, const char* row_filter) {
+cJSON* __wrap_fim_db_get_every_element(const char* table_name, const char* row_filter)
+{
     check_expected(table_name);
     check_expected(row_filter);
     return mock_ptr_type(cJSON*);

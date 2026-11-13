@@ -74,7 +74,7 @@
     FRIEND_TEST(SyscollectorIdentityTest, SyncSkipsWhileTheStartupDataCleanRuns);                                      \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForAFlush);                                  \
     FRIEND_TEST(SyscollectorIdentityTest, DisabledCollectorsDataCleanWaitsForARecovery);                               \
-    FRIEND_TEST(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAlone);                        \
+    FRIEND_TEST(SyscollectorIdentityTest, NoDisabledCollectorsDataLeavesTheRecoverySlotAlone);                         \
     FRIEND_TEST(SyscollectorIdentityTest, UncheckedTableIsStampedAndReportedOnce);                                     \
     FRIEND_TEST(SyscollectorIdentityTest, CheckInterruptedByStopLeavesTheTableUnstamped);                              \
     FRIEND_TEST(SyscollectorIdentityTest, UncheckedTablesShareOneWarningAndKeepAReportedMismatch);                     \

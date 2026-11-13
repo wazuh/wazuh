@@ -29,18 +29,17 @@
 #define static
 
 /* Replace assert with mock_assert */
-extern void mock_assert(const int result, const char* const expression,
-                        const char * const file, const int line);
+extern void mock_assert(const int result, const char* const expression, const char* const file, const int line);
 
 #undef assert
-#define assert(expression) \
-    mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#define assert(expression) mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
 // Global variables
 static int _base_line = 0;
 
-time_t fim_scan() {
+time_t fim_scan()
+{
     struct timespec start;
     struct timespec end;
     time_t end_of_scan;
@@ -54,7 +53,7 @@ time_t fim_scan() {
 #endif
 
 #ifdef WIN32
-    SafeWow64DisableWow64FsRedirection(NULL); //Disable virtual redirection to 64bits folder due this is a x86 process
+    SafeWow64DisableWow64FsRedirection(NULL); // Disable virtual redirection to 64bits folder due this is a x86 process
 #endif
     cputime_start = clock();
     gettime(&start);
@@ -74,17 +73,20 @@ time_t fim_scan() {
     fim_file_scan();
 
     // Check if a second file scan is needed
-    if (syscheck.file_limit_enabled && !fim_shutdown_process_on()) {
+    if (syscheck.file_limit_enabled && !fim_shutdown_process_on())
+    {
         nodes_count = fim_db_get_count_file_entry();
 
-        if (nodes_count >= syscheck.file_entry_limit) {
+        if (nodes_count >= syscheck.file_entry_limit)
+        {
             fim_file_scan();
         }
     }
 
 #ifdef WIN32
     // The file scan above can take minutes, so the stop may well have arrived during it.
-    if (!fim_shutdown_process_on()) {
+    if (!fim_shutdown_process_on())
+    {
         fim_registry_scan();
     }
 #endif
@@ -92,13 +94,15 @@ time_t fim_scan() {
     gettime(&end);
     end_of_scan = time(NULL);
 
-    if (syscheck.file_limit_enabled && !fim_shutdown_process_on()) {
+    if (syscheck.file_limit_enabled && !fim_shutdown_process_on())
+    {
         int files_count = fim_db_get_count_file_entry();
         fim_check_db_state(syscheck.file_entry_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);
     }
 
 #ifdef WIN32
-    if (syscheck.registry_limit_enabled && !fim_shutdown_process_on()) {
+    if (syscheck.registry_limit_enabled && !fim_shutdown_process_on())
+    {
         fim_check_db_state(syscheck.db_entry_registry_limit,
                            fim_db_get_count_registry_key(),
                            &_registry_key_state,
@@ -110,25 +114,31 @@ time_t fim_scan() {
     }
 #endif
 
-    if (_base_line == 0) {
+    if (_base_line == 0)
+    {
         _base_line = 1;
-    } else {
+    }
+    else
+    {
         // In the first scan, the fim initialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
-        if (fim_realtime_get_queue_overflow()) {
+        if (fim_realtime_get_queue_overflow())
+        {
             fim_realtime_set_queue_overflow(false);
             realtime_sanitize_watch_map();
         }
         fim_realtime_print_watches();
     }
 
-    if (notify_scan == 0) {
+    if (notify_scan == 0)
+    {
         notify_scan = 1;
     }
 
     minfo(FIM_FREQUENCY_ENDED);
 
-    if (isDebug() && !fim_shutdown_process_on()) {
+    if (isDebug() && !fim_shutdown_process_on())
+    {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
     audit_queue_full_reported = 0;
@@ -137,17 +147,19 @@ time_t fim_scan() {
 #ifdef ENABLE_AUDIT
     ebpf_kernel_queue_full_reported = 0;
 #endif /* ENABLE_AUDIT */
-#endif  /* __linux__ */
+#endif /* __linux__ */
 
     return end_of_scan;
 }
 
-void fim_realtime_event(char *file) {
+void fim_realtime_event(char* file)
+{
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.
-    if (w_lstat(file, &file_stat) >= 0) {
-        event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    if (w_lstat(file, &file_stat) >= 0)
+    {
+        event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
 
         /* Need a sleep here to avoid triggering on vim
          * (and finding the file removed)
@@ -155,34 +167,40 @@ void fim_realtime_event(char *file) {
         fim_rt_delay();
 
         fim_checker(file, &evt_data, NULL, NULL, NULL);
-    } else {
+    }
+    else
+    {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
         fim_process_missing_entry(file, FIM_REALTIME, NULL);
     }
 }
 
 // Callback
-void create_unix_who_data_events(void * data, void * ctx)
+void create_unix_who_data_events(void* data, void* ctx)
 {
-    char *path = (char *)data;
-    whodata_evt *w_evt = (whodata_evt *)ctx;
+    char* path = (char*)data;
+    whodata_evt* w_evt = (whodata_evt*)ctx;
 
     fim_process_missing_entry(path, FIM_WHODATA, w_evt);
 }
 
-void fim_whodata_event(whodata_evt * w_evt) {
+void fim_whodata_event(whodata_evt* w_evt)
+{
     struct stat file_stat;
 
     // If the file exists, generate add or modify events.
-    if(w_lstat(w_evt->path, &file_stat) >= 0) {
-        event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = w_evt, .report_event = true };
+    if (w_lstat(w_evt->path, &file_stat) >= 0)
+    {
+        event_data_t evt_data = {.mode = FIM_WHODATA, .w_evt = w_evt, .report_event = true};
 
         fim_rt_delay();
 
         w_rwlock_rdlock(&syscheck.directories_lock);
         fim_checker(w_evt->path, &evt_data, NULL, NULL, NULL);
         w_rwlock_unlock(&syscheck.directories_lock);
-    } else {
+    }
+    else
+    {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
         w_rwlock_rdlock(&syscheck.directories_lock);
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
@@ -199,91 +217,110 @@ void fim_whodata_event(whodata_evt * w_evt) {
 }
 
 // Checks the DB state, sends a message alert if necessary
-void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db* db_state, const char* table_name) {
-    cJSON *json_event = NULL;
-    char *json_plain = NULL;
+void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db* db_state, const char* table_name)
+{
+    cJSON* json_event = NULL;
+    char* json_plain = NULL;
     char alert_msg[OS_SIZE_256] = {'\0'};
 
-    if (nodes_count < 0) {
+    if (nodes_count < 0)
+    {
         mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
         return;
     }
 
-    switch (*db_state) {
-    case FIM_STATE_DB_FULL:
-        if (nodes_count >= nodes_limit) {
-            return;
-        }
-        break;
-    case FIM_STATE_DB_90_PERCENTAGE:
-        if ((nodes_count < nodes_limit) && (nodes_count >= nodes_limit * 0.9)) {
-            return;
-        }
-        break;
-    case FIM_STATE_DB_80_PERCENTAGE:
-        if ((nodes_count < nodes_limit * 0.9) && (nodes_count >= nodes_limit * 0.8)) {
-            return;
-        }
-        break;
-    case FIM_STATE_DB_NORMAL:
-        if (nodes_count == 0) {
-            *db_state = FIM_STATE_DB_EMPTY;
-            return;
-        }
-        else if (nodes_count < nodes_limit * 0.8) {
-            return;
-        }
-        break;
-    case FIM_STATE_DB_EMPTY:
-        if (nodes_count == 0) {
-            return;
-        }
-        else if (nodes_count < nodes_limit * 0.8) {
-            *db_state = FIM_STATE_DB_NORMAL;
-            return;
-        }
-        break;
-    default: // LCOV_EXCL_LINE
-        break; // LCOV_EXCL_LINE
+    switch (*db_state)
+    {
+        case FIM_STATE_DB_FULL:
+            if (nodes_count >= nodes_limit)
+            {
+                return;
+            }
+            break;
+        case FIM_STATE_DB_90_PERCENTAGE:
+            if ((nodes_count < nodes_limit) && (nodes_count >= nodes_limit * 0.9))
+            {
+                return;
+            }
+            break;
+        case FIM_STATE_DB_80_PERCENTAGE:
+            if ((nodes_count < nodes_limit * 0.9) && (nodes_count >= nodes_limit * 0.8))
+            {
+                return;
+            }
+            break;
+        case FIM_STATE_DB_NORMAL:
+            if (nodes_count == 0)
+            {
+                *db_state = FIM_STATE_DB_EMPTY;
+                return;
+            }
+            else if (nodes_count < nodes_limit * 0.8)
+            {
+                return;
+            }
+            break;
+        case FIM_STATE_DB_EMPTY:
+            if (nodes_count == 0)
+            {
+                return;
+            }
+            else if (nodes_count < nodes_limit * 0.8)
+            {
+                *db_state = FIM_STATE_DB_NORMAL;
+                return;
+            }
+            break;
+        default:   // LCOV_EXCL_LINE
+            break; // LCOV_EXCL_LINE
     }
 
     json_event = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_event, "fim_db_table", table_name);
 
-    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0)
+    {
         cJSON_AddNumberToObject(json_event, "file_limit", nodes_limit);
         cJSON_AddNumberToObject(json_event, "file_count", nodes_count);
     }
 #ifdef WIN32
-    else {
+    else
+    {
         cJSON_AddNumberToObject(json_event, "registry_limit", nodes_limit);
         cJSON_AddNumberToObject(json_event, "values_count", fim_db_get_count_registry_data());
         cJSON_AddNumberToObject(json_event, "keys_count", fim_db_get_count_registry_key());
     }
 #endif
 
-    if (nodes_count >= nodes_limit) {
+    if (nodes_count >= nodes_limit)
+    {
         *db_state = FIM_STATE_DB_FULL;
         mwarn(strcmp(table_name, FIMDB_FILE_TABLE_NAME) ? FIM_DB_FULL_ALERT_REG : FIM_DB_FULL_ALERT_FILE);
         cJSON_AddStringToObject(json_event, "alert_type", "full");
     }
-    else if (nodes_count >= nodes_limit * 0.9) {
+    else if (nodes_count >= nodes_limit * 0.9)
+    {
         *db_state = FIM_STATE_DB_90_PERCENTAGE;
-        minfo(strcmp(table_name, FIMDB_FILE_TABLE_NAME) ? FIM_DB_90_PERCENTAGE_ALERT_REG : FIM_DB_90_PERCENTAGE_ALERT_FILE);
+        minfo(strcmp(table_name, FIMDB_FILE_TABLE_NAME) ? FIM_DB_90_PERCENTAGE_ALERT_REG
+                                                        : FIM_DB_90_PERCENTAGE_ALERT_FILE);
         cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
     }
-    else if (nodes_count >= nodes_limit * 0.8) {
+    else if (nodes_count >= nodes_limit * 0.8)
+    {
         *db_state = FIM_STATE_DB_80_PERCENTAGE;
-        minfo(strcmp(table_name, FIMDB_FILE_TABLE_NAME) ? FIM_DB_80_PERCENTAGE_ALERT_REG : FIM_DB_80_PERCENTAGE_ALERT_FILE);
+        minfo(strcmp(table_name, FIMDB_FILE_TABLE_NAME) ? FIM_DB_80_PERCENTAGE_ALERT_REG
+                                                        : FIM_DB_80_PERCENTAGE_ALERT_FILE);
         cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
     }
-    else if (nodes_count > 0) {
+    else if (nodes_count > 0)
+    {
         *db_state = FIM_STATE_DB_NORMAL;
         minfo(strcmp(table_name, FIMDB_FILE_TABLE_NAME) ? FIM_DB_NORMAL_ALERT_REG : FIM_DB_NORMAL_ALERT_FILE);
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
-    else {
+    else
+    {
         *db_state = FIM_STATE_DB_EMPTY;
         minfo(strcmp(table_name, FIMDB_FILE_TABLE_NAME) ? FIM_DB_NORMAL_ALERT_REG : FIM_DB_NORMAL_ALERT_FILE);
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
@@ -299,49 +336,57 @@ void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db* db_state
     cJSON_Delete(json_event);
 }
 
-void fim_diff_folder_size() {
-    char *diff_local;
+void fim_diff_folder_size()
+{
+    char* diff_local;
 
     os_malloc(strlen(DIFF_DIR) + strlen("/local") + 1, diff_local);
 
     snprintf(diff_local, strlen(DIFF_DIR) + strlen("/local") + 1, "%s/local", DIFF_DIR);
 
-    if (IsDir(diff_local) == 0) {
+    if (IsDir(diff_local) == 0)
+    {
         syscheck.diff_folder_size = DirSize(diff_local) / 1024;
     }
 
     os_free(diff_local);
 }
 
-void update_wildcards_config() {
-    OSList *removed_entries = NULL;
-    OSListNode *node_it;
-    OSListNode *aux_it;
-    directory_t *dir_it;
-    directory_t *new_entry;
-    char **paths;
+void update_wildcards_config()
+{
+    OSList* removed_entries = NULL;
+    OSListNode* node_it;
+    OSListNode* aux_it;
+    directory_t* dir_it;
+    directory_t* new_entry;
+    char** paths;
 
-    if (syscheck.wildcards == NULL || syscheck.directories == NULL) {
+    if (syscheck.wildcards == NULL || syscheck.directories == NULL)
+    {
         return;
     }
 
     mdebug2(FIM_WILDCARDS_UPDATE_START);
     w_rwlock_wrlock(&syscheck.directories_lock);
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         dir_it->is_expanded = 0;
     }
 
-    OSList_foreach(node_it, syscheck.wildcards) {
+    OSList_foreach(node_it, syscheck.wildcards)
+    {
         dir_it = node_it->data;
         paths = expand_wildcards(dir_it->path);
 
-        if (paths == NULL) {
+        if (paths == NULL)
+        {
             continue;
         }
 
-        for (int i = 0; paths[i]; i++) {
+        for (int i = 0; paths[i]; i++)
+        {
             new_entry = fim_copy_directory(dir_it);
             os_free(new_entry->path);
 
@@ -351,7 +396,8 @@ void update_wildcards_config() {
 #endif
             new_entry->is_expanded = 1;
 
-            if (new_entry->diff_size_limit == -1) {
+            if (new_entry->diff_size_limit == -1)
+            {
                 new_entry->diff_size_limit = syscheck.file_size_limit;
             }
 
@@ -361,24 +407,29 @@ void update_wildcards_config() {
     }
 
     removed_entries = OSList_Create();
-    if (removed_entries == NULL) {
+    if (removed_entries == NULL)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         w_rwlock_unlock(&syscheck.directories_lock);
         return;
     }
-    OSList_SetFreeDataPointer(removed_entries, (void (*)(void *))free_directory);
+    OSList_SetFreeDataPointer(removed_entries, (void (*)(void*))free_directory);
 
     node_it = OSList_GetFirstNode(syscheck.directories);
-    while (node_it != NULL) {
+    while (node_it != NULL)
+    {
         dir_it = node_it->data;
-        if (dir_it->is_wildcard && dir_it->is_expanded == 0) {
+        if (dir_it->is_wildcard && dir_it->is_expanded == 0)
+        {
 #if INOTIFY_ENABLED
-            if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+            if (FIM_MODE(dir_it->options) == FIM_REALTIME)
+            {
                 fim_realtime_delete_watches(dir_it);
             }
 #endif
 #if ENABLE_AUDIT
-            if ((FIM_MODE(dir_it->options) == FIM_WHODATA) && syscheck.whodata_provider == AUDIT_PROVIDER) {
+            if ((FIM_MODE(dir_it->options) == FIM_WHODATA) && syscheck.whodata_provider == AUDIT_PROVIDER)
+            {
                 remove_audit_rule_syscheck(dir_it->path);
             }
 #endif
@@ -390,23 +441,21 @@ void update_wildcards_config() {
             aux_it = OSList_GetNext(syscheck.directories, node_it);
             OSList_DeleteThisNode(syscheck.directories, node_it);
             node_it = aux_it;
-        } else {
+        }
+        else
+        {
             node_it = OSList_GetNext(syscheck.directories, node_it);
         }
     }
 
     w_rwlock_unlock(&syscheck.directories_lock);
 
-    OSList_foreach(node_it, removed_entries) {
+    OSList_foreach(node_it, removed_entries)
+    {
         dir_it = node_it->data;
 
         // Remove the directory from the DB
-        event_data_t evt_data = {
-            .mode = FIM_SCHEDULED,
-            .w_evt = NULL,
-            .report_event = true,
-            .type = FIM_DELETE
-        };
+        event_data_t evt_data = {.mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .type = FIM_DELETE};
 
         fim_handle_delete_by_path(dir_it->path, &evt_data, dir_it, true, true);
 
@@ -418,10 +467,9 @@ void update_wildcards_config() {
 }
 
 // LCOV_EXCL_START
-void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start) {
-    mdebug1(FIM_RUNNING_SCAN,
-            time_diff(&start, &end),
-            (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
+void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start)
+{
+    mdebug1(FIM_RUNNING_SCAN, time_diff(&start, &end), (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
 
 #ifdef WIN32
     mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry());
@@ -442,8 +490,10 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
 
 // Sleep during rt_delay milliseconds
 
-void fim_rt_delay() {
-    if (syscheck.rt_delay){
+void fim_rt_delay()
+{
+    if (syscheck.rt_delay)
+    {
 #ifdef WIN32
         Sleep(syscheck.rt_delay);
 #else

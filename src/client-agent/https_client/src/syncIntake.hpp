@@ -36,36 +36,35 @@
  */
 class SyncIntake final
 {
-    public:
-        /// Returns true when the session was taken; false makes the intake
-        /// refuse it to the producer, which then still owns the session.
-        using SessionSink =
-            std::function<bool(const std::string& sessionId, const std::string& spoolPath, uint64_t size)>;
+public:
+    /// Returns true when the session was taken; false makes the intake
+    /// refuse it to the producer, which then still owns the session.
+    using SessionSink = std::function<bool(const std::string& sessionId, const std::string& spoolPath, uint64_t size)>;
 
-        SyncIntake(std::string socketPath, std::string spoolDir, SessionSink sink);
-        ~SyncIntake();
+    SyncIntake(std::string socketPath, std::string spoolDir, SessionSink sink);
+    ~SyncIntake();
 
-        SyncIntake(const SyncIntake&) = delete;
-        SyncIntake& operator=(const SyncIntake&) = delete;
+    SyncIntake(const SyncIntake&) = delete;
+    SyncIntake& operator=(const SyncIntake&) = delete;
 
-        /// Bind + listen on the socket and spawn the acceptor thread. Returns
-        /// false when the socket cannot be created (or on Windows).
-        bool start();
+    /// Bind + listen on the socket and spawn the acceptor thread. Returns
+    /// false when the socket cannot be created (or on Windows).
+    bool start();
 
-        /// Stop the acceptor thread, close and unlink the socket. Idempotent.
-        void stop();
+    /// Stop the acceptor thread, close and unlink the socket. Idempotent.
+    void stop();
 
-    private:
-        void acceptLoop();
-        void handleConnection(int peerFd);
+private:
+    void acceptLoop();
+    void handleConnection(int peerFd);
 
-        std::string m_socketPath;
-        std::string m_spoolDir;
-        SessionSink m_sink;
-        int m_listenFd {-1};
-        int m_stopPipe[2] {-1, -1};
-        std::thread m_thread;
-        std::atomic<bool> m_running {false};
+    std::string m_socketPath;
+    std::string m_spoolDir;
+    SessionSink m_sink;
+    int m_listenFd {-1};
+    int m_stopPipe[2] {-1, -1};
+    std::thread m_thread;
+    std::atomic<bool> m_running {false};
 };
 
 /**
@@ -74,7 +73,6 @@ class SyncIntake final
  *        (This is the API the modulesd agent_sync_protocol transport will call
  *        in place of chunked DGRAM sends; used here by tests and the demo.)
  */
-bool sendSyncSession(const std::string& socketPath, const std::string& sessionId,
-                     const uint8_t* body, size_t length);
+bool sendSyncSession(const std::string& socketPath, const std::string& sessionId, const uint8_t* body, size_t length);
 
 #endif // _HC_SYNC_INTAKE_HPP

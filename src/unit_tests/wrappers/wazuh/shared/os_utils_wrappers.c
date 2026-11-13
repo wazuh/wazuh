@@ -13,7 +13,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_w_is_file(const char * const file) {
+int __wrap_w_is_file(const char* const file)
+{
     check_expected(file);
     return mock();
 }

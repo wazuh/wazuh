@@ -33,7 +33,7 @@
 #include "agentd_query.h"
 
 #define SCA_SYNC_PROTOCOL_DB_PATH "queue/sca/db/sca_sync.db"
-#define SCA_SYNC_RETRIES 3
+#define SCA_SYNC_RETRIES          3
 #define SCA_IDENTITY_POLL_SECONDS 30
 
 // Global flag to stop sync module
@@ -52,14 +52,15 @@ static long g_max_eps = 50;
 static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 
 // SCA sync protocol variables
-unsigned int sca_enable_synchronization = 1;     // Database synchronization enabled (default value)
-uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
-uint32_t sca_integrity_interval = 86400;         // Integrity check interval in seconds (default value, 0 = disabled)
+unsigned int sca_enable_synchronization = 1; // Database synchronization enabled (default value)
+uint32_t sca_sync_interval = 300;            // Database synchronization interval (default value)
+uint32_t sca_integrity_interval = 86400;     // Integrity check interval in seconds (default value, 0 = disabled)
 
 // Forward declarations
 static bool wm_sca_is_shutting_down(void);
 static int wm_sca_send_stateless(const char* message);
-static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version);
+static int wm_sca_persist_stateful(
+    const char* id, Operation_t operation, const char* index, const char* message, uint64_t version);
 static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path);
 
 #undef minfo
@@ -68,9 +69,9 @@ static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path);
 #undef mdebug1
 #undef mdebug2
 
-#define minfo(msg, ...) _mtinfo(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mwarn(msg, ...) _mtwarn(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define merror(msg, ...) _mterror(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define minfo(msg, ...)   _mtinfo(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...)   _mtwarn(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...)  _mterror(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
@@ -80,34 +81,34 @@ static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path);
 #endif
 
 #ifdef WIN32
-static DWORD WINAPI wm_sca_main(void *arg);         // Module main function. It won't return
-static DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args);
+static DWORD WINAPI wm_sca_main(void* arg); // Module main function. It won't return
+static DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void* args);
 #else
-static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
-static void * wm_sca_sync_module(__attribute__((unused)) void * args);
+static void* wm_sca_main(wm_sca_t* data); // Module main function. It won't return
+static void* wm_sca_sync_module(__attribute__((unused)) void* args);
 #endif
-static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
-static int wm_sca_start(wm_sca_t * data);  // Start
-static void wm_sca_stop(wm_sca_t* data);   // Stop
-static void wm_sca_release_resources(void);  // Release resources on the module thread
+static void wm_sca_destroy(wm_sca_t* data); // Destroy data
+static int wm_sca_start(wm_sca_t* data);    // Start
+static void wm_sca_stop(wm_sca_t* data);    // Stop
+static void wm_sca_release_resources(void); // Release resources on the module thread
 
-cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
+cJSON* wm_sca_dump(const wm_sca_t* data); // Read config
 
-int wm_sca_sync_message(const char *command, size_t command_len); // Send sync message
+int wm_sca_sync_message(const char* command, size_t command_len); // Send sync message
 
-static size_t wm_sca_query_handler(void *data, char *query, char **output); // Query handler
+static size_t wm_sca_query_handler(void* data, char* query, char** output); // Query handler
 
 const wm_context WM_SCA_CONTEXT = {
     .name = SCA_WM_NAME,
     .start = (wm_routine)wm_sca_main,
-    .destroy = (void(*)(void *))wm_sca_destroy,
-    .dump = (cJSON * (*)(const void *))wm_sca_dump,
-    .sync = (int(*)(const char*, size_t))wm_sca_sync_message,
-    .stop = (void(*)(void *))wm_sca_stop,
+    .destroy = (void (*)(void*))wm_sca_destroy,
+    .dump = (cJSON * (*)(const void*)) wm_sca_dump,
+    .sync = (int (*)(const char*, size_t))wm_sca_sync_message,
+    .stop = (void (*)(void*))wm_sca_stop,
     .query = wm_sca_query_handler,
 };
 
-void *sca_module = NULL;
+void* sca_module = NULL;
 sca_init_func sca_init_ptr = NULL;
 sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
@@ -119,7 +120,7 @@ sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
 sca_set_sync_limit_func sca_set_sync_limit_ptr = NULL;
 
 #ifdef WIN32
-extern size_t agcom_dispatch(char * command, char ** output);
+extern size_t agcom_dispatch(char* command, char** output);
 #endif
 
 static bool wm_sca_query_agentd(const char* command, char* output_buffer, size_t buffer_size)
@@ -228,7 +229,7 @@ static bool wm_sca_query_agentd(const char* command, char* output_buffer, size_t
     }
 }
 
-static bool wm_sca_query_agentd_doclimits(uint64_t *sync_limit)
+static bool wm_sca_query_agentd_doclimits(uint64_t* sync_limit)
 {
     if (!sync_limit)
     {
@@ -286,26 +287,16 @@ typedef enum
 sca_set_yaml_to_cjson_func_func sca_set_yaml_to_cjson_func_ptr = NULL;
 
 // Logging callback function for SCA module
-static void sca_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
-    switch(level) {
-        case LOG_DEBUG:
-            mdebug1("%s", log);
-            break;
-        case LOG_DEBUG_VERBOSE:
-            mdebug2("%s", log);
-            break;
-        case LOG_INFO:
-            minfo("%s", log);
-            break;
-        case LOG_WARNING:
-            mwarn("%s", log);
-            break;
-        case LOG_ERROR:
-            merror("%s", log);
-            break;
-        default:
-            minfo("%s", log);
-            break;
+static void sca_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag)
+{
+    switch (level)
+    {
+        case LOG_DEBUG: mdebug1("%s", log); break;
+        case LOG_DEBUG_VERBOSE: mdebug2("%s", log); break;
+        case LOG_INFO: minfo("%s", log); break;
+        case LOG_WARNING: mwarn("%s", log); break;
+        case LOG_ERROR: merror("%s", log); break;
+        default: minfo("%s", log); break;
     }
 }
 
@@ -330,8 +321,7 @@ static bool wm_sca_parse_query_int(const char* output, const char* field, int* v
     cJSON* data = cJSON_GetObjectItemCaseSensitive(root, "data");
     cJSON* field_item = data ? cJSON_GetObjectItemCaseSensitive(data, field) : NULL;
 
-    if (error && field_item && cJSON_IsNumber(error) && error->valueint == MQ_SUCCESS &&
-        cJSON_IsNumber(field_item))
+    if (error && field_item && cJSON_IsNumber(error) && error->valueint == MQ_SUCCESS && cJSON_IsNumber(field_item))
     {
         *value = field_item->valueint;
         result = true;
@@ -422,7 +412,8 @@ static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_comple
 
     if (!wm_sca_query_int("{\"command\":\"get_first_sync_completed\"}", "first_sync_completed", &marker))
     {
-        mdebug1("Failed to detect whether the first SCA synchronization already completed. Keeping startup synchronization delay.");
+        mdebug1("Failed to detect whether the first SCA synchronization already completed. Keeping startup "
+                "synchronization delay.");
         return SCA_STARTUP_ACTION_WAIT;
     }
 
@@ -445,7 +436,8 @@ static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_comple
             return SCA_STARTUP_ACTION_IMMEDIATE;
         }
 
-        mdebug1("SCA first synchronization already completed in a previous run. Keeping startup synchronization delay.");
+        mdebug1(
+            "SCA first synchronization already completed in a previous run. Keeping startup synchronization delay.");
         return SCA_STARTUP_ACTION_WAIT;
     }
 
@@ -553,16 +545,21 @@ static void wm_handle_sca_disable_and_notify_data_clean()
 
 // Module main function. It won't return
 #ifdef WIN32
-DWORD WINAPI wm_sca_main(void *arg) {
-    wm_sca_t *data = (wm_sca_t *)arg;
+DWORD WINAPI wm_sca_main(void* arg)
+{
+    wm_sca_t* data = (wm_sca_t*)arg;
 #else
-void * wm_sca_main(wm_sca_t * data) {
+void* wm_sca_main(wm_sca_t* data)
+{
 #endif
 
     // If module is disabled, exit
-    if (data->enabled) {
+    if (data->enabled)
+    {
         mdebug1("Module enabled.");
-    } else {
+    }
+    else
+    {
         wm_handle_sca_disable_and_notify_data_clean();
         mdebug1("Module disabled. Exiting.");
         pthread_exit(NULL);
@@ -589,39 +586,47 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_query_ptr = so_get_function_sym(sca_module, "sca_query");
 
         // Set the logging function pointer in the SCA module
-        if (sca_set_log_function_ptr) {
+        if (sca_set_log_function_ptr)
+        {
             sca_set_log_function_ptr(sca_log_callback);
         }
 
         sca_set_yaml_to_cjson_func_ptr = so_get_function_sym(sca_module, "sca_set_yaml_to_cjson_func");
 
         // Set the wm_exec function pointer in the SCA module
-        if (sca_set_wm_exec_ptr) {
+        if (sca_set_wm_exec_ptr)
+        {
             sca_set_wm_exec_ptr(wm_exec);
         }
 
         // Set the push functions for message handling
-        if (sca_set_push_functions_ptr) {
+        if (sca_set_push_functions_ptr)
+        {
             sca_set_push_functions_ptr(wm_sca_send_stateless, wm_sca_persist_stateful);
         }
 
         // Set synchronization parameters from config BEFORE setting sync protocol parameters
         sca_enable_synchronization = data->sync.enable_synchronization;
-        if (sca_enable_synchronization) {
+        if (sca_enable_synchronization)
+        {
             sca_sync_interval = data->sync.sync_interval;
             sca_integrity_interval = data->sync.integrity_interval;
         }
 
         // Set the sync protocol parameters
-        if (sca_set_sync_parameters_ptr) {
+        if (sca_set_sync_parameters_ptr)
+        {
             sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, sca_integrity_interval);
         }
 
         // Set the yaml to cjson function
-        if (sca_set_yaml_to_cjson_func_ptr) {
+        if (sca_set_yaml_to_cjson_func_ptr)
+        {
             sca_set_yaml_to_cjson_func_ptr(wm_sca_yaml_to_cjson);
         }
-    } else {
+    }
+    else
+    {
         merror("Can't get SCA module handle.");
         pthread_exit(NULL);
     }
@@ -629,7 +634,8 @@ void * wm_sca_main(wm_sca_t * data) {
     data->commands_timeout = getDefine_Int_default("sca", "commands_timeout", 1, 300, 30);
     data->remote_commands = getDefine_Int_default("sca", "remote_commands", 0, 1, 0);
 
-    if (sca_init_ptr) {
+    if (sca_init_ptr)
+    {
         sca_init_ptr();
     }
 
@@ -658,7 +664,8 @@ void * wm_sca_main(wm_sca_t * data) {
             // completed" state is Run()'s job (it never got a chance to run
             // this time); this is just the observability half -- not silent
             // (issue 38428).
-            if (data->scan_on_start) {
+            if (data->scan_on_start)
+            {
                 mdebug1("SCA exiting before Run() due to shutdown while waiting for agentd; "
                         "scan_on_start scan will retry automatically on the next opportunity.");
             }
@@ -695,10 +702,12 @@ static void wm_sca_release_resources(void)
     }
 }
 
-static int wm_sca_start(wm_sca_t *sca) {
+static int wm_sca_start(wm_sca_t* sca)
+{
     // Initialize message queue
     g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down);
-    if (g_sca_queue < 0) {
+    if (g_sca_queue < 0)
+    {
         merror("Cannot initialize SCA message queue.");
         // sca_init() already opened the databases, and StartMQPredicated only
         // gives up when shutdown started mid-startup. Release the connections here
@@ -721,17 +730,20 @@ static int wm_sca_start(wm_sca_t *sca) {
     mdebug1("SCA message queue initialized successfully.");
     minfo(STARTUP_MSG, (int)getpid());
 
-    if (sca->max_eps) {
+    if (sca->max_eps)
+    {
         g_max_eps = sca->max_eps;
     }
 
     // Initialize sync protocol if enabled
-    if (sca_enable_synchronization && sca_sync_module_ptr) {
+    if (sca_enable_synchronization && sca_sync_module_ptr)
+    {
 #ifndef WIN32
         // Launch SCA synchronization thread as joinable so we can wait for it
         // before releasing resources on shutdown
         sca_sync_module_running = 1;
-        sca_sync_worker_thread_initialized = (CreateThreadJoinable(&sca_sync_worker_thread, wm_sca_sync_module, NULL) == 0);
+        sca_sync_worker_thread_initialized =
+            (CreateThreadJoinable(&sca_sync_worker_thread, wm_sca_sync_module, NULL) == 0);
         if (!sca_sync_worker_thread_initialized)
         {
             merror(THREAD_ERROR);
@@ -740,14 +752,19 @@ static int wm_sca_start(wm_sca_t *sca) {
 #else
         sca_sync_module_running = 1;
         sca_sync_worker_thread = CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL);
-        if (sca_sync_worker_thread == NULL) {
+        if (sca_sync_worker_thread == NULL)
+        {
             merror(THREAD_ERROR);
             sca_sync_module_running = 0;
-        } else {
+        }
+        else
+        {
             sca_sync_worker_thread_initialized = true;
         }
 #endif
-    } else {
+    }
+    else
+    {
         mdebug1("SCA synchronization is disabled or function not available");
     }
 
@@ -786,8 +803,10 @@ static int wm_sca_start(wm_sca_t *sca) {
 }
 
 // Destroy data
-void wm_sca_destroy(wm_sca_t * data) {
-    if (data) {
+void wm_sca_destroy(wm_sca_t* data)
+{
+    if (data)
+    {
         os_free(data);
     }
 }
@@ -804,14 +823,16 @@ void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
     // loop is still using it) before its thread exits, so the caller's join of
     // that thread is what guarantees the SQLite connection is closed.
 
-    if (sca_stop_ptr) {
+    if (sca_stop_ptr)
+    {
         sca_stop_ptr();
     }
 }
 
-cJSON *wm_sca_dump(const wm_sca_t * data) {
-    cJSON *root = cJSON_CreateObject();
-    cJSON *wm_wd = cJSON_CreateObject();
+cJSON* wm_sca_dump(const wm_sca_t* data)
+{
+    cJSON* root = cJSON_CreateObject();
+    cJSON* wm_wd = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
 
@@ -819,62 +840,75 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
     cJSON_AddNumberToObject(wm_wd, "max_eps", data->max_eps);
 
-    if (data->policies && *data->policies) {
-        cJSON *policies = cJSON_CreateArray();
+    if (data->policies && *data->policies)
+    {
+        cJSON* policies = cJSON_CreateArray();
         int i;
-        for (i=0;data->policies[i];i++) {
-            if(data->policies[i]->enabled == 1){
-                cJSON *policy_entry = cJSON_CreateObject();
+        for (i = 0; data->policies[i]; i++)
+        {
+            if (data->policies[i]->enabled == 1)
+            {
+                cJSON* policy_entry = cJSON_CreateObject();
                 cJSON_AddStringToObject(policy_entry, "policy", data->policies[i]->policy_path);
                 cJSON_AddItemToArray(policies, policy_entry);
             }
         }
-        cJSON_AddItemToObject(wm_wd,"policies", policies);
+        cJSON_AddItemToObject(wm_wd, "policies", policies);
     }
 
     // Database synchronization values
-    cJSON * synchronization = cJSON_CreateObject();
+    cJSON* synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", data->sync.enable_synchronization ? "yes" : "no");
     cJSON_AddNumberToObject(synchronization, "interval", data->sync.sync_interval);
     cJSON_AddItemToObject(wm_wd, "synchronization", synchronization);
 
-    cJSON_AddItemToObject(root,"sca",wm_wd);
+    cJSON_AddItemToObject(root, "sca", wm_wd);
 
     return root;
 }
 
-static bool wm_sca_is_shutting_down(void) {
+static bool wm_sca_is_shutting_down(void)
+{
     return (bool)g_shutting_down;
 }
 
-static int wm_sca_send_stateless(const char* message) {
-    if (!message) {
+static int wm_sca_send_stateless(const char* message)
+{
+    if (!message)
+    {
         return -1;
     }
 
     mdebug1("Sending SCA event: %s", message);
 
-    if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
-        if (wm_sca_is_shutting_down()) {
+    if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0)
+    {
+        if (wm_sca_is_shutting_down())
+        {
             return -1;
         }
 
         mdebug1("Failed to send message to queue, attempting reconnection.");
 
-        if ((g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down)) < 0) {
+        if ((g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down)) <
+            0)
+        {
             return -1;
         }
 
         // Try to send it again
-        if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
-            if (!wm_sca_is_shutting_down()) {
+        if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0)
+        {
+            if (!wm_sca_is_shutting_down())
+            {
                 merror("Error sending message to queue after restart");
             }
             return -1;
         }
     }
 
-    if (atomic_int_inc(&g_n_msg_sent) >= g_max_eps) {
+    if (atomic_int_inc(&g_n_msg_sent) >= g_max_eps)
+    {
         sleep(1);
         atomic_int_set(&g_n_msg_sent, 0);
     }
@@ -882,46 +916,59 @@ static int wm_sca_send_stateless(const char* message) {
     return 0;
 }
 
-static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version) {
-    if (!message) {
+static int
+wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message, uint64_t version)
+{
+    if (!message)
+    {
         return -1;
     }
 
-    if (sca_enable_synchronization && sca_persist_diff_ptr) {
+    if (sca_enable_synchronization && sca_persist_diff_ptr)
+    {
         mdebug2("Persisting SCA event: %s", message);
         sca_persist_diff_ptr(id, operation, index, message, version);
-    } else {
+    }
+    else
+    {
         mdebug2("SCA synchronization is disabled or function not available");
     }
 
     return 0;
 }
 
-int wm_sca_sync_message(const char *command, size_t command_len) {
-    if (sca_enable_synchronization && sca_parse_response_ptr) {
+int wm_sca_sync_message(const char* command, size_t command_len)
+{
+    if (sca_enable_synchronization && sca_parse_response_ptr)
+    {
         size_t header_len = strlen(SCA_SYNC_HEADER);
-        const uint8_t *data = (const uint8_t *)(command + header_len);
+        const uint8_t* data = (const uint8_t*)(command + header_len);
         size_t data_len = command_len - header_len;
 
         bool ret = false;
         ret = sca_parse_response_ptr(data, data_len);
 
-        if (!ret) {
+        if (!ret)
+        {
             mdebug1("Error syncing module");
             return -1;
         }
 
         return 0;
-    } else {
+    }
+    else
+    {
         mdebug1("SCA synchronization is disabled or function not available");
         return -1;
     }
 }
 
 #ifdef WIN32
-DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
+DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void* args)
+{
 #else
-void * wm_sca_sync_module(__attribute__((unused)) void * args) {
+void* wm_sca_sync_module(__attribute__((unused)) void* args)
+{
     sigset_t sigset;
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGTERM);
@@ -943,9 +990,7 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 
     switch (wm_sca_get_startup_action(&first_sync_completed, &identity_change_logged))
     {
-        case SCA_STARTUP_ACTION_IMMEDIATE:
-            wait_before_sync = false;
-            break;
+        case SCA_STARTUP_ACTION_IMMEDIATE: wait_before_sync = false; break;
         case SCA_STARTUP_ACTION_STOP:
 #ifdef WIN32
             return 0;
@@ -953,8 +998,7 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
             return NULL;
 #endif
         case SCA_STARTUP_ACTION_WAIT:
-        default:
-            break;
+        default: break;
     }
 
     while (sca_sync_module_running)
@@ -1000,7 +1044,8 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         {
             char* pause_output = NULL;
             sca_query_ptr("{\"command\":\"pause\"}", &pause_output);
-            if (pause_output) {
+            if (pause_output)
+            {
                 mdebug2("SCA pause response: %s", pause_output);
                 free(pause_output);
             }
@@ -1041,7 +1086,8 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         {
             char* resume_output = NULL;
             sca_query_ptr("{\"command\":\"resume\"}", &resume_output);
-            if (resume_output) {
+            if (resume_output)
+            {
                 mdebug2("SCA resume response: %s", resume_output);
                 free(resume_output);
             }
@@ -1070,11 +1116,13 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 
             if (!attempted)
             {
-                mdebug1("SCA resync under the new agent id was not attempted this cycle, next check in %u seconds.", next_attempt);
+                mdebug1("SCA resync under the new agent id was not attempted this cycle, next check in %u seconds.",
+                        next_attempt);
             }
             else if (identity_change_logged)
             {
-                mdebug1("SCA resync under the new agent id did not complete, next attempt in %u seconds.", next_attempt);
+                mdebug1("SCA resync under the new agent id did not complete, next attempt in %u seconds.",
+                        next_attempt);
             }
             else
             {
@@ -1103,10 +1151,12 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #endif
 }
 
-static size_t wm_sca_query_handler(void *data, char *query, char **output) {
-    (void)data;  // Unused parameter
+static size_t wm_sca_query_handler(void* data, char* query, char** output)
+{
+    (void)data; // Unused parameter
 
-    if (!query || !output) {
+    if (!query || !output)
+    {
         return 0;
     }
 
@@ -1114,18 +1164,27 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
     // first-sync marker is never set. Report it as completed so agent-info coordination is not blocked
     // deferring on a first sync that will never happen. The startup priming path calls sca_query_ptr
     // directly and is unaffected by this handler-level short-circuit.
-    if (!sca_enable_synchronization && strstr(query, "get_first_sync_completed")) {
-        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"sca\",\"first_sync_completed\":1}}", *output);
+    if (!sca_enable_synchronization && strstr(query, "get_first_sync_completed"))
+    {
+        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"sca\",\"first_sync_"
+                  "completed\":1}}",
+                  *output);
         return strlen(*output);
     }
 
     // Call the C++ query function if available
-    if (sca_query_ptr) {
+    if (sca_query_ptr)
+    {
         return sca_query_ptr(query, output);
-    } else {
+    }
+    else
+    {
         char error_msg[256];
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+        snprintf(error_msg,
+                 sizeof(error_msg),
+                 "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_RUNNING,
+                 MQ_MSG_MODULE_NOT_RUNNING);
         os_strdup(error_msg, *output);
         return strlen(*output);
     }
@@ -1148,7 +1207,6 @@ static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path)
         }
 
         yaml_document_delete(&document);
-
     }
     else
     {

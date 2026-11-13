@@ -14,12 +14,15 @@
 #include "debug_op.h"
 
 /* NO_ATEXIT keeps OPENSSL_cleanup() out of exit(), where it would free OpenSSL state under threads that still use it.
- * Only the first initialization of a process can set it, so daemons call w_openssl_init() before any other OpenSSL use. */
-#define W_OPENSSL_INIT_OPTS (OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | \
-                             OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT)
+ * Only the first initialization of a process can set it, so daemons call w_openssl_init() before any other OpenSSL use.
+ */
+#define W_OPENSSL_INIT_OPTS                                                                                            \
+    (OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT)
 
-static inline void w_openssl_init(void) {
-    if (!OPENSSL_init_crypto(W_OPENSSL_INIT_OPTS, NULL)) {
+static inline void w_openssl_init(void)
+{
+    if (!OPENSSL_init_crypto(W_OPENSSL_INIT_OPTS, NULL))
+    {
         mwarn("OpenSSL initialization failed: OPENSSL_init_crypto() returned an error.");
     }
 }

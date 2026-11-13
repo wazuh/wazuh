@@ -24,22 +24,23 @@
  *
  * https://github.com/curl/curl/blob/5930cb1c465ef5f0de6f1b91a843bb6f0bed1f23/acinclude.m4#L2182
  */
-const char* os_ca_bundle_candidates[] = {
-    "/etc/ssl/certs/ca-certificates.crt",       // Debian systems
-    "/etc/pki/tls/certs/ca-bundle.crt",         // Redhat and Mandriva
-    "/usr/share/ssl/certs/ca-bundle.crt",       // RedHat
-    "/usr/local/share/certs/ca-root-nss.crt",   // FreeBSD
-    "/etc/ssl/cert.pem",                        // OpenBSD, FreeBSD, MacOS
-    "/etc/ssl/ca-bundle.pem",                   // SUSE (SLES, openSUSE)
-    NULL
-};
+const char* os_ca_bundle_candidates[] = {"/etc/ssl/certs/ca-certificates.crt",     // Debian systems
+                                         "/etc/pki/tls/certs/ca-bundle.crt",       // Redhat and Mandriva
+                                         "/usr/share/ssl/certs/ca-bundle.crt",     // RedHat
+                                         "/usr/local/share/certs/ca-root-nss.crt", // FreeBSD
+                                         "/etc/ssl/cert.pem",                      // OpenBSD, FreeBSD, MacOS
+                                         "/etc/ssl/ca-bundle.pem",                 // SUSE (SLES, openSUSE)
+                                         NULL};
 
-const char* os_find_ca_bundle(const char* const* candidates) {
+const char* os_find_ca_bundle(const char* const* candidates)
+{
     const char* const* list = candidates ? candidates : os_ca_bundle_candidates;
     struct stat st;
 
-    for (size_t i = 0; list[i] != NULL; ++i) {
-        if (stat(list[i], &st) == 0) {
+    for (size_t i = 0; list[i] != NULL; ++i)
+    {
+        if (stat(list[i], &st) == 0)
+        {
             return list[i];
         }
     }

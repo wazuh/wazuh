@@ -24,28 +24,28 @@
 
 STATIC const int W_SD_JOURNAL_INVALIDATE = 2; ///< Indicates the journal files have changed on disk.
 
-STATIC const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;     ///< Open the journal log for the local machine
-STATIC const char * W_LIB_SYSTEMD = "libsystemd.so.0"; ///< Name of the systemd library
+STATIC const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;    ///< Open the journal log for the local machine
+STATIC const char* W_LIB_SYSTEMD = "libsystemd.so.0"; ///< Name of the systemd library
 
 // Function added on version 187 of systemd
-typedef int (*w_journal_open)(sd_journal ** ret, int flags);            ///< sd_journal_open
-typedef void (*w_journal_close)(sd_journal * j);                        ///< sd_journal_close
-typedef int (*w_journal_previous)(sd_journal * j);                      ///< sd_journal_previous
-typedef int (*w_journal_next)(sd_journal * j);                          ///< sd_journal_next
-typedef int (*w_journal_seek_tail)(sd_journal * j);                     ///< sd_journal_seek_tail
-typedef int (*w_journal_seek_timestamp)(sd_journal * j, uint64_t usec); ///< sd_journal_seek_realtime_usec
-typedef int (*w_journal_get_cutoff_timestamp)(sd_journal * j,
-                                              uint64_t * from,
-                                              uint64_t * to);           ///< sd_journal_get_cutoff_realtime_usec
-typedef int (*w_journal_get_timestamp)(sd_journal * j, uint64_t * ret); ///< sd_journal_get_realtime_usec
-typedef int (*w_journal_get_data)(sd_journal * j,
-                                  const char * field,
-                                  const void ** data,
-                                  size_t * l);                                           ///< sd_journal_get_data
-typedef void (*w_journal_restart_data)(sd_journal * j);                                  ///< sd_journal_restart_data
-typedef int (*w_journal_enumerate_date)(sd_journal * j, const void ** data, size_t * l); ///< sd_journal_enumerate_data
-typedef int (*w_journal_process)(sd_journal* j);                                         ///< sd_journal_process
-typedef int (*w_journal_get_fd)(sd_journal* j);                                          ///< sd_journal_get_fd
+typedef int (*w_journal_open)(sd_journal** ret, int flags);            ///< sd_journal_open
+typedef void (*w_journal_close)(sd_journal* j);                        ///< sd_journal_close
+typedef int (*w_journal_previous)(sd_journal* j);                      ///< sd_journal_previous
+typedef int (*w_journal_next)(sd_journal* j);                          ///< sd_journal_next
+typedef int (*w_journal_seek_tail)(sd_journal* j);                     ///< sd_journal_seek_tail
+typedef int (*w_journal_seek_timestamp)(sd_journal* j, uint64_t usec); ///< sd_journal_seek_realtime_usec
+typedef int (*w_journal_get_cutoff_timestamp)(sd_journal* j,
+                                              uint64_t* from,
+                                              uint64_t* to);          ///< sd_journal_get_cutoff_realtime_usec
+typedef int (*w_journal_get_timestamp)(sd_journal* j, uint64_t* ret); ///< sd_journal_get_realtime_usec
+typedef int (*w_journal_get_data)(sd_journal* j,
+                                  const char* field,
+                                  const void** data,
+                                  size_t* l);                                         ///< sd_journal_get_data
+typedef void (*w_journal_restart_data)(sd_journal* j);                                ///< sd_journal_restart_data
+typedef int (*w_journal_enumerate_date)(sd_journal* j, const void** data, size_t* l); ///< sd_journal_enumerate_data
+typedef int (*w_journal_process)(sd_journal* j);                                      ///< sd_journal_process
+typedef int (*w_journal_get_fd)(sd_journal* j);                                       ///< sd_journal_get_fd
 
 /**
  * @brief Journal log library
@@ -53,7 +53,8 @@ typedef int (*w_journal_get_fd)(sd_journal* j);                                 
  * This structure is used to store the functions of the journal log library.
  * The functions are used to interact with the journal log.
  */
-struct w_journal_lib_t {
+struct w_journal_lib_t
+{
     // Open and close functions
     w_journal_open open;   ///< Open the journal log
     w_journal_close close; ///< Close the journal log
@@ -69,10 +70,10 @@ struct w_journal_lib_t {
     w_journal_get_data get_data;             ///< Get the data of the specified field in the current entry
     w_journal_restart_data restart_data;     ///< Restart the enumeration of the available data
     w_journal_enumerate_date enumerate_date; ///< Enumerate the available data in the current entry
-    void * handle;                           ///< Handle of the library
+    void* handle;                            ///< Handle of the library
     // Rotation detection function
-    w_journal_process process;               ///< Indicates what kind of change has been detected
-    w_journal_get_fd get_fd;                 ///< Returns a file descriptor signaled with journal changes.
+    w_journal_process process; ///< Indicates what kind of change has been detected
+    w_journal_get_fd get_fd;   ///< Returns a file descriptor signaled with journal changes.
 };
 
 /**********************************************************
@@ -84,10 +85,11 @@ struct w_journal_lib_t {
  *
  * @return int64_t
  */
-STATIC INLINE uint64_t w_get_epoch_time() {
+STATIC INLINE uint64_t w_get_epoch_time()
+{
     struct timeval tv = {0};
     gettimeofday(&tv, NULL);
-    return (uint64_t) tv.tv_sec * 1000000 + tv.tv_usec;
+    return (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
 /**
@@ -97,14 +99,16 @@ STATIC INLINE uint64_t w_get_epoch_time() {
  * @param timestamp The epoch time
  * @return char* The human-readable string or NULL on error
  */
-STATIC INLINE char * w_timestamp_to_string(uint64_t timestamp) {
+STATIC INLINE char* w_timestamp_to_string(uint64_t timestamp)
+{
     struct tm tm;
     time_t time = timestamp / 1000000;
-    if (gmtime_r(&time, &tm) == NULL) {
+    if (gmtime_r(&time, &tm) == NULL)
+    {
         return NULL;
     }
 
-    char * str;
+    char* str;
     os_calloc(sizeof("Mar 01 12:39:34") + 1, sizeof(char), str);
     strftime(str, sizeof("Mar 01 12:39:34"), "%b %d %T", &tm);
     return str;
@@ -117,14 +121,16 @@ STATIC INLINE char * w_timestamp_to_string(uint64_t timestamp) {
  * @param timestamp The epoch time
  * @return char* The human-readable string or NULL on error
  */
-STATIC INLINE char * w_timestamp_to_journalctl_since(uint64_t timestamp) {
+STATIC INLINE char* w_timestamp_to_journalctl_since(uint64_t timestamp)
+{
     struct tm tm;
     time_t time = timestamp / 1000000;
-    if (gmtime_r(&time, &tm) == NULL) {
+    if (gmtime_r(&time, &tm) == NULL)
+    {
         return NULL;
     }
 
-    char * str;
+    char* str;
     os_calloc(sizeof("2024-03-14 14:08:52") + 1, sizeof(char), str);
     strftime(str, sizeof("2024-03-14 14:08:52"), "%Y-%m-%d %T", &tm);
     return str;
@@ -142,24 +148,30 @@ STATIC INLINE char * w_timestamp_to_journalctl_since(uint64_t timestamp) {
  * @param library_name The name of the library to search for.
  * @return The path of the library if found, or NULL if not found or an error occurred.
  */
-STATIC INLINE char * find_library_path(const char * library_name) {
-    FILE * maps_file = fopen("/proc/self/maps", "r");
-    if (maps_file == NULL) {
+STATIC INLINE char* find_library_path(const char* library_name)
+{
+    FILE* maps_file = fopen("/proc/self/maps", "r");
+    if (maps_file == NULL)
+    {
         return NULL;
     }
 
-    char * line = NULL;
+    char* line = NULL;
     size_t len = 0;
-    char * path = NULL;
+    char* path = NULL;
 
-    while (getline(&line, &len, maps_file) != -1) {
-        if (strstr(line, library_name) != NULL) {
-            char * path_start = strchr(line, '/');
-            if (path_start == NULL) {
+    while (getline(&line, &len, maps_file) != -1)
+    {
+        if (strstr(line, library_name) != NULL)
+        {
+            char* path_start = strchr(line, '/');
+            if (path_start == NULL)
+            {
                 break; // Never happens
             }
-            char * path_end = strchr(path_start, '\n');
-            if (path_end == NULL) {
+            char* path_end = strchr(path_start, '\n');
+            if (path_end == NULL)
+            {
                 break; // Never happens
             }
             *path_end = '\0';
@@ -182,9 +194,11 @@ STATIC INLINE char * find_library_path(const char * library_name) {
  * @param library_path The path to the file to be checked.
  * @return true if the file is owned by the root user, false otherwise.
  */
-STATIC INLINE bool is_owned_by_root(const char * library_path) {
+STATIC INLINE bool is_owned_by_root(const char* library_path)
+{
     struct stat file_stat;
-    if (w_stat(library_path, &file_stat) != 0) {
+    if (w_stat(library_path, &file_stat) != 0)
+    {
         return false;
     }
 
@@ -199,9 +213,11 @@ STATIC INLINE bool is_owned_by_root(const char * library_path) {
  * @param func Function pointer
  * @return true if the function was loaded and validated successfully, false otherwise.
  */
-STATIC INLINE bool load_and_validate_function(void * handle, const char * name, void ** func) {
+STATIC INLINE bool load_and_validate_function(void* handle, const char* name, void** func)
+{
     *func = dlsym(handle, name);
-    if (*func == NULL) {
+    if (*func == NULL)
+    {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, name, dlerror());
         return false;
     }
@@ -214,22 +230,25 @@ STATIC INLINE bool load_and_validate_function(void * handle, const char * name, 
  * The caller is responsible for freeing the returned library.
  * @return w_journal_lib_t* The library or NULL on error
  */
-STATIC INLINE w_journal_lib_t * w_journal_lib_init() {
-    w_journal_lib_t * lib = NULL;
+STATIC INLINE w_journal_lib_t* w_journal_lib_init()
+{
+    w_journal_lib_t* lib = NULL;
     os_calloc(1, sizeof(w_journal_lib_t), lib);
 
     // Load the library
     lib->handle = dlopen(W_LIB_SYSTEMD, RTLD_LAZY);
-    if (lib->handle == NULL) {
-        char * err = dlerror();
+    if (lib->handle == NULL)
+    {
+        char* err = dlerror();
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, W_LIB_SYSTEMD, err == NULL ? "Unknown error" : err);
         os_free(lib);
         return NULL;
     }
 
     // Verify the ownership of the library
-    char * library_path = find_library_path(W_LIB_SYSTEMD);
-    if (library_path == NULL || !is_owned_by_root(library_path)) {
+    char* library_path = find_library_path(W_LIB_SYSTEMD);
+    if (library_path == NULL || !is_owned_by_root(library_path))
+    {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_OWN, W_LIB_SYSTEMD);
         os_free(library_path);
         dlclose(lib->handle);
@@ -239,23 +258,23 @@ STATIC INLINE w_journal_lib_t * w_journal_lib_init() {
     os_free(library_path);
 
     // Load and verify the functions
-    bool ok =
-        load_and_validate_function(lib->handle, "sd_journal_open", (void **) &lib->open)
-        && load_and_validate_function(lib->handle, "sd_journal_close", (void **) &lib->close)
-        && load_and_validate_function(lib->handle, "sd_journal_previous", (void **) &lib->previous)
-        && load_and_validate_function(lib->handle, "sd_journal_next", (void **) &lib->next)
-        && load_and_validate_function(lib->handle, "sd_journal_seek_tail", (void **) &lib->seek_tail)
-        && load_and_validate_function(lib->handle, "sd_journal_seek_realtime_usec", (void **) &lib->seek_timestamp)
-        && load_and_validate_function(lib->handle, "sd_journal_get_realtime_usec", (void **) &lib->get_timestamp)
-        && load_and_validate_function(lib->handle, "sd_journal_get_data", (void **) &lib->get_data)
-        && load_and_validate_function(lib->handle, "sd_journal_restart_data", (void **) &lib->restart_data)
-        && load_and_validate_function(lib->handle, "sd_journal_enumerate_data", (void **) &lib->enumerate_date)
-        && load_and_validate_function(
-            lib->handle, "sd_journal_get_cutoff_realtime_usec", (void **) &lib->get_cutoff_timestamp)
-        && load_and_validate_function(lib->handle, "sd_journal_process", (void **) &lib->process)
-        && load_and_validate_function(lib->handle, "sd_journal_get_fd", (void **) &lib->get_fd);
+    bool ok = load_and_validate_function(lib->handle, "sd_journal_open", (void**)&lib->open) &&
+              load_and_validate_function(lib->handle, "sd_journal_close", (void**)&lib->close) &&
+              load_and_validate_function(lib->handle, "sd_journal_previous", (void**)&lib->previous) &&
+              load_and_validate_function(lib->handle, "sd_journal_next", (void**)&lib->next) &&
+              load_and_validate_function(lib->handle, "sd_journal_seek_tail", (void**)&lib->seek_tail) &&
+              load_and_validate_function(lib->handle, "sd_journal_seek_realtime_usec", (void**)&lib->seek_timestamp) &&
+              load_and_validate_function(lib->handle, "sd_journal_get_realtime_usec", (void**)&lib->get_timestamp) &&
+              load_and_validate_function(lib->handle, "sd_journal_get_data", (void**)&lib->get_data) &&
+              load_and_validate_function(lib->handle, "sd_journal_restart_data", (void**)&lib->restart_data) &&
+              load_and_validate_function(lib->handle, "sd_journal_enumerate_data", (void**)&lib->enumerate_date) &&
+              load_and_validate_function(
+                  lib->handle, "sd_journal_get_cutoff_realtime_usec", (void**)&lib->get_cutoff_timestamp) &&
+              load_and_validate_function(lib->handle, "sd_journal_process", (void**)&lib->process) &&
+              load_and_validate_function(lib->handle, "sd_journal_get_fd", (void**)&lib->get_fd);
 
-    if (!ok) {
+    if (!ok)
+    {
         dlclose(lib->handle);
         os_free(lib);
         return NULL;
@@ -268,22 +287,26 @@ STATIC INLINE w_journal_lib_t * w_journal_lib_init() {
  *                    Context related
  ***********************************************************/
 
-int w_journal_context_create(w_journal_context_t ** ctx) {
+int w_journal_context_create(w_journal_context_t** ctx)
+{
     int ret = -1; // Return error by default
 
-    if (ctx == NULL) {
+    if (ctx == NULL)
+    {
         return ret;
     }
     os_calloc(1, sizeof(w_journal_context_t), (*ctx));
 
     (*ctx)->lib = w_journal_lib_init();
-    if ((*ctx)->lib == NULL) {
+    if ((*ctx)->lib == NULL)
+    {
         os_free(*ctx);
         return ret;
     }
 
     ret = (*ctx)->lib->open(&((*ctx)->journal), W_SD_JOURNAL_LOCAL_ONLY);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_OPEN, strerror(-ret));
         dlclose((*ctx)->lib->handle);
         os_free((*ctx)->lib);
@@ -292,8 +315,10 @@ int w_journal_context_create(w_journal_context_t ** ctx) {
     return ret;
 }
 
-void w_journal_context_free(w_journal_context_t * ctx) {
-    if (ctx == NULL) {
+void w_journal_context_free(w_journal_context_t* ctx)
+{
+    if (ctx == NULL)
+    {
         return;
     }
 
@@ -303,49 +328,60 @@ void w_journal_context_free(w_journal_context_t * ctx) {
     os_free(ctx);
 }
 
-void w_journal_context_update_timestamp(w_journal_context_t * ctx) {
+void w_journal_context_update_timestamp(w_journal_context_t* ctx)
+{
     static bool failed_logged = false;
-    if (ctx == NULL) {
+    if (ctx == NULL)
+    {
         return;
     }
 
     int err = ctx->lib->get_timestamp(ctx->journal, &(ctx->timestamp));
-    if (err < 0) {
+    if (err < 0)
+    {
         ctx->timestamp = w_get_epoch_time();
-        if (!failed_logged) {
+        if (!failed_logged)
+        {
             failed_logged = true;
             mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_TS, strerror(-err));
         }
     }
 }
 
-int w_journal_context_seek_most_recent(w_journal_context_t * ctx) {
+int w_journal_context_seek_most_recent(w_journal_context_t* ctx)
+{
 
-    if (ctx == NULL) {
+    if (ctx == NULL)
+    {
         return -1;
     }
 
     int err = ctx->lib->seek_tail(ctx->journal);
-    if (err < 0) {
+    if (err < 0)
+    {
         return err;
     }
 
     err = ctx->lib->previous(ctx->journal);
     // if change cursor, update timestamp
-    if (err > 0) {
+    if (err > 0)
+    {
         w_journal_context_update_timestamp(ctx);
     }
     return err;
 }
 
-int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timestamp) {
+int w_journal_context_seek_timestamp(w_journal_context_t* ctx, uint64_t timestamp)
+{
 
-    if (ctx == NULL) {
+    if (ctx == NULL)
+    {
         return -1;
     }
 
     // If the timestamp is in the future or invalid, seek the most recent entry
-    if (timestamp == 0 || timestamp > w_get_epoch_time()) {
+    if (timestamp == 0 || timestamp > w_get_epoch_time())
+    {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_FUTURE_TS, timestamp);
         return w_journal_context_seek_most_recent(ctx);
     }
@@ -354,15 +390,19 @@ int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timesta
     uint64_t oldest;
     int err = w_journal_context_get_oldest_timestamp(ctx, &oldest);
 
-    if (err < 0) {
+    if (err < 0)
+    {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_OLD_TS, strerror(-err));
-    } else if (timestamp < oldest) {
+    }
+    else if (timestamp < oldest)
+    {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_CHANGE_TS, timestamp);
         timestamp = oldest;
     }
 
     err = ctx->lib->seek_timestamp(ctx->journal, timestamp);
-    if (err < 0) {
+    if (err < 0)
+    {
         return err;
     }
 
@@ -374,38 +414,47 @@ int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timesta
     return err;
 }
 
-int w_journal_context_next_newest(w_journal_context_t * ctx) {
+int w_journal_context_next_newest(w_journal_context_t* ctx)
+{
 
-    if (ctx == NULL) {
+    if (ctx == NULL)
+    {
         return -1;
     }
 
     int ret = ctx->lib->next(ctx->journal);
 
     // if change cursor, update timestamp
-    if (ret > 0) {
+    if (ret > 0)
+    {
         w_journal_context_update_timestamp(ctx);
     }
 
     return ret;
 }
 
-int w_journal_context_next_newest_filtered(w_journal_context_t * ctx, w_journal_filters_list_t filters) {
+int w_journal_context_next_newest_filtered(w_journal_context_t* ctx, w_journal_filters_list_t filters)
+{
 
-    if (filters == NULL) {
+    if (filters == NULL)
+    {
         return w_journal_context_next_newest(ctx);
     }
 
     int ret = 0;
-    while ((ret = w_journal_context_next_newest(ctx)) > 0) {
-        if (isDebug()) {
-            char * ts = w_timestamp_to_journalctl_since(ctx->timestamp);
+    while ((ret = w_journal_context_next_newest(ctx)) > 0)
+    {
+        if (isDebug())
+        {
+            char* ts = w_timestamp_to_journalctl_since(ctx->timestamp);
             mdebug2(LOGCOLLECTOR_JOURNAL_LOG_CHECK_FILTER, ts == NULL ? "unknown" : ts);
             os_free(ts);
         }
 
-        for (size_t i = 0; filters[i] != NULL; i++) {
-            if (w_journal_filter_apply(ctx, filters[i]) > 0) {
+        for (size_t i = 0; filters[i] != NULL; i++)
+        {
+            if (w_journal_filter_apply(ctx, filters[i]) > 0)
+            {
                 return 1;
             }
         }
@@ -415,7 +464,8 @@ int w_journal_context_next_newest_filtered(w_journal_context_t * ctx, w_journal_
 }
 
 // Check return value on value un error
-int w_journal_context_get_oldest_timestamp(w_journal_context_t * ctx, uint64_t * timestamp) {
+int w_journal_context_get_oldest_timestamp(w_journal_context_t* ctx, uint64_t* timestamp)
+{
     return ctx->lib->get_cutoff_timestamp(ctx->journal, timestamp, NULL);
 }
 
@@ -429,26 +479,29 @@ int w_journal_context_get_oldest_timestamp(w_journal_context_t * ctx, uint64_t *
  * @param ctx Journal log context
  * @return cJSON* JSON object with the available data or NULL on error
  */
-STATIC INLINE cJSON * entry_as_json(w_journal_context_t * ctx) {
-    cJSON * dump = cJSON_CreateObject();
+STATIC INLINE cJSON* entry_as_json(w_journal_context_t* ctx)
+{
+    cJSON* dump = cJSON_CreateObject();
     int isEmpty = 1; // Flag to check if the entry is empty
 
     // Iterate through the available data
-    const void * data;
+    const void* data;
     size_t length;
     ctx->lib->restart_data(ctx->journal);
-    while (ctx->lib->enumerate_date(ctx->journal, &data, &length) > 0) {
+    while (ctx->lib->enumerate_date(ctx->journal, &data, &length) > 0)
+    {
         // Value is a string "key=value" without null-terminator
-        const char * equal_sign = memchr(data, '=', length);
-        if (!equal_sign) {
+        const char* equal_sign = memchr(data, '=', length);
+        if (!equal_sign)
+        {
             continue;
         }
 
-        size_t key_len = equal_sign - (const char *) data;
+        size_t key_len = equal_sign - (const char*)data;
         size_t value_len = length - key_len - 1;
 
-        char * key = strndup(data, key_len);
-        char * value = strndup(equal_sign + 1, value_len);
+        char* key = strndup(data, key_len);
+        char* value = strndup(equal_sign + 1, value_len);
 
         // Add the key and value to the JSON object
         cJSON_AddStringToObject(dump, key, value);
@@ -459,7 +512,8 @@ STATIC INLINE cJSON * entry_as_json(w_journal_context_t * ctx) {
     }
 
     // Error or no data
-    if (isEmpty) {
+    if (isEmpty)
+    {
         cJSON_Delete(dump);
         return NULL;
     }
@@ -474,23 +528,26 @@ STATIC INLINE cJSON * entry_as_json(w_journal_context_t * ctx) {
  * @param value
  * @return int
  */
-STATIC INLINE char * get_field_ptr(w_journal_context_t * ctx, const char * field) {
-    const void * data;
+STATIC INLINE char* get_field_ptr(w_journal_context_t* ctx, const char* field)
+{
+    const void* data;
     size_t length;
 
     int err = ctx->lib->get_data(ctx->journal, field, &data, &length);
-    if (err < 0) {
+    if (err < 0)
+    {
         return NULL;
     }
 
     // Assume that the value is a string "key=value"
-    const char * equal_sign = memchr(data, '=', length);
-    if (!equal_sign) {
+    const char* equal_sign = memchr(data, '=', length);
+    if (!equal_sign)
+    {
         return NULL; // Invalid value
     }
 
     // Copy the value
-    size_t key_len = equal_sign - (const char *) data;
+    size_t key_len = equal_sign - (const char*)data;
     size_t value_len = length - key_len - 1;
 
     return strndup(equal_sign + 1, value_len);
@@ -510,12 +567,10 @@ STATIC INLINE char * get_field_ptr(w_journal_context_t * ctx, const char * field
  * @return char*
  * @warning The arguments must be valid strings (except pid)
  */
-STATIC INLINE char * create_plain_syslog(const char * timestamp,
-                                         const char * hostname,
-                                         const char * syslog_identifier,
-                                         const char * pid,
-                                         const char * message) {
-    static const char * syslog_format = "%s %s %s%s%s%s: %s";
+STATIC INLINE char* create_plain_syslog(
+    const char* timestamp, const char* hostname, const char* syslog_identifier, const char* pid, const char* message)
+{
+    static const char* syslog_format = "%s %s %s%s%s%s: %s";
 
     size_t size = snprintf(NULL,
                            0,
@@ -526,10 +581,10 @@ STATIC INLINE char * create_plain_syslog(const char * timestamp,
                            pid ? "[" : "",
                            pid ? pid : "",
                            pid ? "]" : "",
-                           message)
-                  + 1;
+                           message) +
+                  1;
 
-    char * syslog_msg;
+    char* syslog_msg;
     os_calloc(size, sizeof(char), syslog_msg);
     snprintf(syslog_msg,
              size,
@@ -551,18 +606,21 @@ STATIC INLINE char * create_plain_syslog(const char * timestamp,
  * @param type
  * @return w_journal_entry_t*
  */
-STATIC INLINE char * entry_as_syslog(w_journal_context_t * ctx) {
+STATIC INLINE char* entry_as_syslog(w_journal_context_t* ctx)
+{
 
-    char * hostname = get_field_ptr(ctx, "_HOSTNAME");
-    char * syslog_identifier = get_field_ptr(ctx, "SYSLOG_IDENTIFIER");
-    char * message = get_field_ptr(ctx, "MESSAGE");
-    char * pid = get_field_ptr(ctx, "SYSLOG_PID");
-    if (pid == NULL) {
+    char* hostname = get_field_ptr(ctx, "_HOSTNAME");
+    char* syslog_identifier = get_field_ptr(ctx, "SYSLOG_IDENTIFIER");
+    char* message = get_field_ptr(ctx, "MESSAGE");
+    char* pid = get_field_ptr(ctx, "SYSLOG_PID");
+    if (pid == NULL)
+    {
         pid = get_field_ptr(ctx, "_PID");
     }
-    char * timestamp = w_timestamp_to_string(ctx->timestamp);
+    char* timestamp = w_timestamp_to_string(ctx->timestamp);
 
-    if (!hostname || !message || !timestamp) {
+    if (!hostname || !message || !timestamp)
+    {
         mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NOT_SYSLOG, ctx->timestamp);
         os_free(hostname);
         os_free(syslog_identifier);
@@ -572,11 +630,12 @@ STATIC INLINE char * entry_as_syslog(w_journal_context_t * ctx) {
         return NULL;
     }
 
-    if (syslog_identifier == NULL) {
+    if (syslog_identifier == NULL)
+    {
         syslog_identifier = strdup("unknown");
     }
 
-    char * syslog_msg = create_plain_syslog(timestamp, hostname, syslog_identifier, pid, message);
+    char* syslog_msg = create_plain_syslog(timestamp, hostname, syslog_identifier, pid, message);
 
     // Free the memory
     os_free(hostname);
@@ -588,77 +647,78 @@ STATIC INLINE char * entry_as_syslog(w_journal_context_t * ctx) {
     return syslog_msg;
 }
 
-w_journal_entry_t * w_journal_entry_dump(w_journal_context_t * ctx, w_journal_entry_dump_type_t type) {
+w_journal_entry_t* w_journal_entry_dump(w_journal_context_t* ctx, w_journal_entry_dump_type_t type)
+{
 
-    if (ctx == NULL || ctx->journal == NULL) {
+    if (ctx == NULL || ctx->journal == NULL)
+    {
         return NULL;
     }
 
-    w_journal_entry_t * entry = NULL;
+    w_journal_entry_t* entry = NULL;
     os_calloc(1, sizeof(w_journal_entry_t), entry);
     entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_INVALID;
     entry->timestamp = ctx->timestamp;
 
     // Create the dump
-    switch (type) {
-    case W_JOURNAL_ENTRY_DUMP_TYPE_JSON:
-        entry->data.json = entry_as_json(ctx);
-        if (entry->data.json != NULL) {
-            entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_JSON;
-        }
-        break;
-    case W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG:
-        entry->data.syslog = entry_as_syslog(ctx);
-        if (entry->data.syslog != NULL) {
-            entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG;
-        }
-        break;
-    default:
-        break;
+    switch (type)
+    {
+        case W_JOURNAL_ENTRY_DUMP_TYPE_JSON:
+            entry->data.json = entry_as_json(ctx);
+            if (entry->data.json != NULL)
+            {
+                entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_JSON;
+            }
+            break;
+        case W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG:
+            entry->data.syslog = entry_as_syslog(ctx);
+            if (entry->data.syslog != NULL)
+            {
+                entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG;
+            }
+            break;
+        default: break;
     }
 
-    if (entry->type == W_JOURNAL_ENTRY_DUMP_TYPE_INVALID) {
+    if (entry->type == W_JOURNAL_ENTRY_DUMP_TYPE_INVALID)
+    {
         os_free(entry);
         return NULL;
     }
     return entry;
 }
 
-void w_journal_entry_free(w_journal_entry_t * entry) {
+void w_journal_entry_free(w_journal_entry_t* entry)
+{
 
-    if (entry == NULL) {
+    if (entry == NULL)
+    {
         return;
     }
 
-    switch (entry->type) {
-    case W_JOURNAL_ENTRY_DUMP_TYPE_JSON:
-        cJSON_Delete(entry->data.json);
-        break;
-    case W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG:
-        os_free(entry->data.syslog);
-        break;
-    default:
-        break;
+    switch (entry->type)
+    {
+        case W_JOURNAL_ENTRY_DUMP_TYPE_JSON: cJSON_Delete(entry->data.json); break;
+        case W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG: os_free(entry->data.syslog); break;
+        default: break;
     }
     os_free(entry);
 }
 
-char * w_journal_entry_to_string(w_journal_entry_t * entry) {
+char* w_journal_entry_to_string(w_journal_entry_t* entry)
+{
 
-    if (entry == NULL) {
+    if (entry == NULL)
+    {
         return NULL;
     }
 
-    char * str = NULL;
-    switch (entry->type) {
-    case W_JOURNAL_ENTRY_DUMP_TYPE_JSON:
-        str = cJSON_PrintUnformatted(entry->data.json);
-        break;
-    case W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG:
-        str = strdup(entry->data.syslog);
-        break;
-    default:
-        break;
+    char* str = NULL;
+    switch (entry->type)
+    {
+        case W_JOURNAL_ENTRY_DUMP_TYPE_JSON: str = cJSON_PrintUnformatted(entry->data.json); break;
+        case W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG: str = strdup(entry->data.syslog); break;
+        default: break;
     }
     return str;
 }
@@ -674,24 +734,31 @@ char * w_journal_entry_to_string(w_journal_entry_t * entry) {
  * @param filter Journal log filter
  * @return int 1 if the entry matches the filter, 0 if it does not match, -1 on error
  */
-int w_journal_filter_apply(w_journal_context_t * ctx, w_journal_filter_t * filter) {
+int w_journal_filter_apply(w_journal_context_t* ctx, w_journal_filter_t* filter)
+{
 
-    if (ctx == NULL || filter == NULL) {
+    if (ctx == NULL || filter == NULL)
+    {
         return -1;
     }
 
-    for (size_t i = 0; i < filter->units_size; i++) {
-        _w_journal_filter_unit_t * unit = filter->units[i];
+    for (size_t i = 0; i < filter->units_size; i++)
+    {
+        _w_journal_filter_unit_t* unit = filter->units[i];
 
         // Get the data
-        const char * data;
+        const char* data;
         size_t length;
 
-        int err = ctx->lib->get_data(ctx->journal, unit->field, (const void **) &data, &length);
-        if (err < 0) {
-            if (unit->ignore_if_missing) {
+        int err = ctx->lib->get_data(ctx->journal, unit->field, (const void**)&data, &length);
+        if (err < 0)
+        {
+            if (unit->ignore_if_missing)
+            {
                 continue;
-            } else {
+            }
+            else
+            {
                 mdebug2(LOGCOLLECTOR_JOURNAL_LOG_FIELD_ERROR, unit->field, ctx->timestamp, strerror(-err));
                 return err;
             }
@@ -699,17 +766,19 @@ int w_journal_filter_apply(w_journal_context_t * ctx, w_journal_filter_t * filte
 
         // Extract the value (data: key=value)
         size_t keyPart_len = strnlen(unit->field, length) + 1;
-        if (keyPart_len > length) {
+        if (keyPart_len > length)
+        {
             return -1; // invalid value
         }
         size_t value_len = length - keyPart_len;
-        char * value_str = strndup(data + keyPart_len, value_len);
-        const char * end_match;
+        char* value_str = strndup(data + keyPart_len, value_len);
+        const char* end_match;
 
         bool match = w_expression_match(unit->exp, value_str, &end_match, NULL);
 
         os_free(value_str);
-        if (!match) {
+        if (!match)
+        {
             return 0; // No match
         }
     }
@@ -717,14 +786,17 @@ int w_journal_filter_apply(w_journal_context_t * ctx, w_journal_filter_t * filte
     return 1; // Match
 }
 
-bool w_journal_rotation_detected(w_journal_context_t *ctx) {
+bool w_journal_rotation_detected(w_journal_context_t* ctx)
+{
 
-    if (ctx == NULL || ctx->journal == NULL) {
+    if (ctx == NULL || ctx->journal == NULL)
+    {
         return false;
     }
 
     int fd = ctx->lib->get_fd(ctx->journal);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         return false;
     }
 

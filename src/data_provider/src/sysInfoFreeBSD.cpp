@@ -18,37 +18,27 @@
 
 static void getMemory(nlohmann::json& info)
 {
-    constexpr auto vmPageSize{"vm.stats.vm.v_page_size"};
-    constexpr auto vmTotal{"vm.vmtotal"};
-    uint64_t ram{0};
-    const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
-    size_t len{sizeof(ram)};
-    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
+    constexpr auto vmPageSize {"vm.stats.vm.v_page_size"};
+    constexpr auto vmTotal {"vm.vmtotal"};
+    uint64_t ram {0};
+    const std::vector<int> mib {CTL_HW, HW_PHYSMEM};
+    size_t len {sizeof(ram)};
+    auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading total RAM."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading total RAM."};
     }
 
-    const auto ramTotal{ram};
+    const auto ramTotal {ram};
     info["memory_total"] = ramTotal;
-    u_int pageSize{0};
+    u_int pageSize {0};
     len = sizeof(pageSize);
     ret = sysctlbyname(vmPageSize, &pageSize, &len, nullptr, 0);
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading page size."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading page size."};
     }
 
     struct vmtotal vmt {};
@@ -59,35 +49,24 @@ static void getMemory(nlohmann::json& info)
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading total memory."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading total memory."};
     }
 
-    const auto ramFree{(vmt.t_free * pageSize)};
+    const auto ramFree {(vmt.t_free * pageSize)};
     info["memory_free"] = ramFree;
     info["memory_used"] = ramTotal - ramFree;
 }
 
-
 static int getCpuMHz()
 {
-    unsigned long cpuMHz{0};
-    constexpr auto clockRate{"hw.clockrate"};
-    size_t len{sizeof(cpuMHz)};
-    const auto ret{sysctlbyname(clockRate, &cpuMHz, &len, nullptr, 0)};
+    unsigned long cpuMHz {0};
+    constexpr auto clockRate {"hw.clockrate"};
+    size_t len {sizeof(cpuMHz)};
+    const auto ret {sysctlbyname(clockRate, &cpuMHz, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading cpu frequency."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading cpu frequency."};
     }
 
     return cpuMHz;
@@ -100,19 +79,14 @@ static std::string getSerialNumber()
 
 static int getCpuCores()
 {
-    int cores{0};
-    size_t len{sizeof(cores)};
-    const std::vector<int> mib{CTL_HW, HW_NCPU};
-    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
+    int cores {0};
+    size_t len {sizeof(cores)};
+    const std::vector<int> mib {CTL_HW, HW_NCPU};
+    const auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading cpu cores number."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading cpu cores number."};
     }
 
     return cores;
@@ -120,44 +94,31 @@ static int getCpuCores()
 
 static std::string getCpuName()
 {
-    const std::vector<int> mib{CTL_HW, HW_MODEL};
-    size_t len{0};
-    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+    const std::vector<int> mib {CTL_HW, HW_MODEL};
+    size_t len {0};
+    auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error getting cpu name size."
-        };
+        throw std::system_error {ret, std::system_category(), "Error getting cpu name size."};
     }
 
-    const auto spBuff{std::make_unique<char[]>(len + 1)};
+    const auto spBuff {std::make_unique<char[]>(len + 1)};
 
     if (!spBuff)
     {
-        throw std::runtime_error
-        {
-            "Error allocating memory to read the cpu name."
-        };
+        throw std::runtime_error {"Error allocating memory to read the cpu name."};
     }
 
     ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error getting cpu name"
-        };
+        throw std::system_error {ret, std::system_category(), "Error getting cpu name"};
     }
 
     spBuff.get()[len] = 0;
-    return std::string{reinterpret_cast<const char*>(spBuff.get())};
+    return std::string {reinterpret_cast<const char*>(spBuff.get())};
 }
 
 nlohmann::json SysInfo::getHardware() const
@@ -174,10 +135,7 @@ nlohmann::json SysInfo::getHardware() const
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json ret;
-    getPackages([&ret](nlohmann::json & data)
-    {
-        ret.push_back(data);
-    });
+    getPackages([&ret](nlohmann::json& data) { ret.push_back(data); });
     return ret;
 }
 
@@ -191,7 +149,7 @@ nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
     struct utsname uts {};
-    const auto spParser{FactorySysOsParser::create("bsd")};
+    const auto spParser {FactorySysOsParser::create("bsd")};
 
     if (!spParser->parseUname(Utils::exec("uname -r"), ret))
     {
@@ -228,15 +186,15 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> /*callback*/
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
-    const auto query{Utils::exec(R"(pkg query -a "%n|%m|%v|%q|%c")")};
+    const auto query {Utils::exec(R"(pkg query -a "%n|%m|%v|%q|%c")")};
 
     if (!query.empty())
     {
-        const auto lines{Utils::split(query, '\n')};
+        const auto lines {Utils::split(query, '\n')};
 
         for (const auto& line : lines)
         {
-            const auto data{Utils::split(line, '|')};
+            const auto data {Utils::split(line, '|')};
             nlohmann::json package;
 
             package["name"] = data[0];
@@ -266,24 +224,24 @@ nlohmann::json SysInfo::getHotfixes() const
 
 nlohmann::json SysInfo::getGroups() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }
 
 nlohmann::json SysInfo::getUsers() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }
 
 nlohmann::json SysInfo::getServices() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }
 
 nlohmann::json SysInfo::getBrowserExtensions() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }

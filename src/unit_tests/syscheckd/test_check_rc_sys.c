@@ -24,32 +24,34 @@
 
 rkconfig rootcheck;
 int rk_sys_count;
-char **rk_sys_file;
-char **rk_sys_name;
+char** rk_sys_file;
+char** rk_sys_name;
 
-static char *empty_rk_sys[] = {NULL};
+static char* empty_rk_sys[] = {NULL};
 int test_mode = 1;
 
 /*
  * Custom __wrap_lstat: sets errno from the mock queue.
  * Takes 3 will_return values: (struct stat *buf, int errno_val, int return_val).
  */
-int __wrap_lstat(const char *filename, struct stat *buf)
+int __wrap_lstat(const char* filename, struct stat* buf)
 {
     check_expected(filename);
-    const struct stat *mock_buf = mock_type(struct stat *);
-    if (mock_buf != NULL) {
+    const struct stat* mock_buf = mock_type(struct stat*);
+    if (mock_buf != NULL)
+    {
         memcpy(buf, mock_buf, sizeof(struct stat));
     }
     int mock_errno = mock_type(int);
-    if (mock_errno != 0) {
+    if (mock_errno != 0)
+    {
         errno = mock_errno;
     }
     return mock_type(int);
 }
 
 /* Helper: queue lstat mock expectations */
-static void expect_lstat(const char *path, struct stat *buf, int err, int ret)
+static void expect_lstat(const char* path, struct stat* buf, int err, int ret)
 {
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, buf);
@@ -58,7 +60,7 @@ static void expect_lstat(const char *path, struct stat *buf, int err, int ret)
 }
 
 /* Wrap notify_rk to track rootkit alerts */
-int __wrap_notify_rk(int rk_type, const char *msg)
+int __wrap_notify_rk(int rk_type, const char* msg)
 {
     check_expected(rk_type);
     check_expected(msg);
@@ -66,45 +68,45 @@ int __wrap_notify_rk(int rk_type, const char *msg)
 }
 
 /* Wrap directory operations */
-DIR *__wrap_wopendir(const char *name)
+DIR* __wrap_wopendir(const char* name)
 {
     check_expected(name);
-    return mock_type(DIR *);
+    return mock_type(DIR*);
 }
 
-struct dirent *__wrap_readdir(DIR *dirp)
+struct dirent* __wrap_readdir(DIR* dirp)
 {
     check_expected(dirp);
-    return mock_type(struct dirent *);
+    return mock_type(struct dirent*);
 }
 
-int __wrap_closedir(DIR *dirp)
+int __wrap_closedir(DIR* dirp)
 {
     check_expected(dirp);
     return 0;
 }
 
 /* Wrap check_ignore */
-int __wrap_check_ignore(const char *path_to_ignore)
+int __wrap_check_ignore(const char* path_to_ignore)
 {
     check_expected(path_to_ignore);
     return mock_type(int);
 }
 
 /* Wrap skipFS and IsNFS */
-short __wrap_skipFS(const char *dir_name)
+short __wrap_skipFS(const char* dir_name)
 {
     check_expected(dir_name);
     return mock_type(short);
 }
 
-short __wrap_IsNFS(const char *dir_name)
+short __wrap_IsNFS(const char* dir_name)
 {
     check_expected(dir_name);
     return mock_type(short);
 }
 
-FILE *__wrap_wfopen(const char *path, const char *mode)
+FILE* __wrap_wfopen(const char* path, const char* mode)
 {
     (void)path;
     (void)mode;
@@ -112,63 +114,75 @@ FILE *__wrap_wfopen(const char *path, const char *mode)
 }
 
 /* No-op debug wrappers */
-void __wrap__mtdebug1(__attribute__((unused)) const char *tag,
-                      __attribute__((unused)) const char *file,
+void __wrap__mtdebug1(__attribute__((unused)) const char* tag,
+                      __attribute__((unused)) const char* file,
                       __attribute__((unused)) int line,
-                      __attribute__((unused)) const char *func,
-                      __attribute__((unused)) const char *msg, ...) {}
+                      __attribute__((unused)) const char* func,
+                      __attribute__((unused)) const char* msg,
+                      ...)
+{
+}
 
-void __wrap__mtdebug2(__attribute__((unused)) const char *tag,
-                      __attribute__((unused)) const char *file,
+void __wrap__mtdebug2(__attribute__((unused)) const char* tag,
+                      __attribute__((unused)) const char* file,
                       __attribute__((unused)) int line,
-                      __attribute__((unused)) const char *func,
-                      __attribute__((unused)) const char *msg, ...) {}
+                      __attribute__((unused)) const char* func,
+                      __attribute__((unused)) const char* msg,
+                      ...)
+{
+}
 
-void __wrap__mterror(__attribute__((unused)) const char *tag,
-                     __attribute__((unused)) const char *file,
+void __wrap__mterror(__attribute__((unused)) const char* tag,
+                     __attribute__((unused)) const char* file,
                      __attribute__((unused)) int line,
-                     __attribute__((unused)) const char *func,
-                     __attribute__((unused)) const char *msg, ...) {}
+                     __attribute__((unused)) const char* func,
+                     __attribute__((unused)) const char* msg,
+                     ...)
+{
+}
 
-void __wrap__mtwarn(__attribute__((unused)) const char *tag,
-                    __attribute__((unused)) const char *file,
+void __wrap__mtwarn(__attribute__((unused)) const char* tag,
+                    __attribute__((unused)) const char* file,
                     __attribute__((unused)) int line,
-                    __attribute__((unused)) const char *func,
-                    __attribute__((unused)) const char *msg, ...) {}
+                    __attribute__((unused)) const char* func,
+                    __attribute__((unused)) const char* msg,
+                    ...)
+{
+}
 
 /* ===================================================================
  * Helpers for readdir / closedir expectations
  * =================================================================== */
 
 /* Queue a readdir expectation that validates the DIR* handle */
-static void expect_readdir(DIR *dp, struct dirent *entry)
+static void expect_readdir(DIR* dp, struct dirent* entry)
 {
     expect_value(__wrap_readdir, dirp, dp);
     will_return(__wrap_readdir, entry);
 }
 
 /* Queue a closedir expectation that validates the DIR* handle */
-static void expect_closedir(DIR *dp)
+static void expect_closedir(DIR* dp)
 {
     expect_value(__wrap_closedir, dirp, dp);
 }
 
 /* Queue a wopendir expectation */
-static void expect_wopendir(const char *path, DIR *dp)
+static void expect_wopendir(const char* path, DIR* dp)
 {
     expect_string(__wrap_wopendir, name, path);
     will_return(__wrap_wopendir, dp);
 }
 
 /* Queue a skipFS expectation (default: don't skip) */
-static void expect_skipFS(const char *path, short ret)
+static void expect_skipFS(const char* path, short ret)
 {
     expect_string(__wrap_skipFS, dir_name, path);
     will_return(__wrap_skipFS, ret);
 }
 
 /* Queue a check_ignore expectation */
-static void expect_check_ignore(const char *path, int ret)
+static void expect_check_ignore(const char* path, int ret)
 {
     expect_string(__wrap_check_ignore, path_to_ignore, path);
     will_return(__wrap_check_ignore, ret);
@@ -186,7 +200,7 @@ static void expect_notify_rk(int rk_type)
  * Setup / Teardown
  * =================================================================== */
 
-static int setup(void **state)
+static int setup(void** state)
 {
     (void)state;
     memset(&rootcheck, 0, sizeof(rkconfig));
@@ -217,7 +231,7 @@ static void init_dot_entries(void)
  * Second readdir does NOT list the file -> no alert.
  * =================================================================== */
 
-static void test_enoent_deleted_file_no_alert(void **state)
+static void test_enoent_deleted_file_no_alert(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -234,8 +248,8 @@ static void test_enoent_deleted_file_no_alert(void **state)
     struct stat file_stat = {0};
     file_stat.st_mode = S_IFREG | 0644;
 
-    DIR *fake_dp = (DIR *)0x1234;
-    DIR *fake_dp2 = (DIR *)0x5678;
+    DIR* fake_dp = (DIR*)0x1234;
+    DIR* fake_dp2 = (DIR*)0x5678;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -297,7 +311,7 @@ static void test_enoent_deleted_file_no_alert(void **state)
  * second readdir) -> alert fires.
  * =================================================================== */
 
-static void test_enoent_hidden_file_alerts(void **state)
+static void test_enoent_hidden_file_alerts(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -314,8 +328,8 @@ static void test_enoent_hidden_file_alerts(void **state)
     struct stat file_stat = {0};
     file_stat.st_mode = S_IFREG | 0644;
 
-    DIR *fake_dp = (DIR *)0x1234;
-    DIR *fake_dp2 = (DIR *)0x5678;
+    DIR* fake_dp = (DIR*)0x1234;
+    DIR* fake_dp2 = (DIR*)0x5678;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -378,7 +392,7 @@ static void test_enoent_hidden_file_alerts(void **state)
  * (no deferral, no second readdir).
  * =================================================================== */
 
-static void test_eacces_still_alerts(void **state)
+static void test_eacces_still_alerts(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -395,7 +409,7 @@ static void test_eacces_still_alerts(void **state)
     struct stat file_stat = {0};
     file_stat.st_mode = S_IFREG | 0644;
 
-    DIR *fake_dp = (DIR *)0x1234;
+    DIR* fake_dp = (DIR*)0x1234;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -445,7 +459,7 @@ static void test_eacces_still_alerts(void **state)
  * Test 4: Existing file — no alert
  * =================================================================== */
 
-static void test_existing_file_no_alert(void **state)
+static void test_existing_file_no_alert(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -463,7 +477,7 @@ static void test_existing_file_no_alert(void **state)
     file_stat.st_mode = S_IFREG | 0644;
     file_stat.st_size = 100;
 
-    DIR *fake_dp = (DIR *)0x1234;
+    DIR* fake_dp = (DIR*)0x1234;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -509,7 +523,7 @@ static void test_existing_file_no_alert(void **state)
  * Verifies batch handling in the second readdir pass.
  * =================================================================== */
 
-static void test_multiple_suspects_mixed(void **state)
+static void test_multiple_suspects_mixed(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -528,8 +542,8 @@ static void test_multiple_suspects_mixed(void **state)
     struct stat file_stat = {0};
     file_stat.st_mode = S_IFREG | 0644;
 
-    DIR *fake_dp = (DIR *)0x1234;
-    DIR *fake_dp2 = (DIR *)0x5678;
+    DIR* fake_dp = (DIR*)0x1234;
+    DIR* fake_dp2 = (DIR*)0x5678;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -595,7 +609,7 @@ static void test_multiple_suspects_mixed(void **state)
  * all suspects.
  * =================================================================== */
 
-static void test_wopendir_fail_fallback_alerts_all(void **state)
+static void test_wopendir_fail_fallback_alerts_all(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -612,7 +626,7 @@ static void test_wopendir_fail_fallback_alerts_all(void **state)
     struct stat file_stat = {0};
     file_stat.st_mode = S_IFREG | 0644;
 
-    DIR *fake_dp = (DIR *)0x1234;
+    DIR* fake_dp = (DIR*)0x1234;
 
     /* -- read_sys_dir: lstat on "/" -- */
     expect_lstat("/", &dir_stat, 0, 0);
@@ -669,7 +683,7 @@ static void test_wopendir_fail_fallback_alerts_all(void **state)
  * the non-root path-building branch.
  * =================================================================== */
 
-static void test_subdir_path_building(void **state)
+static void test_subdir_path_building(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -695,9 +709,9 @@ static void test_subdir_path_building(void **state)
     struct stat file_stat = {0};
     file_stat.st_mode = S_IFREG | 0644;
 
-    DIR *fake_dp_root = (DIR *)0x1000;
-    DIR *fake_dp_etc = (DIR *)0x2000;
-    DIR *fake_dp_etc2 = (DIR *)0x3000;
+    DIR* fake_dp_root = (DIR*)0x1000;
+    DIR* fake_dp_etc = (DIR*)0x2000;
+    DIR* fake_dp_etc2 = (DIR*)0x3000;
 
     /* === Level 1: scan "/" === */
 
@@ -800,7 +814,7 @@ static void test_subdir_path_building(void **state)
 
 #define TEST_MAX_DEPTH 256
 
-static void test_max_depth_not_exceeded(void **state)
+static void test_max_depth_not_exceeded(void** state)
 {
     (void)state;
     init_dot_entries();
@@ -818,14 +832,16 @@ static void test_max_depth_not_exceeded(void **state)
 
     strcpy(paths[0], "/");
     strcpy(paths[1], "/a");
-    for (int k = 2; k <= TEST_MAX_DEPTH + 1; k++) {
+    for (int k = 2; k <= TEST_MAX_DEPTH + 1; k++)
+    {
         strcpy(paths[k], paths[k - 1]);
         strcat(paths[k], "/a");
     }
 
     /* Levels 0..TEST_MAX_DEPTH are opened, the child of the last one is only stat'ed */
-    for (int k = 0; k <= TEST_MAX_DEPTH; k++) {
-        DIR *dp = (DIR *)(uintptr_t)(0x1000 + k * 0x10);
+    for (int k = 0; k <= TEST_MAX_DEPTH; k++)
+    {
+        DIR* dp = (DIR*)(uintptr_t)(0x1000 + k * 0x10);
 
         expect_lstat(paths[k], &dir_stat, 0, 0);
         expect_wopendir(paths[k], dp);
@@ -837,8 +853,9 @@ static void test_max_depth_not_exceeded(void **state)
         expect_lstat(paths[k + 1], &dir_stat, 0, 0);
     }
 
-    for (int k = TEST_MAX_DEPTH; k >= 0; k--) {
-        DIR *dp = (DIR *)(uintptr_t)(0x1000 + k * 0x10);
+    for (int k = TEST_MAX_DEPTH; k >= 0; k--)
+    {
+        DIR* dp = (DIR*)(uintptr_t)(0x1000 + k * 0x10);
 
         expect_readdir(dp, NULL);
         expect_skipFS(paths[k], 0);

@@ -13,7 +13,8 @@
 
 WindowsPackageImpl::WindowsPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
     : m_packageWrapper(packageWrapper)
-{ }
+{
+}
 
 void WindowsPackageImpl::buildPackageData(nlohmann::json& package)
 {

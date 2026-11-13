@@ -15,24 +15,28 @@
 #include <string.h>
 #include <errno.h>
 
-char *__wrap_encode_base64(int size, const char *src) {
+char* __wrap_encode_base64(int size, const char* src)
+{
     check_expected(size);
     check_expected(src);
-    return mock_type(char *);
+    return mock_type(char*);
 }
 
-void expect_encode_base64(int size, const char *src, char * ret) {
+void expect_encode_base64(int size, const char* src, char* ret)
+{
     expect_value(__wrap_encode_base64, size, size);
     expect_string(__wrap_encode_base64, src, src);
     will_return(__wrap_encode_base64, strdup(ret));
 }
 
-char *__wrap_decode_base64(const char *src) {
+char* __wrap_decode_base64(const char* src)
+{
     check_expected(src);
-    return mock_type(char *);
+    return mock_type(char*);
 }
 
-void expect_decode_base64(const char *src, char * ret) {
+void expect_decode_base64(const char* src, char* ret)
+{
     expect_string(__wrap_decode_base64, src, src);
     will_return(__wrap_decode_base64, strdup(ret));
 }

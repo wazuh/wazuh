@@ -10,23 +10,24 @@
 #include "shared.h"
 
 #ifndef WIN32
-#define AR_LOG_DIR "logs"
+#define AR_LOG_DIR       "logs"
 #define AR_LOG_FILE_NAME "active-responses.log"
 #else
 #define LOG_FILE "active-response\\active-responses.log"
 #endif
 
-#define COMMANDSIZE_4096 4096
+#define COMMANDSIZE_4096    4096
 #define AR_COMMAND_ATTEMPTS 5
 
-#define AR_VERSION 1
-#define AR_MODULE_NAME "active-response"
+#define AR_VERSION       1
+#define AR_MODULE_NAME   "active-response"
 #define CHECK_KEYS_ENTRY "check_keys"
 
 /**
  * Enumeration of the available commands
  * */
-typedef enum _ar_command_list {
+typedef enum _ar_command_list
+{
     ENABLE_COMMAND = 0,
     DISABLE_COMMAND,
     CONTINUE_COMMAND,
@@ -38,7 +39,7 @@ typedef enum _ar_command_list {
  * @param ar_name Name of active response
  * @param msg Incomming message to write
  * */
-void write_debug_file(const char *ar_name, const char *msg);
+void write_debug_file(const char* ar_name, const char* msg);
 
 /**
  * @brief Set wazuh home directory and check message from stdin
@@ -46,7 +47,7 @@ void write_debug_file(const char *ar_name, const char *msg);
  * @param message JSON message from stdin
  * @return Command from message
  */
-int setup_and_check_message(char **argv, cJSON **message);
+int setup_and_check_message(char** argv, cJSON** message);
 
 /**
  * @brief Send message with keys and check message from stdin
@@ -54,7 +55,7 @@ int setup_and_check_message(char **argv, cJSON **message);
  * @param keys Keys to be sent
  * @return Command from message
  */
-int send_keys_and_check_message(char **argv, char **keys);
+int send_keys_and_check_message(char** argv, char** keys);
 
 /**
  * Get the json structure from input
@@ -62,14 +63,14 @@ int send_keys_and_check_message(char **argv, char **keys);
  * @param input Input to validate
  * @return JSON input or NULL on Invalid
  * */
-cJSON* get_json_from_input(const char *input);
+cJSON* get_json_from_input(const char* input);
 
 /**
  * Get command from input
  * @param input Input
  * @return char * with the command or NULL on fail
  * */
-const char* get_command_from_json(const cJSON *input);
+const char* get_command_from_json(const cJSON* input);
 
 /**
  * Get alert from input (WCS format)
@@ -77,21 +78,21 @@ const char* get_command_from_json(const cJSON *input);
  * @param input Input
  * @return JSON alert or NULL on Invalid.
  * */
-const cJSON* get_alert_from_json(const cJSON *input);
+const cJSON* get_alert_from_json(const cJSON* input);
 
 /**
  * Get source IP from input (WCS-compliant: source.ip at root level)
  * @param input Input
  * @return char * with the source IP or NULL on fail
  * */
-const char* get_srcip_from_json(const cJSON *input);
+const char* get_srcip_from_json(const cJSON* input);
 
 /**
  * Get username from input (WCS-compliant: user.name at root level) and validate its format
  * @param input Input
  * @return char * with the username or NULL on fail or invalid username
  * */
-const char* get_username_from_json(const cJSON *input);
+const char* get_username_from_json(const cJSON* input);
 
 /**
  * Validate username format
@@ -103,21 +104,21 @@ const char* get_username_from_json(const cJSON *input);
  * @retval 1 If username is valid
  * @retval 0 If username is invalid
  * */
-int is_valid_username(const char *username);
+int is_valid_username(const char* username);
 
 /**
  * Get extra_args from input
  * @param input Input
  * @return char * with the extra_args or NULL on fail
  * */
-char* get_extra_args_from_json(const cJSON *input);
+char* get_extra_args_from_json(const cJSON* input);
 
 /**
  * Get keys from input
  * @param input Input
  * @return char * with the keys or NULL on fail
  * */
-char* get_keys_from_json(const cJSON *input);
+char* get_keys_from_json(const cJSON* input);
 
 /**
  * @brief This function splits a string using a delimiter
@@ -125,11 +126,12 @@ char* get_keys_from_json(const cJSON *input);
  * @param delimiter  delimiter used to split the string
  * @param strBefore  buffer to store split string before delimiter
  * @param strAfter   buffer to store split string after delimiter
-*/
-void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, char * strBefore, char * strAfter);
+ */
+void splitStrFromCharDelimiter(const char* output_buf, const char delimiter, char* strBefore, char* strAfter);
 
 /**
- * @brief It looks for a string that matches pattern 1, if it finds it, it looks again for pattern 2, there should be spaces in the middle between the patterns.
+ * @brief It looks for a string that matches pattern 1, if it finds it, it looks again for pattern 2, there should be
+ * spaces in the middle between the patterns.
  * @param output_buf buffer where search
  * @param str_pattern_1 pattern to match
  * @param str_pattern_2 pattern to match
@@ -139,8 +141,8 @@ void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, ch
  *            if it matches pattern 1 look for pattern 2 and if found, it returns 1
  *          isEnabledFromPattern(output_buf, "Status: ", NULL)
  *            find only by "Status"
-*/
-int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
+ */
+int isEnabledFromPattern(const char* output_buf, const char* str_pattern_1, const char* str_pattern_2);
 
 /**
  * Validate that a string is a bare numeric IP address and return its version.
@@ -156,7 +158,7 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
  * @retval 6 If srcip is a bare IPv6 address
  * @retval OS_INVALID If srcip is NULL, empty, out of range or contains any other character
  * */
-int validate_srcip(const char *srcip);
+int validate_srcip(const char* srcip);
 
 #ifndef WIN32
 
@@ -169,7 +171,7 @@ int validate_srcip(const char *srcip);
  * @retval true on success
  * @retval false on error or non-canonical/invalid IP
  * */
-bool canonicalize_ip(const char *ip, char *output, size_t output_size);
+bool canonicalize_ip(const char* ip, char* output, size_t output_size);
 
 /**
  * Check whether a hosts.deny file line is exactly the Wazuh-managed rule
@@ -179,7 +181,7 @@ bool canonicalize_ip(const char *ip, char *output, size_t output_size);
  * @retval true if the line is that rule
  * @retval false otherwise
  * */
-bool hosts_deny_rule_matches(const char *line, const char *rule);
+bool hosts_deny_rule_matches(const char* line, const char* rule);
 
 /**
  * Write process pid to lock simultaneous executions of the script
@@ -189,14 +191,14 @@ bool hosts_deny_rule_matches(const char *line, const char *rule);
  * @param proc_name Name of the proces to lock/unlock
  * @return OS_SUCCESS or OS_INVALID
  * */
-int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name);
+int lock(const char* lock_path, const char* lock_pid_path, const char* log_path, const char* proc_name);
 
 /**
  * Remove lock
  * @param lock_path Path of the folder to lock
  * @param log_path Messages log file
  * */
-void unlock(const char *lock_path, const char *log_path);
+void unlock(const char* lock_path, const char* log_path);
 
 /**
  * Check ip version from a string
@@ -205,7 +207,7 @@ void unlock(const char *lock_path, const char *log_path);
  * @retval 6 If ip is ipv6
  * @retval OS_INVALID on Invalid IP or error
  * */
-int get_ip_version(const char *ip);
+int get_ip_version(const char* ip);
 
 /**
  * Run a command and check that it exits with 0. Retries with a growing delay
@@ -215,6 +217,6 @@ int get_ip_version(const char *ip);
  * @param argv NULL-terminated argument list
  * @return OS_SUCCESS or OS_INVALID
  * */
-int execute_command_with_retry(const char *ar_name, const char *path, char * const *argv);
+int execute_command_with_retry(const char* ar_name, const char* path, char* const* argv);
 
 #endif

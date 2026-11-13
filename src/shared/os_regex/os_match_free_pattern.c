@@ -16,17 +16,18 @@
 #include "os_regex_internal.h"
 #include "shared.h"
 
-
 /* Release all the memory created by the compilation/execution phases */
-void OSMatch_FreePattern(OSMatch *reg)
+void OSMatch_FreePattern(OSMatch* reg)
 {
-    if(reg == NULL)
+    if (reg == NULL)
         return;
 
     /* Free the patterns */
-    if (reg->patterns) {
-        char **pattern = reg->patterns;
-        while (*pattern) {
+    if (reg->patterns)
+    {
+        char** pattern = reg->patterns;
+        while (*pattern)
+        {
             os_free(*pattern);
             pattern++;
         }

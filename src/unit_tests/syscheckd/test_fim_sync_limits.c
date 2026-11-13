@@ -22,8 +22,8 @@
 
 // External function declarations from syscheck.c
 extern void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation);
-extern void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value);
-extern int process_pending_sync_updates(char* table_name, OSList *pending_items);
+extern void add_pending_sync_item(OSList* pending_items, const cJSON* json, int sync_value);
+extern int process_pending_sync_updates(char* table_name, OSList* pending_items);
 extern cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc);
 extern int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs);
 
@@ -39,49 +39,66 @@ registry_t* __wrap_fim_registry_configuration(const char* key, int arch);
 #endif
 
 // Local wrapper declarations (defined per-test-file like test_recovery.c)
-cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
-                                        const uint64_t document_version, const cJSON *dbsync_event,
-                                        const fim_file_data *file_data, OSList* directories);
+cJSON* __wrap_build_stateful_event_file(const char* path,
+                                        const char* sha1_hash,
+                                        const uint64_t document_version,
+                                        const cJSON* dbsync_event,
+                                        const fim_file_data* file_data,
+                                        OSList* directories);
 
-bool __wrap_validate_and_persist_fim_event(const cJSON* stateful_event, const char* id,
-                                           Operation_t operation, const char* index,
-                                           uint64_t document_version, const char* item_description,
-                                           bool mark_for_deletion, OSList* failed_list,
-                                           void* failed_item_data, int sync_flag);
+bool __wrap_validate_and_persist_fim_event(const cJSON* stateful_event,
+                                           const char* id,
+                                           Operation_t operation,
+                                           const char* index,
+                                           uint64_t document_version,
+                                           const char* item_description,
+                                           bool mark_for_deletion,
+                                           OSList* failed_list,
+                                           void* failed_item_data,
+                                           int sync_flag);
 
 #ifdef WIN32
-cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash,
-                                                 const uint64_t document_version, int arch,
-                                                 const cJSON *dbsync_event, void* data);
+cJSON* __wrap_build_stateful_event_registry_key(const char* path,
+                                                const char* sha1_hash,
+                                                const uint64_t document_version,
+                                                int arch,
+                                                const cJSON* dbsync_event,
+                                                void* data);
 
-cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value,
-                                                   const char* sha1_hash, const uint64_t document_version,
-                                                   int arch, const cJSON *dbsync_event, void* data);
+cJSON* __wrap_build_stateful_event_registry_value(const char* path,
+                                                  const char* value,
+                                                  const char* sha1_hash,
+                                                  const uint64_t document_version,
+                                                  int arch,
+                                                  const cJSON* dbsync_event,
+                                                  void* data);
 #endif
 
 // Wrapper implementations for build_stateful_event_* (local to this test file)
-cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
+cJSON* __wrap_build_stateful_event_file(const char* path,
+                                        const char* sha1_hash,
                                         const uint64_t document_version,
-                                        __attribute__((unused)) const cJSON *dbsync_event,
-                                        __attribute__((unused)) const fim_file_data *file_data,
-                                        __attribute__((unused)) OSList* directories) {
+                                        __attribute__((unused)) const cJSON* dbsync_event,
+                                        __attribute__((unused)) const fim_file_data* file_data,
+                                        __attribute__((unused)) OSList* directories)
+{
     check_expected(path);
     check_expected_ptr(sha1_hash);
     check_expected(document_version);
     return mock_ptr_type(cJSON*);
 }
 
-bool __wrap_validate_and_persist_fim_event(
-    __attribute__((unused)) const cJSON* stateful_event,
-    __attribute__((unused)) const char* id,
-    Operation_t operation,
-    const char* index,
-    uint64_t document_version,
-    const char* item_description,
-    bool mark_for_deletion,
-    __attribute__((unused)) OSList* failed_list,
-    __attribute__((unused)) void* failed_item_data,
-    int sync_flag) {
+bool __wrap_validate_and_persist_fim_event(__attribute__((unused)) const cJSON* stateful_event,
+                                           __attribute__((unused)) const char* id,
+                                           Operation_t operation,
+                                           const char* index,
+                                           uint64_t document_version,
+                                           const char* item_description,
+                                           bool mark_for_deletion,
+                                           __attribute__((unused)) OSList* failed_list,
+                                           __attribute__((unused)) void* failed_item_data,
+                                           int sync_flag)
+{
     check_expected(operation);
     check_expected(index);
     check_expected(document_version);
@@ -92,10 +109,13 @@ bool __wrap_validate_and_persist_fim_event(
 }
 
 #ifdef WIN32
-cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash,
-                                                 const uint64_t document_version, int arch,
-                                                 __attribute__((unused)) const cJSON *dbsync_event,
-                                                 __attribute__((unused)) void* data) {
+cJSON* __wrap_build_stateful_event_registry_key(const char* path,
+                                                const char* sha1_hash,
+                                                const uint64_t document_version,
+                                                int arch,
+                                                __attribute__((unused)) const cJSON* dbsync_event,
+                                                __attribute__((unused)) void* data)
+{
     check_expected(path);
     check_expected_ptr(sha1_hash);
     check_expected(document_version);
@@ -103,11 +123,14 @@ cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sh
     return mock_ptr_type(cJSON*);
 }
 
-cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* value,
-                                                   const char* sha1_hash, const uint64_t document_version,
-                                                   int arch,
-                                                   __attribute__((unused)) const cJSON *dbsync_event,
-                                                   __attribute__((unused)) void* data) {
+cJSON* __wrap_build_stateful_event_registry_value(const char* path,
+                                                  const char* value,
+                                                  const char* sha1_hash,
+                                                  const uint64_t document_version,
+                                                  int arch,
+                                                  __attribute__((unused)) const cJSON* dbsync_event,
+                                                  __attribute__((unused)) void* data)
+{
     check_expected(path);
     check_expected(value);
     check_expected_ptr(sha1_hash);
@@ -116,7 +139,8 @@ cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* 
     return mock_ptr_type(cJSON*);
 }
 
-registry_t* __wrap_fim_registry_configuration(const char* key, int arch) {
+registry_t* __wrap_fim_registry_configuration(const char* key, int arch)
+{
     check_expected(key);
     check_expected(arch);
     return mock_ptr_type(registry_t*);
@@ -125,17 +149,20 @@ registry_t* __wrap_fim_registry_configuration(const char* key, int arch) {
 
 /* Setup and teardown functions */
 
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     syscheck.directories = NULL;
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     return 0;
 }
 
 /* Helper function to create test document */
-static cJSON* create_file_doc(const char* path, const char* checksum, uint64_t version) {
+static cJSON* create_file_doc(const char* path, const char* checksum, uint64_t version)
+{
     cJSON* doc = cJSON_CreateObject();
     cJSON_AddStringToObject(doc, "path", path);
     cJSON_AddStringToObject(doc, "checksum", checksum);
@@ -144,8 +171,8 @@ static cJSON* create_file_doc(const char* path, const char* checksum, uint64_t v
 }
 
 #ifdef WIN32
-static cJSON* create_registry_key_doc(const char* path, const char* checksum,
-                                       uint64_t version, const char* arch) {
+static cJSON* create_registry_key_doc(const char* path, const char* checksum, uint64_t version, const char* arch)
+{
     cJSON* doc = cJSON_CreateObject();
     cJSON_AddStringToObject(doc, "path", path);
     cJSON_AddStringToObject(doc, "checksum", checksum);
@@ -154,9 +181,9 @@ static cJSON* create_registry_key_doc(const char* path, const char* checksum,
     return doc;
 }
 
-static cJSON* create_registry_value_doc(const char* path, const char* value,
-                                         const char* checksum, uint64_t version,
-                                         const char* arch) {
+static cJSON*
+create_registry_value_doc(const char* path, const char* value, const char* checksum, uint64_t version, const char* arch)
+{
     cJSON* doc = cJSON_CreateObject();
     cJSON_AddStringToObject(doc, "path", path);
     cJSON_AddStringToObject(doc, "value", value);
@@ -169,8 +196,9 @@ static cJSON* create_registry_value_doc(const char* path, const char* value,
 
 /* Tests for persist_sync_documents() */
 
-static void test_persist_sync_documents_promote_files_success(void **state) {
-    (void) state;
+static void test_persist_sync_documents_promote_files_success(void** state)
+{
+    (void)state;
 
     // Create test documents array
     cJSON* docs = cJSON_CreateArray();
@@ -223,8 +251,9 @@ static void test_persist_sync_documents_promote_files_success(void **state) {
     cJSON_Delete(docs);
 }
 
-static void test_persist_sync_documents_demote_files_success(void **state) {
-    (void) state;
+static void test_persist_sync_documents_demote_files_success(void** state)
+{
+    (void)state;
 
     // Create test documents array (demoted docs don't have checksum)
     cJSON* docs = cJSON_CreateArray();
@@ -251,15 +280,17 @@ static void test_persist_sync_documents_demote_files_success(void **state) {
     cJSON_Delete(docs);
 }
 
-static void test_persist_sync_documents_null_docs(void **state) {
-    (void) state;
+static void test_persist_sync_documents_null_docs(void** state)
+{
+    (void)state;
 
     // Should return immediately without any calls
     persist_sync_documents(FIMDB_FILE_TABLE_NAME, NULL, OPERATION_CREATE);
 }
 
-static void test_persist_sync_documents_invalid_array(void **state) {
-    (void) state;
+static void test_persist_sync_documents_invalid_array(void** state)
+{
+    (void)state;
 
     // Create non-array JSON
     cJSON* not_array = cJSON_CreateObject();
@@ -270,8 +301,9 @@ static void test_persist_sync_documents_invalid_array(void **state) {
     cJSON_Delete(not_array);
 }
 
-static void test_persist_sync_documents_missing_required_fields(void **state) {
-    (void) state;
+static void test_persist_sync_documents_missing_required_fields(void** state)
+{
+    (void)state;
 
     // Create document missing required fields
     cJSON* docs = cJSON_CreateArray();
@@ -292,8 +324,9 @@ static void test_persist_sync_documents_missing_required_fields(void **state) {
     cJSON_Delete(docs);
 }
 
-static void test_persist_sync_documents_missing_checksum_on_create(void **state) {
-    (void) state;
+static void test_persist_sync_documents_missing_checksum_on_create(void** state)
+{
+    (void)state;
 
     // Create document missing checksum for CREATE operation
     cJSON* docs = cJSON_CreateArray();
@@ -316,8 +349,9 @@ static void test_persist_sync_documents_missing_checksum_on_create(void **state)
 }
 
 #ifdef WIN32
-static void test_persist_sync_documents_promote_registry_keys_success(void **state) {
-    (void) state;
+static void test_persist_sync_documents_promote_registry_keys_success(void** state)
+{
+    (void)state;
 
     // Create test registry key document
     cJSON* docs = cJSON_CreateArray();
@@ -336,13 +370,15 @@ static void test_persist_sync_documents_promote_registry_keys_success(void **sta
     expect_value(__wrap_validate_and_persist_fim_event, operation, OPERATION_CREATE);
     expect_string(__wrap_validate_and_persist_fim_event, index, FIM_REGISTRY_KEYS_SYNC_INDEX);
     expect_value(__wrap_validate_and_persist_fim_event, document_version, 1);
-    expect_string(__wrap_validate_and_persist_fim_event, item_description, "registry key HKEY_LOCAL_MACHINE\\Software\\Test");
+    expect_string(
+        __wrap_validate_and_persist_fim_event, item_description, "registry key HKEY_LOCAL_MACHINE\\Software\\Test");
     expect_value(__wrap_validate_and_persist_fim_event, mark_for_deletion, false);
     expect_value(__wrap_validate_and_persist_fim_event, sync_flag, 1);
     will_return(__wrap_validate_and_persist_fim_event, true);
 
     // Expect mdebug1
-    expect_string(__wrap__mdebug1, formatted_msg, "Sent 1 promoted documents to persistent queue for table registry_key");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "Sent 1 promoted documents to persistent queue for table registry_key");
 
     persist_sync_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs, OPERATION_CREATE);
 
@@ -350,8 +386,9 @@ static void test_persist_sync_documents_promote_registry_keys_success(void **sta
     cJSON_Delete(docs);
 }
 
-static void test_persist_sync_documents_demote_registry_values_success(void **state) {
-    (void) state;
+static void test_persist_sync_documents_demote_registry_values_success(void** state)
+{
+    (void)state;
 
     // Create test registry value document (without checksum for DELETE)
     cJSON* docs = cJSON_CreateArray();
@@ -366,13 +403,16 @@ static void test_persist_sync_documents_demote_registry_values_success(void **st
     expect_value(__wrap_validate_and_persist_fim_event, operation, OPERATION_DELETE);
     expect_string(__wrap_validate_and_persist_fim_event, index, FIM_REGISTRY_VALUES_SYNC_INDEX);
     expect_value(__wrap_validate_and_persist_fim_event, document_version, 1);
-    expect_string(__wrap_validate_and_persist_fim_event, item_description, "registry value HKEY_LOCAL_MACHINE\\Software\\Test:TestValue");
+    expect_string(__wrap_validate_and_persist_fim_event,
+                  item_description,
+                  "registry value HKEY_LOCAL_MACHINE\\Software\\Test:TestValue");
     expect_value(__wrap_validate_and_persist_fim_event, mark_for_deletion, false);
     expect_value(__wrap_validate_and_persist_fim_event, sync_flag, 1);
     will_return(__wrap_validate_and_persist_fim_event, true);
 
     // Expect mdebug1
-    expect_string(__wrap__mdebug1, formatted_msg, "Sent 1 demoted documents to persistent queue for table registry_data");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "Sent 1 demoted documents to persistent queue for table registry_data");
 
     persist_sync_documents(FIMDB_REGISTRY_VALUE_TABLENAME, docs, OPERATION_DELETE);
 
@@ -382,8 +422,9 @@ static void test_persist_sync_documents_demote_registry_values_success(void **st
 
 /* Tests for extract_primary_keys() */
 
-static void test_extract_primary_keys_file(void **state) {
-    (void) state;
+static void test_extract_primary_keys_file(void** state)
+{
+    (void)state;
 
     // Create full file document
     cJSON* full_doc = cJSON_CreateObject();
@@ -413,8 +454,9 @@ static void test_extract_primary_keys_file(void **state) {
 }
 
 #ifdef WIN32
-static void test_extract_primary_keys_registry_key(void **state) {
-    (void) state;
+static void test_extract_primary_keys_registry_key(void** state)
+{
+    (void)state;
 
     // Create full registry key document
     cJSON* full_doc = cJSON_CreateObject();
@@ -444,8 +486,9 @@ static void test_extract_primary_keys_registry_key(void **state) {
     cJSON_Delete(keys);
 }
 
-static void test_extract_primary_keys_registry_value(void **state) {
-    (void) state;
+static void test_extract_primary_keys_registry_value(void** state)
+{
+    (void)state;
 
     // Create full registry value document
     cJSON* full_doc = cJSON_CreateObject();
@@ -483,8 +526,9 @@ static void test_extract_primary_keys_registry_value(void **state) {
 
 /* Tests for add_pending_sync_item() and process_pending_sync_updates() */
 
-static void test_add_pending_sync_item_success(void **state) {
-    (void) state;
+static void test_add_pending_sync_item_success(void** state)
+{
+    (void)state;
 
     // Create pending list
     OSList* pending = OSList_Create();
@@ -496,7 +540,8 @@ static void test_add_pending_sync_item_success(void **state) {
     cJSON_AddNumberToObject(item, "version", 1);
 
     // Expect mdebug2 with count
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test.txt (version: 1, sync: 1)");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test.txt (version: 1, sync: 1)");
 
     // Add to pending list
     add_pending_sync_item(pending, item, 1);
@@ -509,8 +554,9 @@ static void test_add_pending_sync_item_success(void **state) {
     OSList_Destroy(pending);
 }
 
-static void test_process_pending_sync_updates_files(void **state) {
-    (void) state;
+static void test_process_pending_sync_updates_files(void** state)
+{
+    (void)state;
 
     // Create pending list with items
     OSList* pending = OSList_Create();
@@ -520,13 +566,15 @@ static void test_process_pending_sync_updates_files(void **state) {
     cJSON* item1 = cJSON_CreateObject();
     cJSON_AddStringToObject(item1, "path", "/tmp/test1.txt");
     cJSON_AddNumberToObject(item1, "version", 1);
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test1.txt (version: 1, sync: 1)");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test1.txt (version: 1, sync: 1)");
     add_pending_sync_item(pending, item1, 1);
 
     cJSON* item2 = cJSON_CreateObject();
     cJSON_AddStringToObject(item2, "path", "/tmp/test2.txt");
     cJSON_AddNumberToObject(item2, "version", 2);
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test2.txt (version: 2, sync: 1)");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "Added item to pending sync list: /tmp/test2.txt (version: 2, sync: 1)");
     add_pending_sync_item(pending, item2, 1);
 
     // Expect fim_db_set_sync_flag calls
@@ -556,8 +604,9 @@ static void test_process_pending_sync_updates_files(void **state) {
 /* Tests (#36134) for drop_orphaned_promoted_documents() */
 
 // All paths still resolve to a configuration → array is unchanged.
-static void test_drop_orphaned_promoted_documents_no_orphans(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_no_orphans(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
     cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
@@ -577,8 +626,9 @@ static void test_drop_orphaned_promoted_documents_no_orphans(void **state) {
 }
 
 // One path no longer in config → only that row is dropped, the other stays.
-static void test_drop_orphaned_promoted_documents_some_orphans(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_some_orphans(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
     cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
@@ -591,22 +641,23 @@ static void test_drop_orphaned_promoted_documents_some_orphans(void **state) {
     expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
                   "Skipping promotion of orphaned path (no active configuration): /home/vagrant/orphan.txt");
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
 
     assert_int_equal(dropped, 1);
     assert_int_equal(cJSON_GetArraySize(docs), 1);
-    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetArrayItem(docs, 0), "path")),
-                        "/etc/passwd");
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetArrayItem(docs, 0), "path")), "/etc/passwd");
 
     cJSON_Delete(docs);
 }
 
 // All paths gone from config → all rows dropped, array becomes empty.
-static void test_drop_orphaned_promoted_documents_all_orphans(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_all_orphans(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
     cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/a.txt", "a", 1));
@@ -617,9 +668,11 @@ static void test_drop_orphaned_promoted_documents_all_orphans(void **state) {
     expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/b.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
                   "Skipping promotion of orphaned path (no active configuration): /home/vagrant/a.txt");
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
                   "Skipping promotion of orphaned path (no active configuration): /home/vagrant/b.txt");
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
@@ -631,8 +684,9 @@ static void test_drop_orphaned_promoted_documents_all_orphans(void **state) {
 }
 
 // Tables the helper does not know about must be left untouched.
-static void test_drop_orphaned_promoted_documents_unknown_table_noop(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_unknown_table_noop(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
     cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
@@ -651,12 +705,13 @@ static void test_drop_orphaned_promoted_documents_unknown_table_noop(void **stat
 
 // A registry key whose path is no longer under any configured entry is dropped; the one still
 // covered survives, and each row is resolved with its own architecture.
-static void test_drop_orphaned_promoted_documents_registry_key_orphan(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_registry_key_orphan(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
-    cJSON_AddItemToArray(docs, create_registry_key_doc("HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest",
-                                                       "abc123", 1, "[x64]"));
+    cJSON_AddItemToArray(docs,
+                         create_registry_key_doc("HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest", "abc123", 1, "[x64]"));
     cJSON_AddItemToArray(docs, create_registry_key_doc("HKEY_LOCAL_MACHINE\\Security", "def456", 1, "[x32]"));
 
     // Helper walks the array from the head; head item is the still-covered [x64] one.
@@ -668,7 +723,8 @@ static void test_drop_orphaned_promoted_documents_registry_key_orphan(void **sta
     expect_value(__wrap_fim_registry_configuration, arch, ARCH_32BIT);
     will_return(__wrap_fim_registry_configuration, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
                   "Skipping promotion of orphaned path (no active configuration): HKEY_LOCAL_MACHINE\\Security");
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs);
@@ -682,18 +738,20 @@ static void test_drop_orphaned_promoted_documents_registry_key_orphan(void **sta
 }
 
 // The registry value table is filtered the same way as the key table.
-static void test_drop_orphaned_promoted_documents_registry_value_orphan(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_registry_value_orphan(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
-    cJSON_AddItemToArray(docs, create_registry_value_doc("HKEY_LOCAL_MACHINE\\Security", "TestValue",
-                                                         "abc123", 1, "[x64]"));
+    cJSON_AddItemToArray(docs,
+                         create_registry_value_doc("HKEY_LOCAL_MACHINE\\Security", "TestValue", "abc123", 1, "[x64]"));
 
     expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Security");
     expect_value(__wrap_fim_registry_configuration, arch, ARCH_64BIT);
     will_return(__wrap_fim_registry_configuration, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
                   "Skipping promotion of orphaned path (no active configuration): HKEY_LOCAL_MACHINE\\Security");
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_VALUE_TABLENAME, docs);
@@ -705,8 +763,9 @@ static void test_drop_orphaned_promoted_documents_registry_value_orphan(void **s
 }
 
 // A registry row without "architecture" cannot be resolved, so it is dropped without a lookup.
-static void test_drop_orphaned_promoted_documents_registry_missing_architecture(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_registry_missing_architecture(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
     cJSON* doc = cJSON_CreateObject();
@@ -716,7 +775,8 @@ static void test_drop_orphaned_promoted_documents_registry_missing_architecture(
     cJSON_AddItemToArray(docs, doc);
 
     // No fim_registry_configuration expectation: the row is dropped before the lookup.
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
                   "Skipping promotion of registry document without architecture: HKEY_LOCAL_MACHINE\\Security");
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs);
@@ -728,12 +788,13 @@ static void test_drop_orphaned_promoted_documents_registry_missing_architecture(
 }
 
 // Registry rows still covered by the configuration are promoted untouched.
-static void test_drop_orphaned_promoted_documents_registry_no_orphans(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_registry_no_orphans(void** state)
+{
+    (void)state;
 
     cJSON* docs = cJSON_CreateArray();
-    cJSON_AddItemToArray(docs, create_registry_key_doc("HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest",
-                                                       "abc123", 1, "[x32]"));
+    cJSON_AddItemToArray(docs,
+                         create_registry_key_doc("HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest", "abc123", 1, "[x32]"));
 
     expect_string(__wrap_fim_registry_configuration, key, "HKEY_LOCAL_MACHINE\\Software\\WazuhLoadTest");
     expect_value(__wrap_fim_registry_configuration, arch, ARCH_32BIT);
@@ -749,8 +810,9 @@ static void test_drop_orphaned_promoted_documents_registry_no_orphans(void **sta
 #endif
 
 // NULL/empty/non-array inputs must be tolerated without crashing.
-static void test_drop_orphaned_promoted_documents_null_and_invalid_inputs(void **state) {
-    (void) state;
+static void test_drop_orphaned_promoted_documents_null_and_invalid_inputs(void** state)
+{
+    (void)state;
 
     assert_int_equal(drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, NULL), 0);
 
@@ -765,7 +827,8 @@ static void test_drop_orphaned_promoted_documents_null_and_invalid_inputs(void *
 
 /* Main test runner */
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         // persist_sync_documents tests
         cmocka_unit_test(test_persist_sync_documents_promote_files_success),

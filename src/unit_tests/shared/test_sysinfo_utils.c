@@ -22,12 +22,14 @@
 
 /* setup/teardown */
 
-static int group_setup(void ** state) {
+static int group_setup(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int group_teardown(void ** state) {
+static int group_teardown(void** state)
+{
     test_mode = 0;
     return 0;
 }
@@ -36,9 +38,10 @@ static int group_teardown(void ** state) {
 
 /* w_sysinfo_deinit */
 
-void test_w_sysinfo_deinit_NULL(void ** state) {
+void test_w_sysinfo_deinit_NULL(void** state)
+{
 
-    w_sysinfo_helpers_t * sysinfo = NULL;
+    w_sysinfo_helpers_t* sysinfo = NULL;
 
     bool ret = w_sysinfo_deinit(sysinfo);
 
@@ -46,7 +49,8 @@ void test_w_sysinfo_deinit_NULL(void ** state) {
     assert_null(sysinfo);
 }
 
-void test_w_sysinfo_deinit_OK(void ** state) {
+void test_w_sysinfo_deinit_OK(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
     sysinfo.module = NULL;
@@ -65,9 +69,10 @@ void test_w_sysinfo_deinit_OK(void ** state) {
 
 /* w_sysinfo_init */
 
-void test_w_sysinfo_init_sysinfo_NULL(void ** state) {
+void test_w_sysinfo_init_sysinfo_NULL(void** state)
+{
 
-    w_sysinfo_helpers_t * sysinfo = NULL;
+    w_sysinfo_helpers_t* sysinfo = NULL;
 
     bool ret = w_sysinfo_init(sysinfo);
 
@@ -75,7 +80,8 @@ void test_w_sysinfo_init_sysinfo_NULL(void ** state) {
     assert_null(sysinfo);
 }
 
-void test_w_sysinfo_init_sysinfo_module_NULL(void ** state) {
+void test_w_sysinfo_init_sysinfo_module_NULL(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
 
@@ -87,7 +93,8 @@ void test_w_sysinfo_init_sysinfo_module_NULL(void ** state) {
     assert_false(ret);
 }
 
-void test_w_sysinfo_init_sysinfo_processes_NULL(void ** state) {
+void test_w_sysinfo_init_sysinfo_processes_NULL(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
 
@@ -114,7 +121,8 @@ void test_w_sysinfo_init_sysinfo_processes_NULL(void ** state) {
     assert_false(ret);
 }
 
-void test_w_sysinfo_init_sysinfo_os_NULL(void ** state) {
+void test_w_sysinfo_init_sysinfo_os_NULL(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
 
@@ -141,7 +149,8 @@ void test_w_sysinfo_init_sysinfo_os_NULL(void ** state) {
     assert_false(ret);
 }
 
-void test_w_sysinfo_init_sysinfo_free_result_NULL(void ** state) {
+void test_w_sysinfo_init_sysinfo_free_result_NULL(void** state)
+{
     w_sysinfo_helpers_t sysinfo;
 
     expect_string(__wrap_so_get_module_handle, so, "sysinfo");
@@ -167,7 +176,8 @@ void test_w_sysinfo_init_sysinfo_free_result_NULL(void ** state) {
     assert_false(ret);
 }
 
-void test_w_sysinfo_init_sysinfo_OK(void ** state) {
+void test_w_sysinfo_init_sysinfo_OK(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
 
@@ -194,26 +204,29 @@ void test_w_sysinfo_init_sysinfo_OK(void ** state) {
 
 /* w_sysinfo_get_processes */
 
-void test_w_sysinfo_get_processes_sysinfo_NULL(void ** state) {
+void test_w_sysinfo_get_processes_sysinfo_NULL(void** state)
+{
 
-    w_sysinfo_helpers_t * sysinfo = NULL;
+    w_sysinfo_helpers_t* sysinfo = NULL;
 
-    cJSON * ret = w_sysinfo_get_processes(sysinfo);
+    cJSON* ret = w_sysinfo_get_processes(sysinfo);
 
     assert_null(ret);
 }
 
-void test_w_sysinfo_get_processes_processes_NULL(void ** state) {
+void test_w_sysinfo_get_processes_processes_NULL(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = NULL;
 
-    cJSON * ret = w_sysinfo_get_processes(&sysinfo);
+    cJSON* ret = w_sysinfo_get_processes(&sysinfo);
 
     assert_null(ret);
 }
 
-void test_w_sysinfo_get_processes_OK(void ** state) {
+void test_w_sysinfo_get_processes_OK(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
@@ -221,33 +234,36 @@ void test_w_sysinfo_get_processes_OK(void ** state) {
     will_return(__wrap_sysinfo_processes, 123);
     will_return(__wrap_sysinfo_processes, 0);
 
-    cJSON * ret = w_sysinfo_get_processes(&sysinfo);
+    cJSON* ret = w_sysinfo_get_processes(&sysinfo);
 
     assert_ptr_equal(ret, 123);
 }
 
 /* w_sysinfo_get_os */
 
-void test_w_sysinfo_get_os_sysinfo_NULL(void ** state) {
+void test_w_sysinfo_get_os_sysinfo_NULL(void** state)
+{
 
-    w_sysinfo_helpers_t * sysinfo = NULL;
+    w_sysinfo_helpers_t* sysinfo = NULL;
 
-    cJSON * ret = w_sysinfo_get_os(sysinfo);
+    cJSON* ret = w_sysinfo_get_os(sysinfo);
 
     assert_null(ret);
 }
 
-void test_w_sysinfo_get_os_os_NULL(void ** state) {
+void test_w_sysinfo_get_os_os_NULL(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
     sysinfo.os = NULL;
 
-    cJSON * ret = w_sysinfo_get_os(&sysinfo);
+    cJSON* ret = w_sysinfo_get_os(&sysinfo);
 
     assert_null(ret);
 }
 
-void test_w_sysinfo_get_os_OK(void ** state) {
+void test_w_sysinfo_get_os_OK(void** state)
+{
 
     w_sysinfo_helpers_t sysinfo;
     sysinfo.os = &sysinfo_os;
@@ -255,31 +271,32 @@ void test_w_sysinfo_get_os_OK(void ** state) {
     will_return(__wrap_sysinfo_os, 123);
     will_return(__wrap_sysinfo_os, 0);
 
-    cJSON * ret = w_sysinfo_get_os(&sysinfo);
+    cJSON* ret = w_sysinfo_get_os(&sysinfo);
 
     assert_ptr_equal(ret, 123);
 }
 
 /* w_get_process_childs */
 
-void test_w_get_process_childs_sysinfo_NULL(void ** state) {
+void test_w_get_process_childs_sysinfo_NULL(void** state)
+{
 
-    //test_w_sysinfo_get_processes_sysinfo_NULL
-    w_sysinfo_helpers_t * sysinfo = NULL;
+    // test_w_sysinfo_get_processes_sysinfo_NULL
+    w_sysinfo_helpers_t* sysinfo = NULL;
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    pid_t * ret = w_get_process_childs(sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(sysinfo, parent_pid, max_count);
 
     assert_null(ret);
-
 }
 
-void test_w_get_process_childs_sysinfo_processes_NULL(void ** state) {
+void test_w_get_process_childs_sysinfo_processes_NULL(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_NULL
+    // test_w_sysinfo_get_processes_processes_NULL
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = NULL;
 
@@ -287,20 +304,20 @@ void test_w_get_process_childs_sysinfo_processes_NULL(void ** state) {
 
     unsigned int max_count = 0;
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
-
 }
 
-void test_w_get_process_childs_empty_processes_list(void ** state) {
+void test_w_get_process_childs_empty_processes_list(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[]");
+    cJSON* processes = cJSON_Parse("[]");
 
     pid_t parent_pid = 10;
 
@@ -311,23 +328,24 @@ void test_w_get_process_childs_empty_processes_list(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
 
     cJSON_free(processes);
-
 }
 
-void test_w_get_process_childs_ppid_object_not_found(void ** state) {
+void test_w_get_process_childs_ppid_object_not_found(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"4122\"," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"4122\","
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
@@ -340,22 +358,23 @@ void test_w_get_process_childs_ppid_object_not_found(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
 
     cJSON_Delete(processes);
-
 }
 
-void test_w_get_process_childs_ppid_not_valid_object_type(void ** state) {
-    //test_w_sysinfo_get_processes_processes_OK
+void test_w_get_process_childs_ppid_not_valid_object_type(void** state)
+{
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"4122\"," \
-                        "\"ppid\":\"test\",\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"4122\","
+                                   "\"ppid\":\"test\",\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\","
+                                   "\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
@@ -368,28 +387,29 @@ void test_w_get_process_childs_ppid_not_valid_object_type(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
 
     cJSON_Delete(processes);
-
 }
 
-void test_w_get_process_childs_ppid_dont_match(void ** state) {
-    //test_w_sysinfo_get_processes_processes_OK
+void test_w_get_process_childs_ppid_dont_match(void** state)
+{
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"4122\"," \
-                        "\"ppid\":1,\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes = cJSON_Parse(
+        "[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"4122\","
+        "\"ppid\":1,\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->valuedouble = 1;
 
@@ -400,30 +420,31 @@ void test_w_get_process_childs_ppid_dont_match(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
 
     cJSON_Delete(ppid_object);
     cJSON_Delete(processes);
-
 }
 
-void test_w_get_process_childs_pid_object_not_found(void ** state) {
+void test_w_get_process_childs_pid_object_not_found(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->type = 8;
     ppid_object->valuedouble = 10;
@@ -439,30 +460,31 @@ void test_w_get_process_childs_pid_object_not_found(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
 
     cJSON_Delete(ppid_object);
     cJSON_Delete(processes);
-
 }
 
-void test_w_get_process_childs_pid_not_a_number(void ** state) {
+void test_w_get_process_childs_pid_not_a_number(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"test\",\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":\"test\",\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->type = 8;
     ppid_object->valuedouble = 10;
@@ -478,35 +500,36 @@ void test_w_get_process_childs_pid_not_a_number(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
 
     cJSON_Delete(ppid_object);
     cJSON_Delete(processes);
-
 }
 
-void test_w_get_process_childs_new_childs_chunk(void ** state) {
+void test_w_get_process_childs_new_childs_chunk(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->type = 8;
     ppid_object->valuedouble = 10;
 
-    cJSON * pid_child = NULL;
+    cJSON* pid_child = NULL;
     os_calloc(1, sizeof(cJSON), pid_child);
     pid_child->type = 8;
     pid_child->valuedouble = 100;
@@ -522,7 +545,7 @@ void test_w_get_process_childs_new_childs_chunk(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_int_equal(*ret, 100);
 
@@ -530,36 +553,37 @@ void test_w_get_process_childs_new_childs_chunk(void ** state) {
     cJSON_Delete(pid_child);
     cJSON_Delete(processes);
     os_free(ret);
-
 }
 
-void test_w_get_process_childs_already_allocated_childs_chunk(void ** state) {
+void test_w_get_process_childs_already_allocated_childs_chunk(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->type = 8;
     ppid_object->valuedouble = 10;
 
-    cJSON * pid_child_1 = NULL;
+    cJSON* pid_child_1 = NULL;
     os_calloc(1, sizeof(cJSON), pid_child_1);
     pid_child_1->type = 8;
     pid_child_1->valuedouble = 100;
 
-    cJSON * pid_child_2 = NULL;
+    cJSON* pid_child_2 = NULL;
     os_calloc(1, sizeof(cJSON), pid_child_2);
     pid_child_2->type = 8;
     pid_child_2->valuedouble = 200;
@@ -581,37 +605,38 @@ void test_w_get_process_childs_already_allocated_childs_chunk(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_int_equal(*ret, 100);
-    assert_int_equal(*(ret+1), 200);
-    assert_int_equal(*(ret+2), 0);
+    assert_int_equal(*(ret + 1), 200);
+    assert_int_equal(*(ret + 2), 0);
 
     cJSON_Delete(ppid_object);
     cJSON_Delete(pid_child_1);
     cJSON_Delete(pid_child_2);
     cJSON_Delete(processes);
     os_free(ret);
-
 }
 
-void test_w_get_process_childs_no_childs_found(void ** state) {
+void test_w_get_process_childs_no_childs_found(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->type = 8;
     ppid_object->valuedouble = 10;
@@ -633,60 +658,61 @@ void test_w_get_process_childs_no_childs_found(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_null(ret);
 
     cJSON_Delete(ppid_object);
     cJSON_Delete(processes);
     os_free(ret);
-
 }
 
-void test_w_get_process_childs_more_childs_than_allowed(void ** state) {
-        //test_w_sysinfo_get_processes_processes_OK
+void test_w_get_process_childs_more_childs_than_allowed(void** state)
+{
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":300,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":400,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":500,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":600,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":700,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":800,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":900,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":1000,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":1100,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":300,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":400,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":500,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":600,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":700,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":800,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":900,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":1000,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":1100,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 0;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->type = 8;
     ppid_object->valuedouble = 10;
 
-    cJSON * pid_child_1 = NULL;
+    cJSON* pid_child_1 = NULL;
     os_calloc(1, sizeof(cJSON), pid_child_1);
     pid_child_1->type = 8;
     pid_child_1->valuedouble = 100;
 
-    cJSON * pid_child_2 = NULL;
+    cJSON* pid_child_2 = NULL;
     os_calloc(1, sizeof(cJSON), pid_child_2);
     pid_child_2->type = 8;
     pid_child_2->valuedouble = 200;
@@ -762,58 +788,59 @@ void test_w_get_process_childs_more_childs_than_allowed(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_int_equal(*ret, 100);
-    assert_int_equal(*(ret+1), 200);
-    assert_int_equal(*(ret+2), 300);
-    assert_int_equal(*(ret+3), 400);
-    assert_int_equal(*(ret+4), 500);
-    assert_int_equal(*(ret+5), 600);
-    assert_int_equal(*(ret+6), 700);
-    assert_int_equal(*(ret+7), 800);
-    assert_int_equal(*(ret+8), 900);
-    assert_int_equal(*(ret+9), 1000);
-    assert_int_equal(*(ret+10), 1100);
-    assert_int_equal(*(ret+11), 0);
+    assert_int_equal(*(ret + 1), 200);
+    assert_int_equal(*(ret + 2), 300);
+    assert_int_equal(*(ret + 3), 400);
+    assert_int_equal(*(ret + 4), 500);
+    assert_int_equal(*(ret + 5), 600);
+    assert_int_equal(*(ret + 6), 700);
+    assert_int_equal(*(ret + 7), 800);
+    assert_int_equal(*(ret + 8), 900);
+    assert_int_equal(*(ret + 9), 1000);
+    assert_int_equal(*(ret + 10), 1100);
+    assert_int_equal(*(ret + 11), 0);
 
     cJSON_Delete(ppid_object);
     cJSON_Delete(pid_child_1);
     cJSON_Delete(pid_child_2);
     cJSON_Delete(processes);
     os_free(ret);
-
 }
 
-void test_w_get_process_childs_max_count(void ** state) {
+void test_w_get_process_childs_max_count(void** state)
+{
 
-    //test_w_sysinfo_get_processes_processes_OK
+    // test_w_sysinfo_get_processes_processes_OK
     w_sysinfo_helpers_t sysinfo;
     sysinfo.processes = &sysinfo_processes;
     sysinfo.free_result = &sysinfo_free_result;
 
-    cJSON * processes = cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}," \
-                        "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":300,\"ppid\":10," \
-                        "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
+    cJSON* processes =
+        cJSON_Parse("[{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":100,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":200,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788},"
+                    "{\"euser\":\"root\",\"name\":\"sleep\",\"nice\":0,\"pid\":300,\"ppid\":10,"
+                    "\"priority\":31,\"rgroup\":\"wheel\",\"ruser\":\"root\",\"state\":\"R\",\"vm_size\":2432788}]");
 
     pid_t parent_pid = 10;
 
     unsigned int max_count = 2;
 
-    cJSON * ppid_object = NULL;
+    cJSON* ppid_object = NULL;
     os_calloc(1, sizeof(cJSON), ppid_object);
     ppid_object->type = 8;
     ppid_object->valuedouble = 10;
 
-    cJSON * pid_child_1 = NULL;
+    cJSON* pid_child_1 = NULL;
     os_calloc(1, sizeof(cJSON), pid_child_1);
     pid_child_1->type = 8;
     pid_child_1->valuedouble = 100;
 
-    cJSON * pid_child_2 = NULL;
+    cJSON* pid_child_2 = NULL;
     os_calloc(1, sizeof(cJSON), pid_child_2);
     pid_child_2->type = 8;
     pid_child_2->valuedouble = 200;
@@ -835,32 +862,33 @@ void test_w_get_process_childs_max_count(void ** state) {
 
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    pid_t * ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
+    pid_t* ret = w_get_process_childs(&sysinfo, parent_pid, max_count);
 
     assert_int_equal(*ret, 100);
-    assert_int_equal(*(ret+1), 200);
-    assert_int_equal(*(ret+2), 0);
+    assert_int_equal(*(ret + 1), 200);
+    assert_int_equal(*(ret + 2), 0);
 
     cJSON_Delete(ppid_object);
     cJSON_Delete(pid_child_1);
     cJSON_Delete(pid_child_2);
     cJSON_Delete(processes);
     os_free(ret);
-
 }
 
 /* w_get_os_codename */
 
-void test_w_get_os_codename_sysinfo_error(void ** state) {
+void test_w_get_os_codename_sysinfo_error(void** state)
+{
 
-    w_sysinfo_helpers_t * sysinfo = NULL;
+    w_sysinfo_helpers_t* sysinfo = NULL;
 
-    char * ret = w_get_os_codename(sysinfo);
+    char* ret = w_get_os_codename(sysinfo);
 
     assert_ptr_equal(ret, NULL);
 }
 
-void test_w_get_os_codename_no_codename_object(void ** state) {
+void test_w_get_os_codename_no_codename_object(void** state)
+{
     w_sysinfo_helpers_t sysinfo;
     sysinfo.os = &sysinfo_os;
     sysinfo.free_result = &sysinfo_free_result;
@@ -871,13 +899,14 @@ void test_w_get_os_codename_no_codename_object(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, NULL);
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    char * ret = w_get_os_codename(&sysinfo);
+    char* ret = w_get_os_codename(&sysinfo);
 
     assert_ptr_equal(ret, NULL);
     os_free(ret);
 }
 
-void test_w_get_os_codename_OK(void ** state) {
+void test_w_get_os_codename_OK(void** state)
+{
     w_sysinfo_helpers_t sysinfo;
     sysinfo.os = &sysinfo_os;
     sysinfo.free_result = &sysinfo_free_result;
@@ -888,14 +917,14 @@ void test_w_get_os_codename_OK(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
     will_return(__wrap_sysinfo_free_result, NULL);
 
-    char * ret = w_get_os_codename(&sysinfo);
+    char* ret = w_get_os_codename(&sysinfo);
 
     assert_string_equal(ret, "test");
     os_free(ret);
 }
 
-
-int main(void) {
+int main(void)
+{
 
     const struct CMUnitTest tests[] = {
         // Tees w_sysinfo_deinit

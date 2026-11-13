@@ -31,8 +31,10 @@ EnrollClient::EnrollClient(
 {
 }
 
-HttpResponse EnrollClient::enroll(const std::string& bodyJson, const std::string& password,
-                                  const std::string& enrollKid, const std::string& enrollKeyHex)
+HttpResponse EnrollClient::enroll(const std::string& bodyJson,
+                                  const std::string& password,
+                                  const std::string& enrollKid,
+                                  const std::string& enrollKeyHex)
 {
     if (!m_config.validateTransport(m_fsProbe, m_logFn))
     {
@@ -128,8 +130,10 @@ namespace
     }
 } // namespace
 
-HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::string& password,
-                                       const std::string& enrollKid, const std::string& enrollKeyHex,
+HttpResponse EnrollClient::performOnce(const std::string& bodyJson,
+                                       const std::string& password,
+                                       const std::string& enrollKid,
+                                       const std::string& enrollKeyHex,
                                        bool allowCompression)
 {
     const auto* bodyPtr = reinterpret_cast<const uint8_t*>(bodyJson.data());
@@ -184,7 +188,7 @@ HttpResponse EnrollClient::performOnce(const std::string& bodyJson, const std::s
         }
 
         const auto token = jwt_profile::v1::enroll::JwtEnrollTokenSigner::signWithKid(
-                               *key, std::chrono::system_clock::time_point {std::chrono::seconds {m_clock.wallSeconds()}}, enrollKid);
+            *key, std::chrono::system_clock::time_point {std::chrono::seconds {m_clock.wallSeconds()}}, enrollKid);
 
         if (!token)
         {

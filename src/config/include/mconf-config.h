@@ -35,7 +35,7 @@ struct cJSON;
  * @param cfgfile Path of the XML file (WAZUHCONF or the `-c` argument).
  * @return 0 on success, -1 otherwise (the reason is logged with CONFIG_INVALID).
  */
-int w_mconf_load(const char *cfgfile);
+int w_mconf_load(const char* cfgfile);
 
 /**
  * @brief Full validation for `-t`: schema, cross-field rules and existence of the certificate/key
@@ -43,7 +43,7 @@ int w_mconf_load(const char *cfgfile);
  *
  * @return 0 when valid, -1 otherwise (the reason is logged with CONFIG_INVALID).
  */
-int w_mconf_validate(const char *cfgfile);
+int w_mconf_validate(const char* cfgfile);
 
 /**
  * @brief One top-level section of the effective document (defaults applied).
@@ -52,10 +52,10 @@ int w_mconf_validate(const char *cfgfile);
  * @return A cJSON object the caller frees with cJSON_Delete(), or NULL when nothing is loaded or the
  *         section is not defined by the schema.
  */
-struct cJSON *w_mconf_section(const char *section);
+struct cJSON* w_mconf_section(const char* section);
 
 /** @brief Path of the loaded file, or NULL when nothing is loaded. */
-const char *w_mconf_file(void);
+const char* w_mconf_file(void);
 
 /** @brief Release the loaded document (tests and shutdown paths). */
 void w_mconf_free(void);
@@ -63,22 +63,22 @@ void w_mconf_free(void);
 /* Helpers shared by the Read_*_JSON() readers. */
 
 /** @brief Boolean item; `def` when the item is absent or not a boolean. */
-int w_mconf_json_bool(const struct cJSON *item, int def);
+int w_mconf_json_bool(const struct cJSON* item, int def);
 
 /**
  * @brief Duration item: an integer number of seconds or a string with a unit (w_parse_time: s, m, h, d, w).
  * @return Seconds, or -1 when the item is absent, of another type or malformed.
  */
-long w_mconf_json_time(const struct cJSON *item);
+long w_mconf_json_time(const struct cJSON* item);
 
 /**
  * @brief Size item: an integer number of bytes or a string with a unit (w_parse_size: b, k, m, g).
  * @return Bytes, or -1 when the item is absent, of another type or malformed.
  */
-long w_mconf_json_size(const struct cJSON *item);
+long w_mconf_json_size(const struct cJSON* item);
 
 /** @brief Log XML_VALUEERR for `element` with the item printed as text. */
-void w_mconf_json_invalid(const char *element, const struct cJSON *item);
+void w_mconf_json_invalid(const char* element, const struct cJSON* item);
 
 #endif /* CLIENT */
 

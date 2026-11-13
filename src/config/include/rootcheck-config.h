@@ -14,17 +14,18 @@
 #include <stdio.h>
 #include "os_regex.h"
 
-#define RK_CONF_UNPARSED -2
+#define RK_CONF_UNPARSED  -2
 #define RK_CONF_UNDEFINED -1
 
-typedef struct _rkconfig {
-    const char *workdir;
-    char *basedir;
-    char **ignore;
-    OSMatch **ignore_sregex;
-    char **alert_msg;
+typedef struct _rkconfig
+{
+    const char* workdir;
+    char* basedir;
+    char** ignore;
+    OSMatch** ignore_sregex;
+    char** alert_msg;
 
-    FILE *fp;
+    FILE* fp;
     int daemon;
     int notify; /* QUEUE or SYSLOG */
     int scanall;
@@ -36,7 +37,8 @@ typedef struct _rkconfig {
     int time;
     int queue;
 
-    struct _checks {
+    struct _checks
+    {
         short rc_dev;
         short rc_if;
         short rc_pids;
@@ -47,6 +49,6 @@ typedef struct _rkconfig {
 } rkconfig;
 
 /* Frees the Rootcheck struct  */
-void Free_Rootcheck(rkconfig * config);
+void Free_Rootcheck(rkconfig* config);
 
 #endif /* CROOTCHECK_H */

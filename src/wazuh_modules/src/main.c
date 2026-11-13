@@ -23,23 +23,23 @@
 #include "mconf-config.h"
 #endif
 
-static void wm_help();                  // Print help.
-static void wm_setup();                 // Setup function. Exits on error.
-static void wm_cleanup();               // Cleanup function, called on exiting.
-static void wm_handler(int signum);     // Action on signal.
-static void wm_signals_configure();     // Configure signal handling.
+static void wm_help();              // Print help.
+static void wm_setup();             // Setup function. Exits on error.
+static void wm_cleanup();           // Cleanup function, called on exiting.
+static void wm_handler(int signum); // Action on signal.
+static void wm_signals_configure(); // Configure signal handling.
 #ifdef WAZUH_RUNTIME_USER
-static void wm_drop_privileges(const char *user); // Drop manager privileges permanently.
+static void wm_drop_privileges(const char* user); // Drop manager privileges permanently.
 #endif
 
-static int flag_foreground = 0;         // Running in foreground.
-static int flag_test_config = 0;        // -t: test the configuration and exit.
+static int flag_foreground = 0;  // Running in foreground.
+static int flag_test_config = 0; // -t: test the configuration and exit.
 
 static pthread_mutex_t sig_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Main function
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int c;
     int wm_debug = 0;
@@ -47,13 +47,13 @@ int main(int argc, char **argv)
 #ifdef CLIENT
 #define WM_GETOPT_CONF ""
 #else
-#define WM_GETOPT_CONF "c:"   // -c <config>: manager configuration file (/etc/wazuh-manager/wazuh-manager.conf)
+#define WM_GETOPT_CONF "c:" // -c <config>: manager configuration file (/etc/wazuh-manager/wazuh-manager.conf)
 #endif
 #ifdef WAZUH_RUNTIME_USER
-    const char *runtime_user = WAZUH_RUNTIME_USER;
-    const char *getopt_options = "Vdfhtu:" WM_GETOPT_CONF;
+    const char* runtime_user = WAZUH_RUNTIME_USER;
+    const char* getopt_options = "Vdfhtu:" WM_GETOPT_CONF;
 #else
-    const char *getopt_options = "Vdfht" WM_GETOPT_CONF;
+    const char* getopt_options = "Vdfht" WM_GETOPT_CONF;
 #endif
 
     /* Set the name */
@@ -61,16 +61,17 @@ int main(int argc, char **argv)
 
 #ifndef CLIENT
     // A relative -c names a file in the caller's directory: remember it before the chdir below.
-    char * start_cwd = getcwd(NULL, 0);
+    char* start_cwd = getcwd(NULL, 0);
 #endif
 
     // Define current working directory
-    char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
+    char* home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1)
+    {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
-    wmodule *cur_module;
+    wmodule* cur_module;
 #ifdef CLIENT
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 #else
@@ -79,42 +80,35 @@ int main(int argc, char **argv)
 
     // Get command line options
 
-    while ((c = getopt(argc, argv, getopt_options)) != -1) {
-        switch (c) {
-        case 'V':
-            print_version();
-            break;
-        case 'd':
-            nowDebug();
-            wm_debug = 1;
-            break;
-        case 'f':
-            flag_foreground = 1;
-            break;
-        case 'h':
-            wm_help();
-            break;
-        case 't':
-            test_config = 1;
-            flag_test_config = 1;
-            flag_foreground = 1;
-            break;
+    while ((c = getopt(argc, argv, getopt_options)) != -1)
+    {
+        switch (c)
+        {
+            case 'V': print_version(); break;
+            case 'd':
+                nowDebug();
+                wm_debug = 1;
+                break;
+            case 'f': flag_foreground = 1; break;
+            case 'h': wm_help(); break;
+            case 't':
+                test_config = 1;
+                flag_test_config = 1;
+                flag_foreground = 1;
+                break;
 #ifndef CLIENT
-        case 'c':
-            if (!optarg) {
-                merror_exit("-c needs an argument");
-            }
-            wm_config_path = wm_resolve_config_path(optarg, start_cwd);
-            break;
+            case 'c':
+                if (!optarg)
+                {
+                    merror_exit("-c needs an argument");
+                }
+                wm_config_path = wm_resolve_config_path(optarg, start_cwd);
+                break;
 #endif
 #ifdef WAZUH_RUNTIME_USER
-        case 'u':
-            runtime_user = optarg;
-            break;
+            case 'u': runtime_user = optarg; break;
 #endif
-        default:
-            print_out(" ");
-            wm_help();
+            default: print_out(" "); wm_help();
         }
     }
 
@@ -124,10 +118,12 @@ int main(int argc, char **argv)
 
     // Get default debug level
 
-    if (wm_debug == 0) {
+    if (wm_debug == 0)
+    {
         wm_debug = wm_debug_level;
 
-        while (wm_debug != 0) {
+        while (wm_debug != 0)
+        {
             nowDebug();
             wm_debug--;
         }
@@ -151,11 +147,13 @@ int main(int argc, char **argv)
 
     wm_setup();
 
-    if (test_config) {
+    if (test_config)
+    {
 #ifndef CLIENT
         // -t also checks the files the configuration points to (certificates...), like the other
         // manager daemons; the document itself was already loaded and read by wm_config().
-        if (w_mconf_validate(wm_config_path) < 0) {
+        if (w_mconf_validate(wm_config_path) < 0)
+        {
             exit(EXIT_FAILURE);
         }
 #endif
@@ -171,9 +169,12 @@ int main(int argc, char **argv)
 
     // wm_control provides the control socket used by agentd to trigger
     // reloads that resolve the startup gate — start it before blocking.
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
-            if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next)
+    {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0)
+        {
+            if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0)
+            {
                 merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
             }
             mdebug2("Created new thread for the '%s' module.", cur_module->tag);
@@ -181,18 +182,22 @@ int main(int argc, char **argv)
         }
     }
 
-    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
+    if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY)
+    {
         mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
         exit(0);
     }
 
     // Run modules
 
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
-            continue;  // already started above
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next)
+    {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0)
+        {
+            continue; // already started above
         }
-        if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
+        if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0)
+        {
             merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
         }
         mdebug2("Created new thread for the '%s' module.", cur_module->tag);
@@ -206,7 +211,8 @@ int main(int argc, char **argv)
     // also join the module threads: two concurrent joins of the same thread
     // return EINVAL/ESRCH, which were misreported as shutdown timeouts. Idle here
     // until the handler exits the process.
-    for (;;) {
+    for (;;)
+    {
         pause();
     }
 
@@ -257,7 +263,8 @@ void wm_setup()
     // reader refused.
     const int config_rc = wm_config();
 
-    if (config_rc < 0 || (config_rc > 0 && flag_test_config)) {
+    if (config_rc < 0 || (config_rc > 0 && flag_test_config))
+    {
         exit(EXIT_FAILURE);
     }
 
@@ -267,11 +274,12 @@ void wm_setup()
     // to any module here, and the modules that build the protocol instances can
     // read no configuration at all, so it is read once and handed down before
     // wm_check() starts any of them.
-    agent_batch batch = { .size = 0, .interval = 0 };
+    agent_batch batch = {.size = 0, .interval = 0};
     w_read_agent_batch(WAZUHCONF, AGENTCONFIG, &batch);
     asp_set_session_max_bytes((uint64_t)batch.size);
 
-    if (batch.size > 0) {
+    if (batch.size > 0)
+    {
         mdebug1("Sync sessions bounded to %lld bytes by <agent><batch><size>.", batch.size);
     }
 
@@ -280,39 +288,45 @@ void wm_setup()
     const int sync_max_blocks = getDefine_Int_default("agent", "sync_max_blocks_per_cycle", 1, 1000, 0);
     asp_set_max_blocks_per_sync((uint32_t)sync_max_blocks);
 
-    if (sync_max_blocks > 0) {
+    if (sync_max_blocks > 0)
+    {
         mdebug1("Sync cycles bounded to %d blocks by agent.sync_max_blocks_per_cycle.", sync_max_blocks);
     }
 #endif
 
     // Go daemon
 
-    if (!flag_foreground) {
+    if (!flag_foreground)
+    {
         goDaemon();
         nowDaemon();
     }
 
 #ifndef WAZUH_RUNTIME_USER
     const gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
-    if (gid == (gid_t) OS_INVALID) {
+    if (gid == (gid_t)OS_INVALID)
+    {
         merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
-    if (Privsep_SetGroup(gid) < 0) {
+    if (Privsep_SetGroup(gid) < 0)
+    {
         merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
     }
 
     wm_setGroupID(gid);
 #endif
 
-    if (wm_check() < 0) {
+    if (wm_check() < 0)
+    {
         mdebug1("No configuration defined. Exiting...");
         exit(EXIT_SUCCESS);
     }
 
     // A configuration test only reads: no PID file (nor the exit handler that deletes it) and no
     // children pool, so a configuration check writes nothing under var/run.
-    if (flag_test_config) {
+    if (flag_test_config)
+    {
         return;
     }
 
@@ -329,24 +343,28 @@ void wm_setup()
 }
 
 #ifdef WAZUH_RUNTIME_USER
-static void wm_drop_privileges(const char *user)
+static void wm_drop_privileges(const char* user)
 {
     const uid_t uid = Privsep_GetUser(user);
     const gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
 
-    if (uid == (uid_t) OS_INVALID || gid == (gid_t) OS_INVALID) {
+    if (uid == (uid_t)OS_INVALID || gid == (gid_t)OS_INVALID)
+    {
         merror_exit(USER_ERROR, user, GROUPGLOBAL, strerror(errno), errno);
     }
 
-    if (Privsep_SetGroup(gid) < 0) {
+    if (Privsep_SetGroup(gid) < 0)
+    {
         merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
     }
 
-    if (Privsep_SetUser(uid) < 0) {
+    if (Privsep_SetUser(uid) < 0)
+    {
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid) {
+    if (getuid() != uid || geteuid() != uid || getgid() != gid || getegid() != gid)
+    {
         merror_exit("Privilege drop to '%s:%s' could not be verified.", user, GROUPGLOBAL);
     }
 
@@ -364,7 +382,8 @@ void wm_cleanup()
 
     // Delete PID file
 
-    if (DeletePID(ARGV0) < 0) {
+    if (DeletePID(ARGV0) < 0)
+    {
         mdebug1("Couldn't delete PID file.");
     }
 }
@@ -373,11 +392,12 @@ void wm_cleanup()
 
 void wm_signals_configure()
 {
-    struct sigaction action = { .sa_handler = wm_handler };
+    struct sigaction action = {.sa_handler = wm_handler};
 
     sigaction(SIGTERM, &action, NULL);
 
-    if (flag_foreground) {
+    if (flag_foreground)
+    {
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
     }
@@ -399,11 +419,14 @@ void wm_handler(int signum)
     wm_shutdown_requested = 1;
 
     w_mutex_lock(&sig_lock);
-    if (wm_sig_processing) {
+    if (wm_sig_processing)
+    {
         mdebug2("Signal received: %d, but another one is being processed. Ignoring.", signum);
         w_mutex_unlock(&sig_lock);
         return;
-    } else {
+    }
+    else
+    {
         wm_sig_processing = true;
         mdebug2("Signal received: %d, handling.", signum);
     }
@@ -413,44 +436,54 @@ void wm_handler(int signum)
     // finish starting.
     sleep(1);
 
-    wmodule * cur_module;
-    switch (signum) {
-    case SIGHUP:
-    case SIGINT:
-    case SIGTERM:
-        mdebug1("Shutting down Wazuh modules.");
+    wmodule* cur_module;
+    switch (signum)
+    {
+        case SIGHUP:
+        case SIGINT:
+        case SIGTERM:
+            mdebug1("Shutting down Wazuh modules.");
 
-        for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
-            if (cur_module->context->stop) {
-                cur_module->context->stop(cur_module->data);
-            }
-        }
-
-        // Wait for all module threads to finish cleanly, with a shared 30-second
-        // total budget. This prevents RocksDB lock leaks and other resource
-        // corruption caused by abrupt thread termination.
-        {
-            struct timespec deadline;
-            clock_gettime(CLOCK_REALTIME, &deadline);
-            deadline.tv_sec += 30;
-
-            for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
-                if (cur_module->thread == (pthread_t)0) continue;
-                if (cur_module->thread == pthread_self()) continue;
-#ifdef __linux__
-                int join_rc = pthread_timedjoin_np(cur_module->thread, NULL, &deadline);
-                if (join_rc != 0) {
-                    mwarn("Module '%s' did not stop within the shutdown timeout. (rc=%d: %s)",
-                          cur_module->context->name, join_rc, strerror(join_rc));
+            for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name;
+                 cur_module = cur_module->next)
+            {
+                if (cur_module->context->stop)
+                {
+                    cur_module->context->stop(cur_module->data);
                 }
-#else
-                pthread_join(cur_module->thread, NULL);
-#endif
             }
-        }
 
-        exit(EXIT_SUCCESS);
-    default:
-        merror("unknown signal (%d)", signum);
+            // Wait for all module threads to finish cleanly, with a shared 30-second
+            // total budget. This prevents RocksDB lock leaks and other resource
+            // corruption caused by abrupt thread termination.
+            {
+                struct timespec deadline;
+                clock_gettime(CLOCK_REALTIME, &deadline);
+                deadline.tv_sec += 30;
+
+                for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name;
+                     cur_module = cur_module->next)
+                {
+                    if (cur_module->thread == (pthread_t)0)
+                        continue;
+                    if (cur_module->thread == pthread_self())
+                        continue;
+#ifdef __linux__
+                    int join_rc = pthread_timedjoin_np(cur_module->thread, NULL, &deadline);
+                    if (join_rc != 0)
+                    {
+                        mwarn("Module '%s' did not stop within the shutdown timeout. (rc=%d: %s)",
+                              cur_module->context->name,
+                              join_rc,
+                              strerror(join_rc));
+                    }
+#else
+                    pthread_join(cur_module->thread, NULL);
+#endif
+                }
+            }
+
+            exit(EXIT_SUCCESS);
+        default: merror("unknown signal (%d)", signum);
     }
 }

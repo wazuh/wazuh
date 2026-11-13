@@ -20,89 +20,96 @@
 /* Required globals declared extern in rootcheck.h */
 rkconfig rootcheck;
 int rk_sys_count;
-char **rk_sys_file;
-char **rk_sys_name;
+char** rk_sys_file;
+char** rk_sys_name;
 int test_mode = 1;
 
 /* ===================================================================
  * Wrappers
  * =================================================================== */
 
-DIR *__wrap_wopendir(const char *name)
+DIR* __wrap_wopendir(const char* name)
 {
     check_expected(name);
-    return mock_type(DIR *);
+    return mock_type(DIR*);
 }
 
-int __wrap_closedir(DIR *dirp)
+int __wrap_closedir(DIR* dirp)
 {
     (void)dirp;
     return 0;
 }
 
-int __wrap_w_stat(const char *pathname, struct stat *buf)
+int __wrap_w_stat(const char* pathname, struct stat* buf)
 {
     check_expected(pathname);
     (void)buf;
     return mock_type(int);
 }
 
-int __wrap_waccess(const char *path, int mode)
+int __wrap_waccess(const char* path, int mode)
 {
     check_expected(path);
     (void)mode;
     return mock_type(int);
 }
 
-FILE *__wrap_wfopen(const char *path, const char *mode)
+FILE* __wrap_wfopen(const char* path, const char* mode)
 {
     check_expected(path);
     (void)mode;
-    return mock_type(FILE *);
+    return mock_type(FILE*);
 }
 
-int __wrap_fclose(FILE *stream)
+int __wrap_fclose(FILE* stream)
 {
     (void)stream;
     return 0;
 }
 
-void __wrap__mtdebug1(__attribute__((unused)) const char *tag,
-                      __attribute__((unused)) const char *file,
+void __wrap__mtdebug1(__attribute__((unused)) const char* tag,
+                      __attribute__((unused)) const char* file,
                       __attribute__((unused)) int line,
-                      __attribute__((unused)) const char *func,
-                      __attribute__((unused)) const char *msg, ...) {}
+                      __attribute__((unused)) const char* func,
+                      __attribute__((unused)) const char* msg,
+                      ...)
+{
+}
 
-void __wrap__mtdebug2(__attribute__((unused)) const char *tag,
-                      __attribute__((unused)) const char *file,
+void __wrap__mtdebug2(__attribute__((unused)) const char* tag,
+                      __attribute__((unused)) const char* file,
                       __attribute__((unused)) int line,
-                      __attribute__((unused)) const char *func,
-                      __attribute__((unused)) const char *msg, ...) {}
+                      __attribute__((unused)) const char* func,
+                      __attribute__((unused)) const char* msg,
+                      ...)
+{
+}
 
-void __wrap__merror_exit(__attribute__((unused)) const char *tag,
-                         __attribute__((unused)) const char *file,
+void __wrap__merror_exit(__attribute__((unused)) const char* tag,
+                         __attribute__((unused)) const char* file,
                          __attribute__((unused)) int line,
-                         __attribute__((unused)) const char *func,
-                         __attribute__((unused)) const char *msg, ...) {}
+                         __attribute__((unused)) const char* func,
+                         __attribute__((unused)) const char* msg,
+                         ...)
+{
+}
 
-int __wrap_OS_Regex(__attribute__((unused)) const char *pattern,
-                    __attribute__((unused)) const char *str)
+int __wrap_OS_Regex(__attribute__((unused)) const char* pattern, __attribute__((unused)) const char* str)
 {
     return 0;
 }
 
-int __wrap_OS_Match2(__attribute__((unused)) const char *pattern,
-                     __attribute__((unused)) const char *str)
+int __wrap_OS_Match2(__attribute__((unused)) const char* pattern, __attribute__((unused)) const char* str)
 {
     return 0;
 }
 
-OSListNode *__wrap_OSList_GetFirstNode(__attribute__((unused)) OSList *list)
+OSListNode* __wrap_OSList_GetFirstNode(__attribute__((unused)) OSList* list)
 {
     return NULL;
 }
 
-OSListNode *__wrap_OSList_GetNextNode(__attribute__((unused)) OSList *list)
+OSListNode* __wrap_OSList_GetNextNode(__attribute__((unused)) OSList* list)
 {
     return NULL;
 }
@@ -111,17 +118,17 @@ OSListNode *__wrap_OSList_GetNextNode(__attribute__((unused)) OSList *list)
  * Tests for is_file()
  * =================================================================== */
 
-static void test_is_file_null_input(void **state)
+static void test_is_file_null_input(void** state)
 {
     (void)state;
     assert_int_equal(is_file(NULL), 0);
 }
 
 /* A directory counts as found — wopendir succeeds */
-static void test_is_file_found_by_opendir(void **state)
+static void test_is_file_found_by_opendir(void** state)
 {
     (void)state;
-    DIR *fake_dp = (DIR *)0x1234;
+    DIR* fake_dp = (DIR*)0x1234;
 
     expect_string(__wrap_wopendir, name, "/bin/some_dir");
     will_return(__wrap_wopendir, fake_dp);
@@ -130,7 +137,7 @@ static void test_is_file_found_by_opendir(void **state)
 }
 
 /* wopendir fails, w_stat succeeds */
-static void test_is_file_found_by_stat(void **state)
+static void test_is_file_found_by_stat(void** state)
 {
     (void)state;
 
@@ -144,7 +151,7 @@ static void test_is_file_found_by_stat(void **state)
 }
 
 /* wopendir fails, w_stat fails, waccess succeeds */
-static void test_is_file_found_by_access(void **state)
+static void test_is_file_found_by_access(void** state)
 {
     (void)state;
 
@@ -161,10 +168,10 @@ static void test_is_file_found_by_access(void **state)
 }
 
 /* wopendir fails, w_stat fails, waccess fails, wfopen succeeds */
-static void test_is_file_found_by_fopen(void **state)
+static void test_is_file_found_by_fopen(void** state)
 {
     (void)state;
-    FILE *fake_fp = (FILE *)0x5678;
+    FILE* fake_fp = (FILE*)0x5678;
 
     expect_string(__wrap_wopendir, name, "/bin/ps");
     will_return(__wrap_wopendir, NULL);
@@ -182,7 +189,7 @@ static void test_is_file_found_by_fopen(void **state)
 }
 
 /* All methods fail → not found */
-static void test_is_file_not_found(void **state)
+static void test_is_file_not_found(void** state)
 {
     (void)state;
 

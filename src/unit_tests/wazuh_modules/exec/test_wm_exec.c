@@ -19,11 +19,14 @@
 #include "../../wrappers/wazuh/shared/list_op_wrappers.h"
 #include "../../wrappers/posix/signal_wrappers.h"
 
-#define COMMAND u8"Powershell -c \"@{ winCounter = (Get-Counter '\\mémoire\\mégaoctets disponibles').CounterSamples[0] } | ConvertTo-Json -compress\""
-#define COMMAND2 u8"Powershell -c \"@{ winCounter = (Get-Counter '\\processeur(_total)\\% temps processeur').CounterSamples[0] } | ConvertTo-Json -compress\""
+#define COMMAND                                                                                                        \
+    u8"Powershell -c \"@{ winCounter = (Get-Counter '\\mémoire\\mégaoctets disponibles').CounterSamples[0] } | "       \
+    u8"ConvertTo-Json -compress\""
+#define COMMAND2                                                                                                       \
+    u8"Powershell -c \"@{ winCounter = (Get-Counter '\\processeur(_total)\\% temps processeur').CounterSamples[0] } "  \
+    u8"| ConvertTo-Json -compress\""
 
-
-extern OSList * wm_children_list;
+extern OSList* wm_children_list;
 #ifndef WIN32
 #include <signal.h>
 #include <sys/wait.h>
@@ -31,20 +34,24 @@ int wm_exec_exit_code(int status);
 pid_t __real_fork(void); // The real fork(), reachable despite this binary wrapping it globally
 #endif
 
-int __wrap_sleep (unsigned int __seconds) {
+int __wrap_sleep(unsigned int __seconds)
+{
     return mock();
 }
 
-pid_t __wrap_fork(void) {
+pid_t __wrap_fork(void)
+{
     return mock_type(pid_t);
 }
 
-void __wrap_exit(__attribute__((unused))int code) {
+void __wrap_exit(__attribute__((unused)) int code)
+{
     function_called();
     return;
 }
 
-static int setup_modules(void ** state) {
+static int setup_modules(void** state)
+{
     *state = NULL;
     // wm_kill_timeout to default value
     wm_kill_timeout = 0;
@@ -56,17 +63,19 @@ static int setup_modules(void ** state) {
     return 0;
 }
 
-static int teardown_modules(void ** state) {
+static int teardown_modules(void** state)
+{
     // wm_kill_timeout to default value
     wm_kill_timeout = 0;
     test_mode = false;
     return 0;
 }
 
-static void test_wm_exec_accented_command(void ** state) {
+static void test_wm_exec_accented_command(void** state)
+{
 #ifdef WIN32
     size_t size = mbstowcs(NULL, COMMAND, 0);
-    wchar_t *wcommand = calloc(size, sizeof(wchar_t));
+    wchar_t* wcommand = calloc(size, sizeof(wchar_t));
     mbstowcs(wcommand, COMMAND, size);
 
     expect_any(__wrap__mdebug2, formatted_msg);
@@ -87,10 +96,11 @@ static void test_wm_exec_accented_command(void ** state) {
 #endif
 }
 
-static void test_wm_exec_not_accented_command(void ** state) {
+static void test_wm_exec_not_accented_command(void** state)
+{
 #ifdef WIN32
     size_t size = mbstowcs(NULL, COMMAND2, 0);
-    wchar_t *wcommand = calloc(size, sizeof(wchar_t));
+    wchar_t* wcommand = calloc(size, sizeof(wchar_t));
     mbstowcs(wcommand, COMMAND2, size);
 
     expect_any(__wrap__mdebug2, formatted_msg);
@@ -111,16 +121,17 @@ static void test_wm_exec_not_accented_command(void ** state) {
 #endif
 }
 
-static void test_wm_exec_createprocess_fails_with_output(void ** state) {
+static void test_wm_exec_createprocess_fails_with_output(void** state)
+{
 #ifdef WIN32
-    char *output = NULL;
+    char* output = NULL;
     int status = 0;
-    const char *command = "invalid_command.exe";
+    const char* command = "invalid_command.exe";
 
     // Mock CreatePipe - simulate successful pipe creation
     will_return(wrap_CreatePipe, TRUE);
-    will_return(wrap_CreatePipe, (HANDLE)0x1234);  // hReadPipe (tinfo.pipe)
-    will_return(wrap_CreatePipe, (HANDLE)0x5678);  // hWritePipe (sinfo.hStdOutput)
+    will_return(wrap_CreatePipe, (HANDLE)0x1234); // hReadPipe (tinfo.pipe)
+    will_return(wrap_CreatePipe, (HANDLE)0x5678); // hWritePipe (sinfo.hStdOutput)
 
     // Mock SetHandleInformation - success
     expect_value(wrap_SetHandleInformation, hObject, (HANDLE)0x5678);
@@ -138,9 +149,9 @@ static void test_wm_exec_createprocess_fails_with_output(void ** state) {
     expect_any(__wrap__mwarn, formatted_msg);
 
     // IMPORTANT: Verify CloseHandle is called twice to clean up pipes
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x1234);  // tinfo.pipe
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x1234); // tinfo.pipe
     will_return(wrap_CloseHandle, TRUE);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x5678);  // sinfo.hStdOutput
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0x5678); // sinfo.hStdOutput
     will_return(wrap_CloseHandle, TRUE);
 
     // Execute wm_exec with output (so pipes are created)
@@ -154,30 +165,31 @@ static void test_wm_exec_createprocess_fails_with_output(void ** state) {
 #endif
 }
 
-static void test_wm_exec_sethandleinformation_fails(void ** state) {
+static void test_wm_exec_sethandleinformation_fails(void** state)
+{
 #ifdef WIN32
-    char *output = NULL;
+    char* output = NULL;
     int status = 0;
-    const char *command = "test_command.exe";
+    const char* command = "test_command.exe";
 
     // Mock CreatePipe - simulate successful pipe creation
     will_return(wrap_CreatePipe, TRUE);
-    will_return(wrap_CreatePipe, (HANDLE)0xABCD);  // hReadPipe (tinfo.pipe)
-    will_return(wrap_CreatePipe, (HANDLE)0xEF01);  // hWritePipe (sinfo.hStdOutput)
+    will_return(wrap_CreatePipe, (HANDLE)0xABCD); // hReadPipe (tinfo.pipe)
+    will_return(wrap_CreatePipe, (HANDLE)0xEF01); // hWritePipe (sinfo.hStdOutput)
 
     // Mock SetHandleInformation - FAILS
     expect_value(wrap_SetHandleInformation, hObject, (HANDLE)0xEF01);
     expect_value(wrap_SetHandleInformation, dwMask, HANDLE_FLAG_INHERIT);
     expect_value(wrap_SetHandleInformation, dwFlags, 1);
-    will_return(wrap_SetHandleInformation, FALSE);  // FAILS
+    will_return(wrap_SetHandleInformation, FALSE); // FAILS
 
     // Expect merror call
     expect_any(__wrap__merror, formatted_msg);
 
     // IMPORTANT: Verify CloseHandle is called twice to clean up pipes
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)0xABCD);  // tinfo.pipe
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0xABCD); // tinfo.pipe
     will_return(wrap_CloseHandle, TRUE);
-    expect_value(wrap_CloseHandle, hObject, (HANDLE)0xEF01);  // sinfo.hStdOutput
+    expect_value(wrap_CloseHandle, hObject, (HANDLE)0xEF01); // sinfo.hStdOutput
     will_return(wrap_CloseHandle, TRUE);
 
     // Execute wm_exec with output
@@ -192,16 +204,18 @@ static void test_wm_exec_sethandleinformation_fails(void ** state) {
 }
 
 #ifndef TEST_WINAGENT
-static void test_wm_append_sid_null_list(void ** state) {
+static void test_wm_append_sid_null_list(void** state)
+{
     pid_t sid = 1234;
     wm_children_list = NULL; // NULL List
 
     wm_append_sid(sid);
 }
 
-static void test_wm_append_sid_fail(void ** state) {
+static void test_wm_append_sid_fail(void** state)
+{
     pid_t sid = 1234;
-    wm_children_list = (OSList *)1; // NON-NULL List
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     will_return(__wrap_OSList_AddData, false);
     will_return(__wrap_OSList_AddData, NULL);
@@ -211,46 +225,51 @@ static void test_wm_append_sid_fail(void ** state) {
     wm_append_sid(sid);
 }
 
-static void test_wm_append_sid_success(void ** state) {
+static void test_wm_append_sid_success(void** state)
+{
     pid_t sid = 1234;
-    OSListNode * node;
-    wm_children_list = (OSList *)1; // NON-NULL List
+    OSListNode* node;
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     will_return(__wrap_OSList_AddData, true);
-    will_return(__wrap_OSList_AddData, (void *)1);
+    will_return(__wrap_OSList_AddData, (void*)1);
 
     wm_append_sid(sid);
 }
 
-static void test_wm_remove_sid_null_list(void ** state) {
+static void test_wm_remove_sid_null_list(void** state)
+{
     pid_t sid = 1234;
     wm_children_list = NULL; // NULL List
 
     wm_remove_sid(sid);
 }
 
-static void test_wm_remove_sid_not_found(void ** state) {
+static void test_wm_remove_sid_not_found(void** state)
+{
     pid_t sid = 1234;
-    wm_children_list = (OSList *)1; // NON-NULL List
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     will_return(__wrap_OSList_GetFirstNode, NULL);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                 "Child process ID 1234 could not be removed because it was "
-                 "not found in the children list.");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Child process ID 1234 could not be removed because it was "
+                  "not found in the children list.");
 
     wm_remove_sid(sid);
 }
 
-static void test_wm_remove_sid_success(void ** state) {
+static void test_wm_remove_sid_success(void** state)
+{
     pid_t sid = 1234;
-    pid_t * p_sid = NULL;
-    OSListNode * node = NULL;
-    wm_children_list = (OSList *)1; // NON-NULL List
+    pid_t* p_sid = NULL;
+    OSListNode* node = NULL;
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
-    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node = (OSListNode*)calloc(1, sizeof(OSListNode));
     node->data = p_sid;
 
     will_return(__wrap_OSList_GetFirstNode, node);
@@ -261,17 +280,18 @@ static void test_wm_remove_sid_success(void ** state) {
     os_free(node);
 }
 
-static void test_wm_kill_children_fork_failed(void ** state) {
+static void test_wm_kill_children_fork_failed(void** state)
+{
     pid_t sid = 1234;
-    pid_t * p_sid = NULL;
-    OSListNode * node = NULL;
+    pid_t* p_sid = NULL;
+    OSListNode* node = NULL;
 
     wm_children_list = OSList_Create();
     OSList_SetFreeDataPointer(wm_children_list, free);
 
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
-    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node = (OSListNode*)calloc(1, sizeof(OSListNode));
     node->data = p_sid;
 
     will_return(__wrap_OSList_GetFirstNode, node);
@@ -295,24 +315,25 @@ static void test_wm_kill_children_fork_failed(void ** state) {
     wm_children_list = NULL;
 }
 
-static void test_wm_kill_children_parent(void ** state) {
+static void test_wm_kill_children_parent(void** state)
+{
     pid_t sid = 1234;
-    pid_t * p_sid = NULL;
-    OSListNode * node = NULL;
+    pid_t* p_sid = NULL;
+    OSListNode* node = NULL;
 
     wm_children_list = OSList_Create();
     OSList_SetFreeDataPointer(wm_children_list, free);
 
     os_calloc(1, sizeof(pid_t), p_sid);
     *p_sid = sid;
-    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node = (OSListNode*)calloc(1, sizeof(OSListNode));
     node->data = p_sid;
 
     will_return(__wrap_OSList_GetFirstNode, node);
 
-    expect_value(__wrap_kill,pid,sid*(-1));
-    expect_value(__wrap_kill,sig,SIGKILL);
-    will_return(__wrap_kill,0);
+    expect_value(__wrap_kill, pid, sid * (-1));
+    expect_value(__wrap_kill, sig, SIGKILL);
+    will_return(__wrap_kill, 0);
 
     test_mode = false;
 
@@ -326,10 +347,12 @@ static void test_wm_kill_children_parent(void ** state) {
 }
 
 #ifndef WIN32
-static void test_wm_exec_exit_code_normal_exit(void ** state) {
+static void test_wm_exec_exit_code_normal_exit(void** state)
+{
     pid_t pid = __real_fork();
 
-    if (pid == 0) {
+    if (pid == 0)
+    {
         _exit(3);
     }
 
@@ -339,10 +362,12 @@ static void test_wm_exec_exit_code_normal_exit(void ** state) {
     assert_int_equal(wm_exec_exit_code(status), 3);
 }
 
-static void test_wm_exec_exit_code_signal(void ** state) {
+static void test_wm_exec_exit_code_signal(void** state)
+{
     pid_t pid = __real_fork();
 
-    if (pid == 0) {
+    if (pid == 0)
+    {
         // SIGKILL specifically: it cannot be caught, so no handler this test binary may have
         // installed (e.g. cmocka's own crash reporting) runs in the child after the fork().
         // raise(), not kill(): this binary wraps the kill symbol for its own tests.
@@ -361,32 +386,35 @@ static void test_wm_exec_exit_code_signal(void ** state) {
 #endif
 
 #else
-static void test_wm_append_handle_null_list(void ** state) {
+static void test_wm_append_handle_null_list(void** state)
+{
     HANDLE hProcess = (HANDLE)0x00112233;
     wm_children_list = NULL; // NULL List
 
     wm_append_handle(hProcess);
 }
 
-static void test_wm_append_handle_fail(void ** state) {
+static void test_wm_append_handle_fail(void** state)
+{
     HANDLE hProcess = (HANDLE)0x00112233;
-    wm_children_list = (OSList *)1; // NON-NULL List
-
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     will_return(__wrap_OSList_AddData, false);
     will_return(__wrap_OSList_AddData, NULL);
 
-    expect_string(__wrap__merror, formatted_msg,
-                 "Child process handle 00112233 could not be registered in the "
-                 "children list.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Child process handle 00112233 could not be registered in the "
+                  "children list.");
 
     wm_append_handle(hProcess);
 }
 
-static void test_wm_append_handle_success(void ** state) {
+static void test_wm_append_handle_success(void** state)
+{
     HANDLE hProcess = (HANDLE)0x00112233;
-    OSListNode * node;
-    wm_children_list = (OSList *)1; // NON-NULL List
+    OSListNode* node;
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     will_return(__wrap_OSList_AddData, true);
     will_return(__wrap_OSList_AddData, node);
@@ -394,35 +422,39 @@ static void test_wm_append_handle_success(void ** state) {
     wm_append_handle(hProcess);
 }
 
-static void test_wm_remove_handle_null_list(void ** state) {
+static void test_wm_remove_handle_null_list(void** state)
+{
     HANDLE hProccess = (HANDLE)0x00112233;
     wm_children_list = NULL; // NULL List
 
     wm_remove_handle(hProccess);
 }
 
-static void test_wm_remove_handle_not_found(void ** state) {
+static void test_wm_remove_handle_not_found(void** state)
+{
     HANDLE hProcces = (HANDLE)0x00112233;
-    wm_children_list = (OSList *)1; // NON-NULL List
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     will_return(__wrap_OSList_GetFirstNode, NULL);
 
-    expect_string(__wrap__mwarn, formatted_msg,
-                 "Child process handle 00112233 could not be removed because "
-                 "it was not found in the children list.");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "Child process handle 00112233 could not be removed because "
+                  "it was not found in the children list.");
 
     wm_remove_handle(hProcces);
 }
 
-static void test_wm_remove_handle_success(void ** state) {
+static void test_wm_remove_handle_success(void** state)
+{
     HANDLE hProcess = (HANDLE)0x00112233;
-    HANDLE * p_hProcess = NULL;
-    OSListNode * node = NULL;
-    wm_children_list = (OSList *)1; // NON-NULL List
+    HANDLE* p_hProcess = NULL;
+    OSListNode* node = NULL;
+    wm_children_list = (OSList*)1; // NON-NULL List
 
     os_calloc(1, sizeof(HANDLE), p_hProcess);
     *p_hProcess = hProcess;
-    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node = (OSListNode*)calloc(1, sizeof(OSListNode));
     node->data = p_hProcess;
 
     will_return(__wrap_OSList_GetFirstNode, node);
@@ -433,7 +465,8 @@ static void test_wm_remove_handle_success(void ** state) {
     os_free(node);
 }
 
-static void test_wm_kill_children_with_empty_list(void ** state) {
+static void test_wm_kill_children_with_empty_list(void** state)
+{
     wm_children_list = NULL; // NULL List
 
     test_mode = false;
@@ -441,13 +474,14 @@ static void test_wm_kill_children_with_empty_list(void ** state) {
     wm_kill_children();
 }
 
-static void test_wm_kill_children_with_empty_node(void ** state) {
-    OSListNode * node = NULL;
+static void test_wm_kill_children_with_empty_node(void** state)
+{
+    OSListNode* node = NULL;
 
     wm_children_list = OSList_Create();
     OSList_SetFreeDataPointer(wm_children_list, free);
 
-    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node = (OSListNode*)calloc(1, sizeof(OSListNode));
     node->data = NULL;
 
     will_return(__wrap_OSList_GetFirstNode, node);
@@ -462,17 +496,18 @@ static void test_wm_kill_children_with_empty_node(void ** state) {
     wm_children_list = NULL;
 }
 
-static void test_wm_kill_children_with_success(void ** state) {
+static void test_wm_kill_children_with_success(void** state)
+{
     HANDLE hProcess = (HANDLE)10;
-    HANDLE * p_hProcess = NULL;
-    OSListNode * node = NULL;
+    HANDLE* p_hProcess = NULL;
+    OSListNode* node = NULL;
 
     wm_children_list = OSList_Create();
     OSList_SetFreeDataPointer(wm_children_list, free);
 
     os_calloc(1, sizeof(HANDLE), p_hProcess);
     *p_hProcess = hProcess;
-    node = (OSListNode *) calloc(1, sizeof(OSListNode));
+    node = (OSListNode*)calloc(1, sizeof(OSListNode));
     node->data = p_hProcess;
 
     will_return(__wrap_OSList_GetFirstNode, node);
@@ -493,7 +528,8 @@ static void test_wm_kill_children_with_success(void ** state) {
 
 #endif
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_wm_exec_accented_command),
         cmocka_unit_test(test_wm_exec_not_accented_command),

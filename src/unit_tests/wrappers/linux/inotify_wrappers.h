@@ -7,15 +7,12 @@
  * Foundation
  */
 
-
 #ifndef INOTIFY_WRAPPERS_H
 #define INOTIFY_WRAPPERS_H
 
 #include <stdint.h>
 
-int __wrap_inotify_add_watch(int fd,
-                             const char *pathname,
-                             uint32_t mask);
+int __wrap_inotify_add_watch(int fd, const char* pathname, uint32_t mask);
 
 int __wrap_inotify_init();
 

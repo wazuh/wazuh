@@ -30,31 +30,36 @@
  * the same SQLite files ("database is locked"). It must now treat anything
  * other than SERVICE_STOPPED as still running. */
 
-static void test_check_service_running_true_for_running(void **state) {
+static void test_check_service_running_true_for_running(void** state)
+{
     (void)state;
     expect_CheckServiceRunning_query(SERVICE_RUNNING);
     assert_int_equal(CheckServiceRunning(), 1);
 }
 
-static void test_check_service_running_true_for_stop_pending(void **state) {
+static void test_check_service_running_true_for_stop_pending(void** state)
+{
     (void)state;
     expect_CheckServiceRunning_query(SERVICE_STOP_PENDING);
     assert_int_equal(CheckServiceRunning(), 1);
 }
 
-static void test_check_service_running_true_for_start_pending(void **state) {
+static void test_check_service_running_true_for_start_pending(void** state)
+{
     (void)state;
     expect_CheckServiceRunning_query(SERVICE_START_PENDING);
     assert_int_equal(CheckServiceRunning(), 1);
 }
 
-static void test_check_service_running_false_for_stopped(void **state) {
+static void test_check_service_running_false_for_stopped(void** state)
+{
     (void)state;
     expect_CheckServiceRunning_query(SERVICE_STOPPED);
     assert_int_equal(CheckServiceRunning(), 0);
 }
 
-static void test_check_service_running_false_when_service_missing(void **state) {
+static void test_check_service_running_false_when_service_missing(void** state)
+{
     (void)state;
     will_return(wrap_OpenSCManager, (SC_HANDLE)0x1);
     will_return(wrap_OpenService, (SC_HANDLE)NULL);
@@ -67,27 +72,32 @@ static void test_check_service_running_false_when_service_missing(void **state) 
 
 #define RESTART_LOCK "tmp\\service-restart.lock"
 
-static int setup_test_mode(void **state) {
+static int setup_test_mode(void** state)
+{
     (void)state;
     test_mode = 1;
     return 0;
 }
 
-static int teardown_test_mode(void **state) {
+static int teardown_test_mode(void** state)
+{
     (void)state;
     test_mode = 0;
     return 0;
 }
 
-static void expect_restart_lock_open(HANDLE result, DWORD error) {
+static void expect_restart_lock_open(HANDLE result, DWORD error)
+{
     expect_string(wrap_CreateFile, lpFileName, RESTART_LOCK);
     will_return(wrap_CreateFile, result);
-    if (result == INVALID_HANDLE_VALUE) {
+    if (result == INVALID_HANDLE_VALUE)
+    {
         expect_GetLastError_call(error);
     }
 }
 
-static void test_acquire_restart_lock_free(void **state) {
+static void test_acquire_restart_lock_free(void** state)
+{
     (void)state;
     int timed_out = -1;
     expect_restart_lock_open((HANDLE)0x10, 0);
@@ -96,7 +106,8 @@ static void test_acquire_restart_lock_free(void **state) {
     assert_int_equal(timed_out, 0);
 }
 
-static void test_acquire_restart_lock_waits_for_holder(void **state) {
+static void test_acquire_restart_lock_waits_for_holder(void** state)
+{
     (void)state;
     int timed_out = -1;
     expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_SHARING_VIOLATION);
@@ -109,7 +120,8 @@ static void test_acquire_restart_lock_waits_for_holder(void **state) {
     assert_int_equal(timed_out, 0);
 }
 
-static void test_acquire_restart_lock_times_out(void **state) {
+static void test_acquire_restart_lock_times_out(void** state)
+{
     (void)state;
     int timed_out = -1;
     expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_SHARING_VIOLATION);
@@ -122,7 +134,8 @@ static void test_acquire_restart_lock_times_out(void **state) {
     assert_int_equal(timed_out, 1);
 }
 
-static void test_acquire_restart_lock_other_error(void **state) {
+static void test_acquire_restart_lock_other_error(void** state)
+{
     (void)state;
     int timed_out = -1;
     expect_restart_lock_open(INVALID_HANDLE_VALUE, ERROR_PATH_NOT_FOUND);
@@ -131,7 +144,8 @@ static void test_acquire_restart_lock_other_error(void **state) {
     assert_int_equal(timed_out, 0);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_check_service_running_true_for_running),
         cmocka_unit_test(test_check_service_running_true_for_stop_pending),
@@ -139,7 +153,8 @@ int main(void) {
         cmocka_unit_test(test_check_service_running_false_for_stopped),
         cmocka_unit_test(test_check_service_running_false_when_service_missing),
         cmocka_unit_test_setup_teardown(test_acquire_restart_lock_free, setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_acquire_restart_lock_waits_for_holder, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(
+            test_acquire_restart_lock_waits_for_holder, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_acquire_restart_lock_times_out, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_acquire_restart_lock_other_error, setup_test_mode, teardown_test_mode),
     };
@@ -149,7 +164,8 @@ int main(void) {
 
 #else
 
-int main(void) {
+int main(void)
+{
     return 0;
 }
 

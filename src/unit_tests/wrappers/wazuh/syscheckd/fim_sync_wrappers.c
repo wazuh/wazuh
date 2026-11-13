@@ -13,6 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-void __wrap_fim_sync_push_msg(const char * msg) {
+void __wrap_fim_sync_push_msg(const char* msg)
+{
     check_expected(msg);
 }

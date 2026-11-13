@@ -13,7 +13,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_w_wpk_unsign(const char * source,  __attribute__((unused)) const char * target,  __attribute__((unused)) const char ** ca_store) {
+int __wrap_w_wpk_unsign(const char* source,
+                        __attribute__((unused)) const char* target,
+                        __attribute__((unused)) const char** ca_store)
+{
     check_expected(source);
     return mock();
 }

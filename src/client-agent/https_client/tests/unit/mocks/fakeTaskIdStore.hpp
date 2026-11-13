@@ -26,43 +26,43 @@
  */
 class FakeTaskIdStore final : public ITaskIdStore
 {
-    public:
-        bool checkAndRecord(const std::string& taskId) override
+public:
+    bool checkAndRecord(const std::string& taskId) override
+    {
+        m_calls.push_back(taskId);
+
+        if (m_forcedDuplicates.count(taskId) != 0)
         {
-            m_calls.push_back(taskId);
-
-            if (m_forcedDuplicates.count(taskId) != 0)
-            {
-                return false;
-            }
-
-            return m_seen.insert(taskId).second; // true only the first time.
+            return false;
         }
 
-        /// Simulates a restart/TTL expiry: the next checkAndRecord(taskId)
-        /// reports it as new again.
-        void forget(const std::string& taskId)
-        {
-            m_seen.erase(taskId);
-        }
+        return m_seen.insert(taskId).second; // true only the first time.
+    }
 
-        /// Simulates the registry being unreachable/erroring for this id: the
-        /// fail-closed contract (checkAndRecord returns false) applies even
-        /// though the id was never actually seen before.
-        void forceDuplicate(const std::string& taskId)
-        {
-            m_forcedDuplicates.insert(taskId);
-        }
+    /// Simulates a restart/TTL expiry: the next checkAndRecord(taskId)
+    /// reports it as new again.
+    void forget(const std::string& taskId)
+    {
+        m_seen.erase(taskId);
+    }
 
-        const std::vector<std::string>& calls() const
-        {
-            return m_calls;
-        }
+    /// Simulates the registry being unreachable/erroring for this id: the
+    /// fail-closed contract (checkAndRecord returns false) applies even
+    /// though the id was never actually seen before.
+    void forceDuplicate(const std::string& taskId)
+    {
+        m_forcedDuplicates.insert(taskId);
+    }
 
-    private:
-        std::unordered_set<std::string> m_seen;
-        std::unordered_set<std::string> m_forcedDuplicates;
-        std::vector<std::string> m_calls;
+    const std::vector<std::string>& calls() const
+    {
+        return m_calls;
+    }
+
+private:
+    std::unordered_set<std::string> m_seen;
+    std::unordered_set<std::string> m_forcedDuplicates;
+    std::vector<std::string> m_calls;
 };
 
 #endif // _HC_FAKE_TASK_ID_STORE_HPP

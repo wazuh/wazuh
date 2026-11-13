@@ -16,7 +16,7 @@
 // Thread-local cache for user group mappings (uid -> list of gids)
 static thread_local std::unordered_map<uid_t, std::vector<gid_t>> s_userGroupsCache;
 static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
-static constexpr std::chrono::seconds CACHE_TIMEOUT{60};
+static constexpr std::chrono::seconds CACHE_TIMEOUT {60};
 
 UserGroupsProvider::UserGroupsProvider(std::shared_ptr<IGroupWrapperDarwin> groupWrapper,
                                        std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
@@ -37,7 +37,7 @@ UserGroupsProvider::UserGroupsProvider()
 void UserGroupsProvider::resetCache()
 {
     s_userGroupsCache.clear();
-    s_cacheTimestamp = std::chrono::steady_clock::time_point{};
+    s_cacheTimestamp = std::chrono::steady_clock::time_point {};
 }
 
 bool UserGroupsProvider::validateCache()

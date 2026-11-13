@@ -12,28 +12,29 @@
 
 #define REQ_RESPONSE_LENGTH 64
 #define SOCKET_LOGCOLLECTOR "logcollector"
-#define SOCKET_SYSCHECK "syscheck"
-#define SOCKET_WMODULES "wmodules"
-#define SOCKET_AGENT    "agent"
-#define SOCKET_CONTROL  "control"
+#define SOCKET_SYSCHECK     "syscheck"
+#define SOCKET_WMODULES     "wmodules"
+#define SOCKET_AGENT        "agent"
+#define SOCKET_CONTROL      "control"
 
-typedef struct req_node_t {
+typedef struct req_node_t
+{
     int sock;
-    char *counter;
-    char *target;
-    char *buffer;
+    char* counter;
+    char* target;
+    char* buffer;
     size_t length;
     pthread_mutex_t mutex;
     pthread_cond_t available;
 } req_node_t;
 
 // Create node
-req_node_t * req_create(int sock, const char * counter, const char * target, const char * buffer, size_t length);
+req_node_t* req_create(int sock, const char* counter, const char* target, const char* buffer, size_t length);
 
 // Update node and signal available. It locks mutex.
-void req_update(req_node_t * node, const char * buffer, size_t length);
+void req_update(req_node_t* node, const char* buffer, size_t length);
 
 // Free node
-void req_free(req_node_t * node);
+void req_free(req_node_t* node);
 
 #endif

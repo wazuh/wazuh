@@ -44,7 +44,7 @@
 /* No publication is recorded: a fresh install, a store placed by hand or by configuration
  * management, or one written by an agent predating this feature. The bundle is still used for
  * TLS exactly as before; the agent re-anchors on the next notify that carries a publication. */
-#define W_CA_PUBLICATION_UNKNOWN ((int64_t) -1)
+#define W_CA_PUBLICATION_UNKNOWN ((int64_t)-1)
 
 /**
  * @brief Reads the publication recorded in the PEM trust store at @p path.
@@ -59,7 +59,7 @@
  *         absent one: both mean "this store's publication is not known", and both are answered
  *         by re-anchoring on the next advertised one rather than by refusing to start.
  */
-int64_t w_ca_publication_read(const char *path);
+int64_t w_ca_publication_read(const char* path);
 
 /**
  * @brief Renders the block that records @p generation, ready to be written ahead of the
@@ -70,7 +70,7 @@ int64_t w_ca_publication_read(const char *path);
  * @param out_size Size of @p out.
  * @return 0 on success, -1 when @p generation is not a valid publication or @p out is too small.
  */
-int w_ca_publication_render(int64_t generation, char *out, size_t out_size);
+int w_ca_publication_render(int64_t generation, char* out, size_t out_size);
 
 /**
  * @brief Installs @p pem as the trust store at @p path, recording @p generation with it.
@@ -91,6 +91,6 @@ int w_ca_publication_render(int64_t generation, char *out, size_t out_size);
  * @return 0 when the store now holds @p pem at @p generation, -1 on any refusal, with the
  *         existing store untouched.
  */
-int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, int64_t generation);
+int w_ca_publication_install(const char* path, const char* pem, size_t pem_len, int64_t generation);
 
 #endif /* CA_PUBLICATION_H */

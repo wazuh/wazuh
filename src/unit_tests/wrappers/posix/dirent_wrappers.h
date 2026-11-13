@@ -7,16 +7,15 @@
  * Foundation
  */
 
-
 #ifndef DIRENT_WRAPPERS_H
 #define DIRENT_WRAPPERS_H
 
 #include <dirent.h>
 
-int __wrap_closedir(DIR *dirp);
+int __wrap_closedir(DIR* dirp);
 
-DIR * __wrap_opendir(const char *name);
+DIR* __wrap_opendir(const char* name);
 
-struct dirent * __wrap_readdir(DIR *dirp);
+struct dirent* __wrap_readdir(DIR* dirp);
 
 #endif

@@ -8,7 +8,6 @@
  * Foundation.
  */
 
-
 #include <set>
 #include <stdio.h>
 #include <cstring>
@@ -16,7 +15,6 @@
 #include "osinfo/sysOsInfoWin.h"
 #include "sysInfoWin_test.h"
 #include <iostream>
-
 
 void SysInfoWinTest::SetUp() {};
 void SysInfoWinTest::TearDown() {};
@@ -37,7 +35,7 @@ TEST_F(SysInfoWinTest, test_estimated_size_does_not_overflow)
 {
     // EstimatedSize is a REG_DWORD, so the widest value it can carry is 0xFFFFFFFF KiB.
     // Multiplying in 32 bits would wrap; the result has to stay positive and exact.
-    const int64_t widest { PackageWindowsHelper::estimatedSizeToBytes(0xFFFFFFFF) };
+    const int64_t widest {PackageWindowsHelper::estimatedSizeToBytes(0xFFFFFFFF)};
     EXPECT_EQ(4398046510080LL, widest);
     EXPECT_GT(widest, 0);
 
@@ -54,7 +52,7 @@ TEST_F(SysInfoWinTest, InstallTimeIsTheKeyModificationTimeInUTC)
 
     for (const auto* tz : timezones)
     {
-        const ScopedTimezone timezone { tz };
+        const ScopedTimezone timezone {tz};
 
         // No InstallDate: the key's last write time, not shifted by the host offset
         EXPECT_EQ("2026-10-23T18:02:28.000Z", PackageWindowsHelper::getInstallTime("", "2026/10/23 18:02:28")) << tz;
@@ -62,39 +60,40 @@ TEST_F(SysInfoWinTest, InstallTimeIsTheKeyModificationTimeInUTC)
 
     // InstallDate is the key's local date, which differs from its UTC date
     {
-        const ScopedTimezone timezone { "JST-9" };
+        const ScopedTimezone timezone {"JST-9"};
         // 2026/10/23 18:02:28 UTC is 2026/10/24 03:02:28 in UTC+9
         EXPECT_EQ("2026-10-23T18:02:28.000Z", PackageWindowsHelper::getInstallTime("20261024", "2026/10/23 18:02:28"));
     }
     {
-        const ScopedTimezone timezone { "PST8" };
+        const ScopedTimezone timezone {"PST8"};
         // 2026/10/24 03:02:28 UTC is 2026/10/23 19:02:28 in UTC-8
         EXPECT_EQ("2026-10-24T03:02:28.000Z", PackageWindowsHelper::getInstallTime("20261023", "2026/10/24 03:02:28"));
     }
 
     // Installed while the host was in another time zone: InstallDate is the key's UTC date, not its local date
     {
-        const ScopedTimezone timezone { "JST-9" };
+        const ScopedTimezone timezone {"JST-9"};
         EXPECT_EQ("2026-10-26T17:44:00.000Z", PackageWindowsHelper::getInstallTime("20261026", "2026/10/26 17:44:00"));
     }
 }
 
 TEST_F(SysInfoWinTest, InstallTimeFromAnEarlierInstallDateIsItsLocalMidnightInUTC)
 {
-    const ScopedTimezone timezone { "JST-9" };
+    const ScopedTimezone timezone {"JST-9"};
 
     EXPECT_EQ("2026-10-19T15:00:00.000Z", PackageWindowsHelper::getInstallTime("20261020", "2026/10/23 18:02:28"));
 }
 
 TEST_F(SysInfoWinTest, InstallTimeWithAnInvalidInstallDateIsTheKeyModificationTime)
 {
-    const ScopedTimezone timezone { "JST-9" };
+    const ScopedTimezone timezone {"JST-9"};
 
     const char* const installDates[] {"00000000", "19691231", "20261301", "20261000", "2026102", "2026102a"};
 
     for (const auto* installDate : installDates)
     {
-        EXPECT_EQ("2026-10-23T18:02:28.000Z", PackageWindowsHelper::getInstallTime(installDate, "2026/10/23 18:02:28")) << installDate;
+        EXPECT_EQ("2026-10-23T18:02:28.000Z", PackageWindowsHelper::getInstallTime(installDate, "2026/10/23 18:02:28"))
+            << installDate;
     }
 }
 
@@ -115,10 +114,10 @@ TEST_F(SysInfoWinTest, test_extract_HFValue_7618)
 TEST_F(SysInfoWinTest, testHF_Valids_Format)
 {
     std::set<std::string> ret;
-    constexpr auto KB_FORMAT_REGEX_OK { "(KB+[0-9]{6,})"};
-    constexpr auto KB_ONLY_FORMAT_REGEX { "(KB)"};
-    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
-    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
+    constexpr auto KB_FORMAT_REGEX_OK {"(KB+[0-9]{6,})"};
+    constexpr auto KB_ONLY_FORMAT_REGEX {"(KB)"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX {"(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX {"(KB+[0-9]{6,}+[aA-zZ])"};
     PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
 
     for (const auto& hf : ret)
@@ -133,10 +132,10 @@ TEST_F(SysInfoWinTest, testHF_Valids_Format)
 TEST_F(SysInfoWinTest, testHF_NT_Valids_Format)
 {
     std::set<std::string> ret;
-    constexpr auto KB_FORMAT_REGEX_OK { "(KB+[0-9]{6,})"};
-    constexpr auto KB_ONLY_FORMAT_REGEX { "(KB)"};
-    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
-    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
+    constexpr auto KB_FORMAT_REGEX_OK {"(KB+[0-9]{6,})"};
+    constexpr auto KB_ONLY_FORMAT_REGEX {"(KB)"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX {"(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX {"(KB+[0-9]{6,}+[aA-zZ])"};
     PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
 
     for (const auto& hf : ret)
@@ -151,10 +150,10 @@ TEST_F(SysInfoWinTest, testHF_NT_Valids_Format)
 TEST_F(SysInfoWinTest, testHF_WOW_Valids_Format)
 {
     std::set<std::string> ret;
-    constexpr auto KB_FORMAT_REGEX_OK { "(KB+[0-9]{6,})"};
-    constexpr auto KB_ONLY_FORMAT_REGEX { "(KB)"};
-    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
-    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
+    constexpr auto KB_FORMAT_REGEX_OK {"(KB+[0-9]{6,})"};
+    constexpr auto KB_ONLY_FORMAT_REGEX {"(KB)"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX {"(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX {"(KB+[0-9]{6,}+[aA-zZ])"};
     PackageWindowsHelper::getHotFixFromRegWOW(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_WOW_HOTFIX, ret);
 
     for (const auto& hf : ret)
@@ -169,11 +168,12 @@ TEST_F(SysInfoWinTest, testHF_WOW_Valids_Format)
 TEST_F(SysInfoWinTest, testHF_PRODUCT_Valids_Format)
 {
     std::set<std::string> ret;
-    constexpr auto KB_FORMAT_REGEX_OK { "(KB+[0-9]{6,})"};
-    constexpr auto KB_ONLY_FORMAT_REGEX { "(KB)"};
-    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
-    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
-    PackageWindowsHelper::getHotFixFromRegProduct(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, ret);
+    constexpr auto KB_FORMAT_REGEX_OK {"(KB+[0-9]{6,})"};
+    constexpr auto KB_ONLY_FORMAT_REGEX {"(KB)"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX {"(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX {"(KB+[0-9]{6,}+[aA-zZ])"};
+    PackageWindowsHelper::getHotFixFromRegProduct(
+        HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_PRODUCT_HOTFIX, ret);
 
     for (const auto& hf : ret)
     {
@@ -190,8 +190,7 @@ TEST_F(SysInfoWinTest, WmiLocatorCreationFailure)
     MockComHelper mockHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockHelper, CreateWmiLocator(::testing::_))
-    .WillOnce(testing::Return(E_FAIL));
+    EXPECT_CALL(mockHelper, CreateWmiLocator(::testing::_)).WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockHelper), std::runtime_error);
 }
@@ -201,11 +200,10 @@ TEST_F(SysInfoWinTest, WmiConnectToWmiServerFailure)
     MockComHelper mockComHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_)).WillOnce(testing::Return(S_OK));
 
     EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
-    .WillOnce(testing::Return(E_FAIL));
+        .WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
 }
@@ -215,14 +213,11 @@ TEST_F(SysInfoWinTest, WmiSetProxyBlanket)
     MockComHelper mockComHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
-    .WillOnce(testing::Return(E_FAIL));
+    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_)).WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
 }
@@ -232,17 +227,13 @@ TEST_F(SysInfoWinTest, WmiExecuteQuery)
     MockComHelper mockComHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ExecuteWmiQuery(testing::_, testing::_))
-    .WillOnce(testing::Return(E_FAIL));
+    EXPECT_CALL(mockComHelper, ExecuteWmiQuery(testing::_, testing::_)).WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
 }
@@ -258,28 +249,23 @@ TEST_F(SysInfoWinTest, WmiHotfixEnumerationTimeoutThrows)
     MockEnumWbemClassObject mockEnum;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_)).WillOnce(testing::Return(S_OK));
 
     EXPECT_CALL(mockComHelper, ExecuteWmiQuery(testing::_, testing::_))
-    .WillOnce(testing::DoAll(
-                  testing::SetArgReferee<1>(&mockEnum),
-                  testing::Return(S_OK)));
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(&mockEnum), testing::Return(S_OK)));
 
     // Every call times out with no object ready -- never signals completion
     // (uReturn == 0 with a non-timeout HRESULT), so the only way out is the new
     // cumulative-elapsed-time ceiling.
     EXPECT_CALL(mockEnum, Next(testing::_, testing::_, testing::_, testing::_))
-    .WillRepeatedly(testing::Return(WBEM_S_TIMEDOUT));
+        .WillRepeatedly(testing::Return(WBEM_S_TIMEDOUT));
 
-    EXPECT_THROW(QueryWMIHotFixesBounded(hotfixSet, mockComHelper, /*perCallTimeoutMs*/ 1, /*overallTimeoutMs*/ 5,
-                                         WMI_CONNECT_MAX_WAIT_MS),
+    EXPECT_THROW(QueryWMIHotFixesBounded(
+                     hotfixSet, mockComHelper, /*perCallTimeoutMs*/ 1, /*overallTimeoutMs*/ 5, WMI_CONNECT_MAX_WAIT_MS),
                  std::runtime_error);
 }
 
@@ -292,22 +278,17 @@ TEST_F(SysInfoWinTest, WmiHotfixEnumerationNextFailureThrows)
     MockEnumWbemClassObject mockEnum;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, CreateWmiLocator(testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, ConnectToWmiServer(testing::_, testing::_, testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockComHelper, SetProxyBlanket(testing::_)).WillOnce(testing::Return(S_OK));
 
     EXPECT_CALL(mockComHelper, ExecuteWmiQuery(testing::_, testing::_))
-    .WillOnce(testing::DoAll(
-                  testing::SetArgReferee<1>(&mockEnum),
-                  testing::Return(S_OK)));
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(&mockEnum), testing::Return(S_OK)));
 
     EXPECT_CALL(mockEnum, Next(testing::_, testing::_, testing::_, testing::_))
-    .WillOnce(testing::Return(WBEM_E_TRANSPORT_FAILURE));
+        .WillOnce(testing::Return(WBEM_E_TRANSPORT_FAILURE));
 
     EXPECT_THROW(QueryWMIHotFixes(hotfixSet, mockComHelper), std::runtime_error);
 }
@@ -322,8 +303,8 @@ TEST_F(SysInfoWinTest, WmiPopulatesWMIHotfixSetCorrectly)
 
     QueryWMIHotFixes(hotfixSet, comHelper);
 
-    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
-    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX {"(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX {"(KB+[0-9]{6,}+[aA-zZ])"};
 
     for (const auto& hf : hotfixSet)
     {
@@ -340,8 +321,7 @@ TEST_F(SysInfoWinTest, WuaLocatorCreationFailure)
     MockComHelper mockHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_))
-    .WillOnce(testing::Return(E_FAIL));
+    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_)).WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWUHotFixes(hotfixSet, mockHelper), std::runtime_error);
 }
@@ -351,11 +331,9 @@ TEST_F(SysInfoWinTest, WuaGetTotalHistoryCount)
     MockComHelper mockHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockHelper, GetTotalHistoryCount(::testing::_, ::testing::_))
-    .WillOnce(testing::Return(E_FAIL));
+    EXPECT_CALL(mockHelper, GetTotalHistoryCount(::testing::_, ::testing::_)).WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWUHotFixes(hotfixSet, mockHelper), std::runtime_error);
 }
@@ -365,14 +343,11 @@ TEST_F(SysInfoWinTest, WuaQueryHistory)
     MockComHelper mockHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockHelper, GetTotalHistoryCount(::testing::_, ::testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, GetTotalHistoryCount(::testing::_, ::testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockHelper, QueryHistory(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(testing::Return(E_FAIL));
+    EXPECT_CALL(mockHelper, QueryHistory(::testing::_, ::testing::_, ::testing::_)).WillOnce(testing::Return(E_FAIL));
 
     EXPECT_THROW(QueryWUHotFixes(hotfixSet, mockHelper), std::runtime_error);
 }
@@ -382,32 +357,29 @@ TEST_F(SysInfoWinTest, GetHistoryTest)
     MockComHelper mockHelper;
     std::set<std::string> hotfixSet;
 
-    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, CreateUpdateSearcher(::testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockHelper, GetTotalHistoryCount(::testing::_, ::testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, GetTotalHistoryCount(::testing::_, ::testing::_)).WillOnce(testing::Return(S_OK));
 
-    EXPECT_CALL(mockHelper, QueryHistory(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(testing::Return(S_OK));
+    EXPECT_CALL(mockHelper, QueryHistory(::testing::_, ::testing::_, ::testing::_)).WillOnce(testing::Return(S_OK));
 
     long count = 4;
     EXPECT_CALL(mockHelper, GetCount(testing::_, testing::_))
-    .WillOnce(testing::DoAll(testing::SetArgReferee<1>(count), testing::Return(S_OK)));
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>(count), testing::Return(S_OK)));
 
-    for (int i = 0 ; i < count; i++)
+    for (int i = 0; i < count; i++)
     {
 
-        EXPECT_CALL(mockHelper, GetItem(testing::_, i, testing::_))
-        .WillOnce(testing::Return(S_OK));
+        EXPECT_CALL(mockHelper, GetItem(testing::_, i, testing::_)).WillOnce(testing::Return(S_OK));
 
         // Simulate getting the title
         EXPECT_CALL(mockHelper, GetTitle(testing::_, testing::_))
-        .WillRepeatedly(testing::Invoke([](IUpdateHistoryEntry*, BSTR & title) -> HRESULT
-        {
-            title = SysAllocString(L"Security Update KB123456");
-            return S_OK;
-        }));
+            .WillRepeatedly(testing::Invoke(
+                [](IUpdateHistoryEntry*, BSTR& title) -> HRESULT
+                {
+                    title = SysAllocString(L"Security Update KB123456");
+                    return S_OK;
+                }));
     }
 
     QueryWUHotFixes(hotfixSet, mockHelper);
@@ -449,8 +421,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineSingleArgument)
 // Executable with multiple arguments (svchost-style).
 TEST_F(SysInfoWinTest, ParseCmdLineMultipleArguments)
 {
-    const auto result = parseProcessCommandLine(
-                            L"C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
+    const auto result = parseProcessCommandLine(L"C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
     EXPECT_EQ(result.cmd, "C:\\Windows\\system32\\svchost.exe -k netsvcs -p");
     EXPECT_EQ(result.argvs, "-k netsvcs -p");
     EXPECT_EQ(result.argsCount, 3u);
@@ -459,8 +430,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineMultipleArguments)
 // Quoted executable path with spaces in the path.
 TEST_F(SysInfoWinTest, ParseCmdLineQuotedPathWithSpaces)
 {
-    const auto result = parseProcessCommandLine(
-                            L"\"C:\\Program Files\\My App\\app.exe\" --flag value");
+    const auto result = parseProcessCommandLine(L"\"C:\\Program Files\\My App\\app.exe\" --flag value");
     EXPECT_EQ(result.cmd, "\"C:\\Program Files\\My App\\app.exe\" --flag value");
     EXPECT_EQ(result.argvs, "--flag value");
     EXPECT_EQ(result.argsCount, 2u);
@@ -469,8 +439,7 @@ TEST_F(SysInfoWinTest, ParseCmdLineQuotedPathWithSpaces)
 // Quoted argument values are unquoted by CommandLineToArgvW.
 TEST_F(SysInfoWinTest, ParseCmdLineQuotedArguments)
 {
-    const auto result = parseProcessCommandLine(
-                            L"app.exe --name \"hello world\" --verbose");
+    const auto result = parseProcessCommandLine(L"app.exe --name \"hello world\" --verbose");
     EXPECT_EQ(result.cmd, "app.exe --name \"hello world\" --verbose");
     EXPECT_EQ(result.argvs, "--name hello world --verbose");
     // "hello world" is one argument even though argvs joins it with spaces.
@@ -510,8 +479,8 @@ TEST_F(SysInfoWinTest, ParseCmdLineDeterministic)
 // argsCount counts arguments, not the characters in argvs.
 TEST_F(SysInfoWinTest, ParseCmdLineArgsCountIsNotArgvsLength)
 {
-    const auto result = parseProcessCommandLine(
-                            L"\"C:\\Program Files\\App\\app.exe\" -Embedding \"C:\\Users\\Some User\\file.txt\"");
+    const auto result =
+        parseProcessCommandLine(L"\"C:\\Program Files\\App\\app.exe\" -Embedding \"C:\\Users\\Some User\\file.txt\"");
     EXPECT_EQ(result.argvs, "-Embedding C:\\Users\\Some User\\file.txt");
     EXPECT_EQ(result.argsCount, 2u);
 }
@@ -528,7 +497,6 @@ TEST_F(SysInfoWinTest, ParseCmdLineEmptyArgumentsSkipped)
     EXPECT_EQ(leading.argsCount, 1u);
 }
 
-
 // Tests for buildProcessSnapshotRecord() — the record the Windows process inventory
 // emits from the snapshot entry alone, with no handle on the process.
 
@@ -536,14 +504,14 @@ namespace
 {
     PROCESSENTRY32 makeProcessEntry(const DWORD pid, const DWORD parentPid, const char* exeFile)
     {
-        PROCESSENTRY32 entry{};
+        PROCESSENTRY32 entry {};
         entry.dwSize = sizeof(PROCESSENTRY32);
         entry.th32ProcessID = pid;
         entry.th32ParentProcessID = parentPid;
         std::strncpy(entry.szExeFile, exeFile, sizeof(entry.szExeFile) - 1);
         return entry;
     }
-}
+} // namespace
 
 // A regular entry yields the snapshot fields and nothing that needs a handle.
 TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordNormalEntry)
@@ -588,8 +556,8 @@ TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordNonAsciiName)
     // L"café.exe" — é is U+00E9
     char ansiName[MAX_PATH] {};
     BOOL usedDefaultChar = FALSE;
-    const int converted = WideCharToMultiByte(CP_ACP, 0, L"caf\u00E9.exe", -1,
-                                              ansiName, MAX_PATH, nullptr, &usedDefaultChar);
+    const int converted =
+        WideCharToMultiByte(CP_ACP, 0, L"caf\u00E9.exe", -1, ansiName, MAX_PATH, nullptr, &usedDefaultChar);
 
     if (0 == converted || usedDefaultChar)
     {
@@ -600,7 +568,6 @@ TEST_F(SysInfoWinTest, BuildProcessSnapshotRecordNonAsciiName)
 
     EXPECT_EQ(record.at("name").get<std::string>(), "caf\xC3\xA9.exe");
 }
-
 
 // Tests for buildProcessRecord() — the merge of the snapshot fields with the fields that
 // need a process handle, which is where the reported defect lived.
@@ -622,13 +589,10 @@ TEST_F(SysInfoWinTest, BuildProcessRecordWithoutHandleFieldsKeepsSnapshotFields)
 // The handle-derived fields are overlaid on the snapshot ones: both survive.
 TEST_F(SysInfoWinTest, BuildProcessRecordOverlaysHandleFields)
 {
-    const nlohmann::json handleFields
-    {
-        {"start", "2026-09-11T00:00:00Z"},
-        {"stime", 12},
-        {"utime", 34},
-        {"command_line", "C:\\Windows\\system32\\svchost.exe -k netsvcs"}
-    };
+    const nlohmann::json handleFields {{"start", "2026-09-11T00:00:00Z"},
+                                       {"stime", 12},
+                                       {"utime", 34},
+                                       {"command_line", "C:\\Windows\\system32\\svchost.exe -k netsvcs"}};
     const auto record = buildProcessRecord(makeProcessEntry(1000, 660, "svchost.exe"), handleFields);
 
     EXPECT_EQ(record.at("name").get<std::string>(), "svchost.exe");

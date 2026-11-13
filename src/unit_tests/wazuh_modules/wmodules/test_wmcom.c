@@ -48,7 +48,8 @@ static cJSON* dumped_wodles(const char** names, size_t count)
     cJSON* array = cJSON_CreateArray();
     size_t i;
 
-    for (i = 0; i < count; i++) {
+    for (i = 0; i < count; i++)
+    {
         cJSON* wodle = cJSON_CreateObject();
         cJSON* body = cJSON_CreateObject();
 
@@ -65,8 +66,10 @@ static cJSON* entry_named(cJSON* report, const char* name)
 {
     cJSON* entry = NULL;
 
-    cJSON_ArrayForEach(entry, report) {
-        if (entry->string && strcmp(entry->string, name) == 0) {
+    cJSON_ArrayForEach(entry, report)
+    {
+        if (entry->string && strcmp(entry->string, name) == 0)
+        {
             return entry;
         }
     }
@@ -98,10 +101,7 @@ static void test_getallconfig_gives_each_wodle_its_own_entry(void** state)
     assert_int_equal(cJSON_GetArraySize(report), 2); /* object members */
     assert_non_null(entry_named(report, "syscollector"));
     assert_non_null(entry_named(report, "sca"));
-    assert_string_equal(
-        cJSON_GetObjectItem(entry_named(report, "sca"),
-                            "disabled")->valuestring,
-        "no");
+    assert_string_equal(cJSON_GetObjectItem(entry_named(report, "sca"), "disabled")->valuestring, "no");
 
     cJSON_Delete(report);
     free(output);

@@ -17,12 +17,12 @@
 
 class IBerkeleyDbWrapper
 {
-    public:
-        virtual int32_t getRow(DBT& key, DBT& data) = 0;
-        // LCOV_EXCL_START
-        virtual ~IBerkeleyDbWrapper() = default;
-        // LCOV_EXCL_STOP
-        IBerkeleyDbWrapper() = default;
+public:
+    virtual int32_t getRow(DBT& key, DBT& data) = 0;
+    // LCOV_EXCL_START
+    virtual ~IBerkeleyDbWrapper() = default;
+    // LCOV_EXCL_STOP
+    IBerkeleyDbWrapper() = default;
 };
 
 #endif // _IBERKELEY_DB_WRAPPER_H

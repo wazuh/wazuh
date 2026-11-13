@@ -15,24 +15,23 @@
 
 class IOSNetwork
 {
-    public:
-        // LCOV_EXCL_START
-        virtual ~IOSNetwork() = default;
-        // LCOV_EXCL_STOP
-        virtual void buildNetworkData(nlohmann::json& network) = 0;
+public:
+    // LCOV_EXCL_START
+    virtual ~IOSNetwork() = default;
+    // LCOV_EXCL_STOP
+    virtual void buildNetworkData(nlohmann::json& network) = 0;
 };
-
 
 struct LinkStats
 {
-    unsigned int rxPackets;    /* total packets received */
-    unsigned int txPackets;    /* total packets transmitted */
-    unsigned int rxBytes;      /* total bytes received */
-    unsigned int txBytes;      /* total bytes transmitted */
-    unsigned int rxErrors;     /* bad packets received */
-    unsigned int txErrors;     /* packet transmit problems */
-    unsigned int rxDropped;    /* no space in linux buffers */
-    unsigned int txDropped;    /* no space available in linux */
+    unsigned int rxPackets; /* total packets received */
+    unsigned int txPackets; /* total packets transmitted */
+    unsigned int rxBytes;   /* total bytes received */
+    unsigned int txBytes;   /* total bytes transmitted */
+    unsigned int rxErrors;  /* bad packets received */
+    unsigned int txErrors;  /* packet transmit problems */
+    unsigned int rxDropped; /* no space in linux buffers */
+    unsigned int txDropped; /* no space available in linux */
 };
 
 #endif // _NETWORK_INTERFACE_H

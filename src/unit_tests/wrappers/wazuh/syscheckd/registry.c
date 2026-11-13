@@ -15,6 +15,7 @@
 #include <cmocka.h>
 #include <cJSON.h>
 
-void __wrap_fim_registry_scan() {
+void __wrap_fim_registry_scan()
+{
     return;
 }

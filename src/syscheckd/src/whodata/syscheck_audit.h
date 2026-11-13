@@ -27,9 +27,9 @@
 // Connection attempts before deeming the socket stale
 #define AUDIT_SOCKET_CONNECT_RETRIES 3
 
-#define VERCODE(M,m,p)  ((((unsigned)(M) & 0xFF) << 16) | (((unsigned)(m) & 0xFF) << 8) | ((unsigned)(p) & 0xFF))
+#define VERCODE(M, m, p)      ((((unsigned)(M) & 0xFF) << 16) | (((unsigned)(m) & 0xFF) << 8) | ((unsigned)(p) & 0xFF))
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
-#define AUDIT_KEY "wazuh_fim"
+#define AUDIT_KEY             "wazuh_fim"
 
 typedef struct
 {

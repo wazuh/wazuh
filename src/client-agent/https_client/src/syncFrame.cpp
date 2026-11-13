@@ -138,8 +138,7 @@ namespace
     }
 } // namespace
 
-bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionId,
-                           const uint8_t* body, size_t length)
+bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionId, const uint8_t* body, size_t length)
 {
     std::vector<uint8_t> header;
     header.reserve(SYNC_FRAME_MAGIC.size() + 4 + sessionId.size() + 8);
@@ -156,8 +155,8 @@ bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionI
     return length == 0 || writeAll(write, body, length);
 }
 
-SyncFrameResult readSyncSessionFrame(const SyncReadFn& read, std::FILE* out, std::string& sessionId,
-                                     uint64_t& size, uint64_t maxBody)
+SyncFrameResult
+readSyncSessionFrame(const SyncReadFn& read, std::FILE* out, std::string& sessionId, uint64_t& size, uint64_t maxBody)
 {
     std::array<uint8_t, 4> magic {};
 

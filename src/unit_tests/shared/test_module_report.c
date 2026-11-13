@@ -43,9 +43,7 @@ static void test_merge_moves_every_section_under_one_body(void** state)
     /* Both sections keep their own key, side by side in the same body. */
     assert_non_null(cJSON_GetObjectItem(body, "syscheck"));
     assert_non_null(cJSON_GetObjectItem(body, "rootcheck"));
-    assert_string_equal(
-        cJSON_GetObjectItem(cJSON_GetObjectItem(body, "syscheck"), "frequency")->valuestring,
-        "43200");
+    assert_string_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(body, "syscheck"), "frequency")->valuestring, "43200");
 
     cJSON_Delete(body);
 }
@@ -106,8 +104,7 @@ static void test_add_keeps_each_module_separate(void** state)
 
     assert_non_null(cJSON_GetObjectItem(report, "fim"));
     assert_non_null(cJSON_GetObjectItem(report, "logcollector"));
-    assert_int_equal(
-        cJSON_GetObjectItem(cJSON_GetObjectItem(report, "logcollector"), "events")->valueint, 12);
+    assert_int_equal(cJSON_GetObjectItem(cJSON_GetObjectItem(report, "logcollector"), "events")->valueint, 12);
 
     cJSON_Delete(report);
 }

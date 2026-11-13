@@ -20,52 +20,48 @@
 
 // Tests
 
-void test_search_and_replace(void **state)
+void test_search_and_replace(void** state)
 {
     int i;
-    const char *tests[][4] = {
-        {"testMe", "nomatch", "", "testMe"},
-        {"test me", "ME", "me", "test me"},
-        {"test me", "me", "ME", "test ME"},
-        {"testMe", "test", "Tested", "TestedMe"},
-        {"Metest", "test", "Tested", "MeTested"},
-        {"A B CTeStD E F", "TeSt", "tEsT", "A B CtEsTD E F"},
-        {"TeStA B CTeStD E F", "TeSt", "tEsT", "tEsTA B CtEsTD E F"},
-        {"TeSt TeStA B CTeStD E F", "TeSt", "tEsT", "tEsT tEsTA B CtEsTD E F"},
-        {"A B CTeStD E FTeSt", "TeSt", "tEsT", "A B CtEsTD E FtEsT"},
-        {"A B CTeStD E FTeSt TeSt", "TeSt", "tEsT", "A B CtEsTD E FtEsT tEsT"},
-        {"TeSt++ TeSt++A B CTeSt++D E F", "TeSt++", "tEsT", "tEsT tEsTA B CtEsTD E F"},
-        {"A B CTeStD E FTeSt TeSt", "TeSt", "tEsT++", "A B CtEsT++D E FtEsT++ tEsT++"},
-        {NULL, NULL, NULL, NULL}
-    };
+    const char* tests[][4] = {{"testMe", "nomatch", "", "testMe"},
+                              {"test me", "ME", "me", "test me"},
+                              {"test me", "me", "ME", "test ME"},
+                              {"testMe", "test", "Tested", "TestedMe"},
+                              {"Metest", "test", "Tested", "MeTested"},
+                              {"A B CTeStD E F", "TeSt", "tEsT", "A B CtEsTD E F"},
+                              {"TeStA B CTeStD E F", "TeSt", "tEsT", "tEsTA B CtEsTD E F"},
+                              {"TeSt TeStA B CTeStD E F", "TeSt", "tEsT", "tEsT tEsTA B CtEsTD E F"},
+                              {"A B CTeStD E FTeSt", "TeSt", "tEsT", "A B CtEsTD E FtEsT"},
+                              {"A B CTeStD E FTeSt TeSt", "TeSt", "tEsT", "A B CtEsTD E FtEsT tEsT"},
+                              {"TeSt++ TeSt++A B CTeSt++D E F", "TeSt++", "tEsT", "tEsT tEsTA B CtEsTD E F"},
+                              {"A B CTeStD E FTeSt TeSt", "TeSt", "tEsT++", "A B CtEsT++D E FtEsT++ tEsT++"},
+                              {NULL, NULL, NULL, NULL}};
 
-    for (i = 0; tests[i][0] != NULL ; i++) {
-        char *result = searchAndReplace(tests[i][0], tests[i][1], tests[i][2]);
+    for (i = 0; tests[i][0] != NULL; i++)
+    {
+        char* result = searchAndReplace(tests[i][0], tests[i][1], tests[i][2]);
         assert_string_equal(result, tests[i][3]);
         free(result);
     }
 }
 
-void test_escape_newlines(void **state)
+void test_escape_newlines(void** state)
 {
-    const char *tests[][2] = {
-        {"hello\n", "hello\\n"},
-        {"hello\r", "hello\\r"},
-        {"hello\r\n", "hello\\r\\n"},
-        {"", ""},
-        {NULL, NULL}
-    };
-    for (int i = 0; tests[i][0] != NULL ; i++) {
+    const char* tests[][2] = {
+        {"hello\n", "hello\\n"}, {"hello\r", "hello\\r"}, {"hello\r\n", "hello\\r\\n"}, {"", ""}, {NULL, NULL}};
+    for (int i = 0; tests[i][0] != NULL; i++)
+    {
         char* result = escape_newlines(tests[i][0]);
         assert_string_equal(result, tests[i][1]);
         free(result);
     }
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
-            cmocka_unit_test(test_search_and_replace),
-            cmocka_unit_test(test_escape_newlines),
+        cmocka_unit_test(test_search_and_replace),
+        cmocka_unit_test(test_escape_newlines),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

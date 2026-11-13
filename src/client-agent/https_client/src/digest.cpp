@@ -30,8 +30,8 @@ std::string sha256Hex(const void* data, size_t length)
     unsigned int hashLength = 0;
 
     if (!context || EVP_DigestInit_ex(context.get(), EVP_sha256(), nullptr) != 1 ||
-            EVP_DigestUpdate(context.get(), data, length) != 1 ||
-            EVP_DigestFinal_ex(context.get(), hash.data(), &hashLength) != 1)
+        EVP_DigestUpdate(context.get(), data, length) != 1 ||
+        EVP_DigestFinal_ex(context.get(), hash.data(), &hashLength) != 1)
     {
         return {}; // LCOV_EXCL_LINE: EVP failures are not reproducible here.
     }
@@ -46,8 +46,8 @@ std::string sha1Hex(const void* data, size_t length)
     unsigned int hashLength = 0;
 
     if (!context || EVP_DigestInit_ex(context.get(), EVP_sha1(), nullptr) != 1 ||
-            EVP_DigestUpdate(context.get(), data, length) != 1 ||
-            EVP_DigestFinal_ex(context.get(), hash.data(), &hashLength) != 1)
+        EVP_DigestUpdate(context.get(), data, length) != 1 ||
+        EVP_DigestFinal_ex(context.get(), hash.data(), &hashLength) != 1)
     {
         return {}; // LCOV_EXCL_LINE: EVP failures are not reproducible here.
     }
@@ -57,9 +57,7 @@ std::string sha1Hex(const void* data, size_t length)
 
 std::optional<std::string> sha256FileHex(const std::string& path)
 {
-    const std::unique_ptr<std::FILE, decltype(&std::fclose)> file
-    {
-        std::fopen(path.c_str(), "rb"), std::fclose};
+    const std::unique_ptr<std::FILE, decltype(&std::fclose)> file {std::fopen(path.c_str(), "rb"), std::fclose};
 
     if (!file)
     {
@@ -97,9 +95,7 @@ std::optional<std::string> sha256FileHex(const std::string& path)
 
 std::optional<std::string> sha1FileHex(const std::string& path)
 {
-    const std::unique_ptr<std::FILE, decltype(&std::fclose)> file
-    {
-        std::fopen(path.c_str(), "rb"), std::fclose};
+    const std::unique_ptr<std::FILE, decltype(&std::fclose)> file {std::fopen(path.c_str(), "rb"), std::fclose};
 
     if (!file)
     {

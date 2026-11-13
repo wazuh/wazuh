@@ -17,39 +17,45 @@
 #include <stdbool.h>
 
 /* XML Node structure */
-typedef struct _xml_node {
+typedef struct _xml_node
+{
     unsigned int key;
-    char *element;
-    char *content;
-    char **attributes;
-    char **values;
+    char* element;
+    char* content;
+    char** attributes;
+    char** values;
 } xml_node;
 
-#define XML_ERR_LENGTH  128
-#define XML_STASH_LEN   2
-#define xml_getc_fun(x,y) (x)? _xml_fgetc(x,y) : _xml_sgetc(y)
-typedef enum _XML_TYPE { XML_ATTR, XML_ELEM } XML_TYPE;
+#define XML_ERR_LENGTH     128
+#define XML_STASH_LEN      2
+#define xml_getc_fun(x, y) (x) ? _xml_fgetc(x, y) : _xml_sgetc(y)
+typedef enum _XML_TYPE
+{
+    XML_ATTR,
+    XML_ELEM
+} XML_TYPE;
 
 /* XML structure */
-typedef struct _OS_XML {
-    unsigned int cur;           /* Current position (and last after reading) */
-    int fol;                    /* Current position for the xml_access */
-    XML_TYPE *tp;               /* Item type */
-    unsigned int *rl;           /* Relation in the XML */
-    int *ck;                    /* If the item was closed or not */
-    unsigned int *ln;           /* Current xml file line */
-    unsigned int err_line;      /* Line number of the possible error */
-    char **ct;                  /* Content is stored */
-    char **el;                  /* The element/attribute name is stored */
-    char err[XML_ERR_LENGTH];   /* Error messages are stored in here */
-    unsigned int line;          /* Current line */
-    char stash[XML_STASH_LEN];  /* Ungot characters stash */
-    int stash_i;                /* Stash index */
-    FILE *fp;                   /* File descriptor */
-    char *string;               /* XML string */
+typedef struct _OS_XML
+{
+    unsigned int cur;          /* Current position (and last after reading) */
+    int fol;                   /* Current position for the xml_access */
+    XML_TYPE* tp;              /* Item type */
+    unsigned int* rl;          /* Relation in the XML */
+    int* ck;                   /* If the item was closed or not */
+    unsigned int* ln;          /* Current xml file line */
+    unsigned int err_line;     /* Line number of the possible error */
+    char** ct;                 /* Content is stored */
+    char** el;                 /* The element/attribute name is stored */
+    char err[XML_ERR_LENGTH];  /* Error messages are stored in here */
+    unsigned int line;         /* Current line */
+    char stash[XML_STASH_LEN]; /* Ungot characters stash */
+    int stash_i;               /* Stash index */
+    FILE* fp;                  /* File descriptor */
+    char* string;              /* XML string */
 } OS_XML;
 
-typedef xml_node **XML_NODE;
+typedef xml_node** XML_NODE;
 
 /**
  * @brief Parses a XML file and stores the content in the OS_XML struct.
@@ -59,7 +65,7 @@ typedef xml_node **XML_NODE;
  * @param lxml The struct to store the result.
  * @return int OS_SUCCESS on success, OS_INVALID otherwise.
  */
-int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
+int OS_ReadXML(const char* file, OS_XML* lxml) __attribute__((nonnull));
 
 /**
  * @brief Parses a XML file and stores the content in the OS_XML struct.
@@ -70,7 +76,7 @@ int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
  *                      truncate on TRUE or fail on FALSE.
  * @return int OS_SUCCESS on success, OS_INVALID otherwise.
  */
-int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
+int OS_ReadXML_Ex(const char* file, OS_XML* _lxml, bool flag_truncate) __attribute__((nonnull));
 
 /**
  * @brief Parses XML from a stream the caller already holds and stores the content in the OS_XML
@@ -83,7 +89,7 @@ int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribu
  * @param lxml The struct to store the result.
  * @return int OS_SUCCESS on success, OS_INVALID otherwise.
  */
-int OS_ReadXMLFromStream(FILE *fp, OS_XML *lxml) __attribute__((nonnull));
+int OS_ReadXMLFromStream(FILE* fp, OS_XML* lxml) __attribute__((nonnull));
 
 /**
  * @brief Parses a XML string and stores the content in the OS_XML struct.
@@ -93,7 +99,7 @@ int OS_ReadXMLFromStream(FILE *fp, OS_XML *lxml) __attribute__((nonnull));
  * @param lxml The struct to store the result.
  * @return int OS_SUCCESS on success, OS_INVALID otherwise.
  */
-int OS_ReadXMLString(const char *string, OS_XML *_lxml) __attribute__((nonnull));
+int OS_ReadXMLString(const char* string, OS_XML* _lxml) __attribute__((nonnull));
 
 /**
  * @brief Parses a XML string and stores the content in the OS_XML struct.
@@ -104,7 +110,7 @@ int OS_ReadXMLString(const char *string, OS_XML *_lxml) __attribute__((nonnull))
  *                      truncate on TRUE or fail on FALSE.
  * @return int OS_SUCCESS on success, OS_INVALID otherwise.
  */
-int OS_ReadXMLString_Ex(const char *string, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
+int OS_ReadXMLString_Ex(const char* string, OS_XML* _lxml, bool flag_truncate) __attribute__((nonnull));
 
 /**
  * @brief Parses a XML string or file.
@@ -114,53 +120,52 @@ int OS_ReadXMLString_Ex(const char *string, OS_XML *_lxml, bool flag_truncate) _
  *                      truncate on TRUE or fail on FALSE.
  * @return int OS_SUCCESS on success, OS_INVALID otherwise.
  */
-int ParseXML(OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
+int ParseXML(OS_XML* _lxml, bool flag_truncate) __attribute__((nonnull));
 
 /* Clear the XML structure memory */
-void OS_ClearXML(OS_XML *_lxml) __attribute__((nonnull));
+void OS_ClearXML(OS_XML* _lxml) __attribute__((nonnull));
 
 /* Clear a node */
-void OS_ClearNode(xml_node **node);
-
+void OS_ClearNode(xml_node** node);
 
 /* Functions to read the XML */
 
 /* Return 1 if element_name is a root element */
-unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name) __attribute__((nonnull(1)));
+unsigned int OS_RootElementExist(const OS_XML* _lxml, const char* element_name) __attribute__((nonnull(1)));
 
 /* Return 1 if the element_name exists */
-unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
+unsigned int OS_ElementExist(const OS_XML* _lxml, const char** element_name) __attribute__((nonnull));
 
 /* Return the elements "children" of the element_name */
-char **OS_GetElements(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
+char** OS_GetElements(const OS_XML* _lxml, const char** element_name) __attribute__((nonnull(1)));
 
 /* Return the elements "children" of the element_name */
-xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node) __attribute__((nonnull(1)));
+xml_node** OS_GetElementsbyNode(const OS_XML* _lxml, const xml_node* node) __attribute__((nonnull(1)));
 
 /* Return the attributes of the element name */
-char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
+char** OS_GetAttributes(const OS_XML* _lxml, const char** element_name) __attribute__((nonnull(1)));
 
 /* Return one value from element_name */
-char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
+char* OS_GetOneContentforElement(OS_XML* _lxml, const char** element_name) __attribute__((nonnull));
 
 /* Return an array with the content of all entries of element_name */
-char **OS_GetElementContent(OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
+char** OS_GetElementContent(OS_XML* _lxml, const char** element_name) __attribute__((nonnull));
 
 /* Return an array with the contents of an element_nane */
-char **OS_GetContents(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
+char** OS_GetContents(OS_XML* _lxml, const char** element_name) __attribute__((nonnull(1)));
 
 /* Return the value of a specific attribute of the element_name */
-char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
-                             const char *attribute_name) __attribute__((nonnull(1, 2)));
+char* OS_GetAttributeContent(OS_XML* _lxml, const char** element_name, const char* attribute_name)
+    __attribute__((nonnull(1, 2)));
 
 /* Error from writer */
-#define XMLW_ERROR              006
-#define XMLW_NOIN               007
-#define XMLW_NOOUT              010
+#define XMLW_ERROR 006
+#define XMLW_NOIN  007
+#define XMLW_NOOUT 010
 
 /* Write an XML file, based on the input and values to change */
-int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
-                const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
+int OS_WriteXML(const char* infile, const char* outfile, const char** nodes, const char* oldval, const char* newval)
+    __attribute__((nonnull(1, 2, 3, 5)));
 
 /**
  * @brief Writes an XML stream, based on the input file and values to change.
@@ -175,8 +180,8 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
  *         XMLW_ERROR on a parse error (@p fp_out may already hold part of the copy, which the
  *         caller has to discard).
  */
-int OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
-                        const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
+int OS_WriteXMLToStream(const char* infile, FILE* fp_out, const char** nodes, const char* oldval, const char* newval)
+    __attribute__((nonnull(1, 2, 3, 5)));
 
 /**
  * @brief Get value of an attribute of a node
@@ -184,6 +189,6 @@ int OS_WriteXMLToStream(const char *infile, FILE *fp_out, const char **nodes,
  * @param name name of the attribute
  * @return value of attribute on success. NULL otherwise
  */
-const char * w_get_attr_val_by_name(xml_node * node, const char * name);
+const char* w_get_attr_val_by_name(xml_node* node, const char* name);
 
 #endif /* OS_XML_H */

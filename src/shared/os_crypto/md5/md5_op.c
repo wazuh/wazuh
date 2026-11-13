@@ -20,10 +20,10 @@
 #include "defs.h"
 #include "file_op.h"
 
-int OS_MD5_File(const char *fname, os_md5 output, int mode)
+int OS_MD5_File(const char* fname, os_md5 output, int mode)
 {
-    FILE *fp;
-    EVP_MD_CTX *mdctx;
+    FILE* fp;
+    EVP_MD_CTX* mdctx;
     unsigned char buf[1024];
     unsigned char digest[EVP_MAX_MD_SIZE];
     size_t n;
@@ -31,24 +31,28 @@ int OS_MD5_File(const char *fname, os_md5 output, int mode)
     memset(output, 0, sizeof(os_md5));
 
     fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
-    if (!fp) {
+    if (!fp)
+    {
         return (-1);
     }
 
     mdctx = EVP_MD_CTX_new();
-    if (!mdctx) {
+    if (!mdctx)
+    {
         fclose(fp);
         return (-1);
     }
 
     EVP_DigestInit(mdctx, EVP_md5());
-    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0) {
+    while ((n = fread(buf, 1, sizeof(buf), fp)) > 0)
+    {
         EVP_DigestUpdate(mdctx, buf, n);
     }
 
     EVP_DigestFinal(mdctx, digest, NULL);
 
-    for (n = 0; n < 16; n++) {
+    for (n = 0; n < 16; n++)
+    {
         snprintf(output + n * 2, 3, "%02x", digest[n]);
     }
 
@@ -58,14 +62,15 @@ int OS_MD5_File(const char *fname, os_md5 output, int mode)
     return (0);
 }
 
-int OS_MD5_Str(const char *str, ssize_t length, os_md5 output)
+int OS_MD5_Str(const char* str, ssize_t length, os_md5 output)
 {
-    EVP_MD_CTX *mdctx;
+    EVP_MD_CTX* mdctx;
     unsigned char digest[EVP_MAX_MD_SIZE];
     size_t n;
 
     mdctx = EVP_MD_CTX_new();
-    if (!mdctx) {
+    if (!mdctx)
+    {
         return (-1);
     }
 
@@ -73,7 +78,8 @@ int OS_MD5_Str(const char *str, ssize_t length, os_md5 output)
     EVP_DigestUpdate(mdctx, str, length < 0 ? (size_t)strlen(str) : (size_t)length);
     EVP_DigestFinal(mdctx, digest, NULL);
 
-    for (n = 0; n < 16; n++) {
+    for (n = 0; n < 16; n++)
+    {
         snprintf(output + n * 2, 3, "%02x", digest[n]);
     }
 

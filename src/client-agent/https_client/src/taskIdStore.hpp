@@ -28,16 +28,16 @@
  */
 class ITaskIdStore
 {
-    public:
-        virtual ~ITaskIdStore() = default;
+public:
+    virtual ~ITaskIdStore() = default;
 
-        /// @return true when `taskId` was newly recorded (dispatch it);
-        ///         false when it is a duplicate, OR the durable record could
-        ///         not be confirmed (e.g. agent-info unreachable) -- fail
-        ///         closed: a task whose durability we cannot vouch for must
-        ///         not run, since re-dispatch on an IPC hiccup could execute
-        ///         a remote_upgrade twice.
-        virtual bool checkAndRecord(const std::string& taskId) = 0;
+    /// @return true when `taskId` was newly recorded (dispatch it);
+    ///         false when it is a duplicate, OR the durable record could
+    ///         not be confirmed (e.g. agent-info unreachable) -- fail
+    ///         closed: a task whose durability we cannot vouch for must
+    ///         not run, since re-dispatch on an IPC hiccup could execute
+    ///         a remote_upgrade twice.
+    virtual bool checkAndRecord(const std::string& taskId) = 0;
 };
 
 #endif // _HC_TASK_ID_STORE_HPP

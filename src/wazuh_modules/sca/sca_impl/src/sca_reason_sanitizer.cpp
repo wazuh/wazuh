@@ -33,12 +33,16 @@ namespace
 
         if ((lead & 0xF0) == 0xE0)
         {
-            return {3, static_cast<unsigned char>(lead == 0xE0 ? 0xA0 : 0x80), static_cast<unsigned char>(lead == 0xED ? 0x9F : 0xBF)};
+            return {3,
+                    static_cast<unsigned char>(lead == 0xE0 ? 0xA0 : 0x80),
+                    static_cast<unsigned char>(lead == 0xED ? 0x9F : 0xBF)};
         }
 
         if (lead >= 0xF0 && lead <= 0xF4)
         {
-            return {4, static_cast<unsigned char>(lead == 0xF0 ? 0x90 : 0x80), static_cast<unsigned char>(lead == 0xF4 ? 0x8F : 0xBF)};
+            return {4,
+                    static_cast<unsigned char>(lead == 0xF0 ? 0x90 : 0x80),
+                    static_cast<unsigned char>(lead == 0xF4 ? 0x8F : 0xBF)};
         }
 
         return {};

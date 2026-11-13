@@ -17,16 +17,27 @@ namespace
     constexpr size_t STATEFUL_MAX_QUEUE = 64;
 } // namespace
 
-StatefulStream::StatefulStream(const ModuleConfig& config, IHttpPerformer& performer,
-                               const ISigner& signer, IClock& clock, IRandom& random,
-                               ISpoolFileFactory& spoolFactory, ICallbackSink& sink,
-                               AuthGate& authGate, CompressionGate& compressionGate,
+StatefulStream::StatefulStream(const ModuleConfig& config,
+                               IHttpPerformer& performer,
+                               const ISigner& signer,
+                               IClock& clock,
+                               IRandom& random,
+                               ISpoolFileFactory& spoolFactory,
+                               ICallbackSink& sink,
+                               AuthGate& authGate,
+                               CompressionGate& compressionGate,
                                IFileCompressor& fileCompressor)
     : m_config(config)
     , m_authGate(authGate)
     , m_compressionGate(compressionGate)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+    , m_sender(performer,
+               signer,
+               clock,
+               m_backoff,
+               config.httpsCompressionEnabled,
+               &compressionGate,
+               &authGate,
                config.serverEndpoint)
     , m_spoolFactory(spoolFactory)
     , m_fileCompressor(fileCompressor)
@@ -53,8 +64,7 @@ bool StatefulStream::submit(const std::string& sessionId, const uint8_t* buffer,
     return enqueue(Session {sessionId, std::move(spool), length});
 }
 
-bool StatefulStream::submitFile(const std::string& sessionId, const std::string& filePath,
-                                uint64_t size)
+bool StatefulStream::submitFile(const std::string& sessionId, const std::string& filePath, uint64_t size)
 {
     // Adopt the file first: it is ours from here on, so every rejection below
     // still deletes it instead of stranding it in the spool directory.
@@ -80,8 +90,10 @@ bool StatefulStream::acceptableId(const std::string& sessionId) const
 
     // The id itself is not logged: it is exactly the untrusted bytes we are
     // refusing, and control characters in it would break the log line too.
-    LOGFN_WARN(m_logFn, "Refusing a /stateful session: its id (%zu bytes) is not a valid "
-               "session id.", sessionId.size());
+    LOGFN_WARN(m_logFn,
+               "Refusing a /stateful session: its id (%zu bytes) is not a valid "
+               "session id.",
+               sessionId.size());
     return false;
 }
 
@@ -159,8 +171,8 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
 
     if (m_config.httpsCompressionEnabled && !m_compressionGate.disabled() && session.size > 0)
     {
-        auto compressed = m_fileCompressor.compress(spec.bodyFilePath, spec.bodyFileSize,
-                                                    m_config.spoolDir, waiter.stopFlag());
+        auto compressed =
+            m_fileCompressor.compress(spec.bodyFilePath, spec.bodyFileSize, m_config.spoolDir, waiter.stopFlag());
 
         if (compressed)
         {

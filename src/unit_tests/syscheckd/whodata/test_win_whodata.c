@@ -37,38 +37,39 @@
 #include "wrappers/windows/winevt_wrappers.h"
 #include "wrappers/windows/ntsecapi_wrappers.h"
 
-
 #include "syscheck.h"
 
-int set_winsacl(const char *dir, directory_t *configuration);
+int set_winsacl(const char* dir, directory_t* configuration);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
-extern int w_update_sacl(const char *obj_path);
-extern char *get_whodata_path(const short unsigned int *win_path);
-extern int whodata_path_filter(char **path);
+extern int w_update_sacl(const char* obj_path);
+extern char* get_whodata_path(const short unsigned int* win_path);
+extern int whodata_path_filter(char** path);
 extern int whodata_check_arch();
 extern int is_valid_sacl(PACL sacl, int is_file);
-extern void replace_device_path(char **path);
-extern int get_drive_names(wchar_t *volume_name, char *device);
+extern void replace_device_path(char** path);
+extern int get_drive_names(wchar_t* volume_name, char* device);
 extern int get_volume_names();
-extern void notify_SACL_change(char *dir);
-extern int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
+extern void notify_SACL_change(char* dir);
+extern int whodata_hash_add(OSHash* table, char* id, void* data, char* tag);
 extern void restore_sacls();
 extern int restore_audit_policies();
 extern void audit_restore();
-extern int check_object_sacl(char *obj, int is_file);
-extern void set_subscription_query(wchar_t *query);
+extern int check_object_sacl(char* obj, int is_file);
+extern void set_subscription_query(wchar_t* query);
 extern int set_policies();
 extern void whodata_list_set_values();
 extern void whodata_list_remove_multiple(size_t quantity);
-unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
+unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action,
+                                      __attribute__((unused)) void* _void,
+                                      EVT_HANDLE event);
 extern int whodata_audit_start();
 extern PEVT_VARIANT whodata_event_render(EVT_HANDLE event);
-extern int whodata_get_event_id(const PEVT_VARIANT raw_data, short *event_id);
-extern int whodata_get_handle_id(const PEVT_VARIANT raw_data, unsigned __int64 *handle_id);
-extern int whodata_get_access_mask(const PEVT_VARIANT raw_data, unsigned long *mask);
-extern int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data);
+extern int whodata_get_event_id(const PEVT_VARIANT raw_data, short* event_id);
+extern int whodata_get_handle_id(const PEVT_VARIANT raw_data, unsigned __int64* handle_id);
+extern int whodata_get_access_mask(const PEVT_VARIANT raw_data, unsigned long* mask);
+extern int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt* event_data);
 int policy_check();
-void win_whodata_release_resources(whodata *wdata);
+void win_whodata_release_resources(whodata* wdata);
 
 extern char sys_64;
 extern PSID everyone_sid;
@@ -84,31 +85,33 @@ const int NUM_EVENTS = 10;
 int SIZE_EVENTS;
 
 const PWCHAR WCS_TEST_PATH = L"C:\\Windows\\a\\path";
-const char *STR_TEST_PATH = "c:\\windows\\a\\path";
+const char* STR_TEST_PATH = "c:\\windows\\a\\path";
 
-static const char *guid_ObjectAccess = "{6997984A-797A-11D9-BED3-505054503030}";
-static const char *guid_FileSystem = "{0CCE921D-69AE-11D9-BED3-505054503030}";
-static const char *guid_Handle =  "{0CCE9223-69AE-11D9-BED3-505054503030}";
+static const char* guid_ObjectAccess = "{6997984A-797A-11D9-BED3-505054503030}";
+static const char* guid_FileSystem = "{0CCE921D-69AE-11D9-BED3-505054503030}";
+static const char* guid_Handle = "{0CCE9223-69AE-11D9-BED3-505054503030}";
 
-typedef struct PolicyInfo {
-    GUID *category_guid;
-    GUID *subcategory_guid1;
-    GUID *subcategory_guid2;
+typedef struct PolicyInfo
+{
+    GUID* category_guid;
+    GUID* subcategory_guid1;
+    GUID* subcategory_guid2;
     PPOLICY_AUDIT_EVENTS_INFO audit_event_info;
-    AUDIT_POLICY_INFORMATION *paudit_policy;
+    AUDIT_POLICY_INFORMATION* paudit_policy;
 } policy_info;
 
 /**************************************************************************/
 /*******************Helper functions*************************************/
-static void successful_whodata_event_render(EVT_HANDLE event, PEVT_VARIANT raw_data) {
+static void successful_whodata_event_render(EVT_HANDLE event, PEVT_VARIANT raw_data)
+{
     /* EvtRender first call */
     expect_value(wrap_EvtRender, Context, context);
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, 0); // BufferSize
-    will_return(wrap_EvtRender, NULL); // Buffer
-    will_return(wrap_EvtRender, SIZE_EVENTS); // BufferUsed
-    will_return(wrap_EvtRender, 0); // PropertyCount
+    will_return(wrap_EvtRender, NULL);           // Buffer
+    will_return(wrap_EvtRender, SIZE_EVENTS);    // BufferUsed
+    will_return(wrap_EvtRender, 0);              // PropertyCount
     will_return(wrap_EvtRender, 0);
 
     /* EvtRender second call */
@@ -116,37 +119,47 @@ static void successful_whodata_event_render(EVT_HANDLE event, PEVT_VARIANT raw_d
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
-    will_return(wrap_EvtRender, raw_data); // Buffer
-    will_return(wrap_EvtRender, SIZE_EVENTS); // BufferUsed
-    will_return(wrap_EvtRender, 9); // PropertyCount
+    will_return(wrap_EvtRender, raw_data);                 // Buffer
+    will_return(wrap_EvtRender, SIZE_EVENTS);              // BufferUsed
+    will_return(wrap_EvtRender, 9);                        // PropertyCount
     will_return(wrap_EvtRender, 1);
 }
 
 void expect_policy_check_match_call(NTSTATUS status1,
-                                    PPOLICY_AUDIT_EVENTS_INFO audit_event_info, NTSTATUS status2,
-                                    GUID *category_guid, BOOLEAN ret1,
-                                    ULONG subcategory_count, BOOLEAN ret2,
-                                    AUDIT_POLICY_INFORMATION *paudit_policy, BOOLEAN ret3) {
+                                    PPOLICY_AUDIT_EVENTS_INFO audit_event_info,
+                                    NTSTATUS status2,
+                                    GUID* category_guid,
+                                    BOOLEAN ret1,
+                                    ULONG subcategory_count,
+                                    BOOLEAN ret2,
+                                    AUDIT_POLICY_INFORMATION* paudit_policy,
+                                    BOOLEAN ret3)
+{
 
     will_return(wrap_LsaOpenPolicy, status1);
 
-    if (status1 == (NTSTATUS)0){
+    if (status1 == (NTSTATUS)0)
+    {
         will_return(wrap_LsaQueryInformationPolicy, audit_event_info);
         will_return(wrap_LsaQueryInformationPolicy, status2);
 
-        if (status2 == (NTSTATUS)0){
+        if (status2 == (NTSTATUS)0)
+        {
             will_return(wrap_AuditLookupCategoryGuidFromCategoryId, category_guid);
             will_return(wrap_AuditLookupCategoryGuidFromCategoryId, ret1);
 
-            if (ret1 == true){
+            if (ret1 == true)
+            {
                 will_return(wrap_AuditEnumerateSubCategories, subcategory_count);
                 will_return(wrap_AuditEnumerateSubCategories, ret2);
 
-                if (ret2 == true){
+                if (ret2 == true)
+                {
                     will_return(wrap_AuditQuerySystemPolicy, paudit_policy);
                     will_return(wrap_AuditQuerySystemPolicy, ret3);
 
-                    if (ret3 == true){
+                    if (ret3 == true)
+                    {
                         return;
                     }
                 }
@@ -156,12 +169,15 @@ void expect_policy_check_match_call(NTSTATUS status1,
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
     will_return(wrap_FormatMessage, "Access is denied");
-    expect_string(__wrap__mwarn, formatted_msg, "(6951): Unable to check the necessary policies for whodata: Access is denied (5).");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "(6951): Unable to check the necessary policies for whodata: Access is denied (5).");
 }
 
 /**************************************************************************/
 /*************************WRAPS - FIXTURES*********************************/
-int syscheck_teardown(void ** state) {
+int syscheck_teardown(void** state)
+{
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -169,19 +185,23 @@ int syscheck_teardown(void ** state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     // Free wdata
-    if (syscheck.wdata.fd) {
+    if (syscheck.wdata.fd)
+    {
         OSHash_Free(syscheck.wdata.fd);
     }
 
-    if (syscheck.wdata.directories) {
+    if (syscheck.wdata.directories)
+    {
         OSHash_Free(syscheck.wdata.directories);
     }
 
-    if (syscheck.wdata.drive) {
+    if (syscheck.wdata.drive)
+    {
         free_strarray(syscheck.wdata.drive);
     }
 
-    if (syscheck.wdata.device) {
+    if (syscheck.wdata.device)
+    {
         free_strarray(syscheck.wdata.device);
     }
 
@@ -209,11 +229,14 @@ int syscheck_teardown(void ** state) {
     return 0;
 }
 
-int test_group_setup(void **state) {
+int test_group_setup(void** state)
+{
     int ret;
     expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: '../test_syscheck.conf'");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
-    expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
@@ -238,7 +261,8 @@ int test_group_setup(void **state) {
     return ret;
 }
 
-static int test_group_teardown(void **state) {
+static int test_group_teardown(void** state)
+{
     test_mode = 0;
 
     if (syscheck_teardown(state) != 0)
@@ -247,13 +271,15 @@ static int test_group_teardown(void **state) {
     return 0;
 }
 
-OSHash * __real_OSHash_Create();
-int __real_OSHash_SetFreeDataPointer(OSHash * self, void(free_data_function)(void *));
-static int setup_whodata_callback_group(void ** state) {
+OSHash* __real_OSHash_Create();
+int __real_OSHash_SetFreeDataPointer(OSHash* self, void(free_data_function)(void*));
+static int setup_whodata_callback_group(void** state)
+{
 #ifdef TEST_WINAGENT
     will_return_count(__wrap_os_random, 12345, 2);
 #endif
-    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
+    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories)
+    {
         return -1;
     }
 
@@ -265,13 +291,14 @@ static int setup_whodata_callback_group(void ** state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     syscheck.directories = OSList_Create();
-    if (syscheck.directories == NULL) {
+    if (syscheck.directories == NULL)
+    {
         return -1;
     }
 
     int options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE |
                   CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_ATTRS | WHODATA_ACTIVE;
-    directory_t *directory0 = fim_create_directory("c:\\windows", options, NULL, 50, NULL, -1, 0);
+    directory_t* directory0 = fim_create_directory("c:\\windows", options, NULL, 50, NULL, -1, 0);
     directory0->dirs_status.status = WD_CHECK_WHODATA;
 
     OSList_InsertData(syscheck.directories, NULL, directory0);
@@ -282,7 +309,8 @@ static int setup_whodata_callback_group(void ** state) {
     return 0;
 }
 
-static int teardown_whodata_callback_group(void ** state) {
+static int teardown_whodata_callback_group(void** state)
+{
     if (test_group_teardown(state))
         return -1;
 
@@ -290,11 +318,12 @@ static int teardown_whodata_callback_group(void ** state) {
     return 0;
 }
 
-static int setup_policy_check(void ** state) {
-    policy_info *pol_data = NULL;
+static int setup_policy_check(void** state)
+{
+    policy_info* pol_data = NULL;
     os_calloc(1, sizeof(policy_info), pol_data);
 
-    AUDIT_POLICY_INFORMATION *audit_pol_array;
+    AUDIT_POLICY_INFORMATION* audit_pol_array;
     os_calloc(2, sizeof(AUDIT_POLICY_INFORMATION), audit_pol_array);
     AUDIT_POLICY_INFORMATION file_system_policy;
     AUDIT_POLICY_INFORMATION handle_policy;
@@ -305,11 +334,11 @@ static int setup_policy_check(void ** state) {
     AuditEvents->AuditingMode = true;
     AuditEvents->MaximumAuditEventCount = 1;
 
-    GUID *guid_ObjectAccess;
+    GUID* guid_ObjectAccess;
     os_calloc(1, sizeof(GUID), guid_ObjectAccess);
-    GUID *guid_FileSystem;
+    GUID* guid_FileSystem;
     os_calloc(1, sizeof(GUID), guid_FileSystem);
-    GUID *guid_Handle;
+    GUID* guid_Handle;
     os_calloc(1, sizeof(GUID), guid_Handle);
 
     CLSIDFromString(OLESTR("{6997984a-797a-11d9-bed3-505054503030}"), guid_ObjectAccess);
@@ -335,8 +364,9 @@ static int setup_policy_check(void ** state) {
     return 0;
 }
 
-static int teardown_policy_check(void ** state) {
-    policy_info *pol_data = *state;
+static int teardown_policy_check(void** state)
+{
+    policy_info* pol_data = *state;
 
     os_free(pol_data->category_guid);
     os_free(pol_data->subcategory_guid1);
@@ -349,18 +379,21 @@ static int teardown_policy_check(void ** state) {
     return 0;
 }
 
-static int setup_wdata_dirs_cleanup(void ** state) {
+static int setup_wdata_dirs_cleanup(void** state)
+{
 #ifdef TEST_WINAGENT
     will_return_count(__wrap_os_random, 12345, 2);
 #endif
-    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
+    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories)
+    {
         return -1;
     }
 
     __real_OSHash_SetFreeDataPointer(syscheck.wdata.directories, free);
 
     syscheck.directories = OSList_Create();
-    if (syscheck.directories == NULL) {
+    if (syscheck.directories == NULL)
+    {
         return -1;
     }
 
@@ -372,14 +405,16 @@ static int setup_wdata_dirs_cleanup(void ** state) {
     return 0;
 }
 
-static int teardown_memblock(void **state) {
-    if(*state)
+static int teardown_memblock(void** state)
+{
+    if (*state)
         free(*state);
 
     return 0;
 }
 
-static int teardown_wdata_device() {
+static int teardown_wdata_device()
+{
     free_strarray(syscheck.wdata.device);
     free_strarray(syscheck.wdata.drive);
 
@@ -389,43 +424,48 @@ static int teardown_wdata_device() {
     return 0;
 }
 
-static int setup_replace_device_path(void **state) {
+static int setup_replace_device_path(void** state)
+{
     syscheck.wdata.device = calloc(10, sizeof(char*));
-    syscheck.wdata.drive = calloc(10, sizeof(char *));
+    syscheck.wdata.drive = calloc(10, sizeof(char*));
 
-    if(syscheck.wdata.device == NULL || syscheck.wdata.drive == NULL)
+    if (syscheck.wdata.device == NULL || syscheck.wdata.drive == NULL)
         return -1;
 
     return 0;
 }
 
-static int teardown_replace_device_path(void **state) {
-    if(teardown_wdata_device(state))
+static int teardown_replace_device_path(void** state)
+{
+    if (teardown_wdata_device(state))
         return -1;
 
-    if(teardown_memblock(state))
+    if (teardown_memblock(state))
         return -1;
 
     return 0;
 }
 
-static int teardown_reset_errno(void **state) {
+static int teardown_reset_errno(void** state)
+{
     errno = 0;
     return 0;
 }
 
-static int setup_state_checker(void ** state) {
+static int setup_state_checker(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
     syscheck.directories = OSList_Create();
-    if (!syscheck.directories) {
+    if (!syscheck.directories)
+    {
         return -1;
     }
 
-    directory_t *directory0 = fim_create_directory("c:\\a\\path", WHODATA_ACTIVE, NULL, 50, NULL, -1, 0);
+    directory_t* directory0 = fim_create_directory("c:\\a\\path", WHODATA_ACTIVE, NULL, 50, NULL, -1, 0);
     directory0->dirs_status.status = WD_CHECK_WHODATA;
     directory0->dirs_status.object_type = WD_STATUS_DIR_TYPE;
     directory0->dirs_status.status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
@@ -436,7 +476,8 @@ static int setup_state_checker(void ** state) {
     will_return_count(__wrap_os_random, 12345, 2);
 #endif
 
-    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
+    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories)
+    {
         return -1;
     }
 
@@ -450,7 +491,8 @@ static int setup_state_checker(void ** state) {
     return 0;
 }
 
-static int teardown_state_checker(void ** state) {
+static int teardown_state_checker(void** state)
+{
     test_mode = 0;
 
     if (teardown_policy_check(state) != 0)
@@ -462,17 +504,19 @@ static int teardown_state_checker(void ** state) {
     return 0;
 }
 
-static int teardown_whodata_audit_start(void ** state) {
+static int teardown_whodata_audit_start(void** state)
+{
     syscheck.wdata.directories = NULL;
     syscheck.wdata.fd = NULL;
 
     return 0;
 }
 
-static int setup_win_whodata_evt(void **state) {
-    whodata_evt *w_evt = calloc(1, sizeof(whodata_evt));
+static int setup_win_whodata_evt(void** state)
+{
+    whodata_evt* w_evt = calloc(1, sizeof(whodata_evt));
 
-    if(!w_evt)
+    if (!w_evt)
         return -1;
 
     *state = w_evt;
@@ -480,33 +524,36 @@ static int setup_win_whodata_evt(void **state) {
     return 0;
 }
 
-static int teardown_win_whodata_evt(void **state) {
-    whodata_evt *w_evt = *state;
+static int teardown_win_whodata_evt(void** state)
+{
+    whodata_evt* w_evt = *state;
 
     free_whodata_event(w_evt);
 
     return 0;
 }
 
-static int teardown_whodata_callback_restore_globals(void ** state) {
+static int teardown_whodata_callback_restore_globals(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    directory_t *directory0 = ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0));
+    directory_t* directory0 = ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0));
     directory0->dirs_status.status |= WD_CHECK_WHODATA;
     directory0->recursion_level = 50;
     return 0;
 }
 
-static int teardown_state_checker_restore_globals(void ** state) {
+static int teardown_state_checker_restore_globals(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     OSList_CleanNodes(syscheck.directories);
-    directory_t *directory0 = fim_create_directory("c:\\a\\path", WHODATA_ACTIVE, NULL, 50, NULL, -1, 0);
+    directory_t* directory0 = fim_create_directory("c:\\a\\path", WHODATA_ACTIVE, NULL, 50, NULL, -1, 0);
 
     directory0->dirs_status.object_type = WD_STATUS_DIR_TYPE;
     directory0->dirs_status.status = WD_CHECK_WHODATA | WD_STATUS_EXISTS;
@@ -516,7 +563,8 @@ static int teardown_state_checker_restore_globals(void ** state) {
     return 0;
 }
 
-static int teardown_clean_directories_hash(void ** state) {
+static int teardown_clean_directories_hash(void** state)
+{
     // Destroy and recreate the hash table for future tests
     OSHash_Free(syscheck.wdata.directories);
 
@@ -524,7 +572,8 @@ static int teardown_clean_directories_hash(void ** state) {
     will_return_count(__wrap_os_random, 12345, 2);
 #endif
 
-    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories) {
+    if (syscheck.wdata.directories = __real_OSHash_Create(), !syscheck.wdata.directories)
+    {
         return -1;
     }
 
@@ -535,7 +584,8 @@ static int teardown_clean_directories_hash(void ** state) {
 
 /**************************************************************************/
 /***************************set_winsacl************************************/
-void test_set_winsacl_failed_opening(void **state) {
+void test_set_winsacl_failed_opening(void** state)
+{
     char debug_msg[OS_MAXSTR];
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -543,7 +593,10 @@ void test_set_winsacl_failed_opening(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    snprintf(debug_msg,
+             OS_MAXSTR,
+             FIM_SACL_CONFIGURE,
+             ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -551,13 +604,15 @@ void test_set_winsacl_failed_opening(void **state) {
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 0);
 
-    will_return(wrap_GetLastError, (unsigned int) 500);
+    will_return(wrap_GetLastError, (unsigned int)500);
     expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
 
-    set_winsacl(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    set_winsacl(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path,
+                ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 }
 
-void test_set_winsacl_failed_privileges(void **state) {
+void test_set_winsacl_failed_privileges(void** state)
+{
     char debug_msg[OS_MAXSTR];
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -565,7 +620,10 @@ void test_set_winsacl_failed_privileges(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    snprintf(debug_msg,
+             OS_MAXSTR,
+             FIM_SACL_CONFIGURE,
+             ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -577,18 +635,21 @@ void test_set_winsacl_failed_privileges(void **state) {
     will_return(wrap_LookupPrivilegeValue, 0);
     will_return(wrap_LookupPrivilegeValue, 0); // Fail lookup privilege
 
-    will_return(wrap_GetLastError, (unsigned int) 500);
-    expect_string(__wrap__merror, formatted_msg,  "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 500");
+    will_return(wrap_GetLastError, (unsigned int)500);
+    expect_string(
+        __wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 500");
 
-    will_return(wrap_GetLastError, (unsigned int) 501);
-    expect_string(__wrap__merror, formatted_msg,  "(6659): The privilege could not be activated. Error: '501'.");
+    will_return(wrap_GetLastError, (unsigned int)501);
+    expect_string(__wrap__merror, formatted_msg, "(6659): The privilege could not be activated. Error: '501'.");
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
-    set_winsacl(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    set_winsacl(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path,
+                ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 }
 
-void test_set_winsacl_failed_security_descriptor(void **state) {
+void test_set_winsacl_failed_security_descriptor(void** state)
+{
     char debug_msg[OS_MAXSTR];
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -596,7 +657,10 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    snprintf(debug_msg,
+             OS_MAXSTR,
+             FIM_SACL_CONFIGURE,
+             ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -615,7 +679,9 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
 
     // GetNamedSecurity
-    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo,
+                  utf8_path,
+                  ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
@@ -635,10 +701,12 @@ void test_set_winsacl_failed_security_descriptor(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    set_winsacl(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    set_winsacl(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path,
+                ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 }
 
-void test_set_winsacl_no_need_to_configure_acl(void **state) {
+void test_set_winsacl_no_need_to_configure_acl(void** state)
+{
     ACL old_sacl;
     ACCESS_ALLOWED_ACE ace;
     SECURITY_DESCRIPTOR security_descriptor;
@@ -713,12 +781,13 @@ void test_set_winsacl_no_need_to_configure_acl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 0);
 }
 
-void test_set_winsacl_unable_to_get_acl_info(void **state) {
+void test_set_winsacl_unable_to_get_acl_info(void** state)
+{
     ACL old_sacl;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
@@ -766,7 +835,7 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -794,12 +863,13 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
+void test_set_winsacl_fail_to_alloc_new_sacl(void** state)
+{
     ACL old_sacl;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
@@ -849,7 +919,7 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -862,7 +932,8 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     expect_value(wrap_win_alloc, size, 9);
     will_return(wrap_win_alloc, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(6652): No memory could be reserved for the new SACL of 'C:\\a\\path'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6652): No memory could be reserved for the new SACL of 'C:\\a\\path'.");
 
     // Inside set_privilege
     {
@@ -880,12 +951,13 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
+void test_set_winsacl_fail_to_initialize_new_sacl(void** state)
+{
     ACL old_sacl;
     SECURITY_DESCRIPTOR security_descriptor;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
@@ -935,7 +1007,7 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -971,12 +1043,13 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
+void test_set_winsacl_fail_getting_ace_from_old_sacl(void** state)
+{
     ACL old_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SECURITY_DESCRIPTOR security_descriptor;
@@ -1027,7 +1100,7 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -1066,12 +1139,13 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
+void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void** state)
+{
     ACL old_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SECURITY_DESCRIPTOR security_descriptor;
@@ -1122,7 +1196,7 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -1146,8 +1220,8 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     expect_value(wrap_AddAce, pAcl, 1234);
     will_return(wrap_AddAce, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6655): The ACE number 0 of 'C:\\a\\path' could not be copied to the new ACL.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6655): The ACE number 0 of 'C:\\a\\path' could not be copied to the new ACL.");
 
     // Inside set_privilege
     {
@@ -1165,11 +1239,12 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
-void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
+void test_set_winsacl_fail_to_alloc_new_ace(void** state)
+{
     ACL old_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SECURITY_DESCRIPTOR security_descriptor;
@@ -1220,7 +1295,7 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -1247,8 +1322,8 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     expect_value(wrap_win_alloc, size, 9);
     will_return(wrap_win_alloc, NULL);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6656): No memory could be reserved for the new ACE of 'C:\\a\\path'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6656): No memory could be reserved for the new ACE of 'C:\\a\\path'.");
 
     // Inside set_privilege
     {
@@ -1266,12 +1341,13 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_winsacl_fail_to_copy_sid(void **state) {
+void test_set_winsacl_fail_to_copy_sid(void** state)
+{
     ACL old_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
@@ -1324,7 +1400,7 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -1369,7 +1445,7 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1378,7 +1454,8 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
 }
 
-void test_set_winsacl_fail_to_add_ace(void **state) {
+void test_set_winsacl_fail_to_add_ace(void** state)
+{
     ACL old_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
@@ -1431,7 +1508,7 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -1481,7 +1558,7 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1490,7 +1567,8 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
 }
 
-void test_set_winsacl_fail_to_set_security_info(void **state) {
+void test_set_winsacl_fail_to_set_security_info(void** state)
+{
     ACL old_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
@@ -1543,7 +1621,7 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -1602,7 +1680,7 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 1);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1611,7 +1689,8 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     assert_int_equal(ace.Mask, DELETE | FILE_WRITE_DATA | FILE_APPEND_DATA | WRITE_DAC | FILE_WRITE_ATTRIBUTES);
 }
 
-void test_set_winsacl_success(void **state) {
+void test_set_winsacl_success(void** state)
+{
     ACL old_sacl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
@@ -1664,7 +1743,7 @@ void test_set_winsacl_success(void **state) {
         will_return(wrap_GetAce, &old_sacl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -1721,7 +1800,7 @@ void test_set_winsacl_success(void **state) {
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
 
-    ret = set_winsacl("C:\\a\\path", ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0)));
+    ret = set_winsacl("C:\\a\\path", ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0)));
 
     assert_int_equal(ret, 0);
     assert_int_equal(ace.Header.AceType, SYSTEM_AUDIT_ACE_TYPE);
@@ -1732,7 +1811,8 @@ void test_set_winsacl_success(void **state) {
 
 /**************************************************************************/
 
-void test_set_privilege_lookup_error (void **state) {
+void test_set_privilege_lookup_error(void** state)
+{
     int ret;
 
     expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -1741,14 +1821,16 @@ void test_set_privilege_lookup_error (void **state) {
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
 
     ret = set_privilege((HANDLE)123456, "SeSecurityPrivilege", 0);
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_privilege_adjust_token_error (void **state) {
+void test_set_privilege_adjust_token_error(void** state)
+{
     int ret;
 
     expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -1768,7 +1850,8 @@ void test_set_privilege_adjust_token_error (void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_set_privilege_elevate_privilege (void **state) {
+void test_set_privilege_elevate_privilege(void** state)
+{
     int ret;
 
     expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -1786,7 +1869,8 @@ void test_set_privilege_elevate_privilege (void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_set_privilege_reduce_privilege (void **state) {
+void test_set_privilege_reduce_privilege(void** state)
+{
     int ret;
 
     expect_string(wrap_LookupPrivilegeValue, lpName, "SeSecurityPrivilege");
@@ -1804,7 +1888,8 @@ void test_set_privilege_reduce_privilege (void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_w_update_sacl_AllocateAndInitializeSid_error(void **state) {
+void test_w_update_sacl_AllocateAndInitializeSid_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
@@ -1823,7 +1908,8 @@ void test_w_update_sacl_AllocateAndInitializeSid_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_OpenProcessToken_error(void **state) {
+void test_w_update_sacl_OpenProcessToken_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
@@ -1836,7 +1922,7 @@ void test_w_update_sacl_OpenProcessToken_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) NULL);
+    will_return(wrap_OpenProcessToken, (HANDLE)NULL);
     will_return(wrap_OpenProcessToken, 0);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
@@ -1848,7 +1934,8 @@ void test_w_update_sacl_OpenProcessToken_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_add_privilege_error(void **state) {
+void test_w_update_sacl_add_privilege_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
@@ -1861,7 +1948,7 @@ void test_w_update_sacl_add_privilege_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -1872,7 +1959,8 @@ void test_w_update_sacl_add_privilege_error(void **state) {
 
         will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-        expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+        expect_string(
+            __wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
     }
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
@@ -1887,7 +1975,8 @@ void test_w_update_sacl_add_privilege_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_GetNamedSecurityInfo_error(void **state) {
+void test_w_update_sacl_GetNamedSecurityInfo_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
@@ -1900,7 +1989,7 @@ void test_w_update_sacl_GetNamedSecurityInfo_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -1946,7 +2035,8 @@ void test_w_update_sacl_GetNamedSecurityInfo_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_GetAclInformation_error(void **state) {
+void test_w_update_sacl_GetAclInformation_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL old_acl;
@@ -1960,7 +2050,7 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -1980,7 +2070,7 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
@@ -2010,7 +2100,8 @@ void test_w_update_sacl_GetAclInformation_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_alloc_new_sacl_error(void **state) {
+void test_w_update_sacl_alloc_new_sacl_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL old_acl;
@@ -2024,7 +2115,7 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2044,7 +2135,7 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
@@ -2053,7 +2144,8 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     expect_value(wrap_win_alloc, size, 13);
     will_return(wrap_win_alloc, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(6688): No memory could be reserved for the new SACL of 'C:\\a\\path'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6688): No memory could be reserved for the new SACL of 'C:\\a\\path'.");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2077,7 +2169,8 @@ void test_w_update_sacl_alloc_new_sacl_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_InitializeAcl_error(void **state) {
+void test_w_update_sacl_InitializeAcl_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL old_acl;
@@ -2091,7 +2184,7 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2111,24 +2204,24 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 0);
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6689): The new SACL for 'C:\\a\\path' could not be created. Error: '5'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6689): The new SACL for 'C:\\a\\path' could not be created. Error: '5'.");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2152,7 +2245,8 @@ void test_w_update_sacl_InitializeAcl_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_alloc_ace_error(void **state) {
+void test_w_update_sacl_alloc_ace_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL old_acl;
@@ -2166,7 +2260,7 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2186,16 +2280,16 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2205,8 +2299,9 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6690): No memory could be reserved for the new ACE of 'C:\\a\\path'. Error: '5'.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6690): No memory could be reserved for the new ACE of 'C:\\a\\path'. Error: '5'.");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2230,7 +2325,8 @@ void test_w_update_sacl_alloc_ace_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_CopySid_error(void **state) {
+void test_w_update_sacl_CopySid_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL old_acl;
@@ -2245,7 +2341,7 @@ void test_w_update_sacl_CopySid_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2265,16 +2361,16 @@ void test_w_update_sacl_CopySid_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, NULL);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2286,8 +2382,8 @@ void test_w_update_sacl_CopySid_error(void **state) {
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6691): Could not copy the everyone SID for 'C:\\a\\path'. Error: '1-5'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6691): Could not copy the everyone SID for 'C:\\a\\path'. Error: '1-5'.");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2311,7 +2407,8 @@ void test_w_update_sacl_CopySid_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
+void test_w_update_sacl_old_sacl_GetAce_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
@@ -2329,7 +2426,7 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2349,16 +2446,16 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2371,8 +2468,7 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     will_return(wrap_GetAce, NULL);
     will_return(wrap_GetAce, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6692): The ACE number 0 for 'C:\\a\\path' could not be obtained.");
+    expect_string(__wrap__merror, formatted_msg, "(6692): The ACE number 0 for 'C:\\a\\path' could not be obtained.");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2396,7 +2492,8 @@ void test_w_update_sacl_old_sacl_GetAce_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
+void test_w_update_sacl_old_sacl_AddAce_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
@@ -2414,7 +2511,7 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2434,16 +2531,16 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2459,8 +2556,8 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     expect_value(wrap_AddAce, pAcl, 34567);
     will_return(wrap_AddAce, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6693): The ACE number 0 of 'C:\\a\\path' could not be copied to the new ACL.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6693): The ACE number 0 of 'C:\\a\\path' could not be copied to the new ACL.");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2484,7 +2581,8 @@ void test_w_update_sacl_old_sacl_AddAce_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
+void test_w_update_sacl_new_sacl_AddAce_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
@@ -2502,7 +2600,7 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2522,16 +2620,16 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2552,8 +2650,8 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6694): The new ACE could not be added to 'C:\\a\\path'. Error: '5'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6694): The new ACE could not be added to 'C:\\a\\path'. Error: '5'.");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2577,7 +2675,8 @@ void test_w_update_sacl_new_sacl_AddAce_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
+void test_w_update_sacl_SetNamedSecurityInfo_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
@@ -2595,7 +2694,7 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2615,16 +2714,16 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2652,8 +2751,7 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     expect_value(__wrap_utf8_SetNamedSecurityInfo, sacl, 34567);
     will_return(__wrap_utf8_SetNamedSecurityInfo, ERROR_PATH_NOT_FOUND);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6695): SetNamedSecurityInfo() failed. Error: '3'");
+    expect_string(__wrap__merror, formatted_msg, "(6695): SetNamedSecurityInfo() failed. Error: '3'");
 
     /* goto end */
     /* Inside set_privilege */
@@ -2677,7 +2775,8 @@ void test_w_update_sacl_SetNamedSecurityInfo_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_w_update_sacl_remove_privilege_error(void **state) {
+void test_w_update_sacl_remove_privilege_error(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
@@ -2695,7 +2794,7 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2715,16 +2814,16 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2761,7 +2860,8 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
 
         will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-        expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+        expect_string(
+            __wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
     }
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
@@ -2789,7 +2889,8 @@ void test_w_update_sacl_remove_privilege_error(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_w_update_sacl_success(void **state) {
+void test_w_update_sacl_success(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     SYSTEM_AUDIT_ACE ace;
@@ -2807,7 +2908,7 @@ void test_w_update_sacl_success(void **state) {
 
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     /* Inside set_privilege */
@@ -2827,16 +2928,16 @@ void test_w_update_sacl_success(void **state) {
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, &old_acl);
-    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR) 2345);
+    will_return(__wrap_utf8_GetNamedSecurityInfo, (PSECURITY_DESCRIPTOR)2345);
     will_return(__wrap_utf8_GetNamedSecurityInfo, ERROR_SUCCESS);
 
     will_return(wrap_GetAclInformation, &old_sacl_info);
     will_return(wrap_GetAclInformation, 1);
 
     expect_value(wrap_win_alloc, size, 13);
-    will_return(wrap_win_alloc, (LPVOID) 34567);
+    will_return(wrap_win_alloc, (LPVOID)34567);
 
-    expect_value(wrap_InitializeAcl, pAcl, (LPVOID) 34567);
+    expect_value(wrap_InitializeAcl, pAcl, (LPVOID)34567);
     expect_value(wrap_InitializeAcl, nAclLength, 13);
     expect_value(wrap_InitializeAcl, dwAclRevision, ACL_REVISION);
     will_return(wrap_InitializeAcl, 1);
@@ -2886,18 +2987,20 @@ void test_w_update_sacl_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_whodata_check_arch_open_registry_key_error(void **state) {
+void test_whodata_check_arch_open_registry_key_error(void** state)
+{
     int ret;
 
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
     will_return(wrap_RegOpenKeyEx, NULL);
     will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(
+        __wrap__merror,
+        formatted_msg,
         "(1758): Unable to open registry key: 'System\\CurrentControlSet\\Control\\Session Manager\\Environment'.");
 
     ret = whodata_check_arch();
@@ -2905,13 +3008,13 @@ void test_whodata_check_arch_open_registry_key_error(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_whodata_check_arch_query_key_value_error(void **state) {
+void test_whodata_check_arch_query_key_value_error(void** state)
+{
     int ret;
     HKEY key;
 
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
     will_return(wrap_RegOpenKeyEx, &key);
@@ -2923,22 +3026,22 @@ void test_whodata_check_arch_query_key_value_error(void **state) {
     will_return(wrap_RegQueryValueEx, NULL);
     will_return(wrap_RegQueryValueEx, ERROR_OUTOFMEMORY);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6682): Error reading 'Architecture' from Windows registry. (Error 14)");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6682): Error reading 'Architecture' from Windows registry. (Error 14)");
 
     ret = whodata_check_arch();
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_whodata_check_arch_not_supported_arch(void **state) {
+void test_whodata_check_arch_not_supported_arch(void** state)
+{
     int ret;
     HKEY key;
     const BYTE data[64] = "N/A";
 
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
     will_return(wrap_RegOpenKeyEx, &key);
@@ -2955,14 +3058,14 @@ void test_whodata_check_arch_not_supported_arch(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_whodata_check_arch_x86(void **state) {
+void test_whodata_check_arch_x86(void** state)
+{
     int ret;
     HKEY key;
     const BYTE data[64] = "x86";
 
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
     will_return(wrap_RegOpenKeyEx, &key);
@@ -2980,14 +3083,14 @@ void test_whodata_check_arch_x86(void **state) {
     assert_int_equal(sys_64, 0);
 }
 
-void test_whodata_check_arch_amd64(void **state) {
+void test_whodata_check_arch_amd64(void** state)
+{
     int ret;
     HKEY key;
     const BYTE data[64] = "AMD64";
 
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
     will_return(wrap_RegOpenKeyEx, &key);
@@ -3005,14 +3108,14 @@ void test_whodata_check_arch_amd64(void **state) {
     assert_int_equal(sys_64, 1);
 }
 
-void test_whodata_check_arch_ia64(void **state) {
+void test_whodata_check_arch_ia64(void** state)
+{
     int ret;
     HKEY key;
     const BYTE data[64] = "IA64";
 
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
     will_return(wrap_RegOpenKeyEx, &key);
@@ -3030,14 +3133,14 @@ void test_whodata_check_arch_ia64(void **state) {
     assert_int_equal(sys_64, 1);
 }
 
-void test_whodata_check_arch_arm64(void **state) {
+void test_whodata_check_arch_arm64(void** state)
+{
     int ret;
     HKEY key;
     const BYTE data[64] = "ARM64";
 
     expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+    expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
     expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
     expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
     will_return(wrap_RegOpenKeyEx, &key);
@@ -3055,8 +3158,9 @@ void test_whodata_check_arch_arm64(void **state) {
     assert_int_equal(sys_64, 1);
 }
 
-void test_whodata_path_filter_32_bit_system(void **state) {
-    char *path = "C:\\windows\\system32\\test";
+void test_whodata_path_filter_32_bit_system(void** state)
+{
+    char* path = "C:\\windows\\system32\\test";
     int ret;
 
     sys_64 = 0;
@@ -3067,9 +3171,10 @@ void test_whodata_path_filter_32_bit_system(void **state) {
     assert_string_equal(path, "C:\\windows\\system32\\test");
 }
 
-void test_get_whodata_path_error_determining_buffer_size(void **state) {
-    const char *win_path = "C:\\a\\path";
-    char *ret;
+void test_get_whodata_path_error_determining_buffer_size(void** state)
+{
+    const char* win_path = "C:\\a\\path";
+    char* ret;
 
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
@@ -3079,14 +3184,15 @@ void test_get_whodata_path_error_determining_buffer_size(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6306): The path could not be processed in Whodata mode. Error: 5");
 
-    ret = get_whodata_path((const short unsigned int *)win_path);
+    ret = get_whodata_path((const short unsigned int*)win_path);
 
     assert_null(ret);
 }
 
-void test_get_whodata_path_error_copying_buffer(void **state) {
-    const char *win_path = "C:\\a\\path";
-    char *ret;
+void test_get_whodata_path_error_copying_buffer(void** state)
+{
+    const char* win_path = "C:\\a\\path";
+    char* ret;
 
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
@@ -3101,14 +3207,15 @@ void test_get_whodata_path_error_copying_buffer(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6306): The path could not be processed in Whodata mode. Error: 5");
 
-    ret = get_whodata_path((const short unsigned int *)win_path);
+    ret = get_whodata_path((const short unsigned int*)win_path);
 
     assert_null(ret);
 }
 
-void test_get_whodata_path_success(void **state) {
-    const char *win_path = "C:\\a\\path";
-    char *ret;
+void test_get_whodata_path_success(void** state)
+{
+    const char* win_path = "C:\\a\\path";
+    char* ret;
 
     expect_string(wrap_WideCharToMultiByte, lpWideCharStr, "C:\\a\\path");
     expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
@@ -3119,7 +3226,7 @@ void test_get_whodata_path_success(void **state) {
     will_return(wrap_WideCharToMultiByte, "C:\\another\\path.file");
     will_return(wrap_WideCharToMultiByte, 21);
 
-    ret = get_whodata_path((const short unsigned int *)win_path);
+    ret = get_whodata_path((const short unsigned int*)win_path);
 
     *state = ret;
 
@@ -3127,7 +3234,8 @@ void test_get_whodata_path_success(void **state) {
     assert_string_equal(ret, "C:\\another\\path.file");
 }
 
-void test_is_valid_sacl_sid_error(void **state) {
+void test_is_valid_sacl_sid_error(void** state)
+{
     int ret = 0;
     PACL sacl = NULL;
     everyone_sid = NULL;
@@ -3138,7 +3246,7 @@ void test_is_valid_sacl_sid_error(void **state) {
     expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
     will_return(wrap_AllocateAndInitializeSid, 0);
 
-    will_return(wrap_GetLastError, (unsigned int) 700);
+    will_return(wrap_GetLastError, (unsigned int)700);
 
     expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
 
@@ -3146,7 +3254,8 @@ void test_is_valid_sacl_sid_error(void **state) {
     assert_int_equal(ret, 2);
 }
 
-void test_is_valid_sacl_sacl_not_found(void **state) {
+void test_is_valid_sacl_sacl_not_found(void** state)
+{
     int ret = 0;
     PACL sacl = NULL;
     everyone_sid = NULL;
@@ -3163,7 +3272,8 @@ void test_is_valid_sacl_sacl_not_found(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_is_valid_sacl_ace_not_found(void **state) {
+void test_is_valid_sacl_ace_not_found(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     PACL new_sacl = NULL;
@@ -3178,21 +3288,22 @@ void test_is_valid_sacl_ace_not_found(void **state) {
 
     // Set the new ACL size
     new_sacl_size = sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
-    new_sacl = (PACL) win_alloc(new_sacl_size);
+    new_sacl = (PACL)win_alloc(new_sacl_size);
     InitializeAcl(new_sacl, new_sacl_size, ACL_REVISION);
-    new_sacl->AceCount=1;
+    new_sacl->AceCount = 1;
 
     will_return(wrap_GetAce, NULL);
     will_return(wrap_GetAce, 0);
 
-    will_return(wrap_GetLastError, (unsigned int) 800);
+    will_return(wrap_GetLastError, (unsigned int)800);
     expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '800'.");
 
     ret = is_valid_sacl(new_sacl, 0);
     assert_int_equal(ret, 1);
 }
 
-void test_is_valid_sacl_not_valid(void **state) {
+void test_is_valid_sacl_not_valid(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     PACL new_sacl = NULL;
@@ -3207,9 +3318,9 @@ void test_is_valid_sacl_not_valid(void **state) {
 
     // Set the new ACL size
     new_sacl_size = sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(unsigned long);
-    new_sacl = (PACL) win_alloc(new_sacl_size);
+    new_sacl = (PACL)win_alloc(new_sacl_size);
     InitializeAcl(new_sacl, new_sacl_size, ACL_REVISION);
-    new_sacl->AceCount=1;
+    new_sacl->AceCount = 1;
 
     will_return(wrap_GetAce, &new_sacl);
     will_return(wrap_GetAce, 1);
@@ -3218,7 +3329,8 @@ void test_is_valid_sacl_not_valid(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_is_valid_sacl_valid(void **state) {
+void test_is_valid_sacl_valid(void** state)
+{
     int ret;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     ACL new_sacl;
@@ -3228,7 +3340,7 @@ void test_is_valid_sacl_valid(void **state) {
     ev_sid_size = 1;
 
     // Set the ACL and ACE data
-    new_sacl.AceCount=1;
+    new_sacl.AceCount = 1;
     ace.Header.AceFlags = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE | SUCCESSFUL_ACCESS_ACE_FLAG;
     ace.Mask = FILE_WRITE_DATA | WRITE_DAC | FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | DELETE;
 
@@ -3245,8 +3357,9 @@ void test_is_valid_sacl_valid(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_replace_device_path_invalid_path(void **state) {
-    char *path = strdup("invalid\\path");
+void test_replace_device_path_invalid_path(void** state)
+{
+    char* path = strdup("invalid\\path");
 
     replace_device_path(&path);
 
@@ -3255,8 +3368,9 @@ void test_replace_device_path_invalid_path(void **state) {
     assert_string_equal(path, "invalid\\path");
 }
 
-void test_replace_device_path_empty_wdata_device(void **state) {
-    char *path = strdup("\\C:\\a\\path");
+void test_replace_device_path_empty_wdata_device(void** state)
+{
+    char* path = strdup("\\C:\\a\\path");
 
     replace_device_path(&path);
 
@@ -3265,17 +3379,20 @@ void test_replace_device_path_empty_wdata_device(void **state) {
     assert_string_equal(path, "\\C:\\a\\path");
 }
 
-void test_replace_device_path_device_not_found(void **state) {
-    char *path = strdup("\\Device\\NotFound0\\a\\path");
+void test_replace_device_path_device_not_found(void** state)
+{
+    char* path = strdup("\\Device\\NotFound0\\a\\path");
     syscheck.wdata.device[0] = strdup("\\Device\\HarddiskVolume1");
     syscheck.wdata.drive[0] = strdup("D:");
     syscheck.wdata.device[1] = strdup("\\Device\\Floppy0");
     syscheck.wdata.drive[1] = strdup("A:");
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6304): Find device '\\Device\\HarddiskVolume1' in path '\\Device\\NotFound0\\a\\path'");
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6304): Find device '\\Device\\Floppy0' in path '\\Device\\NotFound0\\a\\path'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6304): Find device '\\Device\\HarddiskVolume1' in path '\\Device\\NotFound0\\a\\path'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6304): Find device '\\Device\\Floppy0' in path '\\Device\\NotFound0\\a\\path'");
 
     replace_device_path(&path);
 
@@ -3284,19 +3401,20 @@ void test_replace_device_path_device_not_found(void **state) {
     assert_string_equal(path, "\\Device\\NotFound0\\a\\path");
 }
 
-void test_replace_device_path_device_found(void **state) {
-    char *path = strdup("\\Device\\Floppy0\\a\\path");
+void test_replace_device_path_device_found(void** state)
+{
+    char* path = strdup("\\Device\\Floppy0\\a\\path");
     syscheck.wdata.device[0] = strdup("\\Device\\HarddiskVolume1");
     syscheck.wdata.drive[0] = strdup("D:");
     syscheck.wdata.device[1] = strdup("\\Device\\Floppy0");
     syscheck.wdata.drive[1] = strdup("A:");
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6304): Find device '\\Device\\HarddiskVolume1' in path '\\Device\\Floppy0\\a\\path'");
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6304): Find device '\\Device\\Floppy0' in path '\\Device\\Floppy0\\a\\path'");
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6305): Replacing '\\Device\\Floppy0\\a\\path' to 'A:\\a\\path'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6304): Find device '\\Device\\HarddiskVolume1' in path '\\Device\\Floppy0\\a\\path'");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "(6304): Find device '\\Device\\Floppy0' in path '\\Device\\Floppy0\\a\\path'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6305): Replacing '\\Device\\Floppy0\\a\\path' to 'A:\\a\\path'");
 
     replace_device_path(&path);
 
@@ -3307,15 +3425,16 @@ void test_replace_device_path_device_found(void **state) {
     assert_int_equal(_msize(path), strlen("A:\\a\\path") + 1);
 }
 
-void test_replace_device_path_path_is_device(void **state) {
-    char *path = strdup("\\Device\\HarddiskVolume5\\");
+void test_replace_device_path_path_is_device(void** state)
+{
+    char* path = strdup("\\Device\\HarddiskVolume5\\");
     syscheck.wdata.device[0] = strdup("\\Device\\HarddiskVolume5\\");
     syscheck.wdata.drive[0] = strdup("V:\\");
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6304): Find device '\\Device\\HarddiskVolume5\\' in path '\\Device\\HarddiskVolume5\\'");
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6305): Replacing '\\Device\\HarddiskVolume5\\' to 'V:\\'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6304): Find device '\\Device\\HarddiskVolume5\\' in path '\\Device\\HarddiskVolume5\\'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6305): Replacing '\\Device\\HarddiskVolume5\\' to 'V:\\'");
 
     replace_device_path(&path);
 
@@ -3325,9 +3444,10 @@ void test_replace_device_path_path_is_device(void **state) {
     assert_int_equal(_msize(path), strlen("V:\\") + 1);
 }
 
-void test_get_drive_names_access_denied_error(void **state) {
-    wchar_t *volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
-    char *device = "C";
+void test_get_drive_names_access_denied_error(void** state)
+{
+    wchar_t* volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
+    char* device = "C";
 
     expect_memory(wrap_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
     will_return(wrap_GetVolumePathNamesForVolumeNameW, OS_MAXSTR);
@@ -3340,12 +3460,13 @@ void test_get_drive_names_access_denied_error(void **state) {
     get_drive_names(volume_name, device);
 }
 
-void test_get_drive_names_more_data_error(void **state) {
-    wchar_t *volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
-    char *device = "C";
+void test_get_drive_names_more_data_error(void** state)
+{
+    wchar_t* volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
+    char* device = "C";
 
-    expect_string(wrap_GetVolumePathNamesForVolumeNameW,
-        lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
+    expect_string(
+        wrap_GetVolumePathNamesForVolumeNameW, lpszVolumeName, L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}");
 
     will_return(wrap_GetVolumePathNamesForVolumeNameW, OS_MAXSTR);
     will_return(wrap_GetVolumePathNamesForVolumeNameW, 0);
@@ -3364,10 +3485,11 @@ void test_get_drive_names_more_data_error(void **state) {
     get_drive_names(volume_name, device);
 }
 
-void test_get_drive_names_success(void **state) {
-    wchar_t *volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
-    char *device = "C";
-    wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+void test_get_drive_names_success(void** state)
+{
+    wchar_t* volume_name = L"\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}";
+    char* device = "C";
+    wchar_t* volume_paths = L"A\0C\0\\Some\\path\0";
 
     expect_memory(wrap_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
 
@@ -3377,13 +3499,14 @@ void test_get_drive_names_success(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'A'");
     expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point 'C'");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
-
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "(6303): Device 'C' associated with the mounting point '\\Some\\path'");
 
     get_drive_names(volume_name, device);
 }
 
-void test_get_volume_names_unable_to_find_first_volume(void **state) {
+void test_get_volume_names_unable_to_find_first_volume(void** state)
+{
     int ret;
     will_return(wrap_FindFirstVolumeW, L"");
     will_return(wrap_FindFirstVolumeW, INVALID_HANDLE_VALUE);
@@ -3400,7 +3523,8 @@ void test_get_volume_names_unable_to_find_first_volume(void **state) {
     assert_int_equal(ret, -1);
 }
 
-void test_get_volume_names_bad_path(void **state) {
+void test_get_volume_names_bad_path(void** state)
+{
     int ret;
     will_return(wrap_FindFirstVolumeW, L"Not a valid volume");
     will_return(wrap_FindFirstVolumeW, (HANDLE)123456);
@@ -3415,9 +3539,10 @@ void test_get_volume_names_bad_path(void **state) {
     assert_int_equal(ret, -1);
 }
 
-void test_get_volume_names_no_dos_device(void **state) {
+void test_get_volume_names_no_dos_device(void** state)
+{
     int ret;
-    wchar_t *str = L"";
+    wchar_t* str = L"";
     will_return(wrap_FindFirstVolumeW, L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\");
     will_return(wrap_FindFirstVolumeW, (HANDLE)123456);
 
@@ -3438,10 +3563,11 @@ void test_get_volume_names_no_dos_device(void **state) {
     assert_int_equal(ret, -1);
 }
 
-void test_get_volume_names_error_on_next_volume(void **state) {
+void test_get_volume_names_error_on_next_volume(void** state)
+{
     int ret;
-    wchar_t *str = L"C:";
-    wchar_t *volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
+    wchar_t* str = L"C:";
+    wchar_t* volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
 
     will_return(wrap_FindFirstVolumeW, volume_name);
     will_return(wrap_FindFirstVolumeW, (HANDLE)123456);
@@ -3453,7 +3579,7 @@ void test_get_volume_names_error_on_next_volume(void **state) {
 
     // Inside get_drive_names
     {
-        wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+        wchar_t* volume_paths = L"A\0C\0\\Some\\path\0";
 
         expect_memory(wrap_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
 
@@ -3463,7 +3589,8 @@ void test_get_volume_names_error_on_next_volume(void **state) {
 
         expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'A'");
         expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'C'");
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
+        expect_string(
+            __wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
     }
 
     expect_value(wrap_FindNextVolumeW, hFindVolume, (HANDLE)123456);
@@ -3482,10 +3609,11 @@ void test_get_volume_names_error_on_next_volume(void **state) {
     assert_int_equal(ret, -1);
 }
 
-void test_get_volume_names_no_more_files(void **state) {
+void test_get_volume_names_no_more_files(void** state)
+{
     int ret;
-    wchar_t *str = L"C:";
-    wchar_t *volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
+    wchar_t* str = L"C:";
+    wchar_t* volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
 
     will_return(wrap_FindFirstVolumeW, volume_name);
     will_return(wrap_FindFirstVolumeW, (HANDLE)123456);
@@ -3497,7 +3625,7 @@ void test_get_volume_names_no_more_files(void **state) {
 
     // Inside get_drive_names
     {
-        wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+        wchar_t* volume_paths = L"A\0C\0\\Some\\path\0";
 
         expect_memory(wrap_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
 
@@ -3507,7 +3635,8 @@ void test_get_volume_names_no_more_files(void **state) {
 
         expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'A'");
         expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'C'");
-        expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
+        expect_string(
+            __wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
     }
 
     expect_value(wrap_FindNextVolumeW, hFindVolume, (HANDLE)123456);
@@ -3524,8 +3653,11 @@ void test_get_volume_names_no_more_files(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_notify_SACL_change(void **state) {
-    expect_string(__wrap_SendMSG, message,
+void test_notify_SACL_change(void** state)
+{
+    expect_string(
+        __wrap_SendMSG,
+        message,
         "wazuh: Audit: The SACL of 'C:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
     expect_string(__wrap_SendMSG, locmsg, "syscheck");
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
@@ -3534,8 +3666,9 @@ void test_notify_SACL_change(void **state) {
     notify_SACL_change("C:\\a\\path");
 }
 
-void test_whodata_hash_add_unable_to_add(void **state) {
-    wchar_t *data = L"Some random data";
+void test_whodata_hash_add_unable_to_add(void** state)
+{
+    wchar_t* data = L"Some random data";
     int ret;
 
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash*)123456);
@@ -3543,16 +3676,17 @@ void test_whodata_hash_add_unable_to_add(void **state) {
     expect_memory(__wrap_OSHash_Add_ex, data, data, wcslen(data));
     will_return(__wrap_OSHash_Add_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6631): The event could not be added to the 'tag' hash table. Target: 'key'.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6631): The event could not be added to the 'tag' hash table. Target: 'key'.");
 
     ret = whodata_hash_add((OSHash*)123456, "key", data, "tag");
 
     assert_int_equal(ret, 0);
 }
 
-void test_whodata_hash_add_duplicate_entry(void **state) {
-    wchar_t *data = L"Some random data";
+void test_whodata_hash_add_duplicate_entry(void** state)
+{
+    wchar_t* data = L"Some random data";
     int ret;
 
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash*)123456);
@@ -3560,7 +3694,9 @@ void test_whodata_hash_add_duplicate_entry(void **state) {
     expect_memory(__wrap_OSHash_Add_ex, data, data, wcslen(data));
     will_return(__wrap_OSHash_Add_ex, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(
+        __wrap__mdebug2,
+        formatted_msg,
         "(6630): The event could not be added to the 'tag' hash table because it is duplicated. Target: 'key'.");
 
     ret = whodata_hash_add((OSHash*)123456, "key", data, "tag");
@@ -3568,8 +3704,9 @@ void test_whodata_hash_add_duplicate_entry(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_whodata_hash_add_success(void **state) {
-    wchar_t *data = L"Some random data";
+void test_whodata_hash_add_success(void** state)
+{
+    wchar_t* data = L"Some random data";
     int ret;
 
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash*)123456);
@@ -3582,16 +3719,16 @@ void test_whodata_hash_add_success(void **state) {
     assert_int_equal(ret, 2);
 }
 /*****************************restore_sacls********************************/
-void test_restore_sacls_openprocesstoken_failed(void **state){
+void test_restore_sacls_openprocesstoken_failed(void** state)
+{
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 0);
 
-    will_return(wrap_GetLastError, (unsigned int) 500);
+    will_return(wrap_GetLastError, (unsigned int)500);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6648): OpenProcessToken() failed. Error '500'.");
+    expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
 
     expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
     will_return(wrap_CloseHandle, 0);
@@ -3601,7 +3738,8 @@ void test_restore_sacls_openprocesstoken_failed(void **state){
     restore_sacls();
 }
 
-void test_restore_sacls_set_privilege_failed(void **state){
+void test_restore_sacls_set_privilege_failed(void** state)
+{
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
     will_return(wrap_OpenProcessToken, (HANDLE)123456);
@@ -3612,7 +3750,8 @@ void test_restore_sacls_set_privilege_failed(void **state){
     will_return(wrap_LookupPrivilegeValue, 0);
     will_return(wrap_LookupPrivilegeValue, 0);
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
-    expect_string(__wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
     expect_string(__wrap__merror, formatted_msg, "(6659): The privilege could not be activated. Error: '5'.");
 
@@ -3623,9 +3762,10 @@ void test_restore_sacls_set_privilege_failed(void **state){
     restore_sacls();
 }
 
-int setup_restore_sacls(void **state) {
-    directory_t *dir_it;
-    OSListNode *node_it;
+int setup_restore_sacls(void** state)
+{
+    directory_t* dir_it;
+    OSListNode* node_it;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -3633,19 +3773,21 @@ int setup_restore_sacls(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         dir_it->dirs_status.status &= ~WD_IGNORE_REST;
     }
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_IGNORE_REST;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_IGNORE_REST;
 
     return 0;
 }
 
-int teardown_restore_sacls(void **state) {
-    directory_t *dir_it;
-    OSListNode *node_it;
+int teardown_restore_sacls(void** state)
+{
+    directory_t* dir_it;
+    OSListNode* node_it;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -3653,20 +3795,23 @@ int teardown_restore_sacls(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
-        if (FIM_MODE(dir_it->options) == FIM_WHODATA) {
-            ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_IGNORE_REST;
+        if (FIM_MODE(dir_it->options) == FIM_WHODATA)
+        {
+            ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status |= WD_IGNORE_REST;
         }
     }
 
     return 0;
 }
 
-void test_restore_sacls_securityNameInfo_failed(void **state){
+void test_restore_sacls_securityNameInfo_failed(void** state)
+{
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -3687,7 +3832,9 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo,
+                  utf8_path,
+                  ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     will_return(__wrap_utf8_GetNamedSecurityInfo, NULL);
@@ -3716,10 +3863,11 @@ void test_restore_sacls_securityNameInfo_failed(void **state){
     restore_sacls();
 }
 
-void test_restore_sacls_deleteAce_failed(void **state){
+void test_restore_sacls_deleteAce_failed(void** state)
+{
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -3740,7 +3888,9 @@ void test_restore_sacls_deleteAce_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo,
+                  utf8_path,
+                  ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
@@ -3774,10 +3924,11 @@ void test_restore_sacls_deleteAce_failed(void **state){
     restore_sacls();
 }
 
-void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
+void test_restore_sacls_SetNamedSecurityInfo_failed(void** state)
+{
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -3798,7 +3949,9 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo,
+                  utf8_path,
+                  ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
@@ -3810,7 +3963,9 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo,
+                  utf8_path,
+                  ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
@@ -3841,10 +3996,11 @@ void test_restore_sacls_SetNamedSecurityInfo_failed(void **state){
     restore_sacls();
 }
 
-void test_restore_sacls_success(void **state){
+void test_restore_sacls_success(void** state)
+{
     will_return(wrap_GetCurrentProcess, (HANDLE)4321);
     expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-    will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+    will_return(wrap_OpenProcessToken, (HANDLE)123456);
     will_return(wrap_OpenProcessToken, 1);
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -3865,7 +4021,9 @@ void test_restore_sacls_success(void **state){
         expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
     }
     // GetNamedSecurity
-    expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_GetNamedSecurityInfo,
+                  utf8_path,
+                  ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     ACL acl;
     expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
@@ -3877,7 +4035,9 @@ void test_restore_sacls_success(void **state){
     expect_value(wrap_DeleteAce, dwAceIndex, 0);
     will_return(wrap_DeleteAce, 1);
 
-    expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    expect_string(__wrap_utf8_SetNamedSecurityInfo,
+                  utf8_path,
+                  ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
     expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
     expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
@@ -3888,7 +4048,10 @@ void test_restore_sacls_success(void **state){
 
     char debug_msg[OS_MAXSTR];
 
-    snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+    snprintf(debug_msg,
+             OS_MAXSTR,
+             FIM_SACL_RESTORED,
+             ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     /* Inside set_privilege */
@@ -3912,16 +4075,19 @@ void test_restore_sacls_success(void **state){
     restore_sacls();
 }
 /***********************************restore_audit_policies***********************************/
-void test_restore_audit_policies_backup_not_found(void **state) {
+void test_restore_audit_policies_backup_not_found(void** state)
+{
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, -1);
-    expect_string(__wrap__merror, formatted_msg, "(6622): There is no backup of audit policies. Policies will not be restored.");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6622): There is no backup of audit policies. Policies will not be restored.");
 
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
 }
 
-void test_restore_audit_policies_command_failed(void **state) {
+void test_restore_audit_policies_command_failed(void** state)
+{
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 0);
 
@@ -3929,19 +4095,23 @@ void test_restore_audit_policies_command_failed(void **state) {
     int retries = 5;
     char error_msgs[retries + 1][OS_SIZE_1024];
 
-    for (i = 0;  i <= retries; i++) {
-	    expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries+i, NULL, "OUTPUT COMMAND", -1, -1);
+    for (i = 0; i <= retries; i++)
+    {
+        expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries + i, NULL, "OUTPUT COMMAND", -1, -1);
         expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'failed to execute command'.");
         snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
         expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
     }
 
-    expect_string(__wrap__merror, formatted_msg, "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
 }
 
-void test_restore_audit_policies_command2_failed(void **state) {
+void test_restore_audit_policies_command2_failed(void** state)
+{
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 0);
 
@@ -3949,20 +4119,25 @@ void test_restore_audit_policies_command2_failed(void **state) {
     int retries = 5;
     char error_msgs[retries + 1][OS_SIZE_1024];
 
-
-    for (i = 0;  i <= retries; i++) {
-        expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries+i, NULL, "OUTPUT COMMAND", -1, 1);
-        expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'time overtaken while running the command'.");
+    for (i = 0; i <= retries; i++)
+    {
+        expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries + i, NULL, "OUTPUT COMMAND", -1, 1);
+        expect_string(__wrap__merror,
+                      formatted_msg,
+                      "(6635): Auditpol backup error: 'time overtaken while running the command'.");
         snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
         expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
     }
 
-    expect_string(__wrap__merror, formatted_msg, "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
 }
 
-void test_restore_audit_policies_command3_failed(void **state) {
+void test_restore_audit_policies_command3_failed(void** state)
+{
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 0);
 
@@ -3970,19 +4145,25 @@ void test_restore_audit_policies_command3_failed(void **state) {
     int retries = 5;
     char error_msgs[retries + 1][OS_SIZE_1024];
 
-    for (i = 0;  i <= retries; i++) {
-        expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries+i, NULL, "OUTPUT COMMAND", -1, 0);
-        expect_string(__wrap__merror, formatted_msg, "(6635): Auditpol backup error: 'command returned failure'. Output: 'OUTPUT COMMAND'.");
+    for (i = 0; i <= retries; i++)
+    {
+        expect_wm_exec("auditpol /restore /file:\"tmp\\backup-policies\"", retries + i, NULL, "OUTPUT COMMAND", -1, 0);
+        expect_string(__wrap__merror,
+                      formatted_msg,
+                      "(6635): Auditpol backup error: 'command returned failure'. Output: 'OUTPUT COMMAND'.");
         snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
         expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
     }
 
-    expect_string(__wrap__merror, formatted_msg, "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6956): After 6 attempts the Auditpol command could not be executed successfully.");
     int ret = restore_audit_policies();
     assert_int_equal(ret, 1);
 }
 
-void test_restore_audit_policies_success(void **state) {
+void test_restore_audit_policies_success(void** state)
+{
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
     will_return(__wrap_IsFile, 0);
 
@@ -3997,7 +4178,8 @@ void test_restore_audit_policies_success(void **state) {
     assert_int_equal(ret, 0);
 }
 /****************************************audit_restore**************************************/
-void test_audit_restore(void **state) {
+void test_audit_restore(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -4008,7 +4190,7 @@ void test_audit_restore(void **state) {
     {
         will_return(wrap_GetCurrentProcess, (HANDLE)4321);
         expect_value(wrap_OpenProcessToken, DesiredAccess, TOKEN_ADJUST_PRIVILEGES);
-        will_return(wrap_OpenProcessToken, (HANDLE) 123456);
+        will_return(wrap_OpenProcessToken, (HANDLE)123456);
         will_return(wrap_OpenProcessToken, 1);
 
         // set_privilege
@@ -4020,10 +4202,13 @@ void test_audit_restore(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
         // GetNamedSecurity
-        expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+        expect_string(__wrap_utf8_GetNamedSecurityInfo,
+                      utf8_path,
+                      ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         ACL acl;
         expect_value(__wrap_utf8_GetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
         expect_value(__wrap_utf8_GetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
@@ -4035,7 +4220,9 @@ void test_audit_restore(void **state) {
         expect_value(wrap_DeleteAce, dwAceIndex, 0);
         will_return(wrap_DeleteAce, 1);
 
-        expect_string(__wrap_utf8_SetNamedSecurityInfo, utf8_path, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+        expect_string(__wrap_utf8_SetNamedSecurityInfo,
+                      utf8_path,
+                      ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         expect_value(__wrap_utf8_SetNamedSecurityInfo, obj_type, SE_FILE_OBJECT);
         expect_value(__wrap_utf8_SetNamedSecurityInfo, si, SACL_SECURITY_INFORMATION);
         expect_value(__wrap_utf8_SetNamedSecurityInfo, owner, NULL);
@@ -4046,7 +4233,10 @@ void test_audit_restore(void **state) {
 
         char debug_msg[OS_MAXSTR];
 
-        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_RESTORED, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+        snprintf(debug_msg,
+                 OS_MAXSTR,
+                 FIM_SACL_RESTORED,
+                 ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
         /* Inside set_privilege */
@@ -4059,7 +4249,8 @@ void test_audit_restore(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
@@ -4083,12 +4274,12 @@ void test_audit_restore(void **state) {
 
     restore_policies = 1;
     audit_restore();
-
 }
 
 /********************************************************************************************/
 /**********************************whodata_event_render**************************************/
-void test_whodata_event_render_fail_to_render_event(void **state) {
+void test_whodata_event_render_fail_to_render_event(void** state)
+{
     EVT_HANDLE event = NULL;
     PEVT_VARIANT result = NULL;
 
@@ -4097,9 +4288,9 @@ void test_whodata_event_render_fail_to_render_event(void **state) {
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, 0); // BufferSize
-    will_return(wrap_EvtRender, NULL); // Buffer
-    will_return(wrap_EvtRender, 0); // BufferUsed
-    will_return(wrap_EvtRender, 0); // PropertyCount
+    will_return(wrap_EvtRender, NULL);           // Buffer
+    will_return(wrap_EvtRender, 0);              // BufferUsed
+    will_return(wrap_EvtRender, 0);              // PropertyCount
     will_return(wrap_EvtRender, 0);
 
     /* EvtRender second call */
@@ -4107,9 +4298,9 @@ void test_whodata_event_render_fail_to_render_event(void **state) {
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, 0); // BufferSize
-    will_return(wrap_EvtRender, NULL); // Buffer
-    will_return(wrap_EvtRender, 0);// BufferUsed
-    will_return(wrap_EvtRender, 0); // PropertyCount
+    will_return(wrap_EvtRender, NULL);           // Buffer
+    will_return(wrap_EvtRender, 0);              // BufferUsed
+    will_return(wrap_EvtRender, 0);              // PropertyCount
     will_return(wrap_EvtRender, 0);
 
     will_return(wrap_GetLastError, 500);
@@ -4120,7 +4311,8 @@ void test_whodata_event_render_fail_to_render_event(void **state) {
     assert_null(result);
 }
 
-void test_whodata_event_render_wrong_property_count(void **state) {
+void test_whodata_event_render_wrong_property_count(void** state)
+{
     EVT_HANDLE event = NULL;
     EVT_VARIANT buffer[NUM_EVENTS];
     PEVT_VARIANT result = NULL;
@@ -4130,9 +4322,9 @@ void test_whodata_event_render_wrong_property_count(void **state) {
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, 0); // BufferSize
-    will_return(wrap_EvtRender, NULL); // Buffer
-    will_return(wrap_EvtRender, SIZE_EVENTS); // BufferUsed
-    will_return(wrap_EvtRender, 0); // PropertyCount
+    will_return(wrap_EvtRender, NULL);           // Buffer
+    will_return(wrap_EvtRender, SIZE_EVENTS);    // BufferUsed
+    will_return(wrap_EvtRender, 0);              // PropertyCount
     will_return(wrap_EvtRender, 0);
 
     /* EvtRender second call */
@@ -4142,9 +4334,9 @@ void test_whodata_event_render_wrong_property_count(void **state) {
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
-    will_return(wrap_EvtRender, buffer); // Buffer
-    will_return(wrap_EvtRender, SIZE_EVENTS);// BufferUsed
-    will_return(wrap_EvtRender, 0); // PropertyCount
+    will_return(wrap_EvtRender, buffer);                   // Buffer
+    will_return(wrap_EvtRender, SIZE_EVENTS);              // BufferUsed
+    will_return(wrap_EvtRender, 0);                        // PropertyCount
     will_return(wrap_EvtRender, 1);
 
     expect_string(__wrap__mwarn, formatted_msg, "(6934): Invalid number of rendered parameters.");
@@ -4153,7 +4345,8 @@ void test_whodata_event_render_wrong_property_count(void **state) {
     assert_null(result);
 }
 
-void test_whodata_event_render_success(void **state) {
+void test_whodata_event_render_success(void** state)
+{
     EVT_HANDLE event = NULL;
     EVT_VARIANT buffer[NUM_EVENTS];
     PEVT_VARIANT result = NULL;
@@ -4163,9 +4356,9 @@ void test_whodata_event_render_success(void **state) {
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, 0); // BufferSize
-    will_return(wrap_EvtRender, NULL); // Buffer
-    will_return(wrap_EvtRender, SIZE_EVENTS); // BufferUsed
-    will_return(wrap_EvtRender, 0); // PropertyCount
+    will_return(wrap_EvtRender, NULL);           // Buffer
+    will_return(wrap_EvtRender, SIZE_EVENTS);    // BufferUsed
+    will_return(wrap_EvtRender, 0);              // PropertyCount
     will_return(wrap_EvtRender, 0);
 
     /* EvtRender second call */
@@ -4175,9 +4368,9 @@ void test_whodata_event_render_success(void **state) {
     expect_value(wrap_EvtRender, Fragment, event);
     expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
     expect_value(wrap_EvtRender, BufferSize, SIZE_EVENTS); // BufferSize
-    will_return(wrap_EvtRender, buffer); // Buffer
-    will_return(wrap_EvtRender, SIZE_EVENTS);// BufferUsed
-    will_return(wrap_EvtRender, 9); // PropertyCount
+    will_return(wrap_EvtRender, buffer);                   // Buffer
+    will_return(wrap_EvtRender, SIZE_EVENTS);              // BufferUsed
+    will_return(wrap_EvtRender, 9);                        // PropertyCount
     will_return(wrap_EvtRender, 1);
 
     result = whodata_event_render(event);
@@ -4189,7 +4382,8 @@ void test_whodata_event_render_success(void **state) {
 
 /********************************************************************************************/
 /**********************************whodata_get_event_id**************************************/
-void test_whodata_get_event_id_null_raw_data(void **state) {
+void test_whodata_get_event_id_null_raw_data(void** state)
+{
     PEVT_VARIANT raw_data = NULL;
     short event_id;
     int result;
@@ -4199,7 +4393,8 @@ void test_whodata_get_event_id_null_raw_data(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_event_id_null_event_id(void **state) {
+void test_whodata_get_event_id_null_event_id(void** state)
+{
     EVT_VARIANT raw_data;
     int result;
 
@@ -4208,16 +4403,17 @@ void test_whodata_get_event_id_null_event_id(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_event_id_wrong_event_type(void **state) {
+void test_whodata_get_event_id_wrong_event_type(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     short event_id;
     int result;
@@ -4229,16 +4425,17 @@ void test_whodata_get_event_id_wrong_event_type(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_event_id_success(void **state) {
+void test_whodata_get_event_id_success(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=1234,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 1234, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     short event_id;
     int result;
@@ -4251,7 +4448,8 @@ void test_whodata_get_event_id_success(void **state) {
 
 /********************************************************************************************/
 /**********************************whodata_get_handle_id**************************************/
-void test_whodata_get_handle_id_null_raw_data(void **state) {
+void test_whodata_get_handle_id_null_raw_data(void** state)
+{
     PEVT_VARIANT raw_data = NULL;
     unsigned __int64 handle_id;
     int result;
@@ -4261,7 +4459,8 @@ void test_whodata_get_handle_id_null_raw_data(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_handle_id_null_handle_id(void **state) {
+void test_whodata_get_handle_id_null_handle_id(void** state)
+{
     EVT_VARIANT raw_data;
     int result;
 
@@ -4270,16 +4469,17 @@ void test_whodata_get_handle_id_null_handle_id(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_handle_id_64bit_handle_success(void **state) {
+void test_whodata_get_handle_id_64bit_handle_success(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned __int64 handle_id;
     int result;
@@ -4290,16 +4490,17 @@ void test_whodata_get_handle_id_64bit_handle_success(void **state) {
     assert_int_equal(handle_id, 0x123456);
 }
 
-void test_whodata_get_handle_id_32bit_handle_wrong_type(void **state) {
+void test_whodata_get_handle_id_32bit_handle_wrong_type(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned __int64 handle_id;
     int result;
@@ -4311,16 +4512,17 @@ void test_whodata_get_handle_id_32bit_handle_wrong_type(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_handle_id_32bit_success(void **state) {
+void test_whodata_get_handle_id_32bit_success(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeSizeT },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeSizeT},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned __int64 handle_id;
     int result;
@@ -4331,16 +4533,17 @@ void test_whodata_get_handle_id_32bit_success(void **state) {
     assert_int_equal(handle_id, 0x123456);
 }
 
-void test_whodata_get_handle_id_32bit_hex_success(void **state) {
+void test_whodata_get_handle_id_32bit_hex_success(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned __int64 handle_id;
     int result;
@@ -4353,7 +4556,8 @@ void test_whodata_get_handle_id_32bit_hex_success(void **state) {
 
 /********************************************************************************************/
 /**********************************whodata_get_access_mask**************************************/
-void test_whodata_get_access_mask_null_raw_data(void **state) {
+void test_whodata_get_access_mask_null_raw_data(void** state)
+{
     PEVT_VARIANT raw_data = NULL;
     unsigned long mask;
     int result;
@@ -4363,7 +4567,8 @@ void test_whodata_get_access_mask_null_raw_data(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_access_mask_null_mask(void **state) {
+void test_whodata_get_access_mask_null_mask(void** state)
+{
     EVT_VARIANT raw_data;
     int result;
 
@@ -4372,16 +4577,17 @@ void test_whodata_get_access_mask_null_mask(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_access_mask_wrong_type(void **state) {
+void test_whodata_get_access_mask_wrong_type(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long mask;
     int result;
@@ -4393,16 +4599,17 @@ void test_whodata_get_access_mask_wrong_type(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_get_access_mask_success(void **state) {
+void test_whodata_get_access_mask_success(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long mask;
     int result;
@@ -4415,7 +4622,8 @@ void test_whodata_get_access_mask_success(void **state) {
 
 /********************************************************************************************/
 /**********************************whodata_event_parse**************************************/
-void test_whodata_event_parse_null_raw_data(void **state) {
+void test_whodata_event_parse_null_raw_data(void** state)
+{
     PEVT_VARIANT raw_data = NULL;
     whodata_evt event_data;
     int result;
@@ -4425,7 +4633,8 @@ void test_whodata_event_parse_null_raw_data(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_event_parse_null_event_data(void **state) {
+void test_whodata_event_parse_null_event_data(void** state)
+{
     EVT_VARIANT raw_data;
     int result;
 
@@ -4434,16 +4643,17 @@ void test_whodata_event_parse_null_event_data(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_event_parse_wrong_path_type(void **state) {
+void test_whodata_event_parse_wrong_path_type(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     whodata_evt event_data;
     int result;
@@ -4455,16 +4665,17 @@ void test_whodata_event_parse_wrong_path_type(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_event_parse_fail_to_get_path(void **state) {
+void test_whodata_event_parse_fail_to_get_path(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     whodata_evt event_data;
     int result;
@@ -4477,7 +4688,8 @@ void test_whodata_event_parse_fail_to_get_path(void **state) {
 
         will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-        expect_string(__wrap__mdebug1, formatted_msg, "(6306): The path could not be processed in Whodata mode. Error: 5");
+        expect_string(
+            __wrap__mdebug1, formatted_msg, "(6306): The path could not be processed in Whodata mode. Error: 5");
     }
 
     result = whodata_event_parse(raw_data, &event_data);
@@ -4485,16 +4697,17 @@ void test_whodata_event_parse_fail_to_get_path(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_event_parse_filter_path(void **state) {
+void test_whodata_event_parse_filter_path(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"C:\\$recycle.bin\\test.file",    .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0,                                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,                           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",                         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"C:\\$recycle.bin\\test.file", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     whodata_evt event_data;
     int result;
@@ -4519,8 +4732,9 @@ void test_whodata_event_parse_filter_path(void **state) {
 
     // Inside whodata_path_filter
     {
-        expect_string(__wrap__mdebug2, formatted_msg,
-            "(6289): File 'c:\\$recycle.bin\\test.file' is in the recycle bin. It will be discarded.");
+        expect_string(__wrap__mdebug2,
+                      formatted_msg,
+                      "(6289): File 'c:\\$recycle.bin\\test.file' is in the recycle bin. It will be discarded.");
     }
 
     result = whodata_event_parse(raw_data, &event_data);
@@ -4528,16 +4742,17 @@ void test_whodata_event_parse_filter_path(void **state) {
     assert_int_equal(result, -1);
 }
 
-void test_whodata_event_parse_wrong_types(void **state) {
+void test_whodata_event_parse_wrong_types(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
     };
     whodata_evt event_data;
     int result;
@@ -4569,16 +4784,17 @@ void test_whodata_event_parse_wrong_types(void **state) {
     assert_null(event_data.user_id);
 }
 
-void test_whodata_event_parse_32bit_process_id(void **state) {
+void test_whodata_event_parse_32bit_process_id(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeSizeT },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeSizeT},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     whodata_evt event_data;
     int result;
@@ -4616,16 +4832,17 @@ void test_whodata_event_parse_32bit_process_id(void **state) {
     assert_null(event_data.user_id);
 }
 
-void test_whodata_event_parse_32bit_hex_process_id(void **state) {
+void test_whodata_event_parse_32bit_hex_process_id(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Arr=NULL,               .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Arr=NULL,               .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .Int64Arr=NULL,               .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Arr = NULL, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Arr = NULL, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.Int64Arr = NULL, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     whodata_evt event_data;
     int result;
@@ -4662,16 +4879,17 @@ void test_whodata_event_parse_32bit_hex_process_id(void **state) {
     assert_null(event_data.user_id);
 }
 
-void test_whodata_event_parse_64bit_process_id(void **state) {
+void test_whodata_event_parse_64bit_process_id(void** state)
+{
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     whodata_evt event_data;
     int result;
@@ -4709,7 +4927,8 @@ void test_whodata_event_parse_64bit_process_id(void **state) {
 
 /********************************************************************************************/
 /**********************************whodata_callback**************************************/
-void test_whodata_callback_fail_to_render_event(void **state) {
+void test_whodata_callback_fail_to_render_event(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     unsigned long result;
@@ -4721,9 +4940,9 @@ void test_whodata_callback_fail_to_render_event(void **state) {
         expect_value(wrap_EvtRender, Fragment, event);
         expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
         expect_value(wrap_EvtRender, BufferSize, 0); // BufferSize
-        will_return(wrap_EvtRender, NULL); // Buffer
-        will_return(wrap_EvtRender, 0); // BufferUsed
-        will_return(wrap_EvtRender, 0); // PropertyCount
+        will_return(wrap_EvtRender, NULL);           // Buffer
+        will_return(wrap_EvtRender, 0);              // BufferUsed
+        will_return(wrap_EvtRender, 0);              // PropertyCount
         will_return(wrap_EvtRender, 0);
 
         /* EvtRender second call */
@@ -4731,9 +4950,9 @@ void test_whodata_callback_fail_to_render_event(void **state) {
         expect_value(wrap_EvtRender, Fragment, event);
         expect_value(wrap_EvtRender, Flags, EvtRenderEventValues);
         expect_value(wrap_EvtRender, BufferSize, 0); // BufferSize
-        will_return(wrap_EvtRender, NULL); // Buffer
-        will_return(wrap_EvtRender, 0);// BufferUsed
-        will_return(wrap_EvtRender, 0); // PropertyCount
+        will_return(wrap_EvtRender, NULL);           // Buffer
+        will_return(wrap_EvtRender, 0);              // BufferUsed
+        will_return(wrap_EvtRender, 0);              // PropertyCount
         will_return(wrap_EvtRender, 0);
 
         will_return(wrap_GetLastError, 500);
@@ -4744,18 +4963,19 @@ void test_whodata_callback_fail_to_render_event(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_fail_to_get_event_id(void **state) {
+void test_whodata_callback_fail_to_get_event_id(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -4770,18 +4990,19 @@ void test_whodata_callback_fail_to_get_event_id(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_fail_to_get_handle_id(void **state) {
+void test_whodata_callback_fail_to_get_handle_id(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -4796,18 +5017,19 @@ void test_whodata_callback_fail_to_get_handle_id(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_fail_to_parse_event(void **state) {
+void test_whodata_callback_4656_fail_to_parse_event(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -4822,18 +5044,19 @@ void test_whodata_callback_4656_fail_to_parse_event(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_fail_to_get_access_mask(void **state) {
+void test_whodata_callback_4656_fail_to_get_access_mask(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -4843,11 +5066,13 @@ void test_whodata_callback_4656_fail_to_get_access_mask(void **state) {
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
@@ -4872,18 +5097,19 @@ void test_whodata_callback_4656_fail_to_get_access_mask(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_non_monitored_directory(void **state) {
+void test_whodata_callback_4656_non_monitored_directory(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"C:\\non\\monitored", .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123450,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"C:\\non\\monitored", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123450, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -4900,11 +5126,17 @@ void test_whodata_callback_4656_non_monitored_directory(void **state) {
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, L"C:\\non\\monitored", wcslen(L"C:\\non\\monitored") * sizeof(WCHAR));
+            expect_memory(wrap_WideCharToMultiByte,
+                          lpWideCharStr,
+                          L"C:\\non\\monitored",
+                          wcslen(L"C:\\non\\monitored") * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen("c:\\non\\monitored"));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, L"C:\\non\\monitored", wcslen(L"C:\\non\\monitored") * sizeof(WCHAR));
+            expect_memory(wrap_WideCharToMultiByte,
+                          lpWideCharStr,
+                          L"C:\\non\\monitored",
+                          wcslen(L"C:\\non\\monitored") * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, "c:\\non\\monitored");
             will_return(wrap_WideCharToMultiByte, strlen("c:\\non\\monitored"));
@@ -4921,24 +5153,27 @@ void test_whodata_callback_4656_non_monitored_directory(void **state) {
     }
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'c:\\non\\monitored'");
-    expect_string(__wrap__mdebug2, formatted_msg, "(6239): 'c:\\non\\monitored' is discarded because its monitoring is not activated.");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6239): 'c:\\non\\monitored' is discarded because its monitoring is not activated.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_non_whodata_directory(void **state) {
+void test_whodata_callback_4656_non_whodata_directory(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123450,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123450, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
 
     unsigned long result;
@@ -4949,7 +5184,7 @@ void test_whodata_callback_4656_non_whodata_directory(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -4957,11 +5192,13 @@ void test_whodata_callback_4656_non_whodata_directory(void **state) {
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
@@ -4977,25 +5214,28 @@ void test_whodata_callback_4656_non_whodata_directory(void **state) {
         will_return(wrap_ConvertSidToStringSid, 6);
     }
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6240): The monitoring of 'c:\\windows\\a\\path' in whodata mode has been canceled. Added to the ignore list.");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6240): The monitoring of 'c:\\windows\\a\\path' in whodata mode has been canceled. Added to the "
+                  "ignore list.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_path_above_recursion_level(void ** state) {
+void test_whodata_callback_4656_path_above_recursion_level(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x10000,            .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x10000, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -5005,7 +5245,7 @@ void test_whodata_callback_4656_path_above_recursion_level(void ** state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->recursion_level = 0;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->recursion_level = 0;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5013,11 +5253,13 @@ void test_whodata_callback_4656_path_above_recursion_level(void ** state) {
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
@@ -5033,24 +5275,27 @@ void test_whodata_callback_4656_path_above_recursion_level(void ** state) {
         will_return(wrap_ConvertSidToStringSid, 6);
     }
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 'c:\\windows\\a\\path'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 'c:\\windows\\a\\path'");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void ** state) {
+void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x10000,            .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x10000, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -5066,11 +5311,13 @@ void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void ** state) {
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
@@ -5097,26 +5344,28 @@ void test_whodata_callback_4656_fail_to_add_event_to_hashmap(void ** state) {
         expect_string(__wrap_OSHash_Add_ex, key, "1193046");
         will_return(__wrap_OSHash_Add_ex, 0);
 
-        expect_string(__wrap__merror, formatted_msg,
-            "(6631): The event could not be added to the 'whodata' hash table. Target: '1193046'.");
+        expect_string(__wrap__merror,
+                      formatted_msg,
+                      "(6631): The event could not be added to the 'whodata' hash table. Target: '1193046'.");
     }
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_duplicate_handle_id_fail_to_delete(void **state) {
+void test_whodata_callback_4656_duplicate_handle_id_fail_to_delete(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -5132,11 +5381,13 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_delete(void **state)
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
@@ -5161,40 +5412,44 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_delete(void **state)
         expect_string(__wrap_OSHash_Add_ex, key, "1193046");
         will_return(__wrap_OSHash_Add_ex, 1);
 
-        expect_string(__wrap__mdebug2, formatted_msg,
-            "(6630): The event could not be added to the 'whodata' hash table because it is duplicated. Target: '1193046'.");
+        expect_string(__wrap__mdebug2,
+                      formatted_msg,
+                      "(6630): The event could not be added to the 'whodata' hash table because it is duplicated. "
+                      "Target: '1193046'.");
     }
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6229): The handler ('1193046') will be updated.");
 
     expect_value(__wrap_OSHash_Delete_ex, self, syscheck.wdata.fd);
     expect_string(__wrap_OSHash_Delete_ex, key, "1193046");
-    will_return(__wrap_OSHash_Delete_ex, (whodata_evt *)NULL);
+    will_return(__wrap_OSHash_Delete_ex, (whodata_evt*)NULL);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6626): The handler '1193046' could not be removed from the whodata hash table.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6626): The handler '1193046' could not be removed from the whodata hash table.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_duplicate_handle_id_fail_to_readd(void **state) {
+void test_whodata_callback_4656_duplicate_handle_id_fail_to_readd(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evtdup = malloc(sizeof(whodata_evt));
+    whodata_evt* w_evtdup = malloc(sizeof(whodata_evt));
 
-    if(w_evtdup == NULL)
+    if (w_evtdup == NULL)
         fail();
 
     memset(w_evtdup, 0, sizeof(whodata_evt));
@@ -5211,11 +5466,13 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_readd(void **state) 
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
@@ -5240,8 +5497,10 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_readd(void **state) 
         expect_string(__wrap_OSHash_Add_ex, key, "1193046");
         will_return(__wrap_OSHash_Add_ex, 1);
 
-        expect_string(__wrap__mdebug2, formatted_msg,
-            "(6630): The event could not be added to the 'whodata' hash table because it is duplicated. Target: '1193046'.");
+        expect_string(__wrap__mdebug2,
+                      formatted_msg,
+                      "(6630): The event could not be added to the 'whodata' hash table because it is duplicated. "
+                      "Target: '1193046'.");
     }
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6229): The handler ('1193046') will be updated.");
@@ -5256,26 +5515,28 @@ void test_whodata_callback_4656_duplicate_handle_id_fail_to_readd(void **state) 
         expect_string(__wrap_OSHash_Add_ex, key, "1193046");
         will_return(__wrap_OSHash_Add_ex, 0);
 
-        expect_string(__wrap__merror, formatted_msg,
-            "(6631): The event could not be added to the 'whodata' hash table. Target: '1193046'.");
+        expect_string(__wrap__merror,
+                      formatted_msg,
+                      "(6631): The event could not be added to the 'whodata' hash table. Target: '1193046'.");
     }
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4656_success(void **state) {
+void test_whodata_callback_4656_success(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4656,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4656, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -5291,11 +5552,13 @@ void test_whodata_callback_4656_success(void **state) {
     {
         // Inside get_whodata_path
         {
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
 
-            expect_memory(wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
+            expect_memory(
+                wrap_WideCharToMultiByte, lpWideCharStr, WCS_TEST_PATH, wcslen(WCS_TEST_PATH) * sizeof(WCHAR));
             expect_value(wrap_WideCharToMultiByte, cchWideChar, -1);
             will_return(wrap_WideCharToMultiByte, STR_TEST_PATH);
             will_return(wrap_WideCharToMultiByte, strlen(STR_TEST_PATH));
@@ -5325,18 +5588,19 @@ void test_whodata_callback_4656_success(void **state) {
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4719_success(void **state) {
+void test_whodata_callback_4719_success(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4719,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4719, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -5356,21 +5620,22 @@ void test_whodata_callback_4719_success(void **state) {
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4663_fail_to_get_mask(void **state) {
+void test_whodata_callback_4663_fail_to_get_mask(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5384,21 +5649,22 @@ void test_whodata_callback_4663_fail_to_get_mask(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4663_no_permissions(void **state) {
+void test_whodata_callback_4663_no_permissions(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x0,                .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x0, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
     successful_whodata_event_render(event, raw_data);
 
@@ -5410,18 +5676,19 @@ void test_whodata_callback_4663_no_permissions(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4663_fail_to_recover_event(void **state) {
+void test_whodata_callback_4663_fail_to_recover_event(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -5435,22 +5702,23 @@ void test_whodata_callback_4663_fail_to_recover_event(void **state) {
     assert_int_equal(result, 1);
 }
 
-void test_whodata_callback_4663_event_is_on_file(void **state) {
+void test_whodata_callback_4663_event_is_on_file(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=72623859790382856,  .Count=1, .Type=EvtVarTypeFileTime },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 72623859790382856, .Count = 1, .Type = EvtVarTypeFileTime},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
     w_evt->scan_directory = 0;
 
@@ -5465,22 +5733,23 @@ void test_whodata_callback_4663_event_is_on_file(void **state) {
     assert_int_equal(w_evt->mask, 0x123456);
 }
 
-void test_whodata_callback_4663_event_is_not_rename_or_copy(void **state) {
+void test_whodata_callback_4663_event_is_not_rename_or_copy(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x10000,            .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=72623859790382856,  .Count=1, .Type=EvtVarTypeFileTime },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x10000, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 72623859790382856, .Count = 1, .Type = EvtVarTypeFileTime},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
     w_evt->scan_directory = 1;
 
@@ -5495,24 +5764,25 @@ void test_whodata_callback_4663_event_is_not_rename_or_copy(void **state) {
     assert_int_equal(w_evt->mask, 0x10000);
 }
 
-void test_whodata_callback_4663_non_monitored_directory(void **state) {
+void test_whodata_callback_4663_non_monitored_directory(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=72623859790382856,  .Count=1, .Type=EvtVarTypeFileTime },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 72623859790382856, .Count = 1, .Type = EvtVarTypeFileTime},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5529,7 +5799,9 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(
+        __wrap__mdebug2,
+        formatted_msg,
         "(6243): The 'c:\\a\\path' directory has been discarded because it is not being monitored in whodata mode.");
 
     result = whodata_callback(action, NULL, event);
@@ -5538,24 +5810,25 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
     assert_int_equal(w_evt->scan_directory, 2);
 }
 
-void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
+void test_whodata_callback_4663_fail_to_add_new_directory(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=72623859790382856,  .Count=1, .Type=EvtVarTypeFileTime },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 72623859790382856, .Count = 1, .Type = EvtVarTypeFileTime},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5582,8 +5855,9 @@ void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
         expect_string(__wrap_OSHash_Add_ex, key, "c:\\windows");
         will_return(__wrap_OSHash_Add_ex, 0);
 
-        expect_string(__wrap__merror, formatted_msg,
-            "(6631): The event could not be added to the 'directories' hash table. Target: 'c:\\windows'.");
+        expect_string(__wrap__merror,
+                      formatted_msg,
+                      "(6631): The event could not be added to the 'directories' hash table. Target: 'c:\\windows'.");
     }
 
     result = whodata_callback(action, NULL, event);
@@ -5592,24 +5866,25 @@ void test_whodata_callback_4663_fail_to_add_new_directory(void **state) {
     assert_int_equal(w_evt->scan_directory, 2);
 }
 
-void test_whodata_callback_4663_new_files_added(void **state) {
+void test_whodata_callback_4663_new_files_added(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=72623859790382856,  .Count=1, .Type=EvtVarTypeFileTime },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 72623859790382856, .Count = 1, .Type = EvtVarTypeFileTime},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -5637,8 +5912,9 @@ void test_whodata_callback_4663_new_files_added(void **state) {
         will_return(__wrap_OSHash_Add_ex, 2);
     }
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5646,24 +5922,25 @@ void test_whodata_callback_4663_new_files_added(void **state) {
     assert_int_equal(w_evt->scan_directory, 1);
 }
 
-void test_whodata_callback_4663_wrong_time_type(void **state) {
+void test_whodata_callback_4663_wrong_time_type(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=0,                  .Count=0, .Type=EvtVarTypeNull },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 0, .Count = 0, .Type = EvtVarTypeNull},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5682,25 +5959,26 @@ void test_whodata_callback_4663_wrong_time_type(void **state) {
     assert_int_equal(w_evt->scan_directory, 2);
 }
 
-void test_whodata_callback_4663_abort_scan(void **state) {
+void test_whodata_callback_4663_abort_scan(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=133022717170000000,  .Count=1, .Type=EvtVarTypeFileTime },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 133022717170000000, .Count = 1, .Type = EvtVarTypeFileTime},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
     whodata_directory w_dir;
 
-    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -5724,7 +6002,9 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6241): The 'c:\\windows' directory has been scanned. It does not need to be scanned again.");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6241): The 'c:\\windows' directory has been scanned. It does not need to be scanned again.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5732,25 +6012,26 @@ void test_whodata_callback_4663_abort_scan(void **state) {
     assert_int_equal(w_evt->scan_directory, 3);
 }
 
-void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
+void test_whodata_callback_4663_directory_will_be_scanned(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4663,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
-        { .Int64Val=133022717170000000,  .Count=1, .Type=EvtVarTypeFileTime },
+        {.UInt16Val = 4663, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
+        {.Int64Val = 133022717170000000, .Count = 1, .Type = EvtVarTypeFileTime},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
     whodata_directory w_dir;
 
-    if(w_evt->path = strdup("c:\\windows"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\windows"), !w_evt->path)
         fail();
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -5773,7 +6054,9 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
     expect_string(__wrap_OSHash_Get, key, "c:\\windows");
     will_return(__wrap_OSHash_Get, &w_dir);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6244): New files have been detected in the 'c:\\windows' directory and will be scanned.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
@@ -5782,18 +6065,19 @@ void test_whodata_callback_4663_directory_will_be_scanned(void **state) {
     assert_int_not_equal(w_dir.QuadPart, 0);
 }
 
-void test_whodata_callback_4658_no_event_recovered(void **state) {
+void test_whodata_callback_4658_no_event_recovered(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4658,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4658, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -5807,23 +6091,24 @@ void test_whodata_callback_4658_no_event_recovered(void **state) {
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4658_file_event(void **state) {
+void test_whodata_callback_4658_file_event(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4658,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4658, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 0;
@@ -5840,23 +6125,24 @@ void test_whodata_callback_4658_file_event(void **state) {
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4658_directory_delete_event(void **state) {
+void test_whodata_callback_4658_directory_delete_event(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4658,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,            .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4658, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5874,23 +6160,24 @@ void test_whodata_callback_4658_directory_delete_event(void **state) {
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4658_directory_new_file_detected(void **state) {
+void test_whodata_callback_4658_directory_new_file_detected(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4658,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4658, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5908,23 +6195,24 @@ void test_whodata_callback_4658_directory_new_file_detected(void **state) {
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4658_directory_scan_for_new_files(void **state) {
+void test_whodata_callback_4658_directory_scan_for_new_files(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4658,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4658, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5942,23 +6230,24 @@ void test_whodata_callback_4658_directory_scan_for_new_files(void **state) {
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4658_directory_no_new_files(void **state) {
+void test_whodata_callback_4658_directory_no_new_files(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4658,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4658, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 1;
@@ -5970,30 +6259,33 @@ void test_whodata_callback_4658_directory_no_new_files(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1193046");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(
+        __wrap__mdebug2,
+        formatted_msg,
         "(6245): The 'c:\\a\\path' directory has not been scanned because no new files have been detected. Mask: '0'");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_4658_scan_aborted(void **state) {
+void test_whodata_callback_4658_scan_aborted(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=4658,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 4658, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
-    whodata_evt *w_evt = *state;
+    whodata_evt* w_evt = *state;
 
-    if(w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
+    if (w_evt->path = strdup("c:\\a\\path"), !w_evt->path)
         fail();
 
     w_evt->scan_directory = 2;
@@ -6005,25 +6297,27 @@ void test_whodata_callback_4658_scan_aborted(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1193046");
     will_return(__wrap_OSHash_Delete_ex, w_evt);
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-        "(6232): Scanning of the 'c:\\a\\path' directory is aborted because something has gone wrong.");
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  "(6232): Scanning of the 'c:\\a\\path' directory is aborted because something has gone wrong.");
 
     result = whodata_callback(action, NULL, event);
     assert_int_equal(result, 0);
 }
 
-void test_whodata_callback_unexpected_event_id(void **state) {
+void test_whodata_callback_unexpected_event_id(void** state)
+{
     EVT_SUBSCRIBE_NOTIFY_ACTION action = EvtSubscribeActionDeliver;
     EVT_HANDLE event = NULL;
     EVT_VARIANT raw_data[] = {
-        { .UInt16Val=1234,              .Count=1, .Type=EvtVarTypeUInt16 },
-        { .StringVal=L"user_name",      .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=WCS_TEST_PATH,     .Count=1, .Type=EvtVarTypeString },
-        { .StringVal=L"process_name",   .Count=1, .Type=EvtVarTypeString },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int64Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt64 },
-        { .Int32Val=0x123456,           .Count=1, .Type=EvtVarTypeHexInt32 },
-        { .StringVal=L"S-8-15",         .Count=1, .Type=EvtVarTypeSid },
+        {.UInt16Val = 1234, .Count = 1, .Type = EvtVarTypeUInt16},
+        {.StringVal = L"user_name", .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = WCS_TEST_PATH, .Count = 1, .Type = EvtVarTypeString},
+        {.StringVal = L"process_name", .Count = 1, .Type = EvtVarTypeString},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int64Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt64},
+        {.Int32Val = 0x123456, .Count = 1, .Type = EvtVarTypeHexInt32},
+        {.StringVal = L"S-8-15", .Count = 1, .Type = EvtVarTypeSid},
     };
     unsigned long result;
 
@@ -6036,7 +6330,8 @@ void test_whodata_callback_unexpected_event_id(void **state) {
 }
 
 /********************************************************************************************/
-void test_check_object_sacl_open_process_error(void **state) {
+void test_check_object_sacl_open_process_error(void** state)
+{
     int ret;
 
     will_return(wrap_GetCurrentProcess, (HANDLE)NULL);
@@ -6053,7 +6348,8 @@ void test_check_object_sacl_open_process_error(void **state) {
     assert_int_equal(ret, 2);
 }
 
-void test_check_object_sacl_unable_to_set_privilege(void **state) {
+void test_check_object_sacl_unable_to_set_privilege(void** state)
+{
     int ret;
 
     will_return(wrap_GetCurrentProcess, (HANDLE)123456);
@@ -6069,8 +6365,8 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
 
         will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
 
-        expect_string(__wrap__merror, formatted_msg,
-            "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
+        expect_string(
+            __wrap__merror, formatted_msg, "(6647): Could not find the 'SeSecurityPrivilege' privilege. Error: 5");
     }
 
     will_return(wrap_GetLastError, ERROR_ACCESS_DENIED);
@@ -6085,7 +6381,8 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
     assert_int_equal(ret, 2);
 }
 
-void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
+void test_check_object_sacl_unable_to_retrieve_security_info(void** state)
+{
     int ret;
 
     will_return(wrap_GetCurrentProcess, (HANDLE)123456);
@@ -6135,7 +6432,8 @@ void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
     assert_int_equal(ret, 2);
 }
 
-void test_check_object_sacl_invalid_sacl(void **state) {
+void test_check_object_sacl_invalid_sacl(void** state)
+{
     ACL acl;
     int ret;
 
@@ -6175,7 +6473,7 @@ void test_check_object_sacl_invalid_sacl(void **state) {
         will_return(wrap_GetAce, &acl);
         will_return(wrap_GetAce, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 700);
+        will_return(wrap_GetLastError, (unsigned int)700);
 
         expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
@@ -6201,7 +6499,8 @@ void test_check_object_sacl_invalid_sacl(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_check_object_sacl_valid_sacl(void **state) {
+void test_check_object_sacl_valid_sacl(void** state)
+{
     ACL acl;
     int ret;
 
@@ -6275,190 +6574,192 @@ void test_check_object_sacl_valid_sacl(void **state) {
 
 /* run_whodata_scan */
 
-void test_run_whodata_scan_invalid_arch(void **state) {
-    int ret;
-/* whodata_check_arch() */
+void test_run_whodata_scan_invalid_arch(void** state)
 {
-    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
-    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
-    will_return(wrap_RegOpenKeyEx, NULL);
-    will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
+    int ret;
+    /* whodata_check_arch() */
+    {
+        expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+        expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+        expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+        expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+        will_return(wrap_RegOpenKeyEx, NULL);
+        will_return(wrap_RegOpenKeyEx, ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(1758): Unable to open registry key: 'System\\CurrentControlSet\\Control\\Session Manager\\Environment'.");
-}
+        expect_string(
+            __wrap__merror,
+            formatted_msg,
+            "(1758): Unable to open registry key: 'System\\CurrentControlSet\\Control\\Session Manager\\Environment'.");
+    }
     ret = run_whodata_scan();
     assert_int_equal(ret, 1);
 }
 
-void test_run_whodata_scan_no_audit_policies(void **state) {
+void test_run_whodata_scan_no_audit_policies(void** state)
+{
     int ret;
 
-/* Inside whodata_check_arch */
-{
-    HKEY key;
-    const BYTE data[64] = "ARM64";
+    /* Inside whodata_check_arch */
+    {
+        HKEY key;
+        const BYTE data[64] = "ARM64";
 
-    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
-    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
-    will_return(wrap_RegOpenKeyEx, &key);
-    will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
+        expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+        expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+        expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+        expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+        will_return(wrap_RegOpenKeyEx, &key);
+        will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
 
-    expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
-    expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
-    expect_value(wrap_RegQueryValueEx, lpType, NULL);
-    will_return(wrap_RegQueryValueEx, data);
-    will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
-
-}
-
-/* Inside set_policies */
-{
-    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 0);
-    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
-    will_return(__wrap_remove, 1);
-
-    expect_any(__wrap__merror, formatted_msg);
-}
-
-    expect_string(__wrap__merror, formatted_msg,
-         "(6916): Local audit policies could not be configured.");
-
-    ret = run_whodata_scan();
-    assert_int_equal(ret, 1);
-}
-
-void test_run_whodata_scan_no_auto_audit_policies(void **state) {
-    int ret;
-
-/* Inside whodata_check_arch */
-{
-    HKEY key;
-    const BYTE data[64] = "ARM64";
-
-    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
-    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
-    will_return(wrap_RegOpenKeyEx, &key);
-    will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
-
-    expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
-    expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
-    expect_value(wrap_RegQueryValueEx, lpType, NULL);
-    will_return(wrap_RegQueryValueEx, data);
-    will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
-
-}
-
-/* Inside set_policies */
-{
-    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 0);
-    expect_string(__wrap_remove, filename, "tmp\\backup-policies");
-    will_return(__wrap_remove, 0);
-
-    int i;
-    int retries = 5;
-    char error_msgs[retries + 1][OS_SIZE_1024];
-
-    for (i = 0;  i <= retries; i++) {
-        expect_wm_exec("auditpol /backup /file:\"tmp\\backup-policies\"", retries+i, NULL, NULL, 1, 0);
-        snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
-        expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+        expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+        expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
+        expect_value(wrap_RegQueryValueEx, lpType, NULL);
+        will_return(wrap_RegQueryValueEx, data);
+        will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+    /* Inside set_policies */
+    {
+        expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+        will_return(__wrap_IsFile, 0);
+        expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+        will_return(__wrap_remove, 1);
 
-}
+        expect_any(__wrap__merror, formatted_msg);
+    }
+
     expect_string(__wrap__merror, formatted_msg, "(6916): Local audit policies could not be configured.");
 
     ret = run_whodata_scan();
     assert_int_equal(ret, 1);
 }
 
-void test_run_whodata_scan_error_event_channel(void **state) {
+void test_run_whodata_scan_no_auto_audit_policies(void** state)
+{
     int ret;
 
-/* Inside whodata_check_arch */
-{
-    HKEY key;
-    const BYTE data[64] = "ARM64";
+    /* Inside whodata_check_arch */
+    {
+        HKEY key;
+        const BYTE data[64] = "ARM64";
 
-    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
-    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
-    will_return(wrap_RegOpenKeyEx, &key);
-    will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
+        expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+        expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+        expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+        expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+        will_return(wrap_RegOpenKeyEx, &key);
+        will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
 
-    expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
-    expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
-    expect_value(wrap_RegQueryValueEx, lpType, NULL);
-    will_return(wrap_RegQueryValueEx, data);
-    will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
+        expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+        expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
+        expect_value(wrap_RegQueryValueEx, lpType, NULL);
+        will_return(wrap_RegQueryValueEx, data);
+        will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
+    }
 
+    /* Inside set_policies */
+    {
+        expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+        will_return(__wrap_IsFile, 0);
+        expect_string(__wrap_remove, filename, "tmp\\backup-policies");
+        will_return(__wrap_remove, 0);
+
+        int i;
+        int retries = 5;
+        char error_msgs[retries + 1][OS_SIZE_1024];
+
+        for (i = 0; i <= retries; i++)
+        {
+            expect_wm_exec("auditpol /backup /file:\"tmp\\backup-policies\"", retries + i, NULL, NULL, 1, 0);
+            snprintf(
+                error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
+            expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
+        }
+
+        expect_string(__wrap__merror,
+                      formatted_msg,
+                      "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they "
+                      "are correct for whodata mode.");
+    }
+    expect_string(__wrap__merror, formatted_msg, "(6916): Local audit policies could not be configured.");
+
+    ret = run_whodata_scan();
+    assert_int_equal(ret, 1);
 }
 
-/* Inside set_policies */
+void test_run_whodata_scan_error_event_channel(void** state)
 {
-    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 1);
+    int ret;
 
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 0);
-    will_return(__wrap_wm_exec, 0);
+    /* Inside whodata_check_arch */
+    {
+        HKEY key;
+        const BYTE data[64] = "ARM64";
 
-    expect_string(__wrap_wfopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, (FILE*)1234);
+        expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+        expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+        expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+        expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+        will_return(wrap_RegOpenKeyEx, &key);
+        will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
 
-    expect_string(__wrap_wfopen, path, "tmp\\new-policies");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, (FILE*)2345);
+        expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+        expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
+        expect_value(wrap_RegQueryValueEx, lpType, NULL);
+        will_return(wrap_RegQueryValueEx, data);
+        will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
+    }
 
-    expect_value(wrap_fgets, __stream, (FILE*)1234);
-    will_return(wrap_fgets, "some policies");
+    /* Inside set_policies */
+    {
+        expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+        will_return(__wrap_IsFile, 1);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, "some policies");
-    will_return(wrap_fprintf, 0);
+        expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+        expect_value(__wrap_wm_exec, secs, 5);
+        expect_value(__wrap_wm_exec, add_path, NULL);
+        will_return(__wrap_wm_exec, 0);
+        will_return(__wrap_wm_exec, 0);
 
-    expect_value(wrap_fgets, __stream, (FILE*)1234);
-    will_return(wrap_fgets, NULL);
+        expect_string(__wrap_wfopen, path, "tmp\\backup-policies");
+        expect_string(__wrap_wfopen, mode, "r");
+        will_return(__wrap_wfopen, (FILE*)1234);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
+        expect_string(__wrap_wfopen, path, "tmp\\new-policies");
+        expect_string(__wrap_wfopen, mode, "w");
+        will_return(__wrap_wfopen, (FILE*)2345);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
+        expect_value(wrap_fgets, __stream, (FILE*)1234);
+        will_return(wrap_fgets, "some policies");
 
-    expect_value(__wrap_fclose, _File, (FILE*)2345);
-    will_return(__wrap_fclose, 0);
+        expect_value(wrap_fprintf, __stream, 2345);
+        expect_string(wrap_fprintf, formatted_msg, "some policies");
+        will_return(wrap_fprintf, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 0);
-    will_return(__wrap_wm_exec, 0);
+        expect_value(wrap_fgets, __stream, (FILE*)1234);
+        will_return(wrap_fgets, NULL);
 
-    expect_value(__wrap_fclose, _File, (FILE*)1234);
-    will_return(__wrap_fclose, 0);
-}
+        expect_value(wrap_fprintf, __stream, 2345);
+        expect_string(wrap_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+        will_return(wrap_fprintf, 0);
+
+        expect_value(wrap_fprintf, __stream, 2345);
+        expect_string(
+            wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+        will_return(wrap_fprintf, 0);
+
+        expect_value(__wrap_fclose, _File, (FILE*)2345);
+        will_return(__wrap_fclose, 0);
+
+        expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+        expect_value(__wrap_wm_exec, secs, 5);
+        expect_value(__wrap_wm_exec, add_path, NULL);
+        will_return(__wrap_wm_exec, 0);
+        will_return(__wrap_wm_exec, 0);
+
+        expect_value(__wrap_fclose, _File, (FILE*)1234);
+        will_return(__wrap_fclose, 0);
+    }
 
     DWORD fields_number = 9;
     EVT_HANDLE event;
@@ -6468,11 +6769,11 @@ void test_run_whodata_scan_error_event_channel(void **state) {
     expect_value(wrap_EvtCreateRenderContext, Flags, EvtRenderContextValues);
     will_return(wrap_EvtCreateRenderContext, event);
 
-    wchar_t *query = L"Event[ System[band(Keywords, 9007199254740992)] and "
-                            "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
-                            "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
-                            "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
-                            "System/EventID = 4658 or System/EventID = 4660 ) ]";
+    wchar_t* query = L"Event[ System[band(Keywords, 9007199254740992)] and "
+                     "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
+                     "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
+                     "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
+                     "System/EventID = 4658 or System/EventID = 4660 ) ]";
 
     expect_value(wrap_EvtSubscribe, Session, NULL);
     expect_value(wrap_EvtSubscribe, SignalEvent, NULL);
@@ -6485,85 +6786,87 @@ void test_run_whodata_scan_error_event_channel(void **state) {
 
     will_return(wrap_EvtSubscribe, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(6621): Event Channel subscription could not be made. Whodata scan is disabled.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6621): Event Channel subscription could not be made. Whodata scan is disabled.");
 
     ret = run_whodata_scan();
     assert_int_equal(ret, 1);
 }
 
-void test_run_whodata_scan_success(void **state) {
+void test_run_whodata_scan_success(void** state)
+{
     int ret;
 
-/* Inside whodata_check_arch */
-{
-    HKEY key;
-    const BYTE data[64] = "ARM64";
+    /* Inside whodata_check_arch */
+    {
+        HKEY key;
+        const BYTE data[64] = "ARM64";
 
-    expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
-    expect_string(wrap_RegOpenKeyEx, lpSubKey,
-        "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
-    expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
-    expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
-    will_return(wrap_RegOpenKeyEx, &key);
-    will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
+        expect_value(wrap_RegOpenKeyEx, hKey, HKEY_LOCAL_MACHINE);
+        expect_string(wrap_RegOpenKeyEx, lpSubKey, "System\\CurrentControlSet\\Control\\Session Manager\\Environment");
+        expect_value(wrap_RegOpenKeyEx, ulOptions, 0);
+        expect_value(wrap_RegOpenKeyEx, samDesired, KEY_READ);
+        will_return(wrap_RegOpenKeyEx, &key);
+        will_return(wrap_RegOpenKeyEx, ERROR_SUCCESS);
 
-    expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
-    expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
-    expect_value(wrap_RegQueryValueEx, lpType, NULL);
-    will_return(wrap_RegQueryValueEx, data);
-    will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
+        expect_string(wrap_RegQueryValueEx, lpValueName, "PROCESSOR_ARCHITECTURE");
+        expect_value(wrap_RegQueryValueEx, lpReserved, NULL);
+        expect_value(wrap_RegQueryValueEx, lpType, NULL);
+        will_return(wrap_RegQueryValueEx, data);
+        will_return(wrap_RegQueryValueEx, ERROR_SUCCESS);
+    }
 
-}
+    /* Inside set_policies */
+    {
+        expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
+        will_return(__wrap_IsFile, 1);
 
-/* Inside set_policies */
-{
-    expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
-    will_return(__wrap_IsFile, 1);
+        expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
+        expect_value(__wrap_wm_exec, secs, 5);
+        expect_value(__wrap_wm_exec, add_path, NULL);
+        will_return(__wrap_wm_exec, 0);
+        will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /backup /file:\"tmp\\backup-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 0);
-    will_return(__wrap_wm_exec, 0);
+        expect_string(__wrap_wfopen, path, "tmp\\backup-policies");
+        expect_string(__wrap_wfopen, mode, "r");
+        will_return(__wrap_wfopen, (FILE*)1234);
 
-    expect_string(__wrap_wfopen, path, "tmp\\backup-policies");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, (FILE*)1234);
+        expect_string(__wrap_wfopen, path, "tmp\\new-policies");
+        expect_string(__wrap_wfopen, mode, "w");
+        will_return(__wrap_wfopen, (FILE*)2345);
 
-    expect_string(__wrap_wfopen, path, "tmp\\new-policies");
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, (FILE*)2345);
+        expect_value(wrap_fgets, __stream, (FILE*)1234);
+        will_return(wrap_fgets, "some policies");
 
-    expect_value(wrap_fgets, __stream, (FILE*)1234);
-    will_return(wrap_fgets, "some policies");
+        expect_value(wrap_fprintf, __stream, 2345);
+        expect_string(wrap_fprintf, formatted_msg, "some policies");
+        will_return(wrap_fprintf, 0);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, "some policies");
-    will_return(wrap_fprintf, 0);
+        expect_value(wrap_fgets, __stream, (FILE*)1234);
+        will_return(wrap_fgets, NULL);
 
-    expect_value(wrap_fgets, __stream, (FILE*)1234);
-    will_return(wrap_fgets, NULL);
+        expect_value(wrap_fprintf, __stream, 2345);
+        expect_string(wrap_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
+        will_return(wrap_fprintf, 0);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,File System,{0CCE921D-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
+        expect_value(wrap_fprintf, __stream, 2345);
+        expect_string(
+            wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+        will_return(wrap_fprintf, 0);
 
-    expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
-    will_return(wrap_fprintf, 0);
+        expect_value(__wrap_fclose, _File, (FILE*)2345);
+        will_return(__wrap_fclose, 0);
 
-    expect_value(__wrap_fclose, _File, (FILE*)2345);
-    will_return(__wrap_fclose, 0);
+        expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
+        expect_value(__wrap_wm_exec, secs, 5);
+        expect_value(__wrap_wm_exec, add_path, NULL);
+        will_return(__wrap_wm_exec, 0);
+        will_return(__wrap_wm_exec, 0);
 
-    expect_string(__wrap_wm_exec, command, "auditpol /restore /file:\"tmp\\new-policies\"");
-    expect_value(__wrap_wm_exec, secs, 5);
-    expect_value(__wrap_wm_exec, add_path, NULL);
-    will_return(__wrap_wm_exec, 0);
-    will_return(__wrap_wm_exec, 0);
-
-    expect_value(__wrap_fclose, _File, (FILE*)1234);
-    will_return(__wrap_fclose, 0);
-}
+        expect_value(__wrap_fclose, _File, (FILE*)1234);
+        will_return(__wrap_fclose, 0);
+    }
 
     DWORD fields_number = 9;
     EVT_HANDLE event;
@@ -6573,11 +6876,11 @@ void test_run_whodata_scan_success(void **state) {
     expect_value(wrap_EvtCreateRenderContext, Flags, EvtRenderContextValues);
     will_return(wrap_EvtCreateRenderContext, event);
 
-    wchar_t *query = L"Event[ System[band(Keywords, 9007199254740992)] and "
-                            "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
-                            "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
-                            "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
-                            "System/EventID = 4658 or System/EventID = 4660 ) ]";
+    wchar_t* query = L"Event[ System[band(Keywords, 9007199254740992)] and "
+                     "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
+                     "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
+                     "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
+                     "System/EventID = 4658 or System/EventID = 4660 ) ]";
 
     expect_value(wrap_EvtSubscribe, Session, NULL);
     expect_value(wrap_EvtSubscribe, SignalEvent, NULL);
@@ -6596,20 +6899,22 @@ void test_run_whodata_scan_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_set_subscription_query(void **state) {
+void test_set_subscription_query(void** state)
+{
     wchar_t output[OS_MAXSTR];
-    wchar_t *expected_output = L"Event[ System[band(Keywords, 9007199254740992)] and "
-                                "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
-                                "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
-                                "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
-                                "System/EventID = 4658 or System/EventID = 4660 ) ]";
+    wchar_t* expected_output = L"Event[ System[band(Keywords, 9007199254740992)] and "
+                               "( ( ( EventData/Data[@Name='ObjectType'] = 'File' ) and "
+                               "( (  System/EventID = 4656 or System/EventID = 4663 ) and "
+                               "( EventData[band(Data[@Name='AccessMask'], 327938‬)] ) ) ) or "
+                               "System/EventID = 4658 or System/EventID = 4660 ) ]";
 
     set_subscription_query(output);
 
     assert_memory_equal(output, expected_output, wcslen(expected_output));
 }
 
-void test_set_policies_unable_to_remove_backup_file(void **state) {
+void test_set_policies_unable_to_remove_backup_file(void** state)
+{
     int ret;
 
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
@@ -6619,15 +6924,17 @@ void test_set_policies_unable_to_remove_backup_file(void **state) {
     will_return(__wrap_remove, -1);
     errno = EACCES;
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6660): 'tmp\\backup-policies' could not be removed: 'Permission denied' (13).");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6660): 'tmp\\backup-policies' could not be removed: 'Permission denied' (13).");
 
     ret = set_policies();
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_policies_fail_getting_policies(void **state) {
+void test_set_policies_fail_getting_policies(void** state)
+{
     int ret;
 
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
@@ -6635,23 +6942,27 @@ void test_set_policies_fail_getting_policies(void **state) {
 
     int i;
     int retries = 5;
-    char error_msgs[retries+1][OS_SIZE_1024];
+    char error_msgs[retries + 1][OS_SIZE_1024];
 
-    for (i = 0;  i <= retries; i++) {
-        expect_wm_exec("auditpol /backup /file:\"tmp\\backup-policies\"", retries+i, NULL, NULL, 1, 0);
+    for (i = 0; i <= retries; i++)
+    {
+        expect_wm_exec("auditpol /backup /file:\"tmp\\backup-policies\"", retries + i, NULL, NULL, 1, 0);
         snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
         expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-    "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are "
+                  "correct for whodata mode.");
 
     ret = set_policies();
 
     assert_int_equal(ret, 2);
 }
 
-void test_set_policies_unable_to_open_backup_file(void **state) {
+void test_set_policies_unable_to_open_backup_file(void** state)
+{
     int ret;
 
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
@@ -6668,15 +6979,16 @@ void test_set_policies_unable_to_open_backup_file(void **state) {
     will_return(__wrap_wfopen, NULL);
     errno = EACCES;
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6661): 'tmp\\backup-policies' could not be opened: 'Permission denied' (13).");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6661): 'tmp\\backup-policies' could not be opened: 'Permission denied' (13).");
 
     ret = set_policies();
 
     assert_int_equal(ret, 1);
 }
 
-void test_set_policies_unable_to_open_new_file(void **state) {
+void test_set_policies_unable_to_open_new_file(void** state)
+{
     int ret;
 
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
@@ -6697,8 +7009,8 @@ void test_set_policies_unable_to_open_new_file(void **state) {
     will_return(__wrap_wfopen, NULL);
     errno = EACCES;
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6661): 'tmp\\new-policies' could not be opened: 'Permission denied' (13).");
+    expect_string(
+        __wrap__merror, formatted_msg, "(6661): 'tmp\\new-policies' could not be opened: 'Permission denied' (13).");
 
     expect_value(__wrap_fclose, _File, (FILE*)1234);
     will_return(__wrap_fclose, 0);
@@ -6708,7 +7020,8 @@ void test_set_policies_unable_to_open_new_file(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_set_policies_unable_to_restore_policies(void **state) {
+void test_set_policies_unable_to_restore_policies(void** state)
+{
     int ret;
 
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
@@ -6743,7 +7056,8 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     will_return(wrap_fprintf, 0);
 
     expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    expect_string(
+        wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
     will_return(wrap_fprintf, 0);
 
     expect_value(__wrap_fclose, _File, (FILE*)2345);
@@ -6751,16 +7065,19 @@ void test_set_policies_unable_to_restore_policies(void **state) {
 
     int i;
     int retries = 5;
-    char error_msgs[retries+1][OS_SIZE_1024];
+    char error_msgs[retries + 1][OS_SIZE_1024];
 
-    for (i = 0;  i <= retries; i++) {
-        expect_wm_exec("auditpol /restore /file:\"tmp\\new-policies\"", retries+i, NULL, NULL, 1, 0);
+    for (i = 0; i <= retries; i++)
+    {
+        expect_wm_exec("auditpol /restore /file:\"tmp\\new-policies\"", retries + i, NULL, NULL, 1, 0);
         snprintf(error_msgs[i], sizeof(error_msgs[i]), "(6955): Auditpol command failed, attempt number: %d", i + 1);
         expect_string(__wrap__merror, formatted_msg, error_msgs[i]);
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6915): Audit policies could not be auto-configured due to the Windows version. Check if they are "
+                  "correct for whodata mode.");
 
     expect_value(__wrap_fclose, _File, (FILE*)1234);
     will_return(__wrap_fclose, 0);
@@ -6770,7 +7087,8 @@ void test_set_policies_unable_to_restore_policies(void **state) {
     assert_int_equal(ret, 2);
 }
 
-void test_set_policies_success(void **state) {
+void test_set_policies_success(void** state)
+{
     int ret;
 
     expect_string(__wrap_IsFile, file, "tmp\\backup-policies");
@@ -6805,7 +7123,8 @@ void test_set_policies_success(void **state) {
     will_return(wrap_fprintf, 0);
 
     expect_value(wrap_fprintf, __stream, 2345);
-    expect_string(wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
+    expect_string(
+        wrap_fprintf, formatted_msg, ",System,Handle Manipulation,{0CCE9223-69AE-11D9-BED3-505054503030},,,1\n");
     will_return(wrap_fprintf, 0);
 
     expect_value(__wrap_fclose, _File, (FILE*)2345);
@@ -6825,10 +7144,11 @@ void test_set_policies_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_state_checker_no_files_to_check(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_no_files_to_check(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
     char debug_msg3[OS_SIZE_1024];
@@ -6857,10 +7177,14 @@ void test_state_checker_no_files_to_check(void **state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -6872,10 +7196,11 @@ void test_state_checker_no_files_to_check(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_state_checker_file_not_whodata(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_file_not_whodata(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
     char debug_msg3[OS_SIZE_1024];
@@ -6888,7 +7213,7 @@ void test_state_checker_file_not_whodata(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
     // Leverage Free_Syscheck not free the wdata struct
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_CHECK_WHODATA;
 
     snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
@@ -6906,10 +7231,14 @@ void test_state_checker_file_not_whodata(void **state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -6921,10 +7250,11 @@ void test_state_checker_file_not_whodata(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_state_checker_file_does_not_exist(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_file_does_not_exist(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     SYSTEMTIME st;
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
@@ -6958,10 +7288,14 @@ void test_state_checker_file_does_not_exist(void **state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -6971,23 +7305,29 @@ void test_state_checker_file_does_not_exist(void **state) {
     expect_string(__wrap_check_path_type, dir, "c:\\a\\path");
     will_return(__wrap_check_path_type, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6022): 'c:\\a\\path' has been deleted. It will not be monitored in real-time Whodata mode.");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6022): 'c:\\a\\path' has been deleted. It will not be monitored in real-time Whodata mode.");
 
     will_return(wrap_GetSystemTime, &st);
 
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_UNK_TYPE);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
+    assert_memory_equal(&((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check,
+                        &st,
+                        sizeof(SYSTEMTIME));
+    assert_int_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type,
+                     WD_STATUS_UNK_TYPE);
+    assert_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &
+                WD_STATUS_EXISTS);
 }
 
-void test_state_checker_file_with_invalid_sacl(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_file_with_invalid_sacl(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     ACL acl;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
     char debug_msg1[OS_SIZE_1024];
@@ -7019,10 +7359,14 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7049,7 +7393,8 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
 
         expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "c:\\a\\path");
@@ -7069,9 +7414,10 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
             will_return(wrap_GetAce, &acl);
             will_return(wrap_GetAce, 0);
 
-            will_return(wrap_GetLastError, (unsigned int) 700);
+            will_return(wrap_GetLastError, (unsigned int)700);
 
-            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
+            expect_string(
+                __wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
         }
 
         // Inside set_privilege
@@ -7084,19 +7430,24 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
         will_return(wrap_CloseHandle, 0);
     }
 
-    expect_string(__wrap__minfo, formatted_msg,
-        "(6021): The SACL of 'c:\\a\\path' has been modified and it is not valid for the real-time Whodata mode. Whodata will not be available for this file.");
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "(6021): The SACL of 'c:\\a\\path' has been modified and it is not valid for the real-time Whodata "
+                  "mode. Whodata will not be available for this file.");
 
     // Inside notify_SACL_change
     {
-        expect_string(__wrap_SendMSG, message,
+        expect_string(
+            __wrap_SendMSG,
+            message,
             "wazuh: Audit: The SACL of 'c:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
         expect_string(__wrap_SendMSG, locmsg, "syscheck");
         expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
@@ -7106,15 +7457,18 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
+    assert_int_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type,
+                     WD_STATUS_FILE_TYPE);
+    assert_non_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &
+                    WD_STATUS_EXISTS);
+    assert_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
-void test_state_checker_file_with_valid_sacl(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_file_with_valid_sacl(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     SYSTEMTIME st;
     ACL acl;
     char debug_msg1[OS_SIZE_1024];
@@ -7151,10 +7505,14 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7181,7 +7539,8 @@ void test_state_checker_file_with_valid_sacl(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
 
         expect_string(__wrap_utf8_GetNamedSecurityInfo, utf8_path, "c:\\a\\path");
@@ -7223,7 +7582,8 @@ void test_state_checker_file_with_valid_sacl(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
@@ -7235,16 +7595,21 @@ void test_state_checker_file_with_valid_sacl(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_FILE_TYPE);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
+    assert_memory_equal(&((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check,
+                        &st,
+                        sizeof(SYSTEMTIME));
+    assert_int_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type,
+                     WD_STATUS_FILE_TYPE);
+    assert_non_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &
+                    WD_STATUS_EXISTS);
+    assert_non_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
-void test_state_checker_dir_readded_error(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dir_readded_error(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     char debug_msg[OS_MAXSTR];
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
@@ -7257,7 +7622,7 @@ void test_state_checker_dir_readded_error(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_STATUS_EXISTS;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_STATUS_EXISTS;
 
     snprintf(debug_msg1, OS_SIZE_1024, FIM_WHODATA_CHECKTHREAD, 300);
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg1);
@@ -7275,10 +7640,14 @@ void test_state_checker_dir_readded_error(void **state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7288,12 +7657,16 @@ void test_state_checker_dir_readded_error(void **state) {
     expect_string(__wrap_check_path_type, dir, "c:\\a\\path");
     will_return(__wrap_check_path_type, 2);
 
-    expect_string(__wrap__minfo, formatted_msg,
-        "(6020): 'c:\\a\\path' has been re-added. It will be monitored in real-time Whodata mode.");
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "(6020): 'c:\\a\\path' has been re-added. It will be monitored in real-time Whodata mode.");
 
     // Inside set_winsacl
     {
-        snprintf(debug_msg, OS_MAXSTR, FIM_SACL_CONFIGURE, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
+        snprintf(debug_msg,
+                 OS_MAXSTR,
+                 FIM_SACL_CONFIGURE,
+                 ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path);
         expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
         will_return(wrap_GetCurrentProcess, (HANDLE)4321);
@@ -7301,25 +7674,30 @@ void test_state_checker_dir_readded_error(void **state) {
         will_return(wrap_OpenProcessToken, (HANDLE)123456);
         will_return(wrap_OpenProcessToken, 0);
 
-        will_return(wrap_GetLastError, (unsigned int) 500);
+        will_return(wrap_GetLastError, (unsigned int)500);
         expect_string(__wrap__merror, formatted_msg, "(6648): OpenProcessToken() failed. Error '500'.");
     }
 
-    expect_string(__wrap__merror, formatted_msg,
-        "(6619): Unable to add directory to whodata real time monitoring: 'c:\\a\\path'. It will be monitored in Realtime");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(6619): Unable to add directory to whodata real time monitoring: 'c:\\a\\path'. It will be "
+                  "monitored in Realtime");
 
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_DIR_TYPE);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
+    assert_int_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type,
+                     WD_STATUS_DIR_TYPE);
+    assert_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &
+                WD_STATUS_EXISTS);
+    assert_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
-void test_state_checker_dir_readded_succesful(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dir_readded_succesful(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     ACL acl;
     ACL_SIZE_INFORMATION old_sacl_info = {.AceCount = 1};
     SYSTEM_AUDIT_ACE ace;
@@ -7339,8 +7717,8 @@ void test_state_checker_dir_readded_succesful(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_STATUS_EXISTS;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type = WD_STATUS_UNK_TYPE;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &= ~WD_STATUS_EXISTS;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type = WD_STATUS_UNK_TYPE;
 
     memset(&st, 0, sizeof(SYSTEMTIME));
     st.wYear = 2020;
@@ -7363,10 +7741,14 @@ void test_state_checker_dir_readded_succesful(void **state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7376,8 +7758,9 @@ void test_state_checker_dir_readded_succesful(void **state) {
     expect_string(__wrap_check_path_type, dir, "c:\\a\\path");
     will_return(__wrap_check_path_type, 2);
 
-    expect_string(__wrap__minfo, formatted_msg,
-        "(6020): 'c:\\a\\path' has been re-added. It will be monitored in real-time Whodata mode.");
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "(6020): 'c:\\a\\path' has been re-added. It will be monitored in real-time Whodata mode.");
 
     // Inside set_winsacl
     {
@@ -7400,7 +7783,8 @@ void test_state_checker_dir_readded_succesful(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6268): The 'SeSecurityPrivilege' privilege has been added.");
         }
 
         // GetNamedSecurity
@@ -7420,9 +7804,10 @@ void test_state_checker_dir_readded_succesful(void **state) {
             will_return(wrap_GetAce, &acl);
             will_return(wrap_GetAce, 0);
 
-            will_return(wrap_GetLastError, (unsigned int) 700);
+            will_return(wrap_GetLastError, (unsigned int)700);
 
-            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
+            expect_string(
+                __wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
         }
 
         expect_string(__wrap__mdebug2, formatted_msg, "(6263): Setting up SACL for 'c:\\a\\path'");
@@ -7471,7 +7856,8 @@ void test_state_checker_dir_readded_succesful(void **state) {
             expect_value(wrap_AdjustTokenPrivileges, DisableAllPrivileges, 0);
             will_return(wrap_AdjustTokenPrivileges, 1);
 
-            expect_string(__wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
+            expect_string(
+                __wrap__mdebug2, formatted_msg, "(6269): The 'SeSecurityPrivilege' privilege has been removed.");
         }
 
         expect_value(wrap_CloseHandle, hObject, (HANDLE)123456);
@@ -7483,16 +7869,21 @@ void test_state_checker_dir_readded_succesful(void **state) {
     ret = state_checker(input);
 
     assert_int_equal(ret, 0);
-    assert_memory_equal(&((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check, &st, sizeof(SYSTEMTIME));
-    assert_int_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type, WD_STATUS_DIR_TYPE);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status & WD_STATUS_EXISTS);
-    assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
+    assert_memory_equal(&((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.last_check,
+                        &st,
+                        sizeof(SYSTEMTIME));
+    assert_int_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.object_type,
+                     WD_STATUS_DIR_TYPE);
+    assert_non_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->dirs_status.status &
+                    WD_STATUS_EXISTS);
+    assert_non_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->options & WHODATA_ACTIVE);
 }
 
-void test_state_checker_not_match_policy(void **state) {
-    policy_info *pol_data = *state;
+void test_state_checker_not_match_policy(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    void *input = NULL;
+    void* input = NULL;
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
     char debug_msg4[OS_SIZE_1024];
@@ -7519,10 +7910,14 @@ void test_state_checker_not_match_policy(void **state) {
 
     pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_FAILURE;
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_string(__wrap__mwarn, formatted_msg, FIM_WHODATA_POLICY_CHANGE_CHECKER);
 
@@ -7533,8 +7928,9 @@ void test_state_checker_not_match_policy(void **state) {
     assert_int_equal(ret, 0);
 }
 
-void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dirs_cleanup_no_nodes(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
@@ -7560,10 +7956,14 @@ void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7576,10 +7976,11 @@ void test_state_checker_dirs_cleanup_no_nodes(void ** state) {
     assert_int_equal(syscheck.wdata.directories->elements, 0);
 }
 
-void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dirs_cleanup_single_non_stale_node(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    whodata_directory * w_dir;
+    whodata_directory* w_dir;
     FILETIME current_time;
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
@@ -7605,10 +8006,14 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7633,10 +8038,11 @@ void test_state_checker_dirs_cleanup_single_non_stale_node(void ** state) {
     assert_non_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path"));
 }
 
-void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dirs_cleanup_single_stale_node(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
-    whodata_directory * w_dir;
+    whodata_directory* w_dir;
     char debug_msg1[OS_SIZE_1024];
     char debug_msg2[OS_SIZE_1024];
     char debug_msg3[OS_SIZE_1024];
@@ -7661,10 +8067,14 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
@@ -7693,8 +8103,9 @@ void test_state_checker_dirs_cleanup_single_stale_node(void ** state) {
     assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path"));
 }
 
-void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     FILETIME current_time;
     int i;
@@ -7722,19 +8133,24 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
 
     expect_value(wrap_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 3; i++)
+    {
         char key[OS_SIZE_256];
-        whodata_directory * w_dir;
+        whodata_directory* w_dir;
 
         if (w_dir = calloc(1, sizeof(whodata_directory)), !w_dir)
             fail();
@@ -7759,8 +8175,9 @@ void test_state_checker_dirs_cleanup_multiple_nodes_none_stale(void ** state) {
     assert_non_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
 }
 
-void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     FILETIME current_time;
     int i;
@@ -7788,43 +8205,49 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
 
     expect_value(wrap_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 3; i++)
+    {
         char key[OS_SIZE_256];
-        whodata_directory * w_dir;
+        whodata_directory* w_dir;
 
         snprintf(key, OS_SIZE_256, "C:\\some\\path-%d", i);
 
         if (w_dir = calloc(1, sizeof(whodata_directory)), !w_dir)
             fail();
 
-        if (i % 2 == 0) {
+        if (i % 2 == 0)
+        {
             w_dir->LowPart = 0;
             w_dir->HighPart = 0;
 
             expect_value(__wrap_OSHash_Delete, self, syscheck.wdata.directories);
             expect_any(__wrap_OSHash_Delete, key);
             will_return(__wrap_OSHash_Delete, w_dir);
-        } else {
+        }
+        else
+        {
             GetSystemTimeAsFileTime(&current_time);
 
             w_dir->LowPart = current_time.dwLowDateTime;
             w_dir->HighPart = current_time.dwHighDateTime;
-
         }
 
         if (__real_OSHash_Add(syscheck.wdata.directories, key, w_dir) != 2)
             fail();
-
     }
 
     ret = state_checker(NULL);
@@ -7839,8 +8262,9 @@ void test_state_checker_dirs_cleanup_multiple_nodes_some_stale(void ** state) {
     assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
 }
 
-void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
-    policy_info *pol_data = *state;
+void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     int i;
     char debug_msg1[OS_SIZE_1024];
@@ -7867,19 +8291,24 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
     will_return(__wrap_atomic_int_get, 0);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     expect_value(__wrap_atomic_int_get, atomic, &whodata_end);
     will_return(__wrap_atomic_int_get, 1);
 
     expect_value(wrap_Sleep, dwMilliseconds, WDATA_DEFAULT_INTERVAL_SCAN * 1000);
 
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 3; i++)
+    {
         char key[OS_SIZE_256];
-        whodata_directory * w_dir;
+        whodata_directory* w_dir;
 
         if (w_dir = calloc(1, sizeof(whodata_directory)), !w_dir)
             fail();
@@ -7909,7 +8338,8 @@ void test_state_checker_dirs_cleanup_multiple_nodes_all_stale(void ** state) {
     assert_null(__real_OSHash_Get(syscheck.wdata.directories, "C:\\some\\path-2"));
 }
 
-void test_whodata_audit_start_fail_to_create_directories_hash_table(void **state) {
+void test_whodata_audit_start_fail_to_create_directories_hash_table(void** state)
+{
     int ret;
 
     expect_function_call(__wrap_OSHash_Create);
@@ -7921,7 +8351,8 @@ void test_whodata_audit_start_fail_to_create_directories_hash_table(void **state
     assert_null(syscheck.wdata.directories);
 }
 
-void test_whodata_audit_start_fail_to_create_fd_hash_table(void **state) {
+void test_whodata_audit_start_fail_to_create_fd_hash_table(void** state)
+{
     int ret;
 
     expect_function_calls(__wrap_OSHash_Create, 2);
@@ -7935,9 +8366,10 @@ void test_whodata_audit_start_fail_to_create_fd_hash_table(void **state) {
     assert_null(syscheck.wdata.fd);
 }
 
-void test_whodata_audit_start_success(void **state) {
-    wchar_t *str = L"C:";
-    wchar_t *volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
+void test_whodata_audit_start_success(void** state)
+{
+    wchar_t* str = L"C:";
+    wchar_t* volume_name = L"\\\\?\\Volume{6B29FC40-CA47-1067-B31D-00DD010662DA}\\";
     int ret;
 
     expect_function_calls(__wrap_OSHash_Create, 2);
@@ -7961,7 +8393,7 @@ void test_whodata_audit_start_success(void **state) {
 
         // Inside get_drive_names
         {
-            wchar_t *volume_paths = L"A\0C\0\\Some\\path\0";
+            wchar_t* volume_paths = L"A\0C\0\\Some\\path\0";
 
             expect_memory(wrap_GetVolumePathNamesForVolumeNameW, lpszVolumeName, volume_name, wcslen(volume_name));
 
@@ -7969,9 +8401,13 @@ void test_whodata_audit_start_success(void **state) {
             will_return(wrap_GetVolumePathNamesForVolumeNameW, volume_paths);
             will_return(wrap_GetVolumePathNamesForVolumeNameW, 1);
 
-            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'A'");
-            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'C'");
-            expect_string(__wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
+            expect_string(
+                __wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'A'");
+            expect_string(
+                __wrap__mdebug1, formatted_msg, "(6303): Device 'C\\' associated with the mounting point 'C'");
+            expect_string(__wrap__mdebug1,
+                          formatted_msg,
+                          "(6303): Device 'C\\' associated with the mounting point '\\Some\\path'");
         }
 
         expect_value(wrap_FindNextVolumeW, hFindVolume, (HANDLE)123456);
@@ -7991,8 +8427,9 @@ void test_whodata_audit_start_success(void **state) {
     assert_ptr_equal(syscheck.wdata.fd, 2345);
 }
 
-void test_policy_check_match(void **state) {
-    policy_info *pol_data = *state;
+void test_policy_check_match(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     char debug_msg2[OS_SIZE_1024];
     char debug_msg3[OS_SIZE_1024];
@@ -8007,18 +8444,23 @@ void test_policy_check_match(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg4);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     ret = policy_check();
 
     assert_int_equal(ret, 0);
 }
 
-void test_policy_check_not_match(void **state) {
-    policy_info *pol_data = *state;
+void test_policy_check_not_match(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     char debug_msg2[OS_SIZE_1024];
     char debug_msg4[OS_SIZE_1024];
@@ -8031,10 +8473,14 @@ void test_policy_check_not_match(void **state) {
 
     pol_data->paudit_policy[0].AuditingInformation = POLICY_AUDIT_EVENT_FAILURE;
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     ret = policy_check();
 
@@ -8043,55 +8489,71 @@ void test_policy_check_not_match(void **state) {
     assert_int_equal(ret, 1);
 }
 
-void test_policy_check_LsaOpenPolicy_fail(void **state) {
-    policy_info *pol_data = *state;
+void test_policy_check_LsaOpenPolicy_fail(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
 
     expect_policy_check_match_call((NTSTATUS)1,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     ret = policy_check();
 
     assert_int_equal(ret, -1);
 }
 
-void test_policy_check_LsaQueryInformationPolicy_fail(void **state) {
-    policy_info *pol_data = *state;
+void test_policy_check_LsaQueryInformationPolicy_fail(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)1,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)1,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     ret = policy_check();
 
     assert_int_equal(ret, -1);
 }
 
-void test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail(void **state) {
-    policy_info *pol_data = *state;
+void test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
 
     expect_string(__wrap__mdebug2, formatted_msg, FIM_WHODATA_POLICY_OPENED);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, FALSE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   FALSE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     ret = policy_check();
 
     assert_int_equal(ret, -1);
 }
 
-void test_policy_check_AuditEnumerateSubCategories_fail(void **state) {
-    policy_info *pol_data = *state;
+void test_policy_check_AuditEnumerateSubCategories_fail(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     char debug_msg2[OS_SIZE_1024];
 
@@ -8100,18 +8562,23 @@ void test_policy_check_AuditEnumerateSubCategories_fail(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, FALSE,
-                                   pol_data->paudit_policy, TRUE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   FALSE,
+                                   pol_data->paudit_policy,
+                                   TRUE);
 
     ret = policy_check();
 
     assert_int_equal(ret, -1);
 }
 
-void test_policy_check_AuditQuerySystemPolicy_fail(void **state) {
-    policy_info *pol_data = *state;
+void test_policy_check_AuditQuerySystemPolicy_fail(void** state)
+{
+    policy_info* pol_data = *state;
     int ret;
     char debug_msg2[OS_SIZE_1024];
 
@@ -8120,17 +8587,22 @@ void test_policy_check_AuditQuerySystemPolicy_fail(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg2);
 
     expect_policy_check_match_call((NTSTATUS)0,
-                                   pol_data->audit_event_info, (NTSTATUS)0,
-                                   pol_data->category_guid, TRUE,
-                                   2, TRUE,
-                                   pol_data->paudit_policy, FALSE);
+                                   pol_data->audit_event_info,
+                                   (NTSTATUS)0,
+                                   pol_data->category_guid,
+                                   TRUE,
+                                   2,
+                                   TRUE,
+                                   pol_data->paudit_policy,
+                                   FALSE);
 
     ret = policy_check();
 
     assert_int_equal(ret, -1);
 }
 
-void test_win_whodata_release_resources(void **state) {
+void test_win_whodata_release_resources(void** state)
+{
     will_return_count(__wrap_os_random, 12345, 2);
     syscheck.wdata.fd = __real_OSHash_Create();
 
@@ -8143,11 +8615,11 @@ void test_win_whodata_release_resources(void **state) {
     will_return(wrap_EvtClose, 0);
 
     win_whodata_release_resources(&syscheck.wdata);
-
 }
 
 /**************************************************************************/
-int main(void) {
+int main(void)
+{
     int ret;
     const struct CMUnitTest tests[] = {
         /* set_winsacl */
@@ -8205,11 +8677,16 @@ int main(void) {
         cmocka_unit_test(test_is_valid_sacl_not_valid),
         cmocka_unit_test(test_is_valid_sacl_valid),
         /* replace_device_path */
-        cmocka_unit_test_setup_teardown(test_replace_device_path_invalid_path, setup_replace_device_path, teardown_replace_device_path),
-        cmocka_unit_test_setup_teardown(test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
-        cmocka_unit_test_setup_teardown(test_replace_device_path_device_not_found, setup_replace_device_path, teardown_replace_device_path),
-        cmocka_unit_test_setup_teardown(test_replace_device_path_device_found, setup_replace_device_path, teardown_replace_device_path),
-        cmocka_unit_test_setup_teardown(test_replace_device_path_path_is_device, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(
+            test_replace_device_path_invalid_path, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(
+            test_replace_device_path_empty_wdata_device, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(
+            test_replace_device_path_device_not_found, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(
+            test_replace_device_path_device_found, setup_replace_device_path, teardown_replace_device_path),
+        cmocka_unit_test_setup_teardown(
+            test_replace_device_path_path_is_device, setup_replace_device_path, teardown_replace_device_path),
         /* get_drive_names */
         cmocka_unit_test(test_get_drive_names_access_denied_error),
         cmocka_unit_test(test_get_drive_names_more_data_error),
@@ -8230,9 +8707,12 @@ int main(void) {
         /* restore_sacls */
         cmocka_unit_test(test_restore_sacls_openprocesstoken_failed),
         cmocka_unit_test(test_restore_sacls_set_privilege_failed),
-        cmocka_unit_test_setup_teardown(test_restore_sacls_securityNameInfo_failed, setup_restore_sacls, teardown_restore_sacls),
-        cmocka_unit_test_setup_teardown(test_restore_sacls_deleteAce_failed, setup_restore_sacls, teardown_restore_sacls),
-        cmocka_unit_test_setup_teardown(test_restore_sacls_SetNamedSecurityInfo_failed, setup_restore_sacls, teardown_restore_sacls),
+        cmocka_unit_test_setup_teardown(
+            test_restore_sacls_securityNameInfo_failed, setup_restore_sacls, teardown_restore_sacls),
+        cmocka_unit_test_setup_teardown(
+            test_restore_sacls_deleteAce_failed, setup_restore_sacls, teardown_restore_sacls),
+        cmocka_unit_test_setup_teardown(
+            test_restore_sacls_SetNamedSecurityInfo_failed, setup_restore_sacls, teardown_restore_sacls),
         cmocka_unit_test_setup_teardown(test_restore_sacls_success, setup_restore_sacls, teardown_restore_sacls),
         /* restore_audit_policies */
         cmocka_unit_test(test_restore_audit_policies_backup_not_found),
@@ -8295,17 +8775,23 @@ int main(void) {
         cmocka_unit_test(test_set_policies_unable_to_restore_policies),
         cmocka_unit_test(test_set_policies_success),
         /* whodata_audit_start */
-        cmocka_unit_test_teardown(test_whodata_audit_start_fail_to_create_directories_hash_table, teardown_whodata_audit_start),
+        cmocka_unit_test_teardown(test_whodata_audit_start_fail_to_create_directories_hash_table,
+                                  teardown_whodata_audit_start),
         cmocka_unit_test_teardown(test_whodata_audit_start_fail_to_create_fd_hash_table, teardown_whodata_audit_start),
         cmocka_unit_test_teardown(test_whodata_audit_start_success, teardown_whodata_audit_start),
         /* policy_check */
         cmocka_unit_test_setup_teardown(test_policy_check_match, setup_policy_check, teardown_policy_check),
         cmocka_unit_test_setup_teardown(test_policy_check_not_match, setup_policy_check, teardown_policy_check),
-        cmocka_unit_test_setup_teardown(test_policy_check_LsaOpenPolicy_fail, setup_policy_check, teardown_policy_check),
-        cmocka_unit_test_setup_teardown(test_policy_check_LsaQueryInformationPolicy_fail, setup_policy_check, teardown_policy_check),
-        cmocka_unit_test_setup_teardown(test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail, setup_policy_check, teardown_policy_check),
-        cmocka_unit_test_setup_teardown(test_policy_check_AuditEnumerateSubCategories_fail, setup_policy_check, teardown_policy_check),
-        cmocka_unit_test_setup_teardown(test_policy_check_AuditQuerySystemPolicy_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(
+            test_policy_check_LsaOpenPolicy_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(
+            test_policy_check_LsaQueryInformationPolicy_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(
+            test_policy_check_AuditLookupCategoryGuidFromCategoryId_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(
+            test_policy_check_AuditEnumerateSubCategories_fail, setup_policy_check, teardown_policy_check),
+        cmocka_unit_test_setup_teardown(
+            test_policy_check_AuditQuerySystemPolicy_fail, setup_policy_check, teardown_policy_check),
         /* win_whodata_release_resources */
         cmocka_unit_test(test_win_whodata_release_resources),
     };
@@ -8317,31 +8803,49 @@ int main(void) {
         cmocka_unit_test(test_whodata_callback_4656_fail_to_parse_event),
         cmocka_unit_test(test_whodata_callback_4656_fail_to_get_access_mask),
         cmocka_unit_test(test_whodata_callback_4656_non_monitored_directory),
-        cmocka_unit_test_teardown(test_whodata_callback_4656_non_whodata_directory, teardown_whodata_callback_restore_globals),
-        cmocka_unit_test_teardown(test_whodata_callback_4656_path_above_recursion_level, teardown_whodata_callback_restore_globals),
+        cmocka_unit_test_teardown(test_whodata_callback_4656_non_whodata_directory,
+                                  teardown_whodata_callback_restore_globals),
+        cmocka_unit_test_teardown(test_whodata_callback_4656_path_above_recursion_level,
+                                  teardown_whodata_callback_restore_globals),
         cmocka_unit_test(test_whodata_callback_4656_fail_to_add_event_to_hashmap),
         cmocka_unit_test(test_whodata_callback_4656_duplicate_handle_id_fail_to_delete),
         cmocka_unit_test(test_whodata_callback_4656_duplicate_handle_id_fail_to_readd),
         cmocka_unit_test(test_whodata_callback_4656_success),
         cmocka_unit_test(test_whodata_callback_4719_success),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_fail_to_get_mask, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_no_permissions, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_fail_to_get_mask, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_no_permissions, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test(test_whodata_callback_4663_fail_to_recover_event),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_event_is_on_file, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_event_is_not_rename_or_copy, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_non_monitored_directory, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_fail_to_add_new_directory, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_new_files_added, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_wrong_time_type, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_abort_scan, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4663_directory_will_be_scanned, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_event_is_on_file, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_event_is_not_rename_or_copy, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_non_monitored_directory, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_fail_to_add_new_directory, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_new_files_added, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_wrong_time_type, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_abort_scan, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4663_directory_will_be_scanned, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test(test_whodata_callback_4658_no_event_recovered),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4658_file_event, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4658_directory_delete_event, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4658_directory_new_file_detected, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4658_directory_scan_for_new_files, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4658_directory_no_new_files, setup_win_whodata_evt, teardown_win_whodata_evt),
-        cmocka_unit_test_setup_teardown(test_whodata_callback_4658_scan_aborted, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4658_file_event, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4658_directory_delete_event, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4658_directory_new_file_detected, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4658_directory_scan_for_new_files, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4658_directory_no_new_files, setup_win_whodata_evt, teardown_win_whodata_evt),
+        cmocka_unit_test_setup_teardown(
+            test_whodata_callback_4658_scan_aborted, setup_win_whodata_evt, teardown_win_whodata_evt),
         cmocka_unit_test(test_whodata_callback_unexpected_event_id),
     };
     const struct CMUnitTest state_checker_tests[] = {
@@ -8361,13 +8865,16 @@ int main(void) {
     // move this into its own thread.
     const struct CMUnitTest wdata_directories_cleanup_tests[] = {
         cmocka_unit_test(test_state_checker_dirs_cleanup_no_nodes),
-        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_single_non_stale_node, teardown_clean_directories_hash),
+        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_single_non_stale_node,
+                                  teardown_clean_directories_hash),
         cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_single_stale_node, teardown_clean_directories_hash),
-        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_multiple_nodes_none_stale, teardown_clean_directories_hash),
-        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_multiple_nodes_some_stale, teardown_clean_directories_hash),
-        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_multiple_nodes_all_stale, teardown_clean_directories_hash),
+        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_multiple_nodes_none_stale,
+                                  teardown_clean_directories_hash),
+        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_multiple_nodes_some_stale,
+                                  teardown_clean_directories_hash),
+        cmocka_unit_test_teardown(test_state_checker_dirs_cleanup_multiple_nodes_all_stale,
+                                  teardown_clean_directories_hash),
     };
-
 
     ret = cmocka_run_group_tests(whodata_callback_tests, setup_whodata_callback_group, teardown_whodata_callback_group);
     ret += cmocka_run_group_tests(state_checker_tests, setup_state_checker, teardown_state_checker);

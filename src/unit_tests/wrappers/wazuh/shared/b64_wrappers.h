@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef B64_WRAPPERS_H
 #define B64_WRAPPERS_H
 
@@ -22,10 +21,10 @@
 #include <windows.h>
 #endif
 
-char *__wrap_encode_base64(int size, const char *src);
-void expect_encode_base64(int size, const char *src, char * ret);
+char* __wrap_encode_base64(int size, const char* src);
+void expect_encode_base64(int size, const char* src, char* ret);
 
-char *__wrap_decode_base64(const char *src);
-void expect_decode_base64(const char *src, char * ret);
+char* __wrap_decode_base64(const char* src);
+void expect_decode_base64(const char* src, char* ret);
 
 #endif

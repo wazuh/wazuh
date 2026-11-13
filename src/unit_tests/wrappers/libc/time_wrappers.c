@@ -14,8 +14,11 @@
 #include <cmocka.h>
 #include <string.h>
 
-size_t __wrap_strftime(char * s, size_t max, __attribute__((unused)) const char * format,
-                       __attribute__((unused)) const struct tm * tm) {
-    strncpy(s, mock_type(char *), max);
+size_t __wrap_strftime(char* s,
+                       size_t max,
+                       __attribute__((unused)) const char* format,
+                       __attribute__((unused)) const struct tm* tm)
+{
+    strncpy(s, mock_type(char*), max);
     return mock();
 }

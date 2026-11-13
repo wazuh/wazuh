@@ -86,7 +86,8 @@ struct ProcessCommandLine
 // commandLine is the full invocation (executable path followed by its arguments),
 // args holds the non-empty arguments after argv[0] joined with spaces. Both are sanitized to valid UTF-8.
 // If executablePath is empty, the path found in the argument area is used instead.
-static inline ProcessCommandLine buildProcessCommandLine(const std::string& executablePath, const ProcessArgs& processArgs)
+static inline ProcessCommandLine buildProcessCommandLine(const std::string& executablePath,
+                                                         const ProcessArgs& processArgs)
 {
     ProcessCommandLine result;
     result.commandLine = executablePath.empty() ? processArgs.executablePath : executablePath;

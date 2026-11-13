@@ -24,9 +24,10 @@
  * /stats. A daemon that is disabled or not answering is left out rather than
  * reported empty, so the manager can tell "not running" from "nothing set". */
 
-typedef struct report_source_t {
-    const char *target;     ///< Component socket name under queue/sockets.
-    const char *command;    ///< Command that yields that component's report.
+typedef struct report_source_t
+{
+    const char* target;  ///< Component socket name under queue/sockets.
+    const char* command; ///< Command that yields that component's report.
 } report_source_t;
 
 static const report_source_t CONFIG_SOURCES[] = {
@@ -58,18 +59,28 @@ static const report_source_t STATS_SOURCES[] = {
  * @param output Receives the allocated reply.
  * @return Length of *output, or 0 when the target is unknown.
  */
-static size_t report_dispatch(const char *target, char *command, char **output) {
+static size_t report_dispatch(const char* target, char* command, char** output)
+{
     const size_t length = strlen(command);
 
-    if (strcmp(target, "agent") == 0) {
+    if (strcmp(target, "agent") == 0)
+    {
         return agcom_dispatch(command, output);
-    } else if (strcmp(target, "syscheck") == 0) {
+    }
+    else if (strcmp(target, "syscheck") == 0)
+    {
         return syscom_dispatch(command, length, output);
-    } else if (strcmp(target, "logcollector") == 0) {
+    }
+    else if (strcmp(target, "logcollector") == 0)
+    {
         return lccom_dispatch(command, output);
-    } else if (strcmp(target, "wmodules") == 0) {
+    }
+    else if (strcmp(target, "wmodules") == 0)
+    {
         return wmcom_dispatch(command, length, output);
-    } else if (strcmp(target, "com") == 0) {
+    }
+    else if (strcmp(target, "com") == 0)
+    {
         return wcom_dispatch(command, output);
     }
 
@@ -80,9 +91,10 @@ static size_t report_dispatch(const char *target, char *command, char **output) 
  * @brief Ask one component for its report. Windows runs every daemon inside a
  *        single process, so this is a direct call instead of a socket round trip.
  */
-static char *report_query(const char *target, const char *command) {
+static char* report_query(const char* target, const char* command)
+{
     char request[OS_SIZE_128] = {0};
-    char *response = NULL;
+    char* response = NULL;
 
     /* In-process there is no socket to refuse the call the way the POSIX
      * report_query() below gets refused: dispatching straight into e.g.
@@ -102,7 +114,8 @@ static char *report_query(const char *target, const char *command) {
 
     snprintf(request, sizeof(request), "%s", command);
 
-    if (report_dispatch(target, request, &response) == 0) {
+    if (report_dispatch(target, request, &response) == 0)
+    {
         /* Same line, and the same reason, as the POSIX connect failure below:
          * the component produced nothing, so it is left out of the report.
          * Worth saying on both platforms -- a module missing from /config is
@@ -123,11 +136,13 @@ static char *report_query(const char *target, const char *command) {
  * @param command Command to send.
  * @return Allocated reply, or NULL when the exchange failed.
  */
-static char *report_exchange(int sock, const char *command) {
-    char *response = NULL;
+static char* report_exchange(int sock, const char* command)
+{
+    char* response = NULL;
     ssize_t length;
 
-    if (OS_SendSecureTCP(sock, strlen(command), command) != 0) {
+    if (OS_SendSecureTCP(sock, strlen(command), command) != 0)
+    {
         mdebug1("Could not send '%s' to a component socket: %s", command, strerror(errno));
         close(sock);
         return NULL;
@@ -138,12 +153,13 @@ static char *report_exchange(int sock, const char *command) {
     length = OS_RecvSecureTCP(sock, response, OS_MAXSTR - 1);
     close(sock);
 
-    if (length <= 0) {
+    if (length <= 0)
+    {
         /* OS_SOCKTERR here means the component's report did not fit in the
          * socket's buffer, which is the one failure worth naming. */
-        mdebug1("No usable answer to '%s': %s", command,
-                length == OS_SOCKTERR ? "the report is larger than the socket allows"
-                                      : strerror(errno));
+        mdebug1("No usable answer to '%s': %s",
+                command,
+                length == OS_SOCKTERR ? "the report is larger than the socket allows" : strerror(errno));
         os_free(response);
         return NULL;
     }
@@ -155,7 +171,8 @@ static char *report_exchange(int sock, const char *command) {
 /**
  * @brief Ask one component for its report over its local socket.
  */
-static char *report_query(const char *target, const char *command) {
+static char* report_query(const char* target, const char* command)
+{
     char sockname[PATH_MAX + 1] = {0};
     int sock;
 
@@ -177,7 +194,8 @@ static char *report_query(const char *target, const char *command) {
 
     snprintf(sockname, sizeof(sockname), "queue/sockets/%s", target);
 
-    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0)
+    {
         mdebug1("Component '%s' is not answering, leaving it out of the report.", target);
         return NULL;
     }
@@ -193,20 +211,24 @@ static char *report_query(const char *target, const char *command) {
  * @param reply Component reply, "ok <json>" on success. Freed by this call.
  * @return Parsed array, or NULL when the component reported an error.
  */
-static cJSON *report_entries(const char *target, char *reply) {
-    cJSON *entries = NULL;
+static cJSON* report_entries(const char* target, char* reply)
+{
+    cJSON* entries = NULL;
 
-    if (!reply) {
+    if (!reply)
+    {
         return NULL;
     }
 
-    if (strncmp(reply, "ok ", 3) != 0) {
+    if (strncmp(reply, "ok ", 3) != 0)
+    {
         mdebug1("Component '%s' refused to report: %s", target, reply);
         os_free(reply);
         return NULL;
     }
 
-    if (entries = cJSON_Parse(reply + 3), !entries || !cJSON_IsObject(entries)) {
+    if (entries = cJSON_Parse(reply + 3), !entries || !cJSON_IsObject(entries))
+    {
         mdebug1("Component '%s' answered with something other than a report.", target);
         cJSON_Delete(entries);
         entries = NULL;
@@ -221,10 +243,12 @@ static cJSON *report_entries(const char *target, char *reply) {
  * @param report Destination object, keyed by module name.
  * @param entries Source object. Consumed by this call.
  */
-static void report_absorb(cJSON *report, cJSON *entries) {
-    cJSON *entry = NULL;
+static void report_absorb(cJSON* report, cJSON* entries)
+{
+    cJSON* entry = NULL;
 
-    while (entries && (entry = entries->child)) {
+    while (entries && (entry = entries->child))
+    {
         cJSON_DetachItemViaPointer(entries, entry);
         /* Same key-lifetime rule as module_report_merge(): cJSON copies the key
          * before releasing the item's own, so passing entry->string is safe. */
@@ -240,25 +264,27 @@ static void report_absorb(cJSON *report, cJSON *entries) {
  * @param count Number of sources.
  * @return Allocated JSON document, or NULL when no component answered.
  */
-static char *report_collect(const report_source_t *sources, size_t count) {
-    cJSON *root = cJSON_CreateObject();
-    cJSON *report = cJSON_CreateObject();
-    char *document = NULL;
+static char* report_collect(const report_source_t* sources, size_t count)
+{
+    cJSON* root = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
+    char* document = NULL;
     size_t i;
 
-    if (!root || !report) {
+    if (!root || !report)
+    {
         cJSON_Delete(root);
         cJSON_Delete(report);
         return NULL; /* Out of memory: skip the cycle, same as nothing answering. */
     }
 
-    for (i = 0; i < count; i++) {
-        report_absorb(report, report_entries(sources[i].target,
-                                             report_query(sources[i].target,
-                                                          sources[i].command)));
+    for (i = 0; i < count; i++)
+    {
+        report_absorb(report, report_entries(sources[i].target, report_query(sources[i].target, sources[i].command)));
     }
 
-    if (!report->child) {
+    if (!report->child)
+    {
         /* Nothing answered. Skip the cycle instead of pushing an empty
          * document that would overwrite a good one in the manager's index. */
         cJSON_Delete(report);
@@ -272,10 +298,12 @@ static char *report_collect(const report_source_t *sources, size_t count) {
     return document;
 }
 
-char *w_agent_collect_config(void) {
+char* w_agent_collect_config(void)
+{
     return report_collect(CONFIG_SOURCES, sizeof(CONFIG_SOURCES) / sizeof(CONFIG_SOURCES[0]));
 }
 
-char *w_agent_collect_stats(void) {
+char* w_agent_collect_stats(void)
+{
     return report_collect(STATS_SOURCES, sizeof(STATS_SOURCES) / sizeof(STATS_SOURCES[0]));
 }

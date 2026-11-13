@@ -34,449 +34,415 @@ namespace Utils
 {
     class Registry final
     {
-        public:
-            Registry(const HKEY key, const std::string& subKey = "", const REGSAM access = KEY_READ)
-                : m_registryKey{openRegistry(key, subKey, access)}
-            {}
+    public:
+        Registry(const HKEY key, const std::string& subKey = "", const REGSAM access = KEY_READ)
+            : m_registryKey {openRegistry(key, subKey, access)}
+        {
+        }
 
-            Registry(const std::string& key, const std::string& subKey, const REGSAM access = KEY_READ)
-                : m_registryKey {openRegistry(stringToHKEY(key), subKey, access)}
+        Registry(const std::string& key, const std::string& subKey, const REGSAM access = KEY_READ)
+            : m_registryKey {openRegistry(stringToHKEY(key), subKey, access)}
+        {
+        }
+
+        ~Registry()
+        {
+            close();
+        }
+
+        void close()
+        {
+            if (m_registryKey)
             {
+                RegCloseKey(m_registryKey);
+                m_registryKey = nullptr;
+            }
+        }
+
+        DWORD dword(const std::string& valueName) const
+        {
+            DWORD ret {};
+            DWORD size {sizeof(DWORD)};
+            const auto result {RegQueryValueEx(
+                m_registryKey, valueName.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(&ret), &size)};
+
+            if (result != ERROR_SUCCESS)
+            {
+                throw std::system_error {result, std::system_category(), "Error reading DWORD value of: " + valueName};
             }
 
-            ~Registry()
+            return ret;
+        }
+
+        bool dword(const std::string& valueName, DWORD& value) const
+        {
+            // The type has to be requested and checked: without it a REG_SZ short enough to
+            // fit the buffer is read as raw bytes and returned as a plausible number, so
+            // "123" comes back as 3355185. The read lands in a local so a rejected value
+            // never reaches the caller's variable, and the payload has to be a whole DWORD.
+            DWORD type {};
+            DWORD data {};
+            DWORD size {sizeof(DWORD)};
+            const auto result {RegQueryValueEx(
+                m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(&data), &size)};
+
+            if (ERROR_SUCCESS != result || REG_DWORD != type || sizeof(DWORD) != size)
             {
-                close();
+                return false;
             }
 
-            void close()
+            value = data;
+            return true;
+        }
+
+        std::vector<std::string> enumerate() const
+        {
+            std::vector<std::string> ret;
+            constexpr auto MAX_KEY_NAME_SIZE {
+                255}; // https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
+            char buff[MAX_KEY_NAME_SIZE] {};
+            DWORD size {MAX_KEY_NAME_SIZE};
+            DWORD index {0};
+            auto result {RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr)};
+
+            while (result == ERROR_SUCCESS)
             {
-                if (m_registryKey)
-                {
-                    RegCloseKey(m_registryKey);
-                    m_registryKey = nullptr;
-                }
+                ret.push_back(buff);
+                size = MAX_KEY_NAME_SIZE;
+                ++index;
+                result = RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr);
             }
 
-            DWORD dword(const std::string& valueName) const
+            if (result != ERROR_NO_MORE_ITEMS)
             {
-                DWORD ret{};
-                DWORD size{sizeof(DWORD)};
-                const auto result
-                {
-                    RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, reinterpret_cast<LPBYTE>(&ret), &size)
-                };
-
-                if (result != ERROR_SUCCESS)
-                {
-                    throw std::system_error
-                    {
-                        result,
-                        std::system_category(),
-                        "Error reading DWORD value of: " + valueName
-                    };
-                }
-
-                return ret;
+                throw std::system_error {result, std::system_category(), "Error enumerating registry."};
             }
 
-            bool dword(const std::string& valueName, DWORD& value) const
+            return ret;
+        }
+
+        std::vector<std::string> enumerateValueKey() const
+        {
+            std::vector<std::string> ret;
+            constexpr auto MAX_KEY_NAME_VALUE {
+                32767}; // https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
+            char buffer[MAX_KEY_NAME_VALUE];
+            DWORD size {MAX_KEY_NAME_VALUE};
+            DWORD index {0};
+
+            auto result {RegEnumValue(m_registryKey, index, buffer, &size, nullptr, nullptr, nullptr, nullptr)};
+
+            while (ERROR_SUCCESS == result)
             {
-                // The type has to be requested and checked: without it a REG_SZ short enough to
-                // fit the buffer is read as raw bytes and returned as a plausible number, so
-                // "123" comes back as 3355185. The read lands in a local so a rejected value
-                // never reaches the caller's variable, and the payload has to be a whole DWORD.
-                DWORD type{};
-                DWORD data{};
-                DWORD size{sizeof(DWORD)};
-                const auto result
-                {
-                    RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(&data), &size)
-                };
-
-                if (ERROR_SUCCESS != result || REG_DWORD != type || sizeof(DWORD) != size)
-                {
-                    return false;
-                }
-
-                value = data;
-                return true;
+                ret.push_back(buffer);
+                size = MAX_KEY_NAME_VALUE;
+                index++;
+                result = RegEnumValue(m_registryKey, index, buffer, &size, nullptr, nullptr, nullptr, nullptr);
             }
 
-            std::vector<std::string> enumerate() const
+            if (ERROR_NO_MORE_ITEMS != result)
             {
-                std::vector<std::string> ret;
-                constexpr auto MAX_KEY_NAME_SIZE{255};//https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
-                char buff[MAX_KEY_NAME_SIZE] {};
-                DWORD size{MAX_KEY_NAME_SIZE};
-                DWORD index{0};
-                auto result{RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr)};
-
-                while (result == ERROR_SUCCESS)
-                {
-                    ret.push_back(buff);
-                    size = MAX_KEY_NAME_SIZE;
-                    ++index;
-                    result = RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr);
-                }
-
-                if (result != ERROR_NO_MORE_ITEMS)
-                {
-                    throw std::system_error
-                    {
-                        result,
-                        std::system_category(),
-                        "Error enumerating registry."
-                    };
-                }
-
-                return ret;
+                throw std::system_error {result, std::system_category(), "Error enumerating Values in registry."};
             }
 
-            std::vector<std::string> enumerateValueKey() const
+            return ret;
+        }
+
+        void enumerate(const std::function<void(const std::string&)>& callback) const
+        {
+            std::vector<std::string> ret;
+            constexpr auto MAX_KEY_NAME_SIZE {
+                255}; // https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
+            char buff[MAX_KEY_NAME_SIZE] {};
+            DWORD size {MAX_KEY_NAME_SIZE};
+            DWORD index {0};
+            auto result {RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr)};
+
+            while (result == ERROR_SUCCESS)
             {
-                std::vector<std::string> ret;
-                constexpr auto MAX_KEY_NAME_VALUE {32767}; // https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
-                char buffer[MAX_KEY_NAME_VALUE];
-                DWORD size {MAX_KEY_NAME_VALUE};
-                DWORD index {0};
-
-                auto result {RegEnumValue(m_registryKey, index, buffer, &size, nullptr,  nullptr, nullptr, nullptr)};
-
-                while (ERROR_SUCCESS == result)
-                {
-                    ret.push_back(buffer);
-                    size = MAX_KEY_NAME_VALUE;
-                    index++;
-                    result = RegEnumValue(m_registryKey, index, buffer, &size, nullptr,  nullptr, nullptr, nullptr);
-                }
-
-                if (ERROR_NO_MORE_ITEMS != result)
-                {
-                    throw std::system_error
-                    {
-                        result,
-                        std::system_category(),
-                        "Error enumerating Values in registry."
-                    };
-                }
-
-                return ret;
+                callback(buff);
+                size = MAX_KEY_NAME_SIZE;
+                ++index;
+                result = RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr);
             }
 
-            void enumerate(const std::function<void(const std::string&)>& callback) const
+            if (result != ERROR_NO_MORE_ITEMS)
             {
-                std::vector<std::string> ret;
-                constexpr auto MAX_KEY_NAME_SIZE{255};//https://docs.microsoft.com/en-us/windows/win32/sysinfo/registry-element-size-limits
-                char buff[MAX_KEY_NAME_SIZE] {};
-                DWORD size{MAX_KEY_NAME_SIZE};
-                DWORD index{0};
-                auto result{RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr)};
+                throw std::system_error {result, std::system_category(), "Error enumerating registry."};
+            }
+        }
 
-                while (result == ERROR_SUCCESS)
-                {
-                    callback(buff);
-                    size = MAX_KEY_NAME_SIZE;
-                    ++index;
-                    result = RegEnumKeyEx(m_registryKey, index, buff, &size, nullptr, nullptr, nullptr, nullptr);
-                }
+        bool enumerate(std::vector<std::string>& values) const
+        {
+            bool ret {true};
 
-                if (result != ERROR_NO_MORE_ITEMS)
-                {
-                    throw std::system_error
-                    {
-                        result,
-                        std::system_category(),
-                        "Error enumerating registry."
-                    };
-                }
+            try
+            {
+                values = this->enumerate();
+            }
+            catch (...)
+            {
+                ret = false;
             }
 
-            bool enumerate(std::vector<std::string>& values) const
+            return ret;
+        }
+
+        bool enumerateValueKey(std::vector<std::string>& values) const
+        {
+            auto ret {true};
+
+            try
             {
-                bool ret{true};
-
-                try
-                {
-                    values = this->enumerate();
-                }
-                catch (...)
-                {
-                    ret = false;
-                }
-
-                return ret;
+                values = this->enumerateValueKey();
+            }
+            catch (...)
+            {
+                ret = false;
             }
 
-            bool enumerateValueKey(std::vector<std::string>& values) const
+            return ret;
+        }
+
+        std::string keyModificationDate() const
+        {
+            std::string ret;
+            FILETIME lastModificationTime {};
+            const auto result {RegQueryInfoKey(m_registryKey,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               &lastModificationTime)};
+
+            if (ERROR_SUCCESS == result)
             {
-                auto ret{true};
+                ULARGE_INTEGER time {};
 
-                try
-                {
-                    values = this->enumerateValueKey();
-                }
-                catch (...)
-                {
-                    ret = false;
-                }
+                time.LowPart = lastModificationTime.dwLowDateTime;
+                time.HighPart = lastModificationTime.dwHighDateTime;
 
-                return ret;
+                // Use structure values to build 18-digit LDAP/FILETIME number
+                ret = Utils::buildTimestamp(time.QuadPart);
             }
 
-            std::string keyModificationDate() const
+            return ret;
+        }
+
+        std::string string(const std::string& valueName) const
+        {
+            DWORD size {0};
+            auto result {RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, nullptr, &size)};
+
+            if (result != ERROR_SUCCESS)
             {
-                std::string ret;
-                FILETIME lastModificationTime { };
-                const auto result
-                {
-                    RegQueryInfoKey(m_registryKey, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &lastModificationTime)
-                };
-
-                if (ERROR_SUCCESS == result)
-                {
-                    ULARGE_INTEGER time { };
-
-                    time.LowPart = lastModificationTime.dwLowDateTime;
-                    time.HighPart = lastModificationTime.dwHighDateTime;
-
-                    // Use structure values to build 18-digit LDAP/FILETIME number
-                    ret = Utils::buildTimestamp(time.QuadPart);
-                }
-
-                return ret;
+                throw std::system_error {result, std::system_category(), "Error reading the size of: " + valueName};
             }
 
-            std::string string(const std::string& valueName) const
+            const auto spBuff {std::make_unique<BYTE[]>(size)};
+
+            if (!spBuff)
             {
-                DWORD size{0};
-                auto result
-                {
-                    RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, nullptr, &size)
-                };
-
-                if (result != ERROR_SUCCESS)
-                {
-                    throw std::system_error
-                    {
-                        result,
-                        std::system_category(),
-                        "Error reading the size of: " + valueName
-                    };
-                }
-
-                const auto spBuff{std::make_unique<BYTE[]>(size)};
-
-                if (!spBuff)
-                {
-                    throw std::runtime_error
-                    {
-                        "Error allocating memory to read String value of: " + valueName
-                    };
-                }
-
-                result = RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, spBuff.get(), &size);
-
-                if (result != ERROR_SUCCESS)
-                {
-                    throw std::system_error
-                    {
-                        result,
-                        std::system_category(),
-                        "Error reading String value of: " + valueName
-                    };
-                }
-
-                return std::string{reinterpret_cast<const char*>(spBuff.get())};
+                throw std::runtime_error {"Error allocating memory to read String value of: " + valueName};
             }
 
+            result = RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, nullptr, spBuff.get(), &size);
 
-            bool qword(const std::string& valueName, ULONGLONG& value) const
+            if (result != ERROR_SUCCESS)
             {
-                ULONGLONG valueRegistry;
-                DWORD size {sizeof(ULONGLONG)};
-                DWORD type;
-                auto ret {false};
-
-                const auto result { RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(&valueRegistry), &size) };
-
-                if (ERROR_SUCCESS != result)
-                {
-                    throw std::system_error
-                    {
-                        result,
-                        std::system_category(),
-                        "Error reading the value of: " + valueName
-                    };
-                }
-
-                if (REG_QWORD == type)
-                {
-                    value = valueRegistry;
-                    ret = true;
-                }
-
-                return ret;
+                throw std::system_error {result, std::system_category(), "Error reading String value of: " + valueName};
             }
 
-            bool string(const std::string& valueName, std::string& value) const
+            return std::string {reinterpret_cast<const char*>(spBuff.get())};
+        }
+
+        bool qword(const std::string& valueName, ULONGLONG& value) const
+        {
+            ULONGLONG valueRegistry;
+            DWORD size {sizeof(ULONGLONG)};
+            DWORD type;
+            auto ret {false};
+
+            const auto result {RegQueryValueEx(
+                m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(&valueRegistry), &size)};
+
+            if (ERROR_SUCCESS != result)
             {
-                bool ret{true};
-
-                try
-                {
-                    value = EncodingWindowsHelper::stringAnsiToStringUTF8(this->string(valueName));
-                }
-                catch (...)
-                {
-                    ret = false;
-                }
-
-                return ret;
+                throw std::system_error {result, std::system_category(), "Error reading the value of: " + valueName};
             }
 
-            std::string HandleRegMultiSZ(const BYTE* data, DWORD size) const
+            if (REG_QWORD == type)
             {
-                if (size == 0)
-                {
-                    return "";
-                }
-
-                std::string result;
-                const char* current = reinterpret_cast<const char*>(data);
-                const char* end = reinterpret_cast<const char*>(data + size);
-
-                while (current < end && *current != '\0')
-                {
-                    size_t remaining = end - current;
-                    size_t len = strnlen(current, remaining);
-
-                    result.append(current, len);
-                    current += len + 1;
-
-                    if (current < end && *current != '\0')
-                    {
-                        result += ' ';
-                    }
-                }
-
-                return result;
+                value = valueRegistry;
+                ret = true;
             }
 
-            std::string getValue(const std::string& valueName) const
+            return ret;
+        }
+
+        bool string(const std::string& valueName, std::string& value) const
+        {
+            bool ret {true};
+
+            try
             {
-                DWORD type = 0;
-                DWORD size = 0;
-                LONG result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, nullptr, &size);
+                value = EncodingWindowsHelper::stringAnsiToStringUTF8(this->string(valueName));
+            }
+            catch (...)
+            {
+                ret = false;
+            }
 
-                if (result != ERROR_SUCCESS)
+            return ret;
+        }
+
+        std::string HandleRegMultiSZ(const BYTE* data, DWORD size) const
+        {
+            if (size == 0)
+            {
+                return "";
+            }
+
+            std::string result;
+            const char* current = reinterpret_cast<const char*>(data);
+            const char* end = reinterpret_cast<const char*>(data + size);
+
+            while (current < end && *current != '\0')
+            {
+                size_t remaining = end - current;
+                size_t len = strnlen(current, remaining);
+
+                result.append(current, len);
+                current += len + 1;
+
+                if (current < end && *current != '\0')
                 {
-                    throw std::system_error {result, std::system_category(), "Error reading the size of: " + valueName};
-                }
-
-                auto spBuff = std::make_unique<BYTE[]>(size);
-                result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, spBuff.get(), &size);
-
-                if (result != ERROR_SUCCESS)
-                {
-                    throw std::system_error {
-                        result, std::system_category(), "Error reading the value of: " + valueName};
-                }
-
-                switch (type)
-                {
-                    case REG_SZ:
-                    case REG_EXPAND_SZ: return std::string(reinterpret_cast<char*>(spBuff.get()));
-                    case REG_DWORD:
-                    {
-                        DWORD dwValue;
-                        std::memcpy(&dwValue, spBuff.get(), sizeof(DWORD));
-                        return std::to_string(dwValue);
-                    }
-                    case REG_QWORD:
-                    {
-                        ULONGLONG qwValue;
-                        std::memcpy(&qwValue, spBuff.get(), sizeof(ULONGLONG));
-                        return std::to_string(qwValue);
-                    }
-                    case REG_MULTI_SZ:
-                    {
-                        return HandleRegMultiSZ(spBuff.get(), size);
-                    }
-                    default: throw std::runtime_error("Unsupported registry value type for: " + valueName);
+                    result += ' ';
                 }
             }
 
-            static HKEY stringToHKEY(const std::string& keyName)
+            return result;
+        }
+
+        std::string getValue(const std::string& valueName) const
+        {
+            DWORD type = 0;
+            DWORD size = 0;
+            LONG result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, nullptr, &size);
+
+            if (result != ERROR_SUCCESS)
             {
-                if (keyName == "HKEY_CLASSES_ROOT" || keyName == "HKCR")
-                {
-                    return HKEY_CLASSES_ROOT;
-                }
-                if (keyName == "HKEY_CURRENT_USER" || keyName == "HKCU")
-                {
-                    return HKEY_CURRENT_USER;
-                }
-                if (keyName == "HKEY_LOCAL_MACHINE" || keyName == "HKLM")
-                {
-                    return HKEY_LOCAL_MACHINE;
-                }
-                if (keyName == "HKEY_USERS" || keyName == "HKU")
-                {
-                    return HKEY_USERS;
-                }
-                if (keyName == "HKEY_CURRENT_CONFIG" || keyName == "HKCC")
-                {
-                    return HKEY_CURRENT_CONFIG;
-                }
-                if (keyName == "HKEY_PERFORMANCE_DATA")
-                {
-                    return HKEY_PERFORMANCE_DATA;
-                }
-                if (keyName == "HKEY_PERFORMANCE_TEXT")
-                {
-                    return HKEY_PERFORMANCE_TEXT;
-                }
-                if (keyName == "HKEY_PERFORMANCE_NLSTEXT")
-                {
-                    return HKEY_PERFORMANCE_NLSTEXT;
-                }
-                if (keyName == "HKEY_DYN_DATA")
-                {
-                    return HKEY_DYN_DATA; // obsolete
-                }
-                throw std::invalid_argument("Unknown HKEY string: " + keyName);
+                throw std::system_error {result, std::system_category(), "Error reading the size of: " + valueName};
             }
 
-            static bool KeyExists(const std::string& key, const std::string& subKey)
+            auto spBuff = std::make_unique<BYTE[]>(size);
+            result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, spBuff.get(), &size);
+
+            if (result != ERROR_SUCCESS)
             {
-                HKEY hKey = nullptr;
-
-                LONG result = RegOpenKeyEx(stringToHKEY(key), subKey.c_str(), 0, KEY_READ, &hKey);
-
-                if (hKey != nullptr)
-                {
-                    RegCloseKey(hKey);
-                }
-
-                return (result == ERROR_SUCCESS);
+                throw std::system_error {result, std::system_category(), "Error reading the value of: " + valueName};
             }
 
-            HKEY openRegistry(const HKEY key, const std::string& subKey, const REGSAM access)
+            switch (type)
             {
-                HKEY ret {nullptr};
-                const auto result {RegOpenKeyEx(key, subKey.c_str(), 0, access, &ret)};
-
-                if (result != ERROR_SUCCESS)
+                case REG_SZ:
+                case REG_EXPAND_SZ: return std::string(reinterpret_cast<char*>(spBuff.get()));
+                case REG_DWORD:
                 {
-                    throw std::system_error {result, std::system_category(), "Error opening registry: " + subKey};
+                    DWORD dwValue;
+                    std::memcpy(&dwValue, spBuff.get(), sizeof(DWORD));
+                    return std::to_string(dwValue);
                 }
+                case REG_QWORD:
+                {
+                    ULONGLONG qwValue;
+                    std::memcpy(&qwValue, spBuff.get(), sizeof(ULONGLONG));
+                    return std::to_string(qwValue);
+                }
+                case REG_MULTI_SZ:
+                {
+                    return HandleRegMultiSZ(spBuff.get(), size);
+                }
+                default: throw std::runtime_error("Unsupported registry value type for: " + valueName);
+            }
+        }
 
-                return ret;
+        static HKEY stringToHKEY(const std::string& keyName)
+        {
+            if (keyName == "HKEY_CLASSES_ROOT" || keyName == "HKCR")
+            {
+                return HKEY_CLASSES_ROOT;
+            }
+            if (keyName == "HKEY_CURRENT_USER" || keyName == "HKCU")
+            {
+                return HKEY_CURRENT_USER;
+            }
+            if (keyName == "HKEY_LOCAL_MACHINE" || keyName == "HKLM")
+            {
+                return HKEY_LOCAL_MACHINE;
+            }
+            if (keyName == "HKEY_USERS" || keyName == "HKU")
+            {
+                return HKEY_USERS;
+            }
+            if (keyName == "HKEY_CURRENT_CONFIG" || keyName == "HKCC")
+            {
+                return HKEY_CURRENT_CONFIG;
+            }
+            if (keyName == "HKEY_PERFORMANCE_DATA")
+            {
+                return HKEY_PERFORMANCE_DATA;
+            }
+            if (keyName == "HKEY_PERFORMANCE_TEXT")
+            {
+                return HKEY_PERFORMANCE_TEXT;
+            }
+            if (keyName == "HKEY_PERFORMANCE_NLSTEXT")
+            {
+                return HKEY_PERFORMANCE_NLSTEXT;
+            }
+            if (keyName == "HKEY_DYN_DATA")
+            {
+                return HKEY_DYN_DATA; // obsolete
+            }
+            throw std::invalid_argument("Unknown HKEY string: " + keyName);
+        }
+
+        static bool KeyExists(const std::string& key, const std::string& subKey)
+        {
+            HKEY hKey = nullptr;
+
+            LONG result = RegOpenKeyEx(stringToHKEY(key), subKey.c_str(), 0, KEY_READ, &hKey);
+
+            if (hKey != nullptr)
+            {
+                RegCloseKey(hKey);
             }
 
-        private:
-            HKEY m_registryKey {nullptr};
+            return (result == ERROR_SUCCESS);
+        }
+
+        HKEY openRegistry(const HKEY key, const std::string& subKey, const REGSAM access)
+        {
+            HKEY ret {nullptr};
+            const auto result {RegOpenKeyEx(key, subKey.c_str(), 0, access, &ret)};
+
+            if (result != ERROR_SUCCESS)
+            {
+                throw std::system_error {result, std::system_category(), "Error opening registry: " + subKey};
+            }
+
+            return ret;
+        }
+
+    private:
+        HKEY m_registryKey {nullptr};
     };
 
     static void expandRegistryPath(const HKEY key, const std::string& subKey, std::vector<std::string>& registryKeys)
@@ -571,10 +537,10 @@ namespace Utils
             registryKeys.push_back(subKey);
         }
     }
-}
+} // namespace Utils
 
 #pragma GCC diagnostic pop
 
 #endif // _REGISTRY_HELPER_H
 
-#endif //WIN32
+#endif // WIN32

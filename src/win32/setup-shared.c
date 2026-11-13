@@ -19,18 +19,18 @@
 #include <windows.h>
 #include "os_regex.h"
 
-#define WAZUHCONF   "ossec.conf"
-#define OS_MAXSTR   1024
-
+#define WAZUHCONF "ossec.conf"
+#define OS_MAXSTR 1024
 
 /* Check if a file exists */
-int fileexist(char *file)
+int fileexist(char* file)
 {
-    FILE *fp;
+    FILE* fp;
 
     /* Open file */
     fp = wfopen(file, "r");
-    if (!fp) {
+    if (!fp)
+    {
         return (0);
     }
 
@@ -39,14 +39,15 @@ int fileexist(char *file)
 }
 
 /* Grep for a string in a file */
-int dogrep(char *file, char *str)
+int dogrep(char* file, char* str)
 {
     char line[OS_MAXSTR + 1];
-    FILE *fp;
+    FILE* fp;
 
     /* Open file */
     fp = wfopen(file, "r");
-    if (!fp) {
+    if (!fp)
+    {
         return (0);
     }
 
@@ -54,8 +55,10 @@ int dogrep(char *file, char *str)
     memset(line, '\0', OS_MAXSTR + 1);
 
     /* Read file and look for str */
-    while (fgets(line, OS_MAXSTR, fp) != NULL) {
-        if (OS_Match(str, line)) {
+    while (fgets(line, OS_MAXSTR, fp) != NULL)
+    {
+        if (OS_Match(str, line))
+        {
             fclose(fp);
             return (1);
         }
@@ -66,13 +69,14 @@ int dogrep(char *file, char *str)
 }
 
 /* Check if dir exists */
-int direxist(char *dir)
+int direxist(char* dir)
 {
-    DIR *dp;
+    DIR* dp;
 
     /* Open dir */
     dp = wopendir(dir);
-    if (dp == NULL) {
+    if (dp == NULL)
+    {
         return (0);
     }
 
@@ -81,11 +85,12 @@ int direxist(char *dir)
 }
 
 /* Get Windows main directory */
-void get_win_dir(char *file, int f_size)
+void get_win_dir(char* file, int f_size)
 {
     ExpandEnvironmentStrings("%WINDIR%", file, f_size);
 
-    if (!direxist(file)) {
+    if (!direxist(file))
+    {
         strncpy(file, "C:\\WINDOWS", f_size);
     }
 }

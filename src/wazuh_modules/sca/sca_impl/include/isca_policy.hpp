@@ -13,17 +13,17 @@ struct CheckResult
 
 class ISCAPolicy
 {
-    public:
-        /// @brief Destructor
-        virtual ~ISCAPolicy() = default;
+public:
+    /// @brief Destructor
+    virtual ~ISCAPolicy() = default;
 
-        /// @brief Runs the policy check
-        /// @param reportCheckResult Function to report check result
-        virtual void Run(std::function<void(const CheckResult&)> reportCheckResult) = 0;
+    /// @brief Runs the policy check
+    /// @param reportCheckResult Function to report check result
+    virtual void Run(std::function<void(const CheckResult&)> reportCheckResult) = 0;
 
-        /// @brief Stops the policy check
-        virtual void Stop() = 0;
+    /// @brief Stops the policy check
+    virtual void Stop() = 0;
 
-        /// @brief Returns the policy id
-        virtual const std::string& GetId() const = 0;
+    /// @brief Returns the policy id
+    virtual const std::string& GetId() const = 0;
 };

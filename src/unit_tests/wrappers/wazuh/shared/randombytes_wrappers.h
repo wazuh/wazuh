@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef RANDOM_WRAPPERS_H
 #define RANDOM_WRAPPERS_H
 

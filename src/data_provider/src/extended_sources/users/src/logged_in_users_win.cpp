@@ -15,37 +15,38 @@
 #include "winapi_wrappers.hpp"
 #include "encodingWindowsHelper.h"
 
-
-const std::map<int, std::string> LoggedInUsersProvider::m_kSessionStates =
-{
-    {WTSActive, "active"},
-    {WTSDisconnected, "disconnected"},
-    {WTSConnected, "connected"},
-    {WTSConnectQuery, "connectquery"},
-    {WTSShadow, "shadow"},
-    {WTSIdle, "idle"},
-    {WTSListen, "listen"},
-    {WTSReset, "reset"},
-    {WTSDown, "down"},
-    {WTSInit, "init"}
-};
+const std::map<int, std::string> LoggedInUsersProvider::m_kSessionStates = {{WTSActive, "active"},
+                                                                            {WTSDisconnected, "disconnected"},
+                                                                            {WTSConnected, "connected"},
+                                                                            {WTSConnectQuery, "connectquery"},
+                                                                            {WTSShadow, "shadow"},
+                                                                            {WTSIdle, "idle"},
+                                                                            {WTSListen, "listen"},
+                                                                            {WTSReset, "reset"},
+                                                                            {WTSDown, "down"},
+                                                                            {WTSInit, "init"}};
 
 LoggedInUsersProvider::LoggedInUsersProvider(std::shared_ptr<ITWSapiWrapper> twsWrapper,
-                                             std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper, std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
+                                             std::shared_ptr<IWinBaseApiWrapper> winBaseWrapper,
+                                             std::shared_ptr<IWinSDDLWrapper> winSddlWrapper,
                                              std::shared_ptr<IWinSecurityBaseApiWrapper> winSecurityWrapper,
                                              std::shared_ptr<IUsersHelper> usersHelperWrapper)
-    : m_twsApiWrapper(std::move(twsWrapper)),
-      m_winBaseWrapper(std::move(winBaseWrapper)),
-      m_winSddlWrapper(std::move(winSddlWrapper)),
-      m_winSecurityWrapper(std::move(winSecurityWrapper)),
-      m_usersHelpersWrapper(std::move(usersHelperWrapper)) {}
+    : m_twsApiWrapper(std::move(twsWrapper))
+    , m_winBaseWrapper(std::move(winBaseWrapper))
+    , m_winSddlWrapper(std::move(winSddlWrapper))
+    , m_winSecurityWrapper(std::move(winSecurityWrapper))
+    , m_usersHelpersWrapper(std::move(usersHelperWrapper))
+{
+}
 
 LoggedInUsersProvider::LoggedInUsersProvider()
-    : m_twsApiWrapper(std::make_shared<TWSapiWrapper>()),
-      m_winBaseWrapper(std::make_shared<WinBaseApiWrapper>()),
-      m_winSddlWrapper(std::make_shared<WinSDDLWrapper>()),
-      m_winSecurityWrapper(std::make_shared<WinSecurityBaseApiWrapper>()),
-      m_usersHelpersWrapper(std::make_shared<UsersHelper>()) {}
+    : m_twsApiWrapper(std::make_shared<TWSapiWrapper>())
+    , m_winBaseWrapper(std::make_shared<WinBaseApiWrapper>())
+    , m_winSddlWrapper(std::make_shared<WinSDDLWrapper>())
+    , m_winSecurityWrapper(std::make_shared<WinSecurityBaseApiWrapper>())
+    , m_usersHelpersWrapper(std::make_shared<UsersHelper>())
+{
+}
 
 nlohmann::json LoggedInUsersProvider::collect()
 {
@@ -53,8 +54,7 @@ nlohmann::json LoggedInUsersProvider::collect()
     WTS_SESSION_INFOW* pSessionInfo = nullptr;
     unsigned long count;
 
-    auto res = m_twsApiWrapper->WTSEnumerateSessionsW(
-                   WTS_CURRENT_SERVER_HANDLE, 0, 1, &pSessionInfo, &count);
+    auto res = m_twsApiWrapper->WTSEnumerateSessionsW(WTS_CURRENT_SERVER_HANDLE, 0, 1, &pSessionInfo, &count);
 
     if (res == 0)
     {
@@ -73,11 +73,8 @@ nlohmann::json LoggedInUsersProvider::collect()
 
         LPWSTR sessionInfo = nullptr;
         DWORD bytesRet = 0;
-        res = m_twsApiWrapper->WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE,
-                                                           pSessionInfo[i].SessionId,
-                                                           WTSSessionInfo,
-                                                           &sessionInfo,
-                                                           &bytesRet);
+        res = m_twsApiWrapper->WTSQuerySessionInformationW(
+            WTS_CURRENT_SERVER_HANDLE, pSessionInfo[i].SessionId, WTSSessionInfo, &sessionInfo, &bytesRet);
 
         if (res == 0 || sessionInfo == nullptr)
         {
@@ -89,9 +86,8 @@ nlohmann::json LoggedInUsersProvider::collect()
         r["user"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(wtsSession->UserName);
         r["type"] = m_kSessionStates.at(pSessionInfo[i].State);
         r["tty"] = pSessionInfo[i].pWinStationName == nullptr
-                   ? ""
-                   : Utils::EncodingWindowsHelper::wstringToStringUTF8(pSessionInfo[i].pWinStationName);
-
+                       ? ""
+                       : Utils::EncodingWindowsHelper::wstringToStringUTF8(pSessionInfo[i].pWinStationName);
 
         FILETIME utcTime = {0, 0};
         unsigned long long unixTime = 0;
@@ -107,11 +103,8 @@ nlohmann::json LoggedInUsersProvider::collect()
 
         LPWSTR clientInfo = nullptr;
         bytesRet = 0;
-        res = m_twsApiWrapper->WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE,
-                                                           pSessionInfo[i].SessionId,
-                                                           WTSClientInfo,
-                                                           &clientInfo,
-                                                           &bytesRet);
+        res = m_twsApiWrapper->WTSQuerySessionInformationW(
+            WTS_CURRENT_SERVER_HANDLE, pSessionInfo[i].SessionId, WTSClientInfo, &clientInfo, &bytesRet);
 
         if (res == 0 || clientInfo == nullptr)
         {
@@ -129,8 +122,7 @@ nlohmann::json LoggedInUsersProvider::collect()
         {
             r["host"] = std::to_string(wtsClient->ClientAddress[0]) + "." +
                         std::to_string(wtsClient->ClientAddress[1]) + "." +
-                        std::to_string(wtsClient->ClientAddress[2]) + "." +
-                        std::to_string(wtsClient->ClientAddress[3]);
+                        std::to_string(wtsClient->ClientAddress[2]) + "." + std::to_string(wtsClient->ClientAddress[3]);
         }
         else if (wtsClient->ClientAddressFamily == AF_INET6)
         {
@@ -141,11 +133,8 @@ nlohmann::json LoggedInUsersProvider::collect()
         else if (wtsClient->ClientAddressFamily == AF_UNSPEC)
         {
             LPWSTR clientName = nullptr;
-            res = m_twsApiWrapper->WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE,
-                                                               pSessionInfo[i].SessionId,
-                                                               WTSClientName,
-                                                               &clientName,
-                                                               &bytesRet);
+            res = m_twsApiWrapper->WTSQuerySessionInformationW(
+                WTS_CURRENT_SERVER_HANDLE, pSessionInfo[i].SessionId, WTSClientName, &clientName, &bytesRet);
 
             if (res == 0 || clientName == nullptr)
             {

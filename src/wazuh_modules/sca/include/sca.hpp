@@ -31,122 +31,126 @@
 /// predefined policies and checks against the system configuration.
 class EXPORTED SCA final
 {
-    public:
-        /// @brief Gets the singleton instance of the SCA class.
-        ///
-        /// @return Reference to the singleton SCA instance
-        static SCA& instance()
-        {
-            static SCA s_instance;
-            return s_instance;
-        }
+public:
+    /// @brief Gets the singleton instance of the SCA class.
+    ///
+    /// @return Reference to the singleton SCA instance
+    static SCA& instance()
+    {
+        static SCA s_instance;
+        return s_instance;
+    }
 
-        /// @brief Initializes the SCA module.
-        ///
-        /// Sets up the SecurityConfigurationAssessment implementation with database path,
-        /// sync protocol parameters, and message handling functions. Must be called before
-        /// setup() and run().
-        ///
-        /// @throws std::exception if initialization fails
-        void init();
+    /// @brief Initializes the SCA module.
+    ///
+    /// Sets up the SecurityConfigurationAssessment implementation with database path,
+    /// sync protocol parameters, and message handling functions. Must be called before
+    /// setup() and run().
+    ///
+    /// @throws std::exception if initialization fails
+    void init();
 
-        /// @brief Configures the SCA module with the provided configuration.
-        ///
-        /// Applies the configuration settings including scan intervals, policy paths,
-        /// timeout values, and remote command settings. Must be called after init()
-        /// and before run().
-        ///
-        /// @param sca_config Pointer to the SCA configuration structure containing
-        ///                   scan settings, policies, and other module parameters
-        void setup(const struct wm_sca_t* sca_config);
+    /// @brief Configures the SCA module with the provided configuration.
+    ///
+    /// Applies the configuration settings including scan intervals, policy paths,
+    /// timeout values, and remote command settings. Must be called after init()
+    /// and before run().
+    ///
+    /// @param sca_config Pointer to the SCA configuration structure containing
+    ///                   scan settings, policies, and other module parameters
+    void setup(const struct wm_sca_t* sca_config);
 
-        /// @brief Starts the SCA module execution.
-        ///
-        /// Begins the security configuration assessment process according to the
-        /// configured policies and scan intervals. Must be called after init()
-        /// and setup().
-        void run();
+    /// @brief Starts the SCA module execution.
+    ///
+    /// Begins the security configuration assessment process according to the
+    /// configured policies and scan intervals. Must be called after init()
+    /// and setup().
+    void run();
 
-        /// @brief Stops and cleans up the SCA module.
-        ///
-        /// Stops all running assessments, cleans up resources, and resets the
-        /// internal SecurityConfigurationAssessment instance.
-        void destroy();
+    /// @brief Stops and cleans up the SCA module.
+    ///
+    /// Stops all running assessments, cleans up resources, and resets the
+    /// internal SecurityConfigurationAssessment instance.
+    void destroy();
 
-        /// @brief Signals the SCA implementation to stop without releasing resources.
-        /// Safe to call while the sync worker thread is still running.
-        void quiesce();
+    /// @brief Signals the SCA implementation to stop without releasing resources.
+    /// Safe to call while the sync worker thread is still running.
+    void quiesce();
 
-        /// @brief Releases SCA resources (e.g. DBSync).
-        /// Must be called only after the sync worker thread has been joined.
-        void releaseResources();
+    /// @brief Releases SCA resources (e.g. DBSync).
+    /// Must be called only after the sync worker thread has been joined.
+    void releaseResources();
 
-        /// @brief Synchronizes the SCA module with the centralized database.
-        ///
-        /// Performs database synchronization using the specified mode, handling
-        /// both full and delta synchronization with configurable timeout and retry
-        /// parameters.
-        ///
-        /// @param mode Synchronization mode (FULL or DELTA)
-        /// @return true on success, false on failure (a WARNING with the reason is logged internally).
-        bool syncModule(Mode mode);
+    /// @brief Synchronizes the SCA module with the centralized database.
+    ///
+    /// Performs database synchronization using the specified mode, handling
+    /// both full and delta synchronization with configurable timeout and retry
+    /// parameters.
+    ///
+    /// @param mode Synchronization mode (FULL or DELTA)
+    /// @return true on success, false on failure (a WARNING with the reason is logged internally).
+    bool syncModule(Mode mode);
 
-        /// @brief Persists a difference entry for synchronization.
-        ///
-        /// Records changes in the SCA state for later synchronization with the
-        /// central database. Used to track CREATE, MODIFY, and DELETE operations
-        /// on SCA assessment results.
-        ///
-        /// @param id Unique identifier for the difference entry
-        /// @param operation Type of operation (CREATE, MODIFY, DELETE, NO_OP)
-        /// @param index Index or key associated with the change
-        /// @param data Serialized data content of the change
-        /// @param version Version of the data
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version);
+    /// @brief Persists a difference entry for synchronization.
+    ///
+    /// Records changes in the SCA state for later synchronization with the
+    /// central database. Used to track CREATE, MODIFY, and DELETE operations
+    /// on SCA assessment results.
+    ///
+    /// @param id Unique identifier for the difference entry
+    /// @param operation Type of operation (CREATE, MODIFY, DELETE, NO_OP)
+    /// @param index Index or key associated with the change
+    /// @param data Serialized data content of the change
+    /// @param version Version of the data
+    void persistDifference(const std::string& id,
+                           Operation operation,
+                           const std::string& index,
+                           const std::string& data,
+                           uint64_t version);
 
-        /// @brief Parses a response buffer from synchronization operations.
-        ///
-        /// Processes binary response data received during database synchronization
-        /// operations, extracting and handling the contained information.
-        ///
-        /// @param data Pointer to the binary response data buffer
-        /// @param length Size of the response data buffer in bytes
-        /// @return true if parsing succeeds, false on error or invalid data
-        bool parseResponseBuffer(const uint8_t* data, size_t length);
+    /// @brief Parses a response buffer from synchronization operations.
+    ///
+    /// Processes binary response data received during database synchronization
+    /// operations, extracting and handling the contained information.
+    ///
+    /// @param data Pointer to the binary response data buffer
+    /// @param length Size of the response data buffer in bytes
+    /// @return true if parsing succeeds, false on error or invalid data
+    bool parseResponseBuffer(const uint8_t* data, size_t length);
 
-        /// @brief Set the SCA sync limit.
-        /// @param syncLimit Maximum number of synced checks (0 = unlimited)
-        void setSyncLimit(uint64_t syncLimit);
+    /// @brief Set the SCA sync limit.
+    /// @param syncLimit Maximum number of synced checks (0 = unlimited)
+    void setSyncLimit(uint64_t syncLimit);
 
-        /// @brief Notifies that data associated with specified indices needs to be cleaned.
-        /// @param indices Vector of indices whose data needs to be cleaned.
-        /// @return true if the operation succeeds, false otherwise.
-        bool notifyDataClean(const std::vector<std::string>& indices);
+    /// @brief Notifies that data associated with specified indices needs to be cleaned.
+    /// @param indices Vector of indices whose data needs to be cleaned.
+    /// @return true if the operation succeeds, false otherwise.
+    bool notifyDataClean(const std::vector<std::string>& indices);
 
-        /// @brief Deletes the database.
-        void deleteDatabase();
+    /// @brief Deletes the database.
+    void deleteDatabase();
 
-        /// @brief Handles query commands for the SCA module.
-        /// @param jsonQuery JSON-formatted query command string
-        /// @return JSON-formatted response string
-        std::string query(const std::string& jsonQuery);
+    /// @brief Handles query commands for the SCA module.
+    /// @param jsonQuery JSON-formatted query command string
+    /// @return JSON-formatted response string
+    std::string query(const std::string& jsonQuery);
 
-    private:
-        /// @brief Private constructor for singleton pattern.
-        SCA();
+private:
+    /// @brief Private constructor for singleton pattern.
+    SCA();
 
-        /// @brief Destructor.
-        ~SCA();
+    /// @brief Destructor.
+    ~SCA();
 
-        /// @brief Deleted copy constructor to prevent copying.
-        SCA(const SCA&) = delete;
+    /// @brief Deleted copy constructor to prevent copying.
+    SCA(const SCA&) = delete;
 
-        /// @brief Deleted assignment operator to prevent copying.
-        SCA& operator=(const SCA&) = delete;
+    /// @brief Deleted assignment operator to prevent copying.
+    SCA& operator=(const SCA&) = delete;
 
-        /// @brief Pointer to the SecurityConfigurationAssessment implementation.
-        ///
-        /// Manages the actual SCA functionality including policy execution,
-        /// result processing, and database operations.
-        std::unique_ptr<SecurityConfigurationAssessment> m_sca;
+    /// @brief Pointer to the SecurityConfigurationAssessment implementation.
+    ///
+    /// Manages the actual SCA functionality including policy execution,
+    /// result processing, and database operations.
+    std::unique_ptr<SecurityConfigurationAssessment> m_sca;
 };

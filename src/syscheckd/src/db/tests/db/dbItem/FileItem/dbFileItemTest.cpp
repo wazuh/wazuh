@@ -46,8 +46,7 @@ void FileItemTest::TearDown()
 
 TEST_F(FileItemTest, fileItemConstructorFromFIM)
 {
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         auto file = new FileItem(fimEntryTest);
         delete file;
     });
@@ -75,8 +74,7 @@ TEST_F(FileItemTest, fileItemConstructorFromFIMWithNullParameters)
     data->uid = NULL;
     data->owner = NULL;
     fimEntryTestNull->file_entry.data = data;
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         auto file = new FileItem(fimEntryTestNull);
         delete file;
     });
@@ -95,8 +93,7 @@ TEST_F(FileItemTest, fileItemConstructorFromJSON)
             "uid":"0", "owner":"fakeUser", "version":1, "sync":0
         }
     )"_json;
-    EXPECT_NO_THROW(
-    {
+    EXPECT_NO_THROW({
         auto fileTest = new FileItem(insertJSON);
         delete fileTest;
     });

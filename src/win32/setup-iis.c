@@ -20,22 +20,21 @@
 
 #include "os_regex.h"
 
-
-#define WAZUHCONF   "ossec.conf"
-#define OS_MAXSTR   1024
+#define WAZUHCONF "ossec.conf"
+#define OS_MAXSTR 1024
 
 #define localtime_r(x, y) localtime_s(y, x)
 
 int total;
 
-
-int direxist(char *dir)
+int direxist(char* dir)
 {
-    DIR *dp;
+    DIR* dp;
 
     /* Open dir */
     dp = wopendir(dir);
-    if (dp == NULL) {
+    if (dp == NULL)
+    {
         return (0);
     }
 
@@ -43,13 +42,14 @@ int direxist(char *dir)
     return (1);
 }
 
-int fileexist(char *file)
+int fileexist(char* file)
 {
-    FILE *fp;
+    FILE* fp;
 
     /* Open file */
     fp = wfopen(file, "r");
-    if (!fp) {
+    if (!fp)
+    {
         return (0);
     }
 
@@ -57,14 +57,15 @@ int fileexist(char *file)
     return (1);
 }
 
-int dogrep(char *file, char *str)
+int dogrep(char* file, char* str)
 {
     char line[OS_MAXSTR + 1];
-    FILE *fp;
+    FILE* fp;
 
     /* Open file */
     fp = wfopen(file, "r");
-    if (!fp) {
+    if (!fp)
+    {
         return (0);
     }
 
@@ -72,8 +73,10 @@ int dogrep(char *file, char *str)
     memset(line, '\0', OS_MAXSTR + 1);
 
     /* Read file and look for str */
-    while (fgets(line, OS_MAXSTR, fp) != NULL) {
-        if (OS_Match(str, line)) {
+    while (fgets(line, OS_MAXSTR, fp) != NULL)
+    {
+        if (OS_Match(str, line))
+        {
             fclose(fp);
             return (1);
         }
@@ -84,43 +87,48 @@ int dogrep(char *file, char *str)
 }
 
 /* Get Windows directory */
-static void get_win_dir(char *file, int f_size)
+static void get_win_dir(char* file, int f_size)
 {
     ExpandEnvironmentStrings("%WINDIR%", file, f_size);
 
-    if (!direxist(file)) {
+    if (!direxist(file))
+    {
         strncpy(file, "C:\\WINDOWS", f_size);
     }
 }
 
-int config_dir(char *name, char *dir, char *vfile)
+int config_dir(char* name, char* dir, char* vfile)
 {
-    FILE *fp;
+    FILE* fp;
 
-    if (!direxist(dir)) {
+    if (!direxist(dir))
+    {
         return (0);
     }
 
-    if (dogrep(WAZUHCONF, vfile)) {
-        printf("%s: Log file already configured: '%s'.\n",
-               name, vfile);
+    if (dogrep(WAZUHCONF, vfile))
+    {
+        printf("%s: Log file already configured: '%s'.\n", name, vfile);
         return (1);
     }
 
     printf("%s: IIS directory found, but no valid log.\n", name);
     printf("%s: You may have it configured in a format different\n"
            "               than W3C Extended or you just don't have today's\n"
-           "               log available.\n", name);
+           "               log available.\n",
+           name);
     printf("%s: https://documentation.wazuh.com\n\n", name);
 
     /* Add IIS config */
     fp = wfopen(WAZUHCONF, "a");
-    if (!fp) {
+    if (!fp)
+    {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);
     }
 
-    fprintf(fp, "\r\n"
+    fprintf(fp,
+            "\r\n"
             "\r\n"
             "<!-- IIS log file -->\r\n"
             "<ossec_config>\r\n"
@@ -128,7 +136,8 @@ int config_dir(char *name, char *dir, char *vfile)
             "    <location>%s</location>\r\n"
             "    <log_format>iis</log_format>\r\n"
             "  </localfile>\r\n"
-            "</ossec_config>\r\n\r\n", vfile);
+            "</ossec_config>\r\n\r\n",
+            vfile);
 
     printf("%s: Action completed.\n", name);
 
@@ -139,19 +148,20 @@ int config_dir(char *name, char *dir, char *vfile)
 }
 
 /* Check if the IIS file is present in the config */
-int config_iis(char *name, char *file, char *vfile)
+int config_iis(char* name, char* file, char* vfile)
 {
-    FILE *fp;
+    FILE* fp;
 
-    if (!fileexist(file)) {
+    if (!fileexist(file))
+    {
         return (0);
     }
 
     total++;
 
-    if (dogrep(WAZUHCONF, vfile)) {
-        printf("%s: Log file already configured: '%s'.\n",
-               name, vfile);
+    if (dogrep(WAZUHCONF, vfile))
+    {
+        printf("%s: Log file already configured: '%s'.\n", name, vfile);
         return (1);
     }
 
@@ -159,12 +169,14 @@ int config_iis(char *name, char *file, char *vfile)
 
     /* Add iis config config */
     fp = wfopen(WAZUHCONF, "a");
-    if (!fp) {
+    if (!fp)
+    {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);
     }
 
-    fprintf(fp, "\r\n"
+    fprintf(fp,
+            "\r\n"
             "\r\n"
             "<!-- IIS log file -->\r\n"
             "<ossec_config>\r\n"
@@ -172,7 +184,8 @@ int config_iis(char *name, char *file, char *vfile)
             "    <location>%s</location>\r\n"
             "    <log_format>iis</log_format>\r\n"
             "  </localfile>\r\n"
-            "</ossec_config>\r\n\r\n", vfile);
+            "</ossec_config>\r\n\r\n",
+            vfile);
 
     printf("%s: Action completed.\n", name);
     fclose(fp);
@@ -181,22 +194,25 @@ int config_iis(char *name, char *file, char *vfile)
 }
 
 /* Setup Windows after install */
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     int i = 0;
     time_t tm;
-    struct tm tm_result = { .tm_sec = 0 };
+    struct tm tm_result = {.tm_sec = 0};
     char win_dir[2048];
 
-    if (argc >= 2) {
-        if (chdir(argv[1]) != 0) {
+    if (argc >= 2)
+    {
+        if (chdir(argv[1]) != 0)
+        {
             printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
             return (0);
         }
     }
 
     /* Check if wazuh was installed already */
-    if (!fileexist(WAZUHCONF)) {
+    if (!fileexist(WAZUHCONF))
+    {
         printf("%s: Unable to find wazuh config: '%s'", argv[0], WAZUHCONF);
         exit(0);
     }
@@ -207,17 +223,16 @@ int main(int argc, char **argv)
 
     total = 0;
 
-    printf("%s: Looking for IIS log files to monitor.\r\n",
-           argv[0]);
-    printf("%s: For more information: https://documentation.wazuh.com\r\n",
-           argv[0]);
+    printf("%s: Looking for IIS log files to monitor.\r\n", argv[0]);
+    printf("%s: For more information: https://documentation.wazuh.com\r\n", argv[0]);
     printf("\r\n");
 
     /* Get Window directory */
     get_win_dir(win_dir, sizeof(win_dir) - 1);
 
     /* Look for IIS log files */
-    while (i <= 254) {
+    while (i <= 254)
+    {
         char lfile[OS_MAXSTR + 1];
         char vfile[OS_MAXSTR + 1];
 
@@ -227,11 +242,12 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
-                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
-        snprintf(vfile,
-                 OS_MAXSTR,
-                 "%s\\System32\\LogFiles\\W3SVC%d\\nc%%y%%m%%d.log",
-                 win_dir, i);
+                 win_dir,
+                 i,
+                 (tm_result.tm_year + 1900) - 2000,
+                 tm_result.tm_mon + 1,
+                 tm_result.tm_mday);
+        snprintf(vfile, OS_MAXSTR, "%s\\System32\\LogFiles\\W3SVC%d\\nc%%y%%m%%d.log", win_dir, i);
 
         /* Try dir-based */
         config_iis(argv[0], lfile, vfile);
@@ -240,18 +256,18 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
-                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
+                 win_dir,
+                 i,
+                 (tm_result.tm_year + 1900) - 2000,
+                 tm_result.tm_mon + 1,
+                 tm_result.tm_mday);
 
-        snprintf(vfile,
-                 OS_MAXSTR,
-                 "%s\\System32\\LogFiles\\W3SVC%d\\ex%%y%%m%%d.log",
-                 win_dir, i);
+        snprintf(vfile, OS_MAXSTR, "%s\\System32\\LogFiles\\W3SVC%d\\ex%%y%%m%%d.log", win_dir, i);
 
         /* Try dir-based */
-        if (config_iis(argv[0], lfile, vfile) == 0) {
-            snprintf(lfile,
-                     OS_MAXSTR,
-                     "%s\\System32\\LogFiles\\W3SVC%d", win_dir, i);
+        if (config_iis(argv[0], lfile, vfile) == 0)
+        {
+            snprintf(lfile, OS_MAXSTR, "%s\\System32\\LogFiles\\W3SVC%d", win_dir, i);
             config_dir(argv[0], lfile, vfile);
         }
 
@@ -259,16 +275,16 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%02d%02d%02d.log",
-                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
+                 win_dir,
+                 i,
+                 (tm_result.tm_year + 1900) - 2000,
+                 tm_result.tm_mon + 1,
+                 tm_result.tm_mday);
 
-        snprintf(vfile,
-                 OS_MAXSTR,
-                 "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%%y%%m%%d.log",
-                 win_dir, i);
-        if (config_iis(argv[0], lfile, vfile) == 0) {
-            snprintf(lfile,
-                     OS_MAXSTR,
-                     "%s\\System32\\LogFiles\\MSFTPSVC%d", win_dir, i);
+        snprintf(vfile, OS_MAXSTR, "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%%y%%m%%d.log", win_dir, i);
+        if (config_iis(argv[0], lfile, vfile) == 0)
+        {
+            snprintf(lfile, OS_MAXSTR, "%s\\System32\\LogFiles\\MSFTPSVC%d", win_dir, i);
             config_dir(argv[0], lfile, vfile);
         }
 
@@ -276,23 +292,25 @@ int main(int argc, char **argv)
         snprintf(lfile,
                  OS_MAXSTR,
                  "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%02d%02d%02d.log",
-                 win_dir, i, (tm_result.tm_year + 1900) - 2000, tm_result.tm_mon + 1, tm_result.tm_mday);
+                 win_dir,
+                 i,
+                 (tm_result.tm_year + 1900) - 2000,
+                 tm_result.tm_mon + 1,
+                 tm_result.tm_mday);
 
-        snprintf(vfile,
-                 OS_MAXSTR,
-                 "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%%y%%m%%d.log",
-                 win_dir, i);
-        if (config_iis(argv[0], lfile, vfile) == 0) {
-            snprintf(lfile,
-                     OS_MAXSTR,
-                     "%s\\System32\\LogFiles\\SMTPSVC%d", win_dir, i);
+        snprintf(vfile, OS_MAXSTR, "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%%y%%m%%d.log", win_dir, i);
+        if (config_iis(argv[0], lfile, vfile) == 0)
+        {
+            snprintf(lfile, OS_MAXSTR, "%s\\System32\\LogFiles\\SMTPSVC%d", win_dir, i);
             config_dir(argv[0], lfile, vfile);
         }
     }
 
-    if (total == 0) {
+    if (total == 0)
+    {
         printf("%s: No IIS log added. Look at the link above for more "
-               "information.\r\n", argv[0]);
+               "information.\r\n",
+               argv[0]);
     }
 
     return (0);

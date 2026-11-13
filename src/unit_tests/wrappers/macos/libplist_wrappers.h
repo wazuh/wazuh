@@ -19,8 +19,8 @@
 #undef plist_free
 #define plist_free wrap_plist_free
 
-void wrap_plist_from_bin (char * bin, size_t size, plist_t *node);
-void wrap_plist_to_xml (plist_t *node, char ** xml, uint32_t *size);
+void wrap_plist_from_bin(char* bin, size_t size, plist_t* node);
+void wrap_plist_to_xml(plist_t* node, char** xml, uint32_t* size);
 void wrap_plist_free(plist_t node);
 
 #endif

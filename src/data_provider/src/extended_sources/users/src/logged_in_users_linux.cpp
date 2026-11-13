@@ -21,8 +21,7 @@
 
 std::mutex LoggedInUsersProvider::utmpxMutex;
 
-const std::map<size_t, std::string> LoggedInUsersProvider::loginTypes =
-{
+const std::map<size_t, std::string> LoggedInUsersProvider::loginTypes = {
     {EMPTY, "empty"},
     {BOOT_TIME, "boot_time"},
     {NEW_TIME, "new_time"},
@@ -34,10 +33,14 @@ const std::map<size_t, std::string> LoggedInUsersProvider::loginTypes =
 };
 
 LoggedInUsersProvider::LoggedInUsersProvider(std::shared_ptr<IUtmpxWrapper> wrapper)
-    : m_utmpxWrapper(std::move(wrapper)) {}
+    : m_utmpxWrapper(std::move(wrapper))
+{
+}
 
 LoggedInUsersProvider::LoggedInUsersProvider()
-    : m_utmpxWrapper(std::make_shared<UtmpxWrapper>()) {}
+    : m_utmpxWrapper(std::make_shared<UtmpxWrapper>())
+{
+}
 
 nlohmann::json LoggedInUsersProvider::collect()
 {
@@ -60,10 +63,9 @@ nlohmann::json LoggedInUsersProvider::collect()
         row["type"] = (it != loginTypes.end()) ? it->second : "unknown";
 
         row["user"] = std::string(entry->ut_user, strnlen(entry->ut_user, sizeof(entry->ut_user)));
-        row["tty"]  = std::string(entry->ut_line, strnlen(entry->ut_line, sizeof(entry->ut_line)));
+        row["tty"] = std::string(entry->ut_line, strnlen(entry->ut_line, sizeof(entry->ut_line)));
         row["time"] = entry->ut_tv.tv_sec;
-        row["pid"]  = entry->ut_pid;
-
+        row["pid"] = entry->ut_pid;
 
         char ipStr[INET6_ADDRSTRLEN] = {0};
 

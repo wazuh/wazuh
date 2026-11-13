@@ -14,15 +14,15 @@
 
 // Platform detection at compile time
 #if defined(__linux__)
-    #define PLATFORM_LINUX 1
+#define PLATFORM_LINUX 1
 #elif defined(__FreeBSD__)
-    #define PLATFORM_FREEBSD 1
+#define PLATFORM_FREEBSD 1
 #elif defined(__OpenBSD__)
-    #define PLATFORM_OPENBSD 1
+#define PLATFORM_OPENBSD 1
 #elif defined(__NetBSD__)
-    #define PLATFORM_NETBSD 1
+#define PLATFORM_NETBSD 1
 #else
-    #error "Unsupported Unix/BSD platform for block-ip"
+#error "Unsupported Unix/BSD platform for block-ip"
 #endif
 
 // Lock definitions (shared across all methods that need locking)
@@ -31,61 +31,69 @@
 
 // Forward declarations for platform-specific methods
 #ifdef PLATFORM_LINUX
-firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, const char *argv0);
-firewall_result_t try_iptables(const char *srcip, int action, int ip_version, const char *argv0);
+firewall_result_t try_firewalld(const char* srcip, int action, int ip_version, const char* argv0);
+firewall_result_t try_iptables(const char* srcip, int action, int ip_version, const char* argv0);
 #endif
 
 #if defined(PLATFORM_FREEBSD) || defined(PLATFORM_OPENBSD)
-firewall_result_t try_pf(const char *srcip, int action, int ip_version, const char *argv0);
+firewall_result_t try_pf(const char* srcip, int action, int ip_version, const char* argv0);
 #endif
 
 #ifdef PLATFORM_FREEBSD
-firewall_result_t try_ipfw(const char *srcip, int action, int ip_version, const char *argv0);
+firewall_result_t try_ipfw(const char* srcip, int action, int ip_version, const char* argv0);
 #endif
 
 #ifdef PLATFORM_NETBSD
-firewall_result_t try_npf(const char *srcip, int action, int ip_version, const char *argv0);
+firewall_result_t try_npf(const char* srcip, int action, int ip_version, const char* argv0);
 #endif
 
-firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, const char *argv0);
-firewall_result_t try_route(const char *srcip, int action, int ip_version, const char *argv0);
+firewall_result_t try_hostsdeny(const char* srcip, int action, int ip_version, const char* argv0);
+firewall_result_t try_route(const char* srcip, int action, int ip_version, const char* argv0);
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
     (void)argc;
     int action = OS_INVALID;
     int action2 = OS_INVALID;
-    cJSON *input_json = NULL;
+    cJSON* input_json = NULL;
 
     // Setup and parse JSON input
     action = setup_and_check_message(argv, &input_json);
-    if ((action != ENABLE_COMMAND) && (action != DISABLE_COMMAND)) {
+    if ((action != ENABLE_COMMAND) && (action != DISABLE_COMMAND))
+    {
         return OS_INVALID;
     }
 
     // Extract source IP from WCS-compliant JSON
-    const char *srcip = get_srcip_from_json(input_json);
-    if (!srcip) {
+    const char* srcip = get_srcip_from_json(input_json);
+    if (!srcip)
+    {
         write_debug_file(argv[0], "Cannot read 'source.ip' from data");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     // Send keys and check for abort (ENABLE command only)
-    if (action == ENABLE_COMMAND) {
-        char **keys = NULL;
-        os_calloc(2, sizeof(char *), keys);
+    if (action == ENABLE_COMMAND)
+    {
+        char** keys = NULL;
+        os_calloc(2, sizeof(char*), keys);
         os_strdup(srcip, keys[0]);
         keys[1] = NULL;
 
         action2 = send_keys_and_check_message(argv, keys);
         os_free(keys);
 
-        if (action2 != CONTINUE_COMMAND) {
+        if (action2 != CONTINUE_COMMAND)
+        {
             cJSON_Delete(input_json);
-            if (action2 == ABORT_COMMAND) {
+            if (action2 == ABORT_COMMAND)
+            {
                 write_debug_file(argv[0], "Aborted");
                 return OS_SUCCESS;
-            } else {
+            }
+            else
+            {
                 return OS_INVALID;
             }
         }
@@ -93,7 +101,8 @@ int main(int argc, char **argv) {
 
     // Validate IP and get version
     int ip_version = get_ip_version(srcip);
-    if (ip_version == OS_INVALID) {
+    if (ip_version == OS_INVALID)
+    {
         char log_msg[OS_MAXSTR];
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Invalid IP address: '%s'", srcip);
@@ -123,7 +132,7 @@ int main(int argc, char **argv) {
         {"hostsdeny", try_hostsdeny, false},
         {"route", try_route, false},
 #endif
-        {NULL, NULL, false}  // Sentinel
+        {NULL, NULL, false} // Sentinel
     };
 
     // Execute firewall chain with fallback
@@ -138,38 +147,42 @@ int main(int argc, char **argv) {
 // ============================================================================
 #ifdef PLATFORM_LINUX
 
-firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, const char *argv0) {
+firewall_result_t try_firewalld(const char* srcip, int action, int ip_version, const char* argv0)
+{
     char log_msg[OS_MAXSTR];
-    char *fw_cmd_path = NULL;
+    char* fw_cmd_path = NULL;
     lock_context_t lock_ctx = {
-        .lock_path = LOCK_PATH,
-        .lock_pid_path = LOCK_FILE,
-        .log_prefix = argv0,
-        .acquired = false
-    };
+        .lock_path = LOCK_PATH, .lock_pid_path = LOCK_FILE, .log_prefix = argv0, .acquired = false};
 
     // Check if firewall-cmd binary is available
-    if (check_binary_available("firewall-cmd", &fw_cmd_path, argv0) != FIREWALL_SUCCESS) {
+    if (check_binary_available("firewall-cmd", &fw_cmd_path, argv0) != FIREWALL_SUCCESS)
+    {
         return FIREWALL_NOT_AVAILABLE;
     }
 
     // Check if firewalld service is active
-    char *systemctl_path = NULL;
-    if (get_binary_path("systemctl", &systemctl_path) >= 0) {
-        char *check_cmd[] = {systemctl_path, "is-active", "firewalld", NULL};
-        wfd_t *wfd = wpopenv(systemctl_path, check_cmd, W_BIND_STDOUT);
-        if (wfd) {
+    char* systemctl_path = NULL;
+    if (get_binary_path("systemctl", &systemctl_path) >= 0)
+    {
+        char* check_cmd[] = {systemctl_path, "is-active", "firewalld", NULL};
+        wfd_t* wfd = wpopenv(systemctl_path, check_cmd, W_BIND_STDOUT);
+        if (wfd)
+        {
             char output[256] = {0};
-            if (fgets(output, sizeof(output), wfd->file_out)) {
+            if (fgets(output, sizeof(output), wfd->file_out))
+            {
                 wpclose(wfd);
-                if (strncmp(output, "active", 6) != 0) {
-                    log_firewall_action(argv0, LOG_LEVEL_WARNING, "firewalld", "check",
-                                      "firewalld service is not active");
+                if (strncmp(output, "active", 6) != 0)
+                {
+                    log_firewall_action(
+                        argv0, LOG_LEVEL_WARNING, "firewalld", "check", "firewalld service is not active");
                     os_free(systemctl_path);
                     os_free(fw_cmd_path);
                     return FIREWALL_INVALID_STATE;
                 }
-            } else {
+            }
+            else
+            {
                 wpclose(wfd);
             }
         }
@@ -177,31 +190,27 @@ firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, c
     os_free(systemctl_path);
 
     // Acquire lock
-    if (acquire_ar_lock(&lock_ctx) == OS_INVALID) {
+    if (acquire_ar_lock(&lock_ctx) == OS_INVALID)
+    {
         os_free(fw_cmd_path);
         return FIREWALL_EXECUTION_FAILED;
     }
 
     // Build firewall-cmd command
-    const char *family = (ip_version == 4) ? "ipv4" : "ipv6";
-    const char *operation = (action == ENABLE_COMMAND) ? "--add-rich-rule" : "--remove-rich-rule";
+    const char* family = (ip_version == 4) ? "ipv4" : "ipv6";
+    const char* operation = (action == ENABLE_COMMAND) ? "--add-rich-rule" : "--remove-rich-rule";
 
     char rule[COMMANDSIZE_4096];
     memset(rule, '\0', COMMANDSIZE_4096);
     snprintf(rule, COMMANDSIZE_4096 - 1, "rule family=%s source address=%s drop", family, srcip);
 
-    char *exec_cmd[] = {fw_cmd_path, (char *)operation, rule, NULL};
+    char* exec_cmd[] = {fw_cmd_path, (char*)operation, rule, NULL};
 
     // Configure retry
-    retry_config_t retry_cfg = {
-        .max_retries = 4,
-        .backoff_base_seconds = 1,
-        .exponential_backoff = true
-    };
+    retry_config_t retry_cfg = {.max_retries = 4, .backoff_base_seconds = 1, .exponential_backoff = true};
 
     // Execute with retry
-    firewall_result_t result = execute_with_retry(fw_cmd_path, exec_cmd, W_BIND_STDERR,
-                                                  &retry_cfg, argv0);
+    firewall_result_t result = execute_with_retry(fw_cmd_path, exec_cmd, W_BIND_STDERR, &retry_cfg, argv0);
 
     // Release lock
     release_ar_lock(&lock_ctx);
@@ -214,40 +223,41 @@ firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, c
 // LINUX: iptables/ip6tables implementation
 // ============================================================================
 
-firewall_result_t try_iptables(const char *srcip, int action, int ip_version, const char *argv0) {
-    char *iptables = NULL;
-    const char *iptables_name = (ip_version == 4) ? "iptables" : "ip6tables";
+firewall_result_t try_iptables(const char* srcip, int action, int ip_version, const char* argv0)
+{
+    char* iptables = NULL;
+    const char* iptables_name = (ip_version == 4) ? "iptables" : "ip6tables";
     lock_context_t lock_ctx = {
-        .lock_path = LOCK_PATH,
-        .lock_pid_path = LOCK_FILE,
-        .log_prefix = argv0,
-        .acquired = false
-    };
+        .lock_path = LOCK_PATH, .lock_pid_path = LOCK_FILE, .log_prefix = argv0, .acquired = false};
 
     // Check if iptables binary is available
-    if (check_binary_available(iptables_name, &iptables, argv0) != FIREWALL_SUCCESS) {
+    if (check_binary_available(iptables_name, &iptables, argv0) != FIREWALL_SUCCESS)
+    {
         return FIREWALL_NOT_AVAILABLE;
     }
 
     // Acquire lock
-    if (acquire_ar_lock(&lock_ctx) == OS_INVALID) {
+    if (acquire_ar_lock(&lock_ctx) == OS_INVALID)
+    {
         os_free(iptables);
         return FIREWALL_EXECUTION_FAILED;
     }
 
     // Determine argument for enable/disable
-    const char *arg = (action == ENABLE_COMMAND) ? "-I" : "-D";
+    const char* arg = (action == ENABLE_COMMAND) ? "-I" : "-D";
 
     firewall_result_t final_result = FIREWALL_SUCCESS;
 
-    char *exec_cmd1[] = {iptables, (char *)arg, "INPUT", "-s", (char *)srcip, "-j", "DROP", NULL};
-    char *exec_cmd2[] = {iptables, (char *)arg, "FORWARD", "-s", (char *)srcip, "-j", "DROP", NULL};
+    char* exec_cmd1[] = {iptables, (char*)arg, "INPUT", "-s", (char*)srcip, "-j", "DROP", NULL};
+    char* exec_cmd2[] = {iptables, (char*)arg, "FORWARD", "-s", (char*)srcip, "-j", "DROP", NULL};
 
-    if (execute_command_with_retry(argv0, iptables, exec_cmd1) != OS_SUCCESS) {
+    if (execute_command_with_retry(argv0, iptables, exec_cmd1) != OS_SUCCESS)
+    {
         final_result = FIREWALL_EXECUTION_FAILED;
     }
 
-    if (execute_command_with_retry(argv0, iptables, exec_cmd2) != OS_SUCCESS) {
+    if (execute_command_with_retry(argv0, iptables, exec_cmd2) != OS_SUCCESS)
+    {
         final_result = FIREWALL_EXECUTION_FAILED;
     }
 
@@ -265,25 +275,30 @@ firewall_result_t try_iptables(const char *srcip, int action, int ip_version, co
 // ============================================================================
 #ifdef PLATFORM_FREEBSD
 
-firewall_result_t try_ipfw(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // ipfw handles both IPv4 and IPv6
+firewall_result_t try_ipfw(const char* srcip, int action, int ip_version, const char* argv0)
+{
+    (void)ip_version; // ipfw handles both IPv4 and IPv6
     char log_msg[OS_MAXSTR];
-    char *ipfw_path = NULL;
+    char* ipfw_path = NULL;
     char output_buf[OS_MAXSTR];
     bool add_table = true;
 
     // Check if ipfw binary is available
-    if (check_binary_available("ipfw", &ipfw_path, argv0) != FIREWALL_SUCCESS) {
+    if (check_binary_available("ipfw", &ipfw_path, argv0) != FIREWALL_SUCCESS)
+    {
         return FIREWALL_NOT_AVAILABLE;
     }
 
     // Check if table exists
-    char *exec_cmd1[] = {ipfw_path, "show", NULL};
-    wfd_t *wfd = wpopenv(ipfw_path, exec_cmd1, W_BIND_STDOUT);
+    char* exec_cmd1[] = {ipfw_path, "show", NULL};
+    wfd_t* wfd = wpopenv(ipfw_path, exec_cmd1, W_BIND_STDOUT);
 
-    if (wfd) {
-        while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
-            if ((strncmp(output_buf, "00001", 5) == 0) && (strstr(output_buf, "table(00001)") != NULL)) {
+    if (wfd)
+    {
+        while (fgets(output_buf, OS_MAXSTR, wfd->file_out))
+        {
+            if ((strncmp(output_buf, "00001", 5) == 0) && (strstr(output_buf, "table(00001)") != NULL))
+            {
                 add_table = false;
                 break;
             }
@@ -292,22 +307,24 @@ firewall_result_t try_ipfw(const char *srcip, int action, int ip_version, const 
     }
 
     // Add table rules if needed
-    if (add_table) {
+    if (add_table)
+    {
         log_firewall_action(argv0, LOG_LEVEL_INFO, "ipfw", "setup", "Creating table 00001");
 
-        char *exec_cmd2[] = {ipfw_path, "-q", "00001", "add", "deny", "ip", "from", "table(00001)", "to", "any", NULL};
-        char *exec_cmd3[] = {ipfw_path, "-q", "00001", "add", "deny", "ip", "from", "any", "to", "table(00001)", NULL};
+        char* exec_cmd2[] = {ipfw_path, "-q", "00001", "add", "deny", "ip", "from", "table(00001)", "to", "any", NULL};
+        char* exec_cmd3[] = {ipfw_path, "-q", "00001", "add", "deny", "ip", "from", "any", "to", "table(00001)", NULL};
 
         if (execute_command_with_retry(argv0, ipfw_path, exec_cmd2) != OS_SUCCESS ||
-            execute_command_with_retry(argv0, ipfw_path, exec_cmd3) != OS_SUCCESS) {
+            execute_command_with_retry(argv0, ipfw_path, exec_cmd3) != OS_SUCCESS)
+        {
             os_free(ipfw_path);
             return FIREWALL_EXECUTION_FAILED;
         }
     }
 
     // Add or delete IP from table
-    const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
-    char *exec_cmd4[] = {ipfw_path, "-q", "table", "00001", (char *)table_operation, (char *)srcip, NULL};
+    const char* table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
+    char* exec_cmd4[] = {ipfw_path, "-q", "table", "00001", (char*)table_operation, (char*)srcip, NULL};
 
     int ret = execute_command_with_retry(argv0, ipfw_path, exec_cmd4);
     os_free(ipfw_path);
@@ -322,61 +339,72 @@ firewall_result_t try_ipfw(const char *srcip, int action, int ip_version, const 
 // ============================================================================
 #if defined(PLATFORM_FREEBSD) || defined(PLATFORM_OPENBSD)
 
-firewall_result_t try_pf(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // pf handles both IPv4 and IPv6
+firewall_result_t try_pf(const char* srcip, int action, int ip_version, const char* argv0)
+{
+    (void)ip_version; // pf handles both IPv4 and IPv6
     char log_msg[OS_MAXSTR];
-    char *pfctl_path = NULL;
+    char* pfctl_path = NULL;
 
     // Check if pfctl binary is available
-    if (check_binary_available("pfctl", &pfctl_path, argv0) != FIREWALL_SUCCESS) {
+    if (check_binary_available("pfctl", &pfctl_path, argv0) != FIREWALL_SUCCESS)
+    {
         return FIREWALL_NOT_AVAILABLE;
     }
 
     // Check if /dev/pf exists
-    if (access("/dev/pf", F_OK) < 0) {
+    if (access("/dev/pf", F_OK) < 0)
+    {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "pf", "check", "/dev/pf not accessible");
         os_free(pfctl_path);
         return FIREWALL_INVALID_STATE;
     }
 
     // Check if PF is enabled
-    char *exec_cmd1[] = {pfctl_path, "-s", "info", NULL};
-    wfd_t *wfd = wpopenv(pfctl_path, exec_cmd1, W_BIND_STDOUT);
+    char* exec_cmd1[] = {pfctl_path, "-s", "info", NULL};
+    wfd_t* wfd = wpopenv(pfctl_path, exec_cmd1, W_BIND_STDOUT);
 
-    if (wfd) {
+    if (wfd)
+    {
         char output_buf[OS_MAXSTR];
         bool enabled = false;
 
-        while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
-            if (strstr(output_buf, "Status: Enabled") != NULL) {
+        while (fgets(output_buf, OS_MAXSTR, wfd->file_out))
+        {
+            if (strstr(output_buf, "Status: Enabled") != NULL)
+            {
                 enabled = true;
                 break;
             }
         }
         wpclose(wfd);
 
-        if (!enabled) {
+        if (!enabled)
+        {
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "pf", "check", "PF is not enabled");
             os_free(pfctl_path);
             return FIREWALL_INVALID_STATE;
         }
-    } else {
+    }
+    else
+    {
         os_free(pfctl_path);
         return FIREWALL_EXECUTION_FAILED;
     }
 
     // Add or delete IP from table
-    const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
-    char *exec_cmd2[] = {pfctl_path, "-t", "wazuh_fwtable", "-T", (char *)table_operation, (char *)srcip, NULL};
+    const char* table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
+    char* exec_cmd2[] = {pfctl_path, "-t", "wazuh_fwtable", "-T", (char*)table_operation, (char*)srcip, NULL};
 
-    if (execute_command_with_retry(argv0, pfctl_path, exec_cmd2) != OS_SUCCESS) {
+    if (execute_command_with_retry(argv0, pfctl_path, exec_cmd2) != OS_SUCCESS)
+    {
         os_free(pfctl_path);
         return FIREWALL_EXECUTION_FAILED;
     }
 
     // If adding, also kill existing connections. The IP is already blocked, so a failure here is only logged
-    if (action == ENABLE_COMMAND) {
-        char *exec_cmd3[] = {pfctl_path, "-k", (char *)srcip, NULL};
+    if (action == ENABLE_COMMAND)
+    {
+        char* exec_cmd3[] = {pfctl_path, "-k", (char*)srcip, NULL};
         execute_command_with_retry(argv0, pfctl_path, exec_cmd3);
     }
 
@@ -391,21 +419,24 @@ firewall_result_t try_pf(const char *srcip, int action, int ip_version, const ch
 // ============================================================================
 #ifdef PLATFORM_NETBSD
 
-firewall_result_t try_npf(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // npf handles both IPv4 and IPv6
+firewall_result_t try_npf(const char* srcip, int action, int ip_version, const char* argv0)
+{
+    (void)ip_version; // npf handles both IPv4 and IPv6
     char log_msg[OS_MAXSTR];
-    char *npfctl_path = NULL;
+    char* npfctl_path = NULL;
 
     // Check if npfctl binary is available
-    if (check_binary_available("npfctl", &npfctl_path, argv0) != FIREWALL_SUCCESS) {
+    if (check_binary_available("npfctl", &npfctl_path, argv0) != FIREWALL_SUCCESS)
+    {
         return FIREWALL_NOT_AVAILABLE;
     }
 
     // Check if NPF is active
-    char *exec_cmd1[] = {npfctl_path, "show", NULL};
-    wfd_t *wfd = wpopenv(npfctl_path, exec_cmd1, W_BIND_STDOUT);
+    char* exec_cmd1[] = {npfctl_path, "show", NULL};
+    wfd_t* wfd = wpopenv(npfctl_path, exec_cmd1, W_BIND_STDOUT);
 
-    if (!wfd) {
+    if (!wfd)
+    {
         os_free(npfctl_path);
         return FIREWALL_EXECUTION_FAILED;
     }
@@ -414,46 +445,54 @@ firewall_result_t try_npf(const char *srcip, int action, int ip_version, const c
     bool filtering_active = false;
     bool table_exists = false;
 
-    if (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
+    if (fgets(output_buf, OS_MAXSTR, wfd->file_out))
+    {
         char state[15];
-        char *pos = strstr(output_buf, "filtering:");
-        if (pos && sscanf(pos, "%*s %9s", state) == 1) {
-            if (strcmp(state, "active") == 0) {
+        char* pos = strstr(output_buf, "filtering:");
+        if (pos && sscanf(pos, "%*s %9s", state) == 1)
+        {
+            if (strcmp(state, "active") == 0)
+            {
                 filtering_active = true;
             }
         }
     }
 
     // Check for table existence
-    while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
-        if (strstr(output_buf, "table <wazuh_blacklist>") != NULL) {
+    while (fgets(output_buf, OS_MAXSTR, wfd->file_out))
+    {
+        if (strstr(output_buf, "table <wazuh_blacklist>") != NULL)
+        {
             table_exists = true;
             break;
         }
     }
     wpclose(wfd);
 
-    if (!filtering_active) {
+    if (!filtering_active)
+    {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "npf", "check", "NPF filtering is not active");
         os_free(npfctl_path);
         return FIREWALL_INVALID_STATE;
     }
 
-    if (!table_exists) {
+    if (!table_exists)
+    {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "npf", "check", "wazuh_blacklist table not found");
         os_free(npfctl_path);
         return FIREWALL_INVALID_STATE;
     }
 
     // Add or delete IP from table
-    const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "del";
-    char *exec_cmd2[] = {npfctl_path, "table", "wazuh_blacklist", (char *)table_operation, (char *)srcip, NULL};
+    const char* table_operation = (action == ENABLE_COMMAND) ? "add" : "del";
+    char* exec_cmd2[] = {npfctl_path, "table", "wazuh_blacklist", (char*)table_operation, (char*)srcip, NULL};
 
     int ret = execute_command_with_retry(argv0, npfctl_path, exec_cmd2);
 
     // npfctl add also fails when the address is already in the table
-    if (ret != OS_SUCCESS && action == ENABLE_COMMAND) {
-        char *exec_cmd3[] = {npfctl_path, "table", "wazuh_blacklist", "test", (char *)srcip, NULL};
+    if (ret != OS_SUCCESS && action == ENABLE_COMMAND)
+    {
+        char* exec_cmd3[] = {npfctl_path, "table", "wazuh_blacklist", "test", (char*)srcip, NULL};
         ret = execute_command_with_retry(argv0, npfctl_path, exec_cmd3);
     }
     os_free(npfctl_path);
@@ -467,13 +506,15 @@ firewall_result_t try_npf(const char *srcip, int action, int ip_version, const c
 // ALL PLATFORMS: route implementation (fallback)
 // ============================================================================
 
-firewall_result_t try_route(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // route works for both IPv4 and IPv6
+firewall_result_t try_route(const char* srcip, int action, int ip_version, const char* argv0)
+{
+    (void)ip_version; // route works for both IPv4 and IPv6
     char log_msg[OS_MAXSTR];
-    char *route_path = NULL;
+    char* route_path = NULL;
 
     // Check if route binary is available
-    if (check_binary_available("route", &route_path, argv0) != FIREWALL_SUCCESS) {
+    if (check_binary_available("route", &route_path, argv0) != FIREWALL_SUCCESS)
+    {
         return FIREWALL_NOT_AVAILABLE;
     }
 
@@ -481,29 +522,38 @@ firewall_result_t try_route(const char *srcip, int action, int ip_version, const
 
 #ifdef PLATFORM_LINUX
     // Linux: route add <ip> reject / route del <ip> reject
-    if (action == ENABLE_COMMAND) {
-        char *exec_cmd[] = {route_path, "add", (char *)srcip, "reject", NULL};
+    if (action == ENABLE_COMMAND)
+    {
+        char* exec_cmd[] = {route_path, "add", (char*)srcip, "reject", NULL};
         ret = execute_command_with_retry(argv0, route_path, exec_cmd);
-    } else {
-        char *exec_cmd[] = {route_path, "del", (char *)srcip, "reject", NULL};
+    }
+    else
+    {
+        char* exec_cmd[] = {route_path, "del", (char*)srcip, "reject", NULL};
         ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     }
 #elif defined(PLATFORM_FREEBSD)
     // FreeBSD: route -q add <ip> 127.0.0.1 -blackhole
-    if (action == ENABLE_COMMAND) {
-        char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
+    if (action == ENABLE_COMMAND)
+    {
+        char* exec_cmd[] = {route_path, "-q", "add", (char*)srcip, "127.0.0.1", "-blackhole", NULL};
         ret = execute_command_with_retry(argv0, route_path, exec_cmd);
-    } else {
-        char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
+    }
+    else
+    {
+        char* exec_cmd[] = {route_path, "-q", "delete", (char*)srcip, "127.0.0.1", "-blackhole", NULL};
         ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     }
 #elif defined(PLATFORM_OPENBSD) || defined(PLATFORM_NETBSD)
     // OpenBSD/NetBSD: Similar to FreeBSD
-    if (action == ENABLE_COMMAND) {
-        char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
+    if (action == ENABLE_COMMAND)
+    {
+        char* exec_cmd[] = {route_path, "-q", "add", (char*)srcip, "127.0.0.1", "-blackhole", NULL};
         ret = execute_command_with_retry(argv0, route_path, exec_cmd);
-    } else {
-        char *exec_cmd[] = {route_path, "-q", "delete", (char *)srcip, NULL};
+    }
+    else
+    {
+        char* exec_cmd[] = {route_path, "-q", "delete", (char*)srcip, NULL};
         ret = execute_command_with_retry(argv0, route_path, exec_cmd);
     }
 #endif
@@ -517,55 +567,56 @@ firewall_result_t try_route(const char *srcip, int action, int ip_version, const
 // ALL PLATFORMS: hosts.deny/hosts.allow (TCP wrappers) implementation
 // ============================================================================
 
-#define HOSTSDENY_LOCK_PATH "active-response/bin/block-ip-hostsdeny-lock"
-#define HOSTSDENY_LOCK_FILE "active-response/bin/block-ip-hostsdeny-lock/pid"
+#define HOSTSDENY_LOCK_PATH     "active-response/bin/block-ip-hostsdeny-lock"
+#define HOSTSDENY_LOCK_FILE     "active-response/bin/block-ip-hostsdeny-lock/pid"
 #define DEFAULT_HOSTS_DENY_PATH "/etc/hosts.deny"
 #define FREEBSD_HOSTS_DENY_PATH "/etc/hosts.allow"
 
-firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // TCP wrappers work for both IPv4 and IPv6
+firewall_result_t try_hostsdeny(const char* srcip, int action, int ip_version, const char* argv0)
+{
+    (void)ip_version; // TCP wrappers work for both IPv4 and IPv6
     char hosts_deny_rule[COMMANDSIZE_4096];
     char hosts_deny_path[COMMANDSIZE_4096];
     char log_msg[OS_MAXSTR];
     char output_buf[OS_MAXSTR - 25];
     struct utsname uname_buffer;
-    FILE *host_deny_fp = NULL;
+    FILE* host_deny_fp = NULL;
     lock_context_t lock_ctx = {
-        .lock_path = HOSTSDENY_LOCK_PATH,
-        .lock_pid_path = HOSTSDENY_LOCK_FILE,
-        .log_prefix = argv0,
-        .acquired = false
-    };
+        .lock_path = HOSTSDENY_LOCK_PATH, .lock_pid_path = HOSTSDENY_LOCK_FILE, .log_prefix = argv0, .acquired = false};
 
     // Get system name to determine hosts.deny path
-    if (uname(&uname_buffer) != 0) {
-        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "check",
-                          "Cannot get system name");
+    if (uname(&uname_buffer) != 0)
+    {
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "check", "Cannot get system name");
         return FIREWALL_EXECUTION_FAILED;
     }
 
     // Canonicalize the IP so the rule written and the rule matched on removal are
     // byte-identical, whatever textual form the alert carried.
     char canonical_ip[NI_MAXHOST];
-    if (!canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip))) {
-        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "check",
-                          "Cannot canonicalize source IP");
+    if (!canonicalize_ip(srcip, canonical_ip, sizeof(canonical_ip)))
+    {
+        log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "check", "Cannot canonicalize source IP");
         return FIREWALL_EXECUTION_FAILED;
     }
 
     // Determine the rule format and file path based on OS
     memset(hosts_deny_rule, '\0', COMMANDSIZE_4096);
     memset(hosts_deny_path, '\0', COMMANDSIZE_4096);
-    if (!strcmp("FreeBSD", uname_buffer.sysname)) {
+    if (!strcmp("FreeBSD", uname_buffer.sysname))
+    {
         snprintf(hosts_deny_rule, COMMANDSIZE_4096 - 1, "ALL : %s : deny", canonical_ip);
         strcpy(hosts_deny_path, FREEBSD_HOSTS_DENY_PATH);
-    } else {
+    }
+    else
+    {
         snprintf(hosts_deny_rule, COMMANDSIZE_4096 - 1, "ALL:%s", canonical_ip);
         strcpy(hosts_deny_path, DEFAULT_HOSTS_DENY_PATH);
     }
 
     // Check if hosts.deny file exists
-    if (access(hosts_deny_path, F_OK) < 0) {
+    if (access(hosts_deny_path, F_OK) < 0)
+    {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "File '%s' not found", hosts_deny_path);
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "check", log_msg);
@@ -573,14 +624,17 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
     }
 
     // Acquire lock
-    if (acquire_ar_lock(&lock_ctx) == OS_INVALID) {
+    if (acquire_ar_lock(&lock_ctx) == OS_INVALID)
+    {
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    if (action == ENABLE_COMMAND) {
+    if (action == ENABLE_COMMAND)
+    {
         // Open file for reading to check for duplicates
         host_deny_fp = wfopen(hosts_deny_path, "r");
-        if (!host_deny_fp) {
+        if (!host_deny_fp)
+        {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for reading", hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "add", log_msg);
@@ -590,21 +644,24 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
 
         // Check for duplicates
         memset(output_buf, '\0', OS_MAXSTR - 25);
-        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (hosts_deny_rule_matches(output_buf, hosts_deny_rule)) {
+        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp))
+        {
+            if (hosts_deny_rule_matches(output_buf, hosts_deny_rule))
+            {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR - 1, "IP %s already exists in '%s'", srcip, hosts_deny_path);
                 log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "add", log_msg);
                 fclose(host_deny_fp);
                 release_ar_lock(&lock_ctx);
-                return FIREWALL_SUCCESS;  // Already exists, consider it success
+                return FIREWALL_SUCCESS; // Already exists, consider it success
             }
         }
         fclose(host_deny_fp);
 
         // Open again to append rule
         host_deny_fp = wfopen(hosts_deny_path, "a");
-        if (!host_deny_fp) {
+        if (!host_deny_fp)
+        {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for appending", hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "add", log_msg);
@@ -612,7 +669,8 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
             return FIREWALL_EXECUTION_FAILED;
         }
 
-        if (fprintf(host_deny_fp, "%s\n", hosts_deny_rule) <= 0) {
+        if (fprintf(host_deny_fp, "%s\n", hosts_deny_rule) <= 0)
+        {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Unable to write rule to '%s'", hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "add", log_msg);
@@ -621,10 +679,11 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
             return FIREWALL_EXECUTION_FAILED;
         }
         fclose(host_deny_fp);
-
-    } else {
+    }
+    else
+    {
         // DISABLE_COMMAND: Remove IP from hosts.deny
-        FILE *temp_host_deny_fp = NULL;
+        FILE* temp_host_deny_fp = NULL;
         char temp_hosts_deny_path[COMMANDSIZE_4096];
         bool write_fail = false;
         bool entry_removed = false;
@@ -633,7 +692,8 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         snprintf(temp_hosts_deny_path, COMMANDSIZE_4096 - 1, "%s", "active-response/bin/temp-hosts-deny");
 
         host_deny_fp = wfopen(hosts_deny_path, "r");
-        if (!host_deny_fp) {
+        if (!host_deny_fp)
+        {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Could not open file '%s' for reading", hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
@@ -643,7 +703,8 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
 
         // Create the temporary file
         temp_host_deny_fp = wfopen(temp_hosts_deny_path, "w");
-        if (!temp_host_deny_fp) {
+        if (!temp_host_deny_fp)
+        {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Could not create temporary file '%s'", temp_hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
@@ -654,16 +715,21 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
 
         // Copy all lines except the exact Wazuh-managed rule for srcip
         memset(output_buf, '\0', OS_MAXSTR - 25);
-        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp)) {
-            if (!hosts_deny_rule_matches(output_buf, hosts_deny_rule)) {
-                if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf)) {
+        while (fgets(output_buf, OS_MAXSTR - 25, host_deny_fp))
+        {
+            if (!hosts_deny_rule_matches(output_buf, hosts_deny_rule))
+            {
+                if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf))
+                {
                     memset(log_msg, '\0', OS_MAXSTR);
                     snprintf(log_msg, OS_MAXSTR - 1, "Unable to write to temporary file");
                     log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
                     write_fail = true;
                     break;
                 }
-            } else {
+            }
+            else
+            {
                 entry_removed = true;
             }
             memset(output_buf, '\0', OS_MAXSTR - 25);
@@ -674,7 +740,8 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
 
         // Replace the original file only when an entry was actually removed, to
         // avoid changing its inode and mode on every expiring block.
-        if (write_fail || (entry_removed && OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0)) {
+        if (write_fail || (entry_removed && OS_MoveFile(temp_hosts_deny_path, hosts_deny_path) != 0))
+        {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "Unable to update file '%s'", hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "hostsdeny", "delete", log_msg);
@@ -686,7 +753,8 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         unlink(temp_hosts_deny_path);
 
         // Nothing to remove: the IP was not blocked by this method, let the next one try
-        if (!entry_removed) {
+        if (!entry_removed)
+        {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR - 1, "IP %s not found in '%s'", srcip, hosts_deny_path);
             log_firewall_action(argv0, LOG_LEVEL_INFO, "hostsdeny", "delete", log_msg);

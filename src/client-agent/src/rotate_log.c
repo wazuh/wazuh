@@ -22,22 +22,24 @@ int size_rotate_read;
 
 // Thread to rotate internal log
 #ifdef WIN32
-DWORD WINAPI w_rotate_log_thread(__attribute__((unused)) LPVOID arg) {
+DWORD WINAPI w_rotate_log_thread(__attribute__((unused)) LPVOID arg)
+{
 #else
-void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
+void* w_rotate_log_thread(__attribute__((unused)) void* arg)
+{
 #endif
     char path[PATH_MAX];
     char path_json[PATH_MAX];
     struct stat buf;
     off_t size;
     time_t now = time(NULL);
-    struct tm tm = { .tm_sec = 0 };
+    struct tm tm = {.tm_sec = 0};
     int today;
     log_compress = getDefine_Int("monitord", "compress", 0, 1);
     keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
     day_wait = getDefine_Int("monitord", "day_wait", 0, 600);
     size_rotate_read = getDefine_Int("monitord", "size_rotate", 0, 4096);
-    unsigned long size_rotate = (unsigned long) size_rotate_read * 1024 * 1024;
+    unsigned long size_rotate = (unsigned long)size_rotate_read * 1024 * 1024;
     daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
 
     mdebug1("Log rotating thread started.");
@@ -57,34 +59,42 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
-    while (1) {
+    while (1)
+    {
         now = time(NULL);
         localtime_r(&now, &tm);
 
-        if (today != tm.tm_mday) {
+        if (today != tm.tm_mday)
+        {
             sleep(day_wait);
             /* Daily rotation and compression of ossec.log/ossec.json */
             w_rotate_log(log_compress, keep_log_days, 1, 0, daily_rotations);
             today = tm.tm_mday;
         }
 
-        if (size_rotate > 0) {
-            if (w_stat(path, &buf) == 0) {
+        if (size_rotate > 0)
+        {
+            if (w_stat(path, &buf) == 0)
+            {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.log */
-                if ( (unsigned long) size >= size_rotate) {
+                if ((unsigned long)size >= size_rotate)
+                {
                     w_rotate_log(log_compress, keep_log_days, 0, 0, daily_rotations);
                 }
             }
 
-            if (w_stat(path_json, &buf) == 0) {
+            if (w_stat(path_json, &buf) == 0)
+            {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.json */
-                if ( (unsigned long) size >= size_rotate) {
+                if ((unsigned long)size >= size_rotate)
+                {
                     w_rotate_log(log_compress, keep_log_days, 0, 1, daily_rotations);
                 }
             }
-        }else
+        }
+        else
             mdebug1("Disabled rotation of internal logs by size.");
 
         sleep(1);

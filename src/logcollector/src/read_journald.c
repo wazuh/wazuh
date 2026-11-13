@@ -34,11 +34,12 @@
  * @brief Configuration and status of the journal log
  * @note not thread safe, only accessible from Inputs threads
  */
-typedef struct {
-    unsigned long owner_id;            ///< Owner ID of the journal log
-    bool is_disabled;                  ///< Flag to disable the journal log, error on initialization
-    w_journal_context_t* journal_ctx;  ///< Journal log context
-} w_journald_global_t;                 ///< Current configuration and status of the journal log
+typedef struct
+{
+    unsigned long owner_id;           ///< Owner ID of the journal log
+    bool is_disabled;                 ///< Flag to disable the journal log, error on initialization
+    w_journal_context_t* journal_ctx; ///< Journal log context
+} w_journald_global_t;                ///< Current configuration and status of the journal log
 
 STATIC w_journald_global_t gs_journald_global = {
     .owner_id = 0,
@@ -50,7 +51,8 @@ STATIC w_journald_global_t gs_journald_global = {
  * @brief Only future events configuration and status
  * @note Only accessible from Input Owner Thread and Deamon Thread (main thread)
  */
-typedef struct {
+typedef struct
+{
     bool exist_journal;           ///< Flag to indicate if the journal log exists
     bool only_future_events;      ///< Flag to indicate if only future events are read
     uint64_t last_read_timestamp; ///< Last read timestamp from the journal log
@@ -65,7 +67,8 @@ STATIC w_journald_ofe_t gs_journald_ofe = {
 }; ///< Only future events configuration and status
 
 #ifdef WAZUH_UNIT_TESTING
-void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp) {
+void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp)
+{
     gs_journald_ofe.exist_journal = exist;
     gs_journald_ofe.only_future_events = ofe;
     gs_journald_ofe.last_read_timestamp = timestamp;
@@ -78,23 +81,27 @@ void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void* jour
     gs_journald_global.journal_ctx = journal_ctx;
 }
 
-bool journald_isDisabled() {
+bool journald_isDisabled()
+{
     return gs_journald_global.is_disabled;
 }
 #endif
 
+bool w_journald_can_read(unsigned long owner_id)
+{
 
-bool w_journald_can_read(unsigned long owner_id) {
-
-    if (gs_journald_global.is_disabled) {
+    if (gs_journald_global.is_disabled)
+    {
         return false;
     }
 
-    if (gs_journald_global.owner_id == 0) {
+    if (gs_journald_global.owner_id == 0)
+    {
 
         gs_journald_global.owner_id = owner_id;
 
-        if (gs_journald_global.journal_ctx == NULL && w_journal_context_create(&gs_journald_global.journal_ctx) != 0) {
+        if (gs_journald_global.journal_ctx == NULL && w_journal_context_create(&gs_journald_global.journal_ctx) != 0)
+        {
             merror(LOGCOLLECTOR_JOURNAL_LOG_DISABLING);
             gs_journald_global.is_disabled = true;
             return false;
@@ -106,12 +113,14 @@ bool w_journald_can_read(unsigned long owner_id) {
         }
 
         mdebug1(LOGCOLLECTOR_JOURNALD_MONITORING);
-
-    } else if (gs_journald_global.owner_id != owner_id) {
+    }
+    else if (gs_journald_global.owner_id != owner_id)
+    {
         return false;
     }
 
-    if (w_journal_rotation_detected(gs_journald_global.journal_ctx)) {
+    if (w_journal_rotation_detected(gs_journald_global.journal_ctx))
+    {
 
         if (seek_and_refresh_timestamp() < 0)
         {
@@ -124,7 +133,8 @@ bool w_journald_can_read(unsigned long owner_id) {
     return true;
 }
 
-void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_it) {
+void* read_journald(logreader* lf, int* rc, __attribute__((unused)) int drop_it)
+{
     const unsigned long MAX_LINE_LEN = OS_MAXSTR - OS_LOG_HEADER;
     char read_buffer[OS_MAXSTR + 1];
     read_buffer[OS_MAXSTR] = '\0';
@@ -132,25 +142,30 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
     *rc = 0;
     w_journal_filters_list_t filters = lf->journal_log->disable_filters ? NULL : lf->journal_log->filters;
 
-    while ((maximum_lines == 0 || count_logs < maximum_lines) && can_read()) {
+    while ((maximum_lines == 0 || count_logs < maximum_lines) && can_read())
+    {
         // Get the next entry
         int result_get_next = w_journal_context_next_newest_filtered(gs_journald_global.journal_ctx, filters);
-        if (result_get_next < 0) {
+        if (result_get_next < 0)
+        {
             merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_NEXT, strerror(-result_get_next));
             gs_journald_global.is_disabled = true;
             break;
-        } else if (result_get_next == 0) {
+        }
+        else if (result_get_next == 0)
+        {
             mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NO_NEW);
             break;
         }
 
         // Get the message
-        w_journal_entry_t * entry =
+        w_journal_entry_t* entry =
             w_journal_entry_dump(gs_journald_global.journal_ctx, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
-        char * entry_str = w_journal_entry_to_string(entry);
+        char* entry_str = w_journal_entry_to_string(entry);
         w_journal_entry_free(entry);
 
-        if (entry_str == NULL) {
+        if (entry_str == NULL)
+        {
             // The cursor already moved past this entry: skip it and keep reading the newer ones.
             // It still counts toward maximum_lines so a run of these cannot extend the pass.
             mdebug1(LOGCOLLECTOR_JOURNAL_LOG_FAIL_GET);
@@ -160,7 +175,8 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
 
         // Copy the message to the buffer
         unsigned long entry_str_len = strlen(entry_str);
-        if (entry_str_len > MAX_LINE_LEN) {
+        if (entry_str_len > MAX_LINE_LEN)
+        {
             mdebug1(LOGCOLLECTOR_JOURNAL_LOG_TRUNCATED);
             entry_str_len = MAX_LINE_LEN;
         }
@@ -168,7 +184,8 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
         read_buffer[entry_str_len] = '\0';
         os_free(entry_str);
 
-        if (isDebug()) {
+        if (isDebug())
+        {
             mdebug2(LOGCOLLECTOR_JOURNAL_LOG_READING, read_buffer);
         }
 
@@ -187,15 +204,18 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
 
 /** ONLY FUTURE EVENTS configuration */
 
-void w_journald_set_ofe(bool ofe) {
+void w_journald_set_ofe(bool ofe)
+{
     gs_journald_ofe.only_future_events = ofe;
     gs_journald_ofe.exist_journal = true;
 }
 
-cJSON * w_journald_get_status_as_JSON() {
+cJSON* w_journald_get_status_as_JSON()
+{
 
     // Maybe journal log is not initialized yet
-    if (!gs_journald_ofe.exist_journal) {
+    if (!gs_journald_ofe.exist_journal)
+    {
         return NULL;
     }
 
@@ -206,28 +226,32 @@ cJSON * w_journald_get_status_as_JSON() {
     // Convert the timestamp uint64_t to a string
     char timestamp_str[OS_SIZE_256] = {0};
     snprintf(timestamp_str, OS_SIZE_256 - 1, "%" PRIu64, timestamp);
-    cJSON * journald_log = cJSON_CreateObject();
+    cJSON* journald_log = cJSON_CreateObject();
     cJSON_AddStringToObject(journald_log, OFE_TIMESTAMP, timestamp_str);
 
     return journald_log;
 }
 
-void w_journald_set_status_from_JSON(cJSON * global_json) {
+void w_journald_set_status_from_JSON(cJSON* global_json)
+{
 
-    if (global_json == NULL) {
+    if (global_json == NULL)
+    {
         return;
     }
 
-    cJSON * jurnald_log = cJSON_GetObjectItem(global_json, JOURNALD_LOG);
-    char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(jurnald_log, OFE_TIMESTAMP));
+    cJSON* jurnald_log = cJSON_GetObjectItem(global_json, JOURNALD_LOG);
+    char* timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(jurnald_log, OFE_TIMESTAMP));
 
-    if (timestamp == NULL) {
+    if (timestamp == NULL)
+    {
         return;
     }
 
     // Convert the timestamp to a uint64_t
     uint64_t timestamp_uint = strtoull(timestamp, NULL, 10);
-    if (timestamp_uint == 0 || timestamp_uint == ULLONG_MAX) {
+    if (timestamp_uint == 0 || timestamp_uint == ULLONG_MAX)
+    {
         return;
     }
 

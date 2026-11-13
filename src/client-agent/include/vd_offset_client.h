@@ -37,8 +37,7 @@
  *         changed/pending values); false on any error (unreachable,
  *         malformed/missing response, timeout).
  */
-bool vd_offset_client_observe(uint64_t offset, bool *out_changed, bool *out_pending,
-                              uint64_t *out_pending_offset);
+bool vd_offset_client_observe(uint64_t offset, bool* out_changed, bool* out_pending, uint64_t* out_pending_offset);
 
 /**
  * @brief Clear the pending VD re-scan flag, but only if it is still pending

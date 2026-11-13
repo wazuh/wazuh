@@ -18,116 +18,117 @@
 
 class IAgentSyncProtocol
 {
-    public:
-        /// @brief Persist a difference in the buffer
-        /// @param id Difference id (hash ok PKs)
-        /// @param operation Operation type
-        /// @param index Index where to send the difference
-        /// @param data Difference data
-        /// @param version Version of the data.
-        /// @param isDataContext Flag to mark data as DataContext (true) or DataValue (false).
-        virtual void persistDifference(const std::string& id,
-                                       Operation operation,
-                                       const std::string& index,
-                                       const std::string& data,
-                                       uint64_t version,
-                                       bool isDataContext = false) = 0;
+public:
+    /// @brief Persist a difference in the buffer
+    /// @param id Difference id (hash ok PKs)
+    /// @param operation Operation type
+    /// @param index Index where to send the difference
+    /// @param data Difference data
+    /// @param version Version of the data.
+    /// @param isDataContext Flag to mark data as DataContext (true) or DataValue (false).
+    virtual void persistDifference(const std::string& id,
+                                   Operation operation,
+                                   const std::string& index,
+                                   const std::string& data,
+                                   uint64_t version,
+                                   bool isDataContext = false) = 0;
 
-        /// @brief Synchronize a module with the server
-        /// @param mode Sync mode
-        /// @param option Synchronization option.
-        /// @return SyncModuleResult with success flag and an optional failure reason string.
-        virtual SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) = 0;
+    /// @brief Synchronize a module with the server
+    /// @param mode Sync mode
+    /// @param option Synchronization option.
+    /// @return SyncModuleResult with success flag and an optional failure reason string.
+    virtual SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) = 0;
 
-        /// @brief Checks if a module index requires full synchronization
-        ///
-        /// A 409 (checksum mismatch) is retried against the manager up to
-        /// CHECKSUM_MISMATCH_MAX_ATTEMPTS times, spaced out, before being trusted as a
-        /// genuine mismatch -- a recent bulk write may not be visible in the indexer yet.
-        /// Any other failure (communication error, manager offline, stop requested) ends
-        /// the check right away as NOT_CHECKED, without spending this retry budget.
-        /// @param index The index/table to check
-        /// @param checksum The calculated checksum for the index
-        /// @return MISMATCH if full sync is required, VALID if the manager confirmed the
-        ///         checksum, NOT_CHECKED (with the reason) if the check did not complete.
-        virtual IntegrityCheckResult requiresFullSync(const std::string& index,
-                                                      const std::string& checksum) = 0;
+    /// @brief Checks if a module index requires full synchronization
+    ///
+    /// A 409 (checksum mismatch) is retried against the manager up to
+    /// CHECKSUM_MISMATCH_MAX_ATTEMPTS times, spaced out, before being trusted as a
+    /// genuine mismatch -- a recent bulk write may not be visible in the indexer yet.
+    /// Any other failure (communication error, manager offline, stop requested) ends
+    /// the check right away as NOT_CHECKED, without spending this retry budget.
+    /// @param index The index/table to check
+    /// @param checksum The calculated checksum for the index
+    /// @return MISMATCH if full sync is required, VALID if the manager confirmed the
+    ///         checksum, NOT_CHECKED (with the reason) if the check did not complete.
+    virtual IntegrityCheckResult requiresFullSync(const std::string& index, const std::string& checksum) = 0;
 
-        /// @brief Removes the checksum mismatches stored for an index by requiresFullSync().
-        ///
-        /// notifyDataClean() already does it for the indices it cleans. A module that checks an
-        /// index on one instance and cleans it on another calls this on the one that checked it.
-        /// @param index The index whose stored mismatches are removed.
-        virtual void clearIntegrityProgress(const std::string& index) = 0;
+    /// @brief Removes the checksum mismatches stored for an index by requiresFullSync().
+    ///
+    /// notifyDataClean() already does it for the indices it cleans. A module that checks an
+    /// index on one instance and cleans it on another calls this on the one that checked it.
+    /// @param index The index whose stored mismatches are removed.
+    virtual void clearIntegrityProgress(const std::string& index) = 0;
 
-        /// @brief Synchronizes metadata or groups with the server without sending data.
-        ///
-        /// This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
-        /// Sent as one FullSession carrying Start and End (no data items).
-        /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
-        /// @param indices Vector of index names that will be updated by the manager
-        /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
-        /// @return SyncModuleResult with success flag and failure reason if unsuccessful
-        virtual SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion = 0) = 0;
+    /// @brief Synchronizes metadata or groups with the server without sending data.
+    ///
+    /// This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
+    /// Sent as one FullSession carrying Start and End (no data items).
+    /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
+    /// @param indices Vector of index names that will be updated by the manager
+    /// @param globalVersion Global version to include in the Start message (optional, only for Delta modes)
+    /// @return SyncModuleResult with success flag and failure reason if unsuccessful
+    virtual SyncModuleResult
+    synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion = 0) = 0;
 
-        /// @brief Notifies the manager about data cleaning for specified indices.
-        ///
-        /// This method sends DataClean messages for each index in the provided vector.
-        /// Sent as one FullSession carrying Start, a DataClean per index, and End.
-        /// Upon receiving Ok, it clears the local database. Reports the same detail
-        /// synchronizeModule() does (manager-not-ready / local-transport-unavailable /
-        /// consecutive-failure streak), so a caller that needs to distinguish a transient
-        /// hiccup from a real failure -- to decide log severity or apply the same retry
-        /// tolerance used elsewhere -- doesn't have to guess from a bare bool.
-        /// @param indices Vector of index names to clean
-        /// @param option Synchronization option.
-        /// @param trackConsecutiveFailures Whether a *failure* of this call should grow the same
-        /// consecutive-failure streaks synchronizeModule() tracks on this instance -- both the
-        /// manager-conversation one and the local-transport one. Pass true only from a periodic-sync
-        /// path where a DataClean failure genuinely represents "this cycle failed"; leave false (the
-        /// default) for ad hoc DataClean calls (e.g. policy-removal cleanup) that aren't part of that
-        /// cycle and would otherwise skew either streak's tolerance window. Does not gate a
-        /// *success*: reaching past checkStatus() always resets the local-transport streak
-        /// regardless of this flag, since that streak's own contract (see
-        /// AgentSyncProtocol::m_consecutiveLocalTransportFailures) is "reset the moment it succeeds
-        /// again" -- checkStatus() succeeding is an objective fact about the instance, true no
-        /// matter which caller happened to observe it.
-        /// @return SyncModuleResult with success flag and failure detail if unsuccessful
-        virtual SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
-                                                 Option option = Option::SYNC,
-                                                 bool trackConsecutiveFailures = false) = 0;
+    /// @brief Notifies the manager about data cleaning for specified indices.
+    ///
+    /// This method sends DataClean messages for each index in the provided vector.
+    /// Sent as one FullSession carrying Start, a DataClean per index, and End.
+    /// Upon receiving Ok, it clears the local database. Reports the same detail
+    /// synchronizeModule() does (manager-not-ready / local-transport-unavailable /
+    /// consecutive-failure streak), so a caller that needs to distinguish a transient
+    /// hiccup from a real failure -- to decide log severity or apply the same retry
+    /// tolerance used elsewhere -- doesn't have to guess from a bare bool.
+    /// @param indices Vector of index names to clean
+    /// @param option Synchronization option.
+    /// @param trackConsecutiveFailures Whether a *failure* of this call should grow the same
+    /// consecutive-failure streaks synchronizeModule() tracks on this instance -- both the
+    /// manager-conversation one and the local-transport one. Pass true only from a periodic-sync
+    /// path where a DataClean failure genuinely represents "this cycle failed"; leave false (the
+    /// default) for ad hoc DataClean calls (e.g. policy-removal cleanup) that aren't part of that
+    /// cycle and would otherwise skew either streak's tolerance window. Does not gate a
+    /// *success*: reaching past checkStatus() always resets the local-transport streak
+    /// regardless of this flag, since that streak's own contract (see
+    /// AgentSyncProtocol::m_consecutiveLocalTransportFailures) is "reset the moment it succeeds
+    /// again" -- checkStatus() succeeding is an objective fact about the instance, true no
+    /// matter which caller happened to observe it.
+    /// @return SyncModuleResult with success flag and failure detail if unsuccessful
+    virtual SyncModuleResult notifyDataClean(const std::vector<std::string>& indices,
+                                             Option option = Option::SYNC,
+                                             bool trackConsecutiveFailures = false) = 0;
 
-        /// @brief Fetches pending DataValue items from the persistent queue without marking them.
-        /// @param onlyDataValues If true, only returns items with is_data_context=false
-        /// @return Vector of pending items
-        virtual std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) = 0;
+    /// @brief Fetches pending DataValue items from the persistent queue without marking them.
+    /// @param onlyDataValues If true, only returns items with is_data_context=false
+    /// @return Vector of pending items
+    virtual std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) = 0;
 
-        /// @brief Clears all DataContext items from the persistent queue.
-        /// This should be called before adding new DataContext to prevent inconsistencies.
-        virtual void clearAllDataContext() = 0;
+    /// @brief Clears all DataContext items from the persistent queue.
+    /// This should be called before adding new DataContext to prevent inconsistencies.
+    virtual void clearAllDataContext() = 0;
 
-        /// @brief Deletes the database file.
-        /// This method closes the database connection and removes the database file from disk.
-        virtual void deleteDatabase() = 0;
+    /// @brief Deletes the database file.
+    /// This method closes the database connection and removes the database file from disk.
+    virtual void deleteDatabase() = 0;
 
-        /// @brief Signals the sync protocol to stop all operations.
-        /// This method should be called when a module is shutting down to abort any ongoing or pending synchronization operations.
-        virtual void stop() = 0;
+    /// @brief Signals the sync protocol to stop all operations.
+    /// This method should be called when a module is shutting down to abort any ongoing or pending synchronization
+    /// operations.
+    virtual void stop() = 0;
 
-        /// @brief Resets the stop flag to allow restarting operations.
-        /// This method should be called when restarting the module after a stop to clear the stop flag.
-        virtual void reset() = 0;
+    /// @brief Resets the stop flag to allow restarting operations.
+    /// This method should be called when restarting the module after a stop to clear the stop flag.
+    virtual void reset() = 0;
 
-        /// @brief Checks if stop has been requested.
-        /// @return true if stop was requested, false otherwise.
-        virtual bool shouldStop() const = 0;
+    /// @brief Checks if stop has been requested.
+    /// @return true if stop was requested, false otherwise.
+    virtual bool shouldStop() const = 0;
 
-        /// @brief Destructor
-        virtual ~IAgentSyncProtocol() = default;
+    /// @brief Destructor
+    virtual ~IAgentSyncProtocol() = default;
 
-        /// @brief Parses a FlatBuffer response message received from the manager.
-        /// @param data Pointer to the FlatBuffer-encoded message buffer.
-        /// @param length Size of the FlatBuffer message in bytes.
-        /// @return true if the message was successfully parsed and processed; false otherwise.
-        virtual bool parseResponseBuffer(const uint8_t* data, size_t length) = 0;
+    /// @brief Parses a FlatBuffer response message received from the manager.
+    /// @param data Pointer to the FlatBuffer-encoded message buffer.
+    /// @param length Size of the FlatBuffer message in bytes.
+    /// @return true if the message was successfully parsed and processed; false otherwise.
+    virtual bool parseResponseBuffer(const uint8_t* data, size_t length) = 0;
 };

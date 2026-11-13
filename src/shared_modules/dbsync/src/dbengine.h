@@ -26,58 +26,55 @@ namespace DbSync
 
     class IDbEngine
     {
-        public:
-            // LCOV_EXCL_START
-            virtual ~IDbEngine() = default;
-            // LCOV_EXCL_STOP
+    public:
+        // LCOV_EXCL_START
+        virtual ~IDbEngine() = default;
+        // LCOV_EXCL_STOP
 
-            virtual void bulkInsert(const std::string& table,
-                                    const nlohmann::json& data) = 0;
+        virtual void bulkInsert(const std::string& table, const nlohmann::json& data) = 0;
 
-            virtual void refreshTableData(const nlohmann::json& data,
-                                          const ResultCallback callback,
-                                          std::unique_lock<std::shared_timed_mutex>& lock) = 0;
+        virtual void refreshTableData(const nlohmann::json& data,
+                                      const ResultCallback callback,
+                                      std::unique_lock<std::shared_timed_mutex>& lock) = 0;
 
-            virtual void syncTableRowData(const nlohmann::json& jsInput,
-                                          const ResultCallback callback,
-                                          const bool inTransaction,
-                                          Utils::ILocking& mutex) = 0;
+        virtual void syncTableRowData(const nlohmann::json& jsInput,
+                                      const ResultCallback callback,
+                                      const bool inTransaction,
+                                      Utils::ILocking& mutex) = 0;
 
-            virtual void setMaxRows(const std::string& table,
-                                    const int64_t maxRows) = 0;
+        virtual void setMaxRows(const std::string& table, const int64_t maxRows) = 0;
 
-            virtual void initializeStatusField(const nlohmann::json& tableNames) = 0;
+        virtual void initializeStatusField(const nlohmann::json& tableNames) = 0;
 
-            virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) = 0;
+        virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) = 0;
 
-            virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
-                                                   const DbSync::ResultCallback callback,
-                                                   std::unique_lock<std::shared_timed_mutex>& lock) = 0;
+        virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
+                                               const DbSync::ResultCallback callback,
+                                               std::unique_lock<std::shared_timed_mutex>& lock) = 0;
 
-            virtual void selectData(const std::string& table,
-                                    const nlohmann::json& query,
-                                    const ResultCallback& callback,
-                                    std::unique_lock<std::shared_timed_mutex>& lock) = 0;
+        virtual void selectData(const std::string& table,
+                                const nlohmann::json& query,
+                                const ResultCallback& callback,
+                                std::unique_lock<std::shared_timed_mutex>& lock) = 0;
 
-            virtual void deleteTableRowsData(const std::string& table,
-                                             const nlohmann::json& jsDeletionData) = 0;
+        virtual void deleteTableRowsData(const std::string& table, const nlohmann::json& jsDeletionData) = 0;
 
-            virtual void addTableRelationship(const nlohmann::json& data) = 0;
+        virtual void addTableRelationship(const nlohmann::json& data) = 0;
 
-            virtual void closeAndDeleteDatabase(const std::string& path) = 0;
+        virtual void closeAndDeleteDatabase(const std::string& path) = 0;
 
-            /**
-             * @brief Why opening the persistent database deleted it and created it again, or empty
-             *        when it did not.
-             */
-            virtual std::string recreateReason() const
-            {
-                return {};
-            }
+        /**
+         * @brief Why opening the persistent database deleted it and created it again, or empty
+         *        when it did not.
+         */
+        virtual std::string recreateReason() const
+        {
+            return {};
+        }
 
-        protected:
-            IDbEngine() = default;
+    protected:
+        IDbEngine() = default;
     };
-}// namespace DbSync
+} // namespace DbSync
 
 #endif // _DBENGINE_H

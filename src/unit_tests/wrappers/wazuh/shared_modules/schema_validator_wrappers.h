@@ -25,8 +25,6 @@ bool __wrap_schema_validator_initialize(void);
 /**
  * @brief Wrapper for schema_validator_validate
  */
-bool __wrap_schema_validator_validate(const char* indexPattern,
-                                      const char* message,
-                                      char** errorMessage);
+bool __wrap_schema_validator_validate(const char* indexPattern, const char* message, char** errorMessage);
 
 #endif

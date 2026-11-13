@@ -15,13 +15,12 @@
 class SysInfoNetworkBSDTest : public ::testing::Test
 {
 
-    protected:
+protected:
+    SysInfoNetworkBSDTest() = default;
+    virtual ~SysInfoNetworkBSDTest() = default;
 
-        SysInfoNetworkBSDTest() = default;
-        virtual ~SysInfoNetworkBSDTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SYSINFO_NETWORK_BSD_TEST_H

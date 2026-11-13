@@ -17,53 +17,68 @@
 
 class MockGroupWrapper : public IGroupWrapperLinux
 {
-    public:
-        MOCK_METHOD(int, getgrgid_r, (gid_t gid, struct group* grp, char* buf, size_t buflen, struct group** result), (const, override));
-        MOCK_METHOD(int, getgrent_r, (struct group* grp, char* buf, size_t buflen, struct group** result), (const, override));
-        MOCK_METHOD(struct group*, getgrent, (), (const, override));
-        MOCK_METHOD(void, setgrent, (), (const, override));
-        MOCK_METHOD(void, endgrent, (), (const, override));
-        MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
+public:
+    MOCK_METHOD(int,
+                getgrgid_r,
+                (gid_t gid, struct group* grp, char* buf, size_t buflen, struct group** result),
+                (const, override));
+    MOCK_METHOD(int,
+                getgrent_r,
+                (struct group * grp, char* buf, size_t buflen, struct group** result),
+                (const, override));
+    MOCK_METHOD(struct group*, getgrent, (), (const, override));
+    MOCK_METHOD(void, setgrent, (), (const, override));
+    MOCK_METHOD(void, endgrent, (), (const, override));
+    MOCK_METHOD(int, getgrouplist, (const char* user, gid_t group, gid_t* groups, int* ngroups), (const, override));
 };
 
 class MockPasswdWrapper : public IPasswdWrapperLinux
 {
-    public:
-        MOCK_METHOD(int, fgetpwent_r, (FILE* stream, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
-        MOCK_METHOD(int, getpwuid_r, (uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
-        MOCK_METHOD(int, getpwent_r, (struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
-        MOCK_METHOD(struct passwd*, getpwent, (), (override));
-        MOCK_METHOD(void, setpwent, (), (override));
-        MOCK_METHOD(void, endpwent, (), (override));
-        MOCK_METHOD(int, getpwnam_r, (const char* name, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result), (override));
+public:
+    MOCK_METHOD(int,
+                fgetpwent_r,
+                (FILE * stream, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result),
+                (override));
+    MOCK_METHOD(int,
+                getpwuid_r,
+                (uid_t uid, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result),
+                (override));
+    MOCK_METHOD(int, getpwent_r, (struct passwd * pwd, char* buf, size_t buflen, struct passwd** result), (override));
+    MOCK_METHOD(struct passwd*, getpwent, (), (override));
+    MOCK_METHOD(void, setpwent, (), (override));
+    MOCK_METHOD(void, endpwent, (), (override));
+    MOCK_METHOD(int,
+                getpwnam_r,
+                (const char* name, struct passwd* pwd, char* buf, size_t buflen, struct passwd** result),
+                (override));
 };
 
 class MockSystemWrapper : public ISystemWrapper
 {
-    public:
-        MOCK_METHOD(long, sysconf, (int name), (const, override));
-        MOCK_METHOD(FILE*, fopen, (const char* filename, const char* mode), (override));
-        MOCK_METHOD(int, fclose, (FILE* stream), (override));
-        MOCK_METHOD(char*, strerror, (int errnum), (override));
+public:
+    MOCK_METHOD(long, sysconf, (int name), (const, override));
+    MOCK_METHOD(FILE*, fopen, (const char* filename, const char* mode), (override));
+    MOCK_METHOD(int, fclose, (FILE * stream), (override));
+    MOCK_METHOD(char*, strerror, (int errnum), (override));
 };
 
 using ::testing::_;
-using ::testing::Return;
 using ::testing::DoAll;
-using ::testing::SetArgPointee;
-using ::testing::SetArrayArgument;
+using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::NiceMock;
-using ::testing::InSequence;
+using ::testing::Return;
+using ::testing::SetArgPointee;
+using ::testing::SetArrayArgument;
 using ::testing::StrEq;
 
 class UserGroupsProviderLinuxTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            UserGroupsProvider::resetCache();
-        }
+protected:
+    void SetUp() override
+    {
+        UserGroupsProvider::resetCache();
+    }
 };
 
 TEST_F(UserGroupsProviderLinuxTest, CollectWithSpecificUid)
@@ -76,27 +91,28 @@ TEST_F(UserGroupsProviderLinuxTest, CollectWithSpecificUid)
     const gid_t testGid = 2001;
     const char* username = "testuser";
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillOnce(Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillOnce(Return(1024));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(testUid, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(username);
-        pwd->pw_uid = testUid;
-        pwd->pw_gid = testGid;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(username);
+                pwd->pw_uid = testUid;
+                pwd->pw_gid = testGid;
+                *result = pwd;
+                return 0;
+            }));
 
     EXPECT_CALL(*mockGroup, getgrouplist(username, testGid, _, _))
-    .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
-    {
-        groups[0] = 2001;
-        groups[1] = 2002;
-        *ngroups = 2;
-        return 2;
-    }));
+        .WillOnce(Invoke(
+            [](const char*, gid_t, gid_t* groups, int* ngroups)
+            {
+                groups[0] = 2001;
+                groups[1] = 2002;
+                *ngroups = 2;
+                return 2;
+            }));
 
     UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
 
@@ -127,8 +143,7 @@ TEST_F(UserGroupsProviderLinuxTest, CollectAllUserGroups)
     const uid_t user2Uid = 1002;
     const gid_t user2Gid = 200;
 
-    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX))
-    .WillOnce(Return(1024));
+    EXPECT_CALL(*mockSys, sysconf(_SC_GETPW_R_SIZE_MAX)).WillOnce(Return(1024));
 
     EXPECT_CALL(*mockPasswd, setpwent());
 
@@ -136,52 +151,57 @@ TEST_F(UserGroupsProviderLinuxTest, CollectAllUserGroups)
         InSequence seq;
 
         EXPECT_CALL(*mockPasswd, getpwent_r(_, _, _, _))
-        .WillOnce(Invoke([&](struct passwd * pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
-        {
-            user1.pw_name = const_cast<char*>(user1Name);
-            user1.pw_uid = user1Uid;
-            user1.pw_gid = user1Gid;
-            *pwd = user1;
-            *pwdResult = &user1;
-            return 0;
-        }));
+            .WillOnce(Invoke(
+                [&](struct passwd* pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
+                {
+                    user1.pw_name = const_cast<char*>(user1Name);
+                    user1.pw_uid = user1Uid;
+                    user1.pw_gid = user1Gid;
+                    *pwd = user1;
+                    *pwdResult = &user1;
+                    return 0;
+                }));
 
         EXPECT_CALL(*mockPasswd, getpwent_r(_, _, _, _))
-        .WillOnce(Invoke([&](struct passwd * pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
-        {
-            user2.pw_name = const_cast<char*>(user2Name);
-            user2.pw_uid = user2Uid;
-            user2.pw_gid = user2Gid;
-            *pwd = user2;
-            *pwdResult = &user2;
-            return 0;
-        }));
+            .WillOnce(Invoke(
+                [&](struct passwd* pwd, char* /* buf */, size_t /* buflen */, struct passwd** pwdResult)
+                {
+                    user2.pw_name = const_cast<char*>(user2Name);
+                    user2.pw_uid = user2Uid;
+                    user2.pw_gid = user2Gid;
+                    *pwd = user2;
+                    *pwdResult = &user2;
+                    return 0;
+                }));
 
         EXPECT_CALL(*mockPasswd, getpwent_r(_, _, _, _))
-        .WillOnce(Invoke([](struct passwd*, char*, size_t, struct passwd** pwdResult)
-        {
-            *pwdResult = nullptr;
-            return 0;
-        }));
+            .WillOnce(Invoke(
+                [](struct passwd*, char*, size_t, struct passwd** pwdResult)
+                {
+                    *pwdResult = nullptr;
+                    return 0;
+                }));
     }
 
     EXPECT_CALL(*mockGroup, getgrouplist(StrEq(user1Name), user1Gid, _, _))
-    .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
-    {
-        groups[0] = 101;
-        groups[1] = 102;
-        *ngroups = 2;
-        return 2;
-    }));
+        .WillOnce(Invoke(
+            [](const char*, gid_t, gid_t* groups, int* ngroups)
+            {
+                groups[0] = 101;
+                groups[1] = 102;
+                *ngroups = 2;
+                return 2;
+            }));
 
     EXPECT_CALL(*mockGroup, getgrouplist(StrEq(user2Name), user2Gid, _, _))
-    .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
-    {
-        groups[0] = 201;
-        groups[1] = 202;
-        *ngroups = 2;
-        return 2;
-    }));
+        .WillOnce(Invoke(
+            [](const char*, gid_t, gid_t* groups, int* ngroups)
+            {
+                groups[0] = 201;
+                groups[1] = 202;
+                *ngroups = 2;
+                return 2;
+            }));
 
     EXPECT_CALL(*mockPasswd, endpwent());
 
@@ -189,11 +209,7 @@ TEST_F(UserGroupsProviderLinuxTest, CollectAllUserGroups)
 
     ASSERT_EQ(results.size(), static_cast<decltype(results.size())>(4)); // 2 users * 2 groups
 
-    std::set<std::tuple<uid_t, gid_t>> expected =
-    {
-        {user1Uid, 101}, {user1Uid, 102},
-        {user2Uid, 201}, {user2Uid, 202}
-    };
+    std::set<std::tuple<uid_t, gid_t>> expected = {{user1Uid, 101}, {user1Uid, 102}, {user2Uid, 201}, {user2Uid, 202}};
 
     for (const auto& entry : results)
     {
@@ -265,13 +281,13 @@ TEST_F(UserGroupsProviderLinuxTest, getUserNamesByGidSingleGid)
     group2.gr_mem = members2;
 
     EXPECT_CALL(*mockGroup, getgrgid_r(gid, testing::_, testing::_, testing::_, testing::_))
-    .WillOnce(
-        [&](gid_t, group * g, char*, size_t, group** result)
-    {
-        *g = group2;
-        *result = g;
-        return 0;
-    });
+        .WillOnce(
+            [&](gid_t, group* g, char*, size_t, group** result)
+            {
+                *g = group2;
+                *result = g;
+                return 0;
+            });
 
     passwd user2 = {};
     user2.pw_gid = gid;
@@ -320,22 +336,22 @@ TEST_F(UserGroupsProviderLinuxTest, getUserNamesByGidMultipleGids)
     grp2.gr_mem = members2;
 
     EXPECT_CALL(*mockGroup, getgrgid_r(gid1, testing::_, testing::_, testing::_, testing::_))
-    .WillOnce(
-        [&](gid_t, group * g, char*, size_t, group** result)
-    {
-        *g = grp1;
-        *result = g;
-        return 0;
-    });
+        .WillOnce(
+            [&](gid_t, group* g, char*, size_t, group** result)
+            {
+                *g = grp1;
+                *result = g;
+                return 0;
+            });
 
     EXPECT_CALL(*mockGroup, getgrgid_r(gid2, testing::_, testing::_, testing::_, testing::_))
-    .WillOnce(
-        [&](gid_t, group * g, char*, size_t, group** result)
-    {
-        *g = grp2;
-        *result = g;
-        return 0;
-    });
+        .WillOnce(
+            [&](gid_t, group* g, char*, size_t, group** result)
+            {
+                *g = grp2;
+                *result = g;
+                return 0;
+            });
 
     passwd pwd1 = {};
     pwd1.pw_gid = gid1;
@@ -347,9 +363,9 @@ TEST_F(UserGroupsProviderLinuxTest, getUserNamesByGidMultipleGids)
 
     EXPECT_CALL(*mockPasswd, setpwent());
     EXPECT_CALL(*mockPasswd, getpwent())
-    .WillOnce(testing::Return(&pwd1))
-    .WillOnce(testing::Return(&pwd2))
-    .WillOnce(testing::Return(nullptr));
+        .WillOnce(testing::Return(&pwd1))
+        .WillOnce(testing::Return(&pwd2))
+        .WillOnce(testing::Return(nullptr));
     EXPECT_CALL(*mockPasswd, endpwent());
 
     UserGroupsProvider provider {mockGroup, mockPasswd, mockSys};
@@ -397,26 +413,28 @@ TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidResolvesEachGidOnce)
     EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(uidA, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(nameA);
-        pwd->pw_uid = uidA;
-        pwd->pw_gid = sharedGid1;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(nameA);
+                pwd->pw_uid = uidA;
+                pwd->pw_gid = sharedGid1;
+                *result = pwd;
+                return 0;
+            }));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(uidB, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(nameB);
-        pwd->pw_uid = uidB;
-        pwd->pw_gid = sharedGid1;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(nameB);
+                pwd->pw_uid = uidB;
+                pwd->pw_gid = sharedGid1;
+                *result = pwd;
+                return 0;
+            }));
 
-    const auto bothGroups = [](const char*, gid_t, gid_t * groups, int* ngroups)
+    const auto bothGroups = [](const char*, gid_t, gid_t* groups, int* ngroups)
     {
         groups[0] = sharedGid1;
         groups[1] = sharedGid2;
@@ -430,22 +448,24 @@ TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidResolvesEachGidOnce)
     // Times(1) is the whole point of the test: a second lookup for the same gid is a
     // failure, not an optimisation that happens to be missing.
     EXPECT_CALL(*mockGroup, getgrgid_r(sharedGid1, _, _, _, _))
-    .Times(1)
-    .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
-    {
-        grp->gr_name = const_cast<char*>("groupone");
-        *result = grp;
-        return 0;
-    }));
+        .Times(1)
+        .WillOnce(Invoke(
+            [](gid_t, struct group* grp, char*, size_t, struct group** result)
+            {
+                grp->gr_name = const_cast<char*>("groupone");
+                *result = grp;
+                return 0;
+            }));
 
     EXPECT_CALL(*mockGroup, getgrgid_r(sharedGid2, _, _, _, _))
-    .Times(1)
-    .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
-    {
-        grp->gr_name = const_cast<char*>("grouptwo");
-        *result = grp;
-        return 0;
-    }));
+        .Times(1)
+        .WillOnce(Invoke(
+            [](gid_t, struct group* grp, char*, size_t, struct group** result)
+            {
+                grp->gr_name = const_cast<char*>("grouptwo");
+                *result = grp;
+                return 0;
+            }));
 
     UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
 
@@ -478,26 +498,28 @@ TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidRetriesUnresolvableGidOnly
     EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(uidA, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(nameA);
-        pwd->pw_uid = uidA;
-        pwd->pw_gid = missingGid;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(nameA);
+                pwd->pw_uid = uidA;
+                pwd->pw_gid = missingGid;
+                *result = pwd;
+                return 0;
+            }));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(uidB, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(nameB);
-        pwd->pw_uid = uidB;
-        pwd->pw_gid = missingGid;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(nameB);
+                pwd->pw_uid = uidB;
+                pwd->pw_gid = missingGid;
+                *result = pwd;
+                return 0;
+            }));
 
-    const auto onlyMissing = [](const char*, gid_t, gid_t * groups, int* ngroups)
+    const auto onlyMissing = [](const char*, gid_t, gid_t* groups, int* ngroups)
     {
         groups[0] = missingGid;
         *ngroups = 1;
@@ -507,12 +529,13 @@ TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidRetriesUnresolvableGidOnly
     EXPECT_CALL(*mockGroup, getgrouplist(StrEq(nameB), missingGid, _, _)).WillOnce(Invoke(onlyMissing));
 
     EXPECT_CALL(*mockGroup, getgrgid_r(missingGid, _, _, _, _))
-    .Times(1)
-    .WillOnce(Invoke([](gid_t, struct group*, char*, size_t, struct group** result)
-    {
-        *result = nullptr;
-        return 0;
-    }));
+        .Times(1)
+        .WillOnce(Invoke(
+            [](gid_t, struct group*, char*, size_t, struct group** result)
+            {
+                *result = nullptr;
+                return 0;
+            }));
 
     UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
 
@@ -540,31 +563,34 @@ TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidKeepsArrayShapeForOneUid)
     EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(uid, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(name);
-        pwd->pw_uid = uid;
-        pwd->pw_gid = gid;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(name);
+                pwd->pw_uid = uid;
+                pwd->pw_gid = gid;
+                *result = pwd;
+                return 0;
+            }));
 
     EXPECT_CALL(*mockGroup, getgrouplist(StrEq(name), gid, _, _))
-    .WillOnce(Invoke([](const char*, gid_t, gid_t * groups, int* ngroups)
-    {
-        groups[0] = gid;
-        *ngroups = 1;
-        return 1;
-    }));
+        .WillOnce(Invoke(
+            [](const char*, gid_t, gid_t* groups, int* ngroups)
+            {
+                groups[0] = gid;
+                *ngroups = 1;
+                return 1;
+            }));
 
     EXPECT_CALL(*mockGroup, getgrgid_r(gid, _, _, _, _))
-    .Times(1)
-    .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
-    {
-        grp->gr_name = const_cast<char*>("groupone");
-        *result = grp;
-        return 0;
-    }));
+        .Times(1)
+        .WillOnce(Invoke(
+            [](gid_t, struct group* grp, char*, size_t, struct group** result)
+            {
+                grp->gr_name = const_cast<char*>("groupone");
+                *result = grp;
+                return 0;
+            }));
 
     UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);
 
@@ -593,26 +619,28 @@ TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidRetriesGidAfterAFailedLook
     EXPECT_CALL(*mockSys, sysconf(_SC_GETGR_R_SIZE_MAX)).WillOnce(Return(1024));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(uidA, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(nameA);
-        pwd->pw_uid = uidA;
-        pwd->pw_gid = flakyGid;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(nameA);
+                pwd->pw_uid = uidA;
+                pwd->pw_gid = flakyGid;
+                *result = pwd;
+                return 0;
+            }));
 
     EXPECT_CALL(*mockPasswd, getpwuid_r(uidB, _, _, _, _))
-    .WillOnce(Invoke([&](uid_t, struct passwd * pwd, char*, size_t, struct passwd** result)
-    {
-        pwd->pw_name = const_cast<char*>(nameB);
-        pwd->pw_uid = uidB;
-        pwd->pw_gid = flakyGid;
-        *result = pwd;
-        return 0;
-    }));
+        .WillOnce(Invoke(
+            [&](uid_t, struct passwd* pwd, char*, size_t, struct passwd** result)
+            {
+                pwd->pw_name = const_cast<char*>(nameB);
+                pwd->pw_uid = uidB;
+                pwd->pw_gid = flakyGid;
+                *result = pwd;
+                return 0;
+            }));
 
-    const auto onlyFlaky = [](const char*, gid_t, gid_t * groups, int* ngroups)
+    const auto onlyFlaky = [](const char*, gid_t, gid_t* groups, int* ngroups)
     {
         groups[0] = flakyGid;
         *ngroups = 1;
@@ -627,19 +655,21 @@ TEST_F(UserGroupsProviderLinuxTest, getGroupNamesByUidRetriesGidAfterAFailedLook
         InSequence seq;
 
         EXPECT_CALL(*mockGroup, getgrgid_r(flakyGid, _, _, _, _))
-        .WillOnce(Invoke([](gid_t, struct group*, char*, size_t, struct group** result)
-        {
-            *result = nullptr;
-            return EIO;
-        }));
+            .WillOnce(Invoke(
+                [](gid_t, struct group*, char*, size_t, struct group** result)
+                {
+                    *result = nullptr;
+                    return EIO;
+                }));
 
         EXPECT_CALL(*mockGroup, getgrgid_r(flakyGid, _, _, _, _))
-        .WillOnce(Invoke([](gid_t, struct group * grp, char*, size_t, struct group** result)
-        {
-            grp->gr_name = const_cast<char*>("flakygroup");
-            *result = grp;
-            return 0;
-        }));
+            .WillOnce(Invoke(
+                [](gid_t, struct group* grp, char*, size_t, struct group** result)
+                {
+                    grp->gr_name = const_cast<char*>("flakygroup");
+                    *result = grp;
+                    return 0;
+                }));
     }
 
     UserGroupsProvider provider(mockGroup, mockPasswd, mockSys);

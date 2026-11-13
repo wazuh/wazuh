@@ -14,7 +14,8 @@
 #include <stdint.h>
 #include <cmocka.h>
 
-int __wrap_bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned flags) {
+int __wrap_bqueue_push(bqueue_t* queue, const void* data, size_t length, unsigned flags)
+{
     check_expected_ptr(queue);
     check_expected(data);
     check_expected(length);
@@ -22,26 +23,31 @@ int __wrap_bqueue_push(bqueue_t * queue, const void * data, size_t length, unsig
     return mock();
 }
 
-size_t __wrap_bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flags) {
+size_t __wrap_bqueue_peek(bqueue_t* queue, char* buffer, size_t length, unsigned flags)
+{
     check_expected_ptr(queue);
     check_expected(flags);
-    if (mock()) {
-        memcpy(buffer, mock_type(char *), length);
+    if (mock())
+    {
+        memcpy(buffer, mock_type(char*), length);
     }
     return mock();
 }
 
-int __wrap_bqueue_drop(bqueue_t * queue, size_t length) {
+int __wrap_bqueue_drop(bqueue_t* queue, size_t length)
+{
     check_expected_ptr(queue);
     check_expected(length);
     return mock();
 }
 
-void __wrap_bqueue_clear(bqueue_t * queue) {
+void __wrap_bqueue_clear(bqueue_t* queue)
+{
     check_expected_ptr(queue);
 }
 
-size_t __wrap_bqueue_used(bqueue_t * queue) {
+size_t __wrap_bqueue_used(bqueue_t* queue)
+{
     check_expected_ptr(queue);
     return mock();
 }

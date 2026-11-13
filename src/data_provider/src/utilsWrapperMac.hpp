@@ -13,11 +13,10 @@
 
 #include <string>
 
-
 class UtilsWrapperMac final
 {
-    public:
-        static std::string exec(const std::string& cmd, const size_t bufferSize = 128);
+public:
+    static std::string exec(const std::string& cmd, const size_t bufferSize = 128);
 };
 
 #endif // _UTILS_WRAPPER_MAC_H

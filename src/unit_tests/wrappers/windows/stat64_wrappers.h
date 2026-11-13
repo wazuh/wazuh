@@ -13,6 +13,6 @@
 
 #define _stat64(x, y) wrap__stat64(x, y)
 
-int wrap__stat64(const char * __file, struct _stat64 * __buf);
+int wrap__stat64(const char* __file, struct _stat64* __buf);
 
 #endif

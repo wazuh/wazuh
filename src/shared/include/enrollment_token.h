@@ -41,7 +41,8 @@
 /**
  * @brief Why a token could not be decoded.
  */
-typedef enum {
+typedef enum
+{
     ETOKEN_OK = 0,       /**< The token is well formed */
     ETOKEN_MALFORMED,    /**< Not base64url, not a JSON object, or an unknown, duplicate or
                               wrongly typed member */
@@ -59,15 +60,16 @@ typedef enum {
  * Exactly one anchor is carried: either the SPKI pin of the CA (@a has_pin) or the PEM text
  * of the CA itself (@a ca_pem). The credential (@a id and @a secret) is optional.
  */
-typedef struct {
-    int ver;                                /**< Format version, always 1 */
-    char *adr;                              /**< Endpoint, verbatim as written in the token */
-    int has_pin;                            /**< Whether @a pin is set */
-    uint8_t pin[W_ETOKEN_PIN_BYTES];        /**< SHA-256 of the SubjectPublicKeyInfo of the CA */
-    char *ca_pem;                           /**< PEM of the CA when it is embedded, else NULL */
-    int has_key;                            /**< Whether @a id and @a secret are set */
-    uint8_t id[W_ETOKEN_ID_BYTES];          /**< Token identifier */
-    uint8_t secret[W_ETOKEN_SECRET_BYTES];  /**< Token secret */
+typedef struct
+{
+    int ver;                               /**< Format version, always 1 */
+    char* adr;                             /**< Endpoint, verbatim as written in the token */
+    int has_pin;                           /**< Whether @a pin is set */
+    uint8_t pin[W_ETOKEN_PIN_BYTES];       /**< SHA-256 of the SubjectPublicKeyInfo of the CA */
+    char* ca_pem;                          /**< PEM of the CA when it is embedded, else NULL */
+    int has_key;                           /**< Whether @a id and @a secret are set */
+    uint8_t id[W_ETOKEN_ID_BYTES];         /**< Token identifier */
+    uint8_t secret[W_ETOKEN_SECRET_BYTES]; /**< Token secret */
 } w_etoken_t;
 
 /**
@@ -82,7 +84,7 @@ typedef struct {
  *         struct is not encodable (no anchor, both anchors, `ver` other than 1, or an
  *         `adr` outside the <endpoint> grammar).
  */
-char *w_etoken_encode(const w_etoken_t *token);
+char* w_etoken_encode(const w_etoken_t* token);
 
 /**
  * @brief Decode a token.
@@ -93,14 +95,14 @@ char *w_etoken_encode(const w_etoken_t *token);
  * @return ETOKEN_OK, or the first violation found in the order MALFORMED, VERSION,
  *         NO_ANCHOR/BOTH_ANCHORS, BAD_ADR, BAD_PIN, BAD_KEY.
  */
-w_etoken_error_t w_etoken_decode(const char *text, w_etoken_t *out);
+w_etoken_error_t w_etoken_decode(const char* text, w_etoken_t* out);
 
 /**
  * @brief Release a token and wipe its secret.
  *
  * @param token Token to release. The struct itself is left zeroed.
  */
-void w_etoken_free(w_etoken_t *token);
+void w_etoken_free(w_etoken_t* token);
 
 /**
  * @brief Render a token for a human, without any credential material.
@@ -112,7 +114,7 @@ void w_etoken_free(w_etoken_t *token);
  * @param token Token to describe.
  * @return Newly allocated multi-line text the caller must free(), or NULL on error.
  */
-char *w_etoken_describe(const w_etoken_t *token);
+char* w_etoken_describe(const w_etoken_t* token);
 
 /**
  * @brief Derive the HS256 key of a token credential.
@@ -125,8 +127,7 @@ char *w_etoken_describe(const w_etoken_t *token);
  * @param out Receives the 32 bytes of the key.
  * @return 0 on success, -1 on error.
  */
-int w_etoken_derive_key(const uint8_t secret[W_ETOKEN_SECRET_BYTES],
-                        uint8_t out[W_ETOKEN_KEY_BYTES]);
+int w_etoken_derive_key(const uint8_t secret[W_ETOKEN_SECRET_BYTES], uint8_t out[W_ETOKEN_KEY_BYTES]);
 
 /**
  * @brief Derive the HS256 key an agent re-enrolls with, from its own re-enrollment secret.
@@ -143,8 +144,7 @@ int w_etoken_derive_key(const uint8_t secret[W_ETOKEN_SECRET_BYTES],
  * @param out Receives the 32 bytes of the key.
  * @return 0 on success, -1 on error.
  */
-int w_reenroll_derive_key(const uint8_t secret[W_REENROLL_SECRET_BYTES],
-                          uint8_t out[W_ETOKEN_KEY_BYTES]);
+int w_reenroll_derive_key(const uint8_t secret[W_REENROLL_SECRET_BYTES], uint8_t out[W_ETOKEN_KEY_BYTES]);
 
 /**
  * @brief Message of a decoding error.
@@ -152,6 +152,6 @@ int w_reenroll_derive_key(const uint8_t secret[W_REENROLL_SECRET_BYTES],
  * @param err Error code.
  * @return A static, never NULL, description.
  */
-const char *w_etoken_strerror(w_etoken_error_t err);
+const char* w_etoken_strerror(w_etoken_error_t err);
 
 #endif /* ENROLLMENT_TOKEN_H */

@@ -18,19 +18,14 @@
 
 static void getMemory(nlohmann::json& info)
 {
-    uint64_t ram{0};
-    const std::vector<int> mib{CTL_HW, HW_PHYSMEM};
-    size_t len{sizeof(ram)};
-    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
+    uint64_t ram {0};
+    const std::vector<int> mib {CTL_HW, HW_PHYSMEM};
+    size_t len {sizeof(ram)};
+    auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), &ram, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading total RAM."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading total RAM."};
     }
 
     info["memory_total"] = ram;
@@ -40,19 +35,14 @@ static void getMemory(nlohmann::json& info)
 
 static int getCpuMHz()
 {
-    unsigned long cpuMHz{0};
-    const std::vector<int> mib{CTL_HW, HW_CPUSPEED};
-    size_t len{sizeof(cpuMHz)};
-    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cpuMHz, &len, nullptr, 0)};
+    unsigned long cpuMHz {0};
+    const std::vector<int> mib {CTL_HW, HW_CPUSPEED};
+    size_t len {sizeof(cpuMHz)};
+    const auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), &cpuMHz, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading cpu frequency."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading cpu frequency."};
     }
 
     return cpuMHz;
@@ -60,61 +50,43 @@ static int getCpuMHz()
 
 static std::string getSerialNumber()
 {
-    const std::vector<int> mib{CTL_HW, HW_SERIALNO};
-    size_t len{0};
-    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+    const std::vector<int> mib {CTL_HW, HW_SERIALNO};
+    size_t len {0};
+    auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error getting board serial size."
-        };
+        throw std::system_error {ret, std::system_category(), "Error getting board serial size."};
     }
 
-    const auto spBuff{std::make_unique<char[]>(len + 1)};
+    const auto spBuff {std::make_unique<char[]>(len + 1)};
 
     if (!spBuff)
     {
-        throw std::runtime_error
-        {
-            "Error allocating memory to read the board serial."
-        };
+        throw std::runtime_error {"Error allocating memory to read the board serial."};
     }
 
     ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error getting board serial"
-        };
+        throw std::system_error {ret, std::system_category(), "Error getting board serial"};
     }
 
     spBuff.get()[len] = 0;
-    return std::string{reinterpret_cast<const char*>(spBuff.get())};
+    return std::string {reinterpret_cast<const char*>(spBuff.get())};
 }
 
 static int getCpuCores()
 {
-    int cores{0};
-    size_t len{sizeof(cores)};
-    const std::vector<int> mib{CTL_HW, HW_NCPU};
-    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
+    int cores {0};
+    size_t len {sizeof(cores)};
+    const std::vector<int> mib {CTL_HW, HW_NCPU};
+    const auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error reading cpu cores number."
-        };
+        throw std::system_error {ret, std::system_category(), "Error reading cpu cores number."};
     }
 
     return cores;
@@ -122,44 +94,31 @@ static int getCpuCores()
 
 static std::string getCpuName()
 {
-    const std::vector<int> mib{CTL_HW, HW_MODEL};
-    size_t len{0};
-    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+    const std::vector<int> mib {CTL_HW, HW_MODEL};
+    size_t len {0};
+    auto ret {sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error getting cpu name size."
-        };
+        throw std::system_error {ret, std::system_category(), "Error getting cpu name size."};
     }
 
-    const auto spBuff{std::make_unique<char[]>(len + 1)};
+    const auto spBuff {std::make_unique<char[]>(len + 1)};
 
     if (!spBuff)
     {
-        throw std::runtime_error
-        {
-            "Error allocating memory to read the cpu name."
-        };
+        throw std::runtime_error {"Error allocating memory to read the cpu name."};
     }
 
     ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
 
     if (ret)
     {
-        throw std::system_error
-        {
-            ret,
-            std::system_category(),
-            "Error getting cpu name"
-        };
+        throw std::system_error {ret, std::system_category(), "Error getting cpu name"};
     }
 
     spBuff.get()[len] = 0;
-    return std::string{reinterpret_cast<const char*>(spBuff.get())};
+    return std::string {reinterpret_cast<const char*>(spBuff.get())};
 }
 
 nlohmann::json SysInfo::getHardware() const
@@ -189,7 +148,7 @@ nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
     struct utsname uts {};
-    const auto spParser{FactorySysOsParser::create("bsd")};
+    const auto spParser {FactorySysOsParser::create("bsd")};
 
     if (!spParser->parseUname(Utils::exec("uname -r"), ret))
     {
@@ -237,24 +196,24 @@ nlohmann::json SysInfo::getHotfixes() const
 
 nlohmann::json SysInfo::getGroups() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }
 
 nlohmann::json SysInfo::getUsers() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }
 
 nlohmann::json SysInfo::getServices() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }
 
 nlohmann::json SysInfo::getBrowserExtensions() const
 {
-    //TODO: Pending implementation.
+    // TODO: Pending implementation.
     return nlohmann::json();
 }

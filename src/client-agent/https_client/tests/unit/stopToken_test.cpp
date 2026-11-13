@@ -31,10 +31,10 @@ TEST(StopTokenTest, NotifyWakesAPendingWait)
     Waiter waiter;
     std::thread waker(
         [&waiter]
-    {
-        std::this_thread::sleep_for(50ms);
-        waiter.notify();
-    });
+        {
+            std::this_thread::sleep_for(50ms);
+            waiter.notify();
+        });
 
     const auto start {std::chrono::steady_clock::now()};
     const bool keepRunning {waiter.waitFor(30s)};
@@ -50,10 +50,10 @@ TEST(StopTokenTest, RequestStopWakesAPendingWaitAndReportsStop)
     Waiter waiter;
     std::thread stopper(
         [&waiter]
-    {
-        std::this_thread::sleep_for(50ms);
-        waiter.requestStop();
-    });
+        {
+            std::this_thread::sleep_for(50ms);
+            waiter.requestStop();
+        });
 
     const auto start {std::chrono::steady_clock::now()};
     const bool keepRunning {waiter.waitFor(30s)};

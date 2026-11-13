@@ -27,7 +27,7 @@
 #endif
 
 #define MAX_GROUPS_PER_MULTIGROUP 128
-#define MAX_GROUP_NAME_LEN 256  // 255 + 1 for null terminator
+#define MAX_GROUP_NAME_LEN        256 // 255 + 1 for null terminator
 
 #ifdef _WIN32
 #define SHM_PATH "Global\\WazuhAgentMetadata"
@@ -74,452 +74,459 @@ namespace
      */
     class SharedMemoryProvider
     {
-        public:
-            static SharedMemoryProvider& instance()
+    public:
+        static SharedMemoryProvider& instance()
+        {
+            static SharedMemoryProvider instance;
+            return instance;
+        }
+
+        SharedMemoryProvider(const SharedMemoryProvider&) = delete;
+        SharedMemoryProvider& operator=(const SharedMemoryProvider&) = delete;
+
+        int update(const agent_metadata_t* metadata)
+        {
+            // Serializes this process's own writers (populateAgentMetadata()'s full update()
+            // vs. observeVdFeedOffset()'s narrow updateVdFeedOffset(), which can run
+            // concurrently on different threads within wazuh-modulesd/agentd) -- #39543 review
+            // follow-up. beginWrite()/endWrite() below are the reader-facing seqlock (a reader
+            // discards a copy a write overlapped); they do nothing to stop two writers from
+            // interleaving, which could let a stale read-then-write clobber a fresher value.
+            // Static, not an instance member: a std::mutex has a non-trivial destructor, and
+            // the class itself must stay trivially destructible (#38766, see the static_assert
+            // below) -- a static class member lives in its own storage and is not torn down by
+            // ~SharedMemoryProvider(), so it does not affect that guarantee. It only
+            // synchronizes writers within this process; it is not shared across processes
+            // (agentd and modulesd each have their own instance of this static), which is the
+            // pre-existing, separate hazard start_agent.c's w_agentd_populate_metadata()
+            // comment already documents.
+            std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
+            if (!metadata || !m_shm)
             {
-                static SharedMemoryProvider instance;
-                return instance;
+                return -1;
             }
-
-            SharedMemoryProvider(const SharedMemoryProvider&) = delete;
-            SharedMemoryProvider& operator=(const SharedMemoryProvider&) = delete;
-
-            int update(const agent_metadata_t* metadata)
-            {
-                // Serializes this process's own writers (populateAgentMetadata()'s full update()
-                // vs. observeVdFeedOffset()'s narrow updateVdFeedOffset(), which can run
-                // concurrently on different threads within wazuh-modulesd/agentd) -- #39543 review
-                // follow-up. beginWrite()/endWrite() below are the reader-facing seqlock (a reader
-                // discards a copy a write overlapped); they do nothing to stop two writers from
-                // interleaving, which could let a stale read-then-write clobber a fresher value.
-                // Static, not an instance member: a std::mutex has a non-trivial destructor, and
-                // the class itself must stay trivially destructible (#38766, see the static_assert
-                // below) -- a static class member lives in its own storage and is not torn down by
-                // ~SharedMemoryProvider(), so it does not affect that guarantee. It only
-                // synchronizes writers within this process; it is not shared across processes
-                // (agentd and modulesd each have their own instance of this static), which is the
-                // pre-existing, separate hazard start_agent.c's w_agentd_populate_metadata()
-                // comment already documents.
-                std::lock_guard<std::mutex> writeLock(s_writeMutex);
-
-                if (!metadata || !m_shm)
-                {
-                    return -1;
-                }
 
 #ifndef _WIN32
 
-                // The constructor falls back to opening the segment O_RDONLY when the process
-                // cannot open it O_RDWR, and then maps it PROT_READ. Writing through that
-                // mapping is a segmentation fault, not a failed write, so a reader has to be
-                // turned away here rather than at the first store below.
-                if (m_read_only)
-                {
-                    return -1;
-                }
+            // The constructor falls back to opening the segment O_RDONLY when the process
+            // cannot open it O_RDWR, and then maps it PROT_READ. Writing through that
+            // mapping is a segmentation fault, not a failed write, so a reader has to be
+            // turned away here rather than at the first store below.
+            if (m_read_only)
+            {
+                return -1;
+            }
 
 #endif
 
-                beginWrite();
+            beginWrite();
 
-                // Copy scalar fields
-                std::strncpy(m_shm->base_metadata.agent_id, metadata->agent_id, sizeof(m_shm->base_metadata.agent_id) - 1);
-                m_shm->base_metadata.agent_id[sizeof(m_shm->base_metadata.agent_id) - 1] = '\0';
+            // Copy scalar fields
+            std::strncpy(m_shm->base_metadata.agent_id, metadata->agent_id, sizeof(m_shm->base_metadata.agent_id) - 1);
+            m_shm->base_metadata.agent_id[sizeof(m_shm->base_metadata.agent_id) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.agent_name, metadata->agent_name, sizeof(m_shm->base_metadata.agent_name) - 1);
-                m_shm->base_metadata.agent_name[sizeof(m_shm->base_metadata.agent_name) - 1] = '\0';
+            std::strncpy(
+                m_shm->base_metadata.agent_name, metadata->agent_name, sizeof(m_shm->base_metadata.agent_name) - 1);
+            m_shm->base_metadata.agent_name[sizeof(m_shm->base_metadata.agent_name) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.agent_version, metadata->agent_version, sizeof(m_shm->base_metadata.agent_version) - 1);
-                m_shm->base_metadata.agent_version[sizeof(m_shm->base_metadata.agent_version) - 1] = '\0';
+            std::strncpy(m_shm->base_metadata.agent_version,
+                         metadata->agent_version,
+                         sizeof(m_shm->base_metadata.agent_version) - 1);
+            m_shm->base_metadata.agent_version[sizeof(m_shm->base_metadata.agent_version) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.architecture, metadata->architecture, sizeof(m_shm->base_metadata.architecture) - 1);
-                m_shm->base_metadata.architecture[sizeof(m_shm->base_metadata.architecture) - 1] = '\0';
+            std::strncpy(m_shm->base_metadata.architecture,
+                         metadata->architecture,
+                         sizeof(m_shm->base_metadata.architecture) - 1);
+            m_shm->base_metadata.architecture[sizeof(m_shm->base_metadata.architecture) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.hostname, metadata->hostname, sizeof(m_shm->base_metadata.hostname) - 1);
-                m_shm->base_metadata.hostname[sizeof(m_shm->base_metadata.hostname) - 1] = '\0';
+            std::strncpy(m_shm->base_metadata.hostname, metadata->hostname, sizeof(m_shm->base_metadata.hostname) - 1);
+            m_shm->base_metadata.hostname[sizeof(m_shm->base_metadata.hostname) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.os_name, metadata->os_name, sizeof(m_shm->base_metadata.os_name) - 1);
-                m_shm->base_metadata.os_name[sizeof(m_shm->base_metadata.os_name) - 1] = '\0';
+            std::strncpy(m_shm->base_metadata.os_name, metadata->os_name, sizeof(m_shm->base_metadata.os_name) - 1);
+            m_shm->base_metadata.os_name[sizeof(m_shm->base_metadata.os_name) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.os_type, metadata->os_type, sizeof(m_shm->base_metadata.os_type) - 1);
-                m_shm->base_metadata.os_type[sizeof(m_shm->base_metadata.os_type) - 1] = '\0';
+            std::strncpy(m_shm->base_metadata.os_type, metadata->os_type, sizeof(m_shm->base_metadata.os_type) - 1);
+            m_shm->base_metadata.os_type[sizeof(m_shm->base_metadata.os_type) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.os_platform, metadata->os_platform, sizeof(m_shm->base_metadata.os_platform) - 1);
-                m_shm->base_metadata.os_platform[sizeof(m_shm->base_metadata.os_platform) - 1] = '\0';
+            std::strncpy(
+                m_shm->base_metadata.os_platform, metadata->os_platform, sizeof(m_shm->base_metadata.os_platform) - 1);
+            m_shm->base_metadata.os_platform[sizeof(m_shm->base_metadata.os_platform) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.os_version, metadata->os_version, sizeof(m_shm->base_metadata.os_version) - 1);
-                m_shm->base_metadata.os_version[sizeof(m_shm->base_metadata.os_version) - 1] = '\0';
+            std::strncpy(
+                m_shm->base_metadata.os_version, metadata->os_version, sizeof(m_shm->base_metadata.os_version) - 1);
+            m_shm->base_metadata.os_version[sizeof(m_shm->base_metadata.os_version) - 1] = '\0';
 
-                std::strncpy(m_shm->base_metadata.cluster_name, metadata->cluster_name, sizeof(m_shm->base_metadata.cluster_name) - 1);
-                m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
+            std::strncpy(m_shm->base_metadata.cluster_name,
+                         metadata->cluster_name,
+                         sizeof(m_shm->base_metadata.cluster_name) - 1);
+            m_shm->base_metadata.cluster_name[sizeof(m_shm->base_metadata.cluster_name) - 1] = '\0';
 
-                // vd_feed_offset is deliberately NOT copied from `metadata` here, on every update,
-                // with no bootstrap exception: this field is exclusively owned/written by
-                // updateVdFeedOffset(), the narrow path the IPC handler uses the moment the
-                // manager reports an offset. A full update() is driven by a periodic, DB-backed
-                // read (populateAgentMetadata()'s own getVdFeedState() snapshot, or agentd's
-                // carry-over read in w_agentd_populate_metadata()) that can legitimately be stale
-                // by the time this call actually runs -- serializing writers (the mutex above)
-                // stops torn records, but does nothing to stop this call from overwriting a
-                // fresher value with a stale one it read earlier. Leaving the field alone here,
-                // unconditionally, means whichever caller last wrote it via updateVdFeedOffset()
-                // stays authoritative regardless of how update() calls interleave with it or which
-                // one happens to run first after a restart -- see that function's own comment for
-                // why it no longer needs a bootstrap assist from this one to stay correct.
+            // vd_feed_offset is deliberately NOT copied from `metadata` here, on every update,
+            // with no bootstrap exception: this field is exclusively owned/written by
+            // updateVdFeedOffset(), the narrow path the IPC handler uses the moment the
+            // manager reports an offset. A full update() is driven by a periodic, DB-backed
+            // read (populateAgentMetadata()'s own getVdFeedState() snapshot, or agentd's
+            // carry-over read in w_agentd_populate_metadata()) that can legitimately be stale
+            // by the time this call actually runs -- serializing writers (the mutex above)
+            // stops torn records, but does nothing to stop this call from overwriting a
+            // fresher value with a stale one it read earlier. Leaving the field alone here,
+            // unconditionally, means whichever caller last wrote it via updateVdFeedOffset()
+            // stays authoritative regardless of how update() calls interleave with it or which
+            // one happens to run first after a restart -- see that function's own comment for
+            // why it no longer needs a bootstrap assist from this one to stay correct.
 
-                // Copy groups
-                m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP : metadata->groups_count;
+            // Copy groups
+            m_shm->groups_count = (metadata->groups_count > MAX_GROUPS_PER_MULTIGROUP) ? MAX_GROUPS_PER_MULTIGROUP
+                                                                                       : metadata->groups_count;
 
-                for (size_t i = 0; i < m_shm->groups_count; ++i)
+            for (size_t i = 0; i < m_shm->groups_count; ++i)
+            {
+                if (metadata->groups && metadata->groups[i])
                 {
-                    if (metadata->groups && metadata->groups[i])
-                    {
-                        std::strncpy(m_shm->groups[i], metadata->groups[i], MAX_GROUP_NAME_LEN - 1);
-                        m_shm->groups[i][MAX_GROUP_NAME_LEN - 1] = '\0';
-                    }
-                    else
-                    {
-                        m_shm->groups[i][0] = '\0';
-                    }
+                    std::strncpy(m_shm->groups[i], metadata->groups[i], MAX_GROUP_NAME_LEN - 1);
+                    m_shm->groups[i][MAX_GROUP_NAME_LEN - 1] = '\0';
                 }
-
-                m_shm->has_metadata = true;
-                endWrite();
-
-                return 0;
+                else
+                {
+                    m_shm->groups[i][0] = '\0';
+                }
             }
 
-            // Narrow counterpart to update(): touches only vd_feed_offset, so a caller that
-            // just observed an offset from the manager (e.g. the IPC handler on the query
-            // thread) can publish it without waiting for -- or overwriting the rest of -- the
-            // next full populateAgentMetadata() cycle. Its caller invokes this on every
-            // observation, including one for an offset it already durably knows about, not only
-            // the first time a value is seen: that value still needs to reach whatever fresh
-            // copy of this shared record exists on this run, which the caller's own durable
-            // record has no visibility into. Refuses (-1) before has_metadata is true: with no
-            // prior full snapshot, setting only this field would let a reader see hostname/os/*
-            // as blank, which syscollector's own Start message also depends on. In that case the
-            // offset is simply left for the first full update() to pick up, same as before this
-            // function existed -- and the caller's own repeat invocations on every later
-            // observation (even of an unchanged value) are what eventually deliver it once
-            // has_metadata does flip true, without needing update() itself to carry it.
-            int updateVdFeedOffset(uint64_t offset)
-            {
-                // Same writer-serialization rationale as update() above.
-                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+            m_shm->has_metadata = true;
+            endWrite();
 
-                if (!m_shm)
-                {
-                    return -1;
-                }
+            return 0;
+        }
+
+        // Narrow counterpart to update(): touches only vd_feed_offset, so a caller that
+        // just observed an offset from the manager (e.g. the IPC handler on the query
+        // thread) can publish it without waiting for -- or overwriting the rest of -- the
+        // next full populateAgentMetadata() cycle. Its caller invokes this on every
+        // observation, including one for an offset it already durably knows about, not only
+        // the first time a value is seen: that value still needs to reach whatever fresh
+        // copy of this shared record exists on this run, which the caller's own durable
+        // record has no visibility into. Refuses (-1) before has_metadata is true: with no
+        // prior full snapshot, setting only this field would let a reader see hostname/os/*
+        // as blank, which syscollector's own Start message also depends on. In that case the
+        // offset is simply left for the first full update() to pick up, same as before this
+        // function existed -- and the caller's own repeat invocations on every later
+        // observation (even of an unchanged value) are what eventually deliver it once
+        // has_metadata does flip true, without needing update() itself to carry it.
+        int updateVdFeedOffset(uint64_t offset)
+        {
+            // Same writer-serialization rationale as update() above.
+            std::lock_guard<std::mutex> writeLock(s_writeMutex);
+
+            if (!m_shm)
+            {
+                return -1;
+            }
 
 #ifndef _WIN32
 
-                if (m_read_only)
-                {
-                    return -1;
-                }
+            if (m_read_only)
+            {
+                return -1;
+            }
 
 #endif
+
+            if (!m_shm->has_metadata)
+            {
+                return -1;
+            }
+
+            beginWrite();
+            m_shm->base_metadata.vd_feed_offset = offset;
+            endWrite();
+
+            return 0;
+        }
+
+        int get(agent_metadata_t* out_metadata) const
+        {
+            if (!out_metadata || !m_shm)
+            {
+                return -1;
+            }
+
+            for (int attempt = 0; attempt < MAX_READ_ATTEMPTS; ++attempt)
+            {
+                const auto begin = m_shm->sequence.load(std::memory_order_acquire);
+
+                if ((begin & 1U) != 0 || m_shm->updating.load(std::memory_order_acquire))
+                {
+                    return -1; // Update in progress, try again later
+                }
 
                 if (!m_shm->has_metadata)
                 {
                     return -1;
                 }
 
-                beginWrite();
-                m_shm->base_metadata.vd_feed_offset = offset;
-                endWrite();
+                copyRecord(out_metadata);
 
-                return 0;
-            }
+                // A writer that started after the check above may have changed anything we
+                // copied, groups_count included: discard the copy rather than return a mix.
+                std::atomic_thread_fence(std::memory_order_acquire);
 
-            int get(agent_metadata_t* out_metadata) const
-            {
-                if (!out_metadata || !m_shm)
+                if (m_shm->sequence.load(std::memory_order_relaxed) == begin)
                 {
-                    return -1;
+                    return 0;
                 }
 
-                for (int attempt = 0; attempt < MAX_READ_ATTEMPTS; ++attempt)
-                {
-                    const auto begin = m_shm->sequence.load(std::memory_order_acquire);
-
-                    if ((begin & 1U) != 0 || m_shm->updating.load(std::memory_order_acquire))
-                    {
-                        return -1;  // Update in progress, try again later
-                    }
-
-                    if (!m_shm->has_metadata)
-                    {
-                        return -1;
-                    }
-
-                    copyRecord(out_metadata);
-
-                    // A writer that started after the check above may have changed anything we
-                    // copied, groups_count included: discard the copy rather than return a mix.
-                    std::atomic_thread_fence(std::memory_order_acquire);
-
-                    if (m_shm->sequence.load(std::memory_order_relaxed) == begin)
-                    {
-                        return 0;
-                    }
-
-                    freeGroups(out_metadata);
-                }
-
-                return -1;
+                freeGroups(out_metadata);
             }
 
-            void reset()
-            {
-                // Same writer-serialization rationale as update() above.
-                std::lock_guard<std::mutex> writeLock(s_writeMutex);
+            return -1;
+        }
+
+        void reset()
+        {
+            // Same writer-serialization rationale as update() above.
+            std::lock_guard<std::mutex> writeLock(s_writeMutex);
 
 #ifndef _WIN32
 
-                // Same read-only mapping hazard as update().
-                if (m_read_only)
-                {
-                    return;
-                }
+            // Same read-only mapping hazard as update().
+            if (m_read_only)
+            {
+                return;
+            }
 
 #endif
 
-                if (m_shm)
-                {
-                    beginWrite();
-                    m_shm->has_metadata = false;
-                    m_shm->groups_count = 0;
-                    // update() never touches this field (see its own comment), and it is not
-                    // implied by has_metadata=false above: without clearing it here too, a value
-                    // set via updateVdFeedOffset() outlives this reset -- this segment is a named,
-                    // OS-persistent mapping (see its own doc comment), so a stale value survives
-                    // not just within one process but across separate process runs, which is what
-                    // let one test's nonzero offset leak into an unrelated later test expecting the
-                    // field's zero default.
-                    m_shm->base_metadata.vd_feed_offset = 0;
-                    endWrite();
-                }
-            }
-
-        private:
-            /// Writers bracket every change with these, under s_writeMutex.
-            void beginWrite()
+            if (m_shm)
             {
-                m_shm->sequence.fetch_add(1, std::memory_order_relaxed);
-                std::atomic_thread_fence(std::memory_order_release);
-                m_shm->updating.store(true, std::memory_order_release);
+                beginWrite();
+                m_shm->has_metadata = false;
+                m_shm->groups_count = 0;
+                // update() never touches this field (see its own comment), and it is not
+                // implied by has_metadata=false above: without clearing it here too, a value
+                // set via updateVdFeedOffset() outlives this reset -- this segment is a named,
+                // OS-persistent mapping (see its own doc comment), so a stale value survives
+                // not just within one process but across separate process runs, which is what
+                // let one test's nonzero offset leak into an unrelated later test expecting the
+                // field's zero default.
+                m_shm->base_metadata.vd_feed_offset = 0;
+                endWrite();
             }
+        }
 
-            void endWrite()
+    private:
+        /// Writers bracket every change with these, under s_writeMutex.
+        void beginWrite()
+        {
+            m_shm->sequence.fetch_add(1, std::memory_order_relaxed);
+            std::atomic_thread_fence(std::memory_order_release);
+            m_shm->updating.store(true, std::memory_order_release);
+        }
+
+        void endWrite()
+        {
+            m_shm->updating.store(false, std::memory_order_release);
+            m_shm->sequence.fetch_add(1, std::memory_order_release);
+        }
+
+        /// One copy of the record. groups_count is read once and bounded, and every name is
+        /// copied with a bounded length, so a concurrent writer cannot make this write past
+        /// what it allocated; get() decides whether the copy is consistent.
+        void copyRecord(agent_metadata_t* out_metadata) const
+        {
+            std::strncpy(out_metadata->agent_id, m_shm->base_metadata.agent_id, sizeof(out_metadata->agent_id) - 1);
+            out_metadata->agent_id[sizeof(out_metadata->agent_id) - 1] = '\0';
+
+            std::strncpy(
+                out_metadata->agent_name, m_shm->base_metadata.agent_name, sizeof(out_metadata->agent_name) - 1);
+            out_metadata->agent_name[sizeof(out_metadata->agent_name) - 1] = '\0';
+
+            std::strncpy(out_metadata->agent_version,
+                         m_shm->base_metadata.agent_version,
+                         sizeof(out_metadata->agent_version) - 1);
+            out_metadata->agent_version[sizeof(out_metadata->agent_version) - 1] = '\0';
+
+            std::strncpy(
+                out_metadata->architecture, m_shm->base_metadata.architecture, sizeof(out_metadata->architecture) - 1);
+            out_metadata->architecture[sizeof(out_metadata->architecture) - 1] = '\0';
+
+            std::strncpy(out_metadata->hostname, m_shm->base_metadata.hostname, sizeof(out_metadata->hostname) - 1);
+            out_metadata->hostname[sizeof(out_metadata->hostname) - 1] = '\0';
+
+            std::strncpy(out_metadata->os_name, m_shm->base_metadata.os_name, sizeof(out_metadata->os_name) - 1);
+            out_metadata->os_name[sizeof(out_metadata->os_name) - 1] = '\0';
+
+            std::strncpy(out_metadata->os_type, m_shm->base_metadata.os_type, sizeof(out_metadata->os_type) - 1);
+            out_metadata->os_type[sizeof(out_metadata->os_type) - 1] = '\0';
+
+            std::strncpy(
+                out_metadata->os_platform, m_shm->base_metadata.os_platform, sizeof(out_metadata->os_platform) - 1);
+            out_metadata->os_platform[sizeof(out_metadata->os_platform) - 1] = '\0';
+
+            std::strncpy(
+                out_metadata->os_version, m_shm->base_metadata.os_version, sizeof(out_metadata->os_version) - 1);
+            out_metadata->os_version[sizeof(out_metadata->os_version) - 1] = '\0';
+
+            std::strncpy(
+                out_metadata->cluster_name, m_shm->base_metadata.cluster_name, sizeof(out_metadata->cluster_name) - 1);
+            out_metadata->cluster_name[sizeof(out_metadata->cluster_name) - 1] = '\0';
+
+            out_metadata->vd_feed_offset = m_shm->base_metadata.vd_feed_offset;
+
+            const size_t count = std::min<size_t>(m_shm->groups_count, MAX_GROUPS_PER_MULTIGROUP);
+
+            if (count == 0)
             {
-                m_shm->updating.store(false, std::memory_order_release);
-                m_shm->sequence.fetch_add(1, std::memory_order_release);
+                out_metadata->groups = nullptr;
+                out_metadata->groups_count = 0;
+                return;
             }
 
-            /// One copy of the record. groups_count is read once and bounded, and every name is
-            /// copied with a bounded length, so a concurrent writer cannot make this write past
-            /// what it allocated; get() decides whether the copy is consistent.
-            void copyRecord(agent_metadata_t* out_metadata) const
+            out_metadata->groups = new char*[count];
+            out_metadata->groups_count = count;
+
+            for (size_t i = 0; i < count; ++i)
             {
-                std::strncpy(out_metadata->agent_id, m_shm->base_metadata.agent_id, sizeof(out_metadata->agent_id) - 1);
-                out_metadata->agent_id[sizeof(out_metadata->agent_id) - 1] = '\0';
-
-                std::strncpy(out_metadata->agent_name, m_shm->base_metadata.agent_name, sizeof(out_metadata->agent_name) - 1);
-                out_metadata->agent_name[sizeof(out_metadata->agent_name) - 1] = '\0';
-
-                std::strncpy(out_metadata->agent_version, m_shm->base_metadata.agent_version, sizeof(out_metadata->agent_version) - 1);
-                out_metadata->agent_version[sizeof(out_metadata->agent_version) - 1] = '\0';
-
-                std::strncpy(out_metadata->architecture, m_shm->base_metadata.architecture, sizeof(out_metadata->architecture) - 1);
-                out_metadata->architecture[sizeof(out_metadata->architecture) - 1] = '\0';
-
-                std::strncpy(out_metadata->hostname, m_shm->base_metadata.hostname, sizeof(out_metadata->hostname) - 1);
-                out_metadata->hostname[sizeof(out_metadata->hostname) - 1] = '\0';
-
-                std::strncpy(out_metadata->os_name, m_shm->base_metadata.os_name, sizeof(out_metadata->os_name) - 1);
-                out_metadata->os_name[sizeof(out_metadata->os_name) - 1] = '\0';
-
-                std::strncpy(out_metadata->os_type, m_shm->base_metadata.os_type, sizeof(out_metadata->os_type) - 1);
-                out_metadata->os_type[sizeof(out_metadata->os_type) - 1] = '\0';
-
-                std::strncpy(out_metadata->os_platform, m_shm->base_metadata.os_platform, sizeof(out_metadata->os_platform) - 1);
-                out_metadata->os_platform[sizeof(out_metadata->os_platform) - 1] = '\0';
-
-                std::strncpy(out_metadata->os_version, m_shm->base_metadata.os_version, sizeof(out_metadata->os_version) - 1);
-                out_metadata->os_version[sizeof(out_metadata->os_version) - 1] = '\0';
-
-                std::strncpy(out_metadata->cluster_name, m_shm->base_metadata.cluster_name, sizeof(out_metadata->cluster_name) - 1);
-                out_metadata->cluster_name[sizeof(out_metadata->cluster_name) - 1] = '\0';
-
-                out_metadata->vd_feed_offset = m_shm->base_metadata.vd_feed_offset;
-
-                const size_t count = std::min<size_t>(m_shm->groups_count, MAX_GROUPS_PER_MULTIGROUP);
-
-                if (count == 0)
-                {
-                    out_metadata->groups = nullptr;
-                    out_metadata->groups_count = 0;
-                    return;
-                }
-
-                out_metadata->groups = new char* [count];
-                out_metadata->groups_count = count;
-
-                for (size_t i = 0; i < count; ++i)
-                {
-                    const size_t len = strnlen(m_shm->groups[i], MAX_GROUP_NAME_LEN - 1);
-                    out_metadata->groups[i] = new char[len + 1];
-                    std::memcpy(out_metadata->groups[i], m_shm->groups[i], len);
-                    out_metadata->groups[i][len] = '\0';
-                }
+                const size_t len = strnlen(m_shm->groups[i], MAX_GROUP_NAME_LEN - 1);
+                out_metadata->groups[i] = new char[len + 1];
+                std::memcpy(out_metadata->groups[i], m_shm->groups[i], len);
+                out_metadata->groups[i][len] = '\0';
             }
+        }
 
-            static void freeGroups(agent_metadata_t* metadata)
+        static void freeGroups(agent_metadata_t* metadata)
+        {
+            for (size_t i = 0; i < metadata->groups_count; ++i)
             {
-                for (size_t i = 0; i < metadata->groups_count; ++i)
-                {
-                    delete[] metadata->groups[i];
-                }
-
-                delete[] metadata->groups;
-                metadata->groups = nullptr;
-                metadata->groups_count = 0;
+                delete[] metadata->groups[i];
             }
 
-            SharedMemoryProvider()
-                : m_shm(nullptr)
+            delete[] metadata->groups;
+            metadata->groups = nullptr;
+            metadata->groups_count = 0;
+        }
+
+        SharedMemoryProvider()
+            : m_shm(nullptr)
 #ifdef _WIN32
-                , m_hMapFile(NULL)
+            , m_hMapFile(NULL)
 #else
-                , m_shm_fd(-1)
-                , m_read_only(false)
+            , m_shm_fd(-1)
+            , m_read_only(false)
 #endif
-            {
+        {
 #ifdef _WIN32
-                // Windows: Use CreateFileMapping
-                m_hMapFile = CreateFileMappingA(
-                                 INVALID_HANDLE_VALUE,
-                                 NULL,
-                                 PAGE_READWRITE,
-                                 0,
-                                 sizeof(SharedMetadata),
-                                 SHM_PATH);
+            // Windows: Use CreateFileMapping
+            m_hMapFile =
+                CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(SharedMetadata), SHM_PATH);
 
-                if (!m_hMapFile)
-                {
-                    return;
-                }
+            if (!m_hMapFile)
+            {
+                return;
+            }
 
-                bool created = (GetLastError() != ERROR_ALREADY_EXISTS);
+            bool created = (GetLastError() != ERROR_ALREADY_EXISTS);
 
-                m_shm = static_cast<SharedMetadata*>(MapViewOfFile(
-                                                         m_hMapFile,
-                                                         FILE_MAP_ALL_ACCESS,
-                                                         0,
-                                                         0,
-                                                         sizeof(SharedMetadata)));
+            m_shm = static_cast<SharedMetadata*>(
+                MapViewOfFile(m_hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SharedMetadata)));
 
-                if (!m_shm)
-                {
-                    CloseHandle(m_hMapFile);
-                    m_hMapFile = NULL;
-                    return;
-                }
+            if (!m_shm)
+            {
+                CloseHandle(m_hMapFile);
+                m_hMapFile = NULL;
+                return;
+            }
 
-                if (created)
-                {
-                    m_shm->updating.store(false);
-                    m_shm->sequence.store(0);
-                    m_shm->has_metadata = false;
-                    m_shm->groups_count = 0;
-                }
+            if (created)
+            {
+                m_shm->updating.store(false);
+                m_shm->sequence.store(0);
+                m_shm->has_metadata = false;
+                m_shm->groups_count = 0;
+            }
 
 #else
-                // Unix/Linux: Use mmap on a file
-                // Try read-write first (for writers), fallback to read-only (for readers)
-                // O_CLOEXEC: this fd must not survive into children spawned via fork()+exec()
-                // (e.g. SCA's command rules through wm_exec()) -- an inherited fd here is
-                // exactly what an SELinux policy denies once the child transitions into a
-                // restricted domain (e.g. passwd_t), producing a false-positive AVC even though
-                // the child never touches the file (issue #38813).
-                m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+            // Unix/Linux: Use mmap on a file
+            // Try read-write first (for writers), fallback to read-only (for readers)
+            // O_CLOEXEC: this fd must not survive into children spawned via fork()+exec()
+            // (e.g. SCA's command rules through wm_exec()) -- an inherited fd here is
+            // exactly what an SELinux policy denies once the child transitions into a
+            // restricted domain (e.g. passwd_t), producing a false-positive AVC even though
+            // the child never touches the file (issue #38813).
+            m_shm_fd = open(SHM_PATH, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
 
-                if (m_shm_fd == -1 && errno == EACCES)
-                {
-                    // Permission denied for write, try read-only. Not a leak: every path out of
-                    // this constructor closes m_shm_fd, including the success path right after
-                    // mmap(). CTOR_DTOR_LEAK only fires because the class has no destructor.
-                    // coverity[ctor_dtor_leak]
-                    m_shm_fd = open(SHM_PATH, O_RDONLY | O_CLOEXEC);
-                    m_read_only = true;
-                }
-
-                if (m_shm_fd == -1)
-                {
-                    return;
-                }
-
-                struct stat st;
-
-                bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size != static_cast<off_t>(sizeof(SharedMetadata)));
-
-                // Always set correct size (only if we have write access)
-                if (!m_read_only && ftruncate(m_shm_fd, sizeof(SharedMetadata)) == -1)
-                {
-                    close(m_shm_fd);
-                    m_shm_fd = -1;
-                    return;
-                }
-
-                // Deliberately never munmap()'d -- see the static_assert below and #38766:
-                // agentd's shutdown drain still reads this segment at exit, so a destructor
-                // would tear it down too early. The mapping lives for the process lifetime.
+            if (m_shm_fd == -1 && errno == EACCES)
+            {
+                // Permission denied for write, try read-only. Not a leak: every path out of
+                // this constructor closes m_shm_fd, including the success path right after
+                // mmap(). CTOR_DTOR_LEAK only fires because the class has no destructor.
                 // coverity[ctor_dtor_leak]
-                m_shm = static_cast<SharedMetadata*>(mmap(
-                                                         nullptr,
-                                                         sizeof(SharedMetadata),
-                                                         m_read_only ? PROT_READ : (PROT_READ | PROT_WRITE),
-                                                         MAP_SHARED,
-                                                         m_shm_fd,
-                                                         0));
+                m_shm_fd = open(SHM_PATH, O_RDONLY | O_CLOEXEC);
+                m_read_only = true;
+            }
 
-                if (m_shm == MAP_FAILED)
-                {
-                    close(m_shm_fd);
-                    m_shm_fd = -1;
-                    m_shm = nullptr;
-                    return;
-                }
+            if (m_shm_fd == -1)
+            {
+                return;
+            }
 
-                // The mapping stands on its own once mmap() succeeds; the fd itself is not
-                // needed for the mapping to keep working, so drop it now instead of holding it
-                // open (and leaking it into every future child process) for the rest of this
-                // object's lifetime. Belt-and-suspenders with O_CLOEXEC above.
+            struct stat st;
+
+            bool created = (fstat(m_shm_fd, &st) == 0 && st.st_size != static_cast<off_t>(sizeof(SharedMetadata)));
+
+            // Always set correct size (only if we have write access)
+            if (!m_read_only && ftruncate(m_shm_fd, sizeof(SharedMetadata)) == -1)
+            {
                 close(m_shm_fd);
                 m_shm_fd = -1;
-
-                if (created && !m_read_only)
-                {
-                    m_shm->updating.store(false);
-                    m_shm->sequence.store(0);
-                    m_shm->has_metadata = false;
-                    m_shm->groups_count = 0;
-                }
-
-#endif
+                return;
             }
 
-            SharedMetadata* m_shm;
-#ifdef _WIN32
-            HANDLE m_hMapFile;
-#else
-            int m_shm_fd;
-            bool m_read_only;
+            // Deliberately never munmap()'d -- see the static_assert below and #38766:
+            // agentd's shutdown drain still reads this segment at exit, so a destructor
+            // would tear it down too early. The mapping lives for the process lifetime.
+            // coverity[ctor_dtor_leak]
+            m_shm = static_cast<SharedMetadata*>(mmap(nullptr,
+                                                      sizeof(SharedMetadata),
+                                                      m_read_only ? PROT_READ : (PROT_READ | PROT_WRITE),
+                                                      MAP_SHARED,
+                                                      m_shm_fd,
+                                                      0));
+
+            if (m_shm == MAP_FAILED)
+            {
+                close(m_shm_fd);
+                m_shm_fd = -1;
+                m_shm = nullptr;
+                return;
+            }
+
+            // The mapping stands on its own once mmap() succeeds; the fd itself is not
+            // needed for the mapping to keep working, so drop it now instead of holding it
+            // open (and leaking it into every future child process) for the rest of this
+            // object's lifetime. Belt-and-suspenders with O_CLOEXEC above.
+            close(m_shm_fd);
+            m_shm_fd = -1;
+
+            if (created && !m_read_only)
+            {
+                m_shm->updating.store(false);
+                m_shm->sequence.store(0);
+                m_shm->has_metadata = false;
+                m_shm->groups_count = 0;
+            }
+
 #endif
-            static std::mutex s_writeMutex;
+        }
+
+        SharedMetadata* m_shm;
+#ifdef _WIN32
+        HANDLE m_hMapFile;
+#else
+        int m_shm_fd;
+        bool m_read_only;
+#endif
+        static std::mutex s_writeMutex;
     };
 
     std::mutex SharedMemoryProvider::s_writeMutex;
@@ -531,7 +538,7 @@ namespace
     static_assert(std::is_trivially_destructible<SharedMemoryProvider>::value,
                   "SharedMemoryProvider must stay trivially destructible: a destructor would "
                   "unmap the segment before agentd's shutdown drain has finished reading it.");
-}
+} // namespace
 
 // C API implementation
 
@@ -553,7 +560,7 @@ int metadata_provider_get(agent_metadata_t* out_metadata)
 
     if (stat(SHM_PATH, &st) != 0)
     {
-        return -1;  // File doesn't exist yet
+        return -1; // File doesn't exist yet
     }
 
 #endif

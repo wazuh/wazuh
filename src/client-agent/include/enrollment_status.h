@@ -30,57 +30,59 @@
  * the failure class on every 401 (#39040), so a credential that will never work is told apart
  * from one that might work on the next attempt.
  */
-typedef enum {
+typedef enum
+{
     W_ENROLL_OK = 0,              /**< 200: keys parsed and written to client.keys. */
     W_ENROLL_ERR_TRANSPORT,       /**< No HTTP response at all (invalid transport
-                                    *   config, connect/TLS failure). */
+                                   *   config, connect/TLS failure). */
     W_ENROLL_ERR_INVALID_REQUEST, /**< 400: malformed request. */
     W_ENROLL_ERR_AUTH_RETRY,      /**< Any 401 that is neither `unknown_agent` nor a refusal of
-                                    *   the enrollment token itself (`token_expired`,
-                                    *   `token_revoked`: W_ENROLL_ERR_AUTH_FATAL). Every one of
-                                    *   these can be fixed without the agent doing anything -- a
-                                    *   clock the manager refused (`stale_token`), a token the
-                                    *   served node has not synced yet (`token_unknown`), a manager
-                                    *   that could not judge the
-                                    *   credential (`enrollment_key_unavailable`), no usable
-                                    *   credential presented (`invalid_request`), or a credential
-                                    *   the manager refused outright (`invalid_signature`, which
-                                    *   must never re-enroll but is still worth retrying: the fix
-                                    *   is on the manager). Also any 401 whose class could not be
-                                    *   read, which is the fail-safe reading (design §2.9 rule 3). */
+                                   *   the enrollment token itself (`token_expired`,
+                                   *   `token_revoked`: W_ENROLL_ERR_AUTH_FATAL). Every one of
+                                   *   these can be fixed without the agent doing anything -- a
+                                   *   clock the manager refused (`stale_token`), a token the
+                                   *   served node has not synced yet (`token_unknown`), a manager
+                                   *   that could not judge the
+                                   *   credential (`enrollment_key_unavailable`), no usable
+                                   *   credential presented (`invalid_request`), or a credential
+                                   *   the manager refused outright (`invalid_signature`, which
+                                   *   must never re-enroll but is still worth retrying: the fix
+                                   *   is on the manager). Also any 401 whose class could not be
+                                   *   read, which is the fail-safe reading (design §2.9 rule 3). */
     W_ENROLL_ERR_AUTH_FATAL,      /**< Nothing the agent can retry into success. From the wire that
-                                    *   is the manager refusing an enrollment token whose signature
-                                    *   it already VERIFIED (w_enrollment_token_refusal()): a 401
-                                    *   `token_expired`/`token_revoked` from remoted, or authd's 403
-                                    *   9022 unknown/revoked, 9023 expired, 9024 no uses left. Re-signing
-                                    *   cannot help and a new enrollment token has to be minted.
-                                    *   try_enroll_to_server() also reports it for a request
-                                    *   this agent could not even build, which no manager is going
-                                    *   to change its mind about either. The caller must stop, not
-                                    *   back off. */
+                                   *   is the manager refusing an enrollment token whose signature
+                                   *   it already VERIFIED (w_enrollment_token_refusal()): a 401
+                                   *   `token_expired`/`token_revoked` from remoted, or authd's 403
+                                   *   9022 unknown/revoked, 9023 expired, 9024 no uses left. Re-signing
+                                   *   cannot help and a new enrollment token has to be minted.
+                                   *   try_enroll_to_server() also reports it for a request
+                                   *   this agent could not even build, which no manager is going
+                                   *   to change its mind about either. The caller must stop, not
+                                   *   back off. */
     W_ENROLL_ERR_IDENTITY_GONE,   /**< 401 `unknown_agent`: the manager has no agent for the
-                                    *   identity this request tried to re-enroll. On /enroll that
-                                    *   class can only come from authd's 9026, which only a
-                                    *   re-enrollment bearer can provoke -- a password or token
-                                    *   enrollment asserts no identity -- so it means exactly one
-                                    *   thing: the stored re-enrollment secret is dead. */
+                                   *   identity this request tried to re-enroll. On /enroll that
+                                   *   class can only come from authd's 9026, which only a
+                                   *   re-enrollment bearer can provoke -- a password or token
+                                   *   enrollment asserts no identity -- so it means exactly one
+                                   *   thing: the stored re-enrollment secret is dead. */
     W_ENROLL_ERR_DISABLED,        /**< 403 whose nested envelope carries code 0: enrollment
-                                    *   administratively disabled on the manager. Retried by the
-                                    *   enrollment loops (an operator can re-enable it), not
-                                    *   transient for the token bootstrap. */
+                                   *   administratively disabled on the manager. Retried by the
+                                   *   enrollment loops (an operator can re-enable it), not
+                                   *   transient for the token bootstrap. */
     W_ENROLL_ERR_FORBIDDEN,       /**< Any other 403 that is not a token verdict: refused before
-                                    *   the /enroll handler ran (e.g. a client certificate whose SAN
-                                    *   does not list the peer address), a code this agent does not
-                                    *   know, or a body that could not be read. Not "disabled", so
-                                    *   it is logged with the manager's own reason, but handled like
-                                    *   it: retried by the enrollment loops, not transient for the
-                                    *   token bootstrap. */
+                                   *   the /enroll handler ran (e.g. a client certificate whose SAN
+                                   *   does not list the peer address), a code this agent does not
+                                   *   know, or a body that could not be read. Not "disabled", so
+                                   *   it is logged with the manager's own reason, but handled like
+                                   *   it: retried by the enrollment loops, not transient for the
+                                   *   token bootstrap. */
     W_ENROLL_ERR_DUPLICATE,       /**< 409: duplicate agent. */
     W_ENROLL_ERR_SERVER           /**< 500/503, or any other/malformed response. */
 } w_enroll_status_t;
 
 /** @brief What a caller that just failed an attempt should do next. */
-typedef enum {
+typedef enum
+{
     W_ENROLL_ACTION_RETRY = 0, /**< Back off and try again; the condition may clear. */
     W_ENROLL_ACTION_STOP       /**< Retrying cannot help. Stop and leave the reason in the log. */
 } w_enroll_action_t;

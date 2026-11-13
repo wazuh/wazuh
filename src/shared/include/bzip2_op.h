@@ -23,7 +23,7 @@
  * @retval 0 on success
  * @retval -1 on error
  */
-int bzip2_compress(const char *file, const char *filebz2);
+int bzip2_compress(const char* file, const char* filebz2);
 
 /**
  * @brief bzpi2 library, function to uncompress
@@ -34,6 +34,6 @@ int bzip2_compress(const char *file, const char *filebz2);
  * @retval 0 on success
  * @retval -1 on error
  */
-int bzip2_uncompress(const char *filebz2, const char *file);
+int bzip2_uncompress(const char* filebz2, const char* file);
 
 #endif /* BZIP2_OP_H */

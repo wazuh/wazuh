@@ -29,27 +29,27 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
-#define VERIFY_TRUE   1
-#define VERIFY_FALSE  0
+#define VERIFY_TRUE  1
+#define VERIFY_FALSE 0
 #define VERIFY_ERROR -1
 
 #define DNS_MAX_LABELS    127
 #define DNS_MAX_LABEL_LEN 63
 
-typedef struct {
+typedef struct
+{
     char text[DNS_MAX_LABEL_LEN + 1];
     size_t len;
-}
-label;
+} label;
 
-int check_x509_cert(const SSL *ssl, const char *manager);
-int check_subject_alt_names(X509 *cert, const char *manager);
-int check_subject_cn(X509 *cert, const char *manager);
-int check_hostname(ASN1_STRING *cert_astr, const char *manager);
-int check_ipaddr(const ASN1_STRING *cert_astr, const char *manager);
-int label_array(const char *domain_name, label result[DNS_MAX_LABELS]);
-int label_valid(const label *label);
-int label_match(const label *label1, const label *label2);
-char *asn1_to_cstr(ASN1_STRING *astr);
+int check_x509_cert(const SSL* ssl, const char* manager);
+int check_subject_alt_names(X509* cert, const char* manager);
+int check_subject_cn(X509* cert, const char* manager);
+int check_hostname(ASN1_STRING* cert_astr, const char* manager);
+int check_ipaddr(const ASN1_STRING* cert_astr, const char* manager);
+int label_array(const char* domain_name, label result[DNS_MAX_LABELS]);
+int label_valid(const label* label);
+int label_match(const label* label1, const label* label2);
+char* asn1_to_cstr(ASN1_STRING* astr);
 
 #endif /* CHECK_CERT_H */

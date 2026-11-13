@@ -38,95 +38,97 @@
 /// It supports move semantics but disables copy semantics to avoid double-free errors.
 ///
 /// @tparam T Type of the NetAPI object pointed to.
-template <typename T>
+template<typename T>
 class NetApiObjectPtr final
 {
-    public:
-        /// @brief Default constructor. Initializes with nullptr.
-        NetApiObjectPtr() noexcept = default;
+public:
+    /// @brief Default constructor. Initializes with nullptr.
+    NetApiObjectPtr() noexcept = default;
 
-        /// @brief Move constructor. Transfers ownership from another instance.
-        /// @param other The source object to move from.
-        NetApiObjectPtr(NetApiObjectPtr<T>&& other) noexcept
-            : pointer(std::exchange(other.pointer, nullptr)) {}
+    /// @brief Move constructor. Transfers ownership from another instance.
+    /// @param other The source object to move from.
+    NetApiObjectPtr(NetApiObjectPtr<T>&& other) noexcept
+        : pointer(std::exchange(other.pointer, nullptr))
+    {
+    }
 
-        /// @brief Destructor. Frees the allocated NetAPI buffer if owned.
-        ~NetApiObjectPtr()
+    /// @brief Destructor. Frees the allocated NetAPI buffer if owned.
+    ~NetApiObjectPtr()
+    {
+        if (pointer != nullptr)
         {
-            if (pointer != nullptr)
-            {
-                NetApiBufferFree(pointer);
-            }
+            NetApiBufferFree(pointer);
+        }
+    }
+
+    /// @brief Move assignment operator. Transfers ownership from another instance.
+    /// @param other The source object to move from.
+    /// @return Reference to this instance.
+    NetApiObjectPtr& operator=(NetApiObjectPtr<T>&& other) noexcept
+    {
+        if (this != &other)
+        {
+            pointer = std::exchange(other.pointer, nullptr);
         }
 
-        /// @brief Move assignment operator. Transfers ownership from another instance.
-        /// @param other The source object to move from.
-        /// @return Reference to this instance.
-        NetApiObjectPtr& operator=(NetApiObjectPtr<T>&& other) noexcept
-        {
-            if (this != &other)
-            {
-                pointer = std::exchange(other.pointer, nullptr);
-            }
+        return *this;
+    }
 
-            return *this;
+    /// @brief Deleted copy constructor to prevent copying.
+    NetApiObjectPtr(const NetApiObjectPtr<T>&) = delete;
+
+    /// @brief Deleted copy assignment operator to prevent copying.
+    NetApiObjectPtr& operator=(const NetApiObjectPtr<T>&) = delete;
+
+    /// @brief Dereference operator to access the managed object.
+    /// @return Pointer to the managed object.
+    T* operator->()
+    {
+        return pointer;
+    }
+
+    /// @brief Equality comparison with raw pointer.
+    /// @param other Raw pointer to compare.
+    /// @return True if the internal pointer equals `other`.
+    bool operator==(const T* other) const
+    {
+        return pointer == other;
+    }
+
+    /// @brief Inequality comparison with raw pointer.
+    /// @param other Raw pointer to compare.
+    /// @return True if the internal pointer differs from `other`.
+    bool operator!=(const T* other) const
+    {
+        return pointer != other;
+    }
+
+    /// @brief Returns a pointer to the internal pointer for use with NetAPI allocation.
+    ///
+    /// If currently owning a pointer, it frees it first to avoid leaks.
+    ///
+    /// @return Address of the internal pointer.
+    T** get_new_ptr()
+    {
+        // We ensure that the pointer cannot be leaked
+        if (pointer != nullptr)
+        {
+            NetApiBufferFree(pointer);
+            pointer = nullptr;
         }
 
-        /// @brief Deleted copy constructor to prevent copying.
-        NetApiObjectPtr(const NetApiObjectPtr<T>&) = delete;
+        return &pointer;
+    }
 
-        /// @brief Deleted copy assignment operator to prevent copying.
-        NetApiObjectPtr& operator=(const NetApiObjectPtr<T>&) = delete;
+    /// @brief Gets the internal raw pointer without transferring ownership.
+    /// @return Const pointer to the managed object.
+    const T* get() const
+    {
+        return pointer;
+    }
 
-        /// @brief Dereference operator to access the managed object.
-        /// @return Pointer to the managed object.
-        T* operator->()
-        {
-            return pointer;
-        }
-
-        /// @brief Equality comparison with raw pointer.
-        /// @param other Raw pointer to compare.
-        /// @return True if the internal pointer equals `other`.
-        bool operator==(const T* other) const
-        {
-            return pointer == other;
-        }
-
-        /// @brief Inequality comparison with raw pointer.
-        /// @param other Raw pointer to compare.
-        /// @return True if the internal pointer differs from `other`.
-        bool operator!=(const T* other) const
-        {
-            return pointer != other;
-        }
-
-        /// @brief Returns a pointer to the internal pointer for use with NetAPI allocation.
-        ///
-        /// If currently owning a pointer, it frees it first to avoid leaks.
-        ///
-        /// @return Address of the internal pointer.
-        T** get_new_ptr()
-        {
-            // We ensure that the pointer cannot be leaked
-            if (pointer != nullptr)
-            {
-                NetApiBufferFree(pointer);
-                pointer = nullptr;
-            }
-
-            return &pointer;
-        }
-
-        /// @brief Gets the internal raw pointer without transferring ownership.
-        /// @return Const pointer to the managed object.
-        const T* get() const
-        {
-            return pointer;
-        }
-
-    private:
-        T* pointer{nullptr};
+private:
+    T* pointer {nullptr};
 };
 
 /// @brief Alias for NetApiObjectPtr managing USER_INFO_0 pointers.
@@ -147,11 +149,9 @@ using localgroup_users_info_0_ptr = NetApiObjectPtr<LOCALGROUP_USERS_INFO_0>;
 /// @brief Alias for NetApiObjectPtr managing LOCALGROUP_INFO_1 pointers.
 using localgroup_info_1_ptr = NetApiObjectPtr<LOCALGROUP_INFO_1>;
 
-const std::wstring kRegProfileKey =
-    L"SOFTWARE\\Microsoft\\Windows "
-    "NT\\CurrentVersion\\ProfileList";
-const std::set<std::string> kWellKnownSids =
-{
+const std::wstring kRegProfileKey = L"SOFTWARE\\Microsoft\\Windows "
+                                    "NT\\CurrentVersion\\ProfileList";
+const std::set<std::string> kWellKnownSids = {
     "S-1-5-1",
     "S-1-5-2",
     "S-1-5-3",
@@ -173,10 +173,7 @@ const std::set<std::string> kWellKnownSids =
 const std::wstring kProfileValueName = L"ProfileImagePath";
 const wchar_t kRegSep = '\\';
 
-const std::set<int> kRegistryStringTypes =
-{
-    REG_SZ, REG_MULTI_SZ, REG_EXPAND_SZ
-};
+const std::set<int> kRegistryStringTypes = {REG_SZ, REG_MULTI_SZ, REG_EXPAND_SZ};
 
 /// @brief Helper class for managing and retrieving Windows user information.
 ///
@@ -184,91 +181,91 @@ const std::set<int> kRegistryStringTypes =
 /// and roaming profile handling using Windows API wrappers.
 class UsersHelper : public IUsersHelper
 {
-    private:
-        /// @brief Retrieves the home directory path for a given SID string.
-        /// @param sid String representation of the user SID.
-        /// @return Path to the user's home directory.
-        std::string getUserHomeDir(const std::string& sid);
+private:
+    /// @brief Retrieves the home directory path for a given SID string.
+    /// @param sid String representation of the user SID.
+    /// @return Path to the user's home directory.
+    std::string getUserHomeDir(const std::string& sid);
 
-        /// @brief Gets the group ID (GID) for a given Windows username.
-        /// @param username Wide string username.
-        /// @return Optional GID if available.
-        std::optional<std::uint32_t> getGidFromUsername(LPCWSTR username);
+    /// @brief Gets the group ID (GID) for a given Windows username.
+    /// @param username Wide string username.
+    /// @return Optional GID if available.
+    std::optional<std::uint32_t> getGidFromUsername(LPCWSTR username);
 
-        /// @brief Retrieves SIDs of roaming profiles available on the system.
-        /// @return Optional vector of SID strings for roaming profiles.
-        std::optional<std::vector<std::string>> getRoamingProfileSids();
+    /// @brief Retrieves SIDs of roaming profiles available on the system.
+    /// @return Optional vector of SID strings for roaming profiles.
+    std::optional<std::vector<std::string>> getRoamingProfileSids();
 
-        /// @brief Windows API wrapper instance used for system calls.
-        std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
+    /// @brief Windows API wrapper instance used for system calls.
+    std::shared_ptr<IWindowsApiWrapper> m_winapiWrapper;
 
-        /// @brief Rate limiting constants (only applied during cache refresh)
-        static constexpr std::uint32_t BATCH_SIZE = 100;
-        static constexpr std::chrono::milliseconds BATCH_DELAY{250};
+    /// @brief Rate limiting constants (only applied during cache refresh)
+    static constexpr std::uint32_t BATCH_SIZE = 100;
+    static constexpr std::chrono::milliseconds BATCH_DELAY {250};
 
-        static constexpr std::chrono::seconds s_cacheTimeout{60}; // Cache válido por 60 segundos
+    static constexpr std::chrono::seconds s_cacheTimeout {60}; // Cache válido por 60 segundos
 
-        /// @brief Validates cache and clears it if expired (> 60 seconds old).
-        static void validateCache();
+    /// @brief Validates cache and clears it if expired (> 60 seconds old).
+    static void validateCache();
 
-        /// @brief Updates cache timestamp after successful operation.
-        static void updateCacheTimestamp();
+    /// @brief Updates cache timestamp after successful operation.
+    static void updateCacheTimestamp();
 
-        /// @brief Internal method to load both local and roaming users together
-        /// @param processed_sids Set to track which SIDs have been processed
-        void loadUsers(std::set<std::string>& processed_sids);
+    /// @brief Internal method to load both local and roaming users together
+    /// @param processed_sids Set to track which SIDs have been processed
+    void loadUsers(std::set<std::string>& processed_sids);
 
-        /// @brief Creates a custom deleter for Windows registry handles.
-        /// @return Lambda function to safely close registry handles.
-        auto makeRegHandleDeleter()
+    /// @brief Creates a custom deleter for Windows registry handles.
+    /// @return Lambda function to safely close registry handles.
+    auto makeRegHandleDeleter()
+    {
+        return [this](HKEY handle)
         {
-            return [this](HKEY handle)
-            {
-                m_winapiWrapper->RegCloseKeyWrapper(handle);
-            };
-        }
+            m_winapiWrapper->RegCloseKeyWrapper(handle);
+        };
+    }
 
-        /// @brief Unique pointer type for managing Windows registry handles.
-        using reg_handle_t = std::unique_ptr<HKEY__, std::function<void(HKEY)>>;
+    /// @brief Unique pointer type for managing Windows registry handles.
+    using reg_handle_t = std::unique_ptr<HKEY__, std::function<void(HKEY)>>;
 
-    public:
-        /// @brief Constructs a UsersHelper with a Windows API wrapper.
-        /// @param winapiWrapper Shared pointer to an `IWindowsApiWrapper`.
-        explicit UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper);
+public:
+    /// @brief Constructs a UsersHelper with a Windows API wrapper.
+    /// @param winapiWrapper Shared pointer to an `IWindowsApiWrapper`.
+    explicit UsersHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper);
 
-        /// @brief Default constructor.
-        UsersHelper();
+    /// @brief Default constructor.
+    UsersHelper();
 
-        /// @brief Retrieves the shell path for the user identified by the SID.
-        /// @param sid String representation of the user's SID.
-        /// @return The shell executable path.
-        std::string getUserShell(const std::string& sid) override;
+    /// @brief Retrieves the shell path for the user identified by the SID.
+    /// @param sid String representation of the user's SID.
+    /// @return The shell executable path.
+    std::string getUserShell(const std::string& sid) override;
 
-        /// @brief Processes local Windows user accounts and collects user data.
-        /// @param processed_sids Set to track processed SIDs and avoid duplicates.
-        /// @return Vector of User objects representing local accounts.
-        std::vector<User> processLocalAccounts(std::set<std::string>& processed_sids) override;
+    /// @brief Processes local Windows user accounts and collects user data.
+    /// @param processed_sids Set to track processed SIDs and avoid duplicates.
+    /// @return Vector of User objects representing local accounts.
+    std::vector<User> processLocalAccounts(std::set<std::string>& processed_sids) override;
 
-        /// @brief Processes roaming profiles and collects user data.
-        /// @param processed_sids Set to track processed SIDs and avoid duplicates.
-        /// @return Vector of User objects representing roaming profiles.
-        std::vector<User> processRoamingProfiles(std::set<std::string>& processed_sids) override;
+    /// @brief Processes roaming profiles and collects user data.
+    /// @param processed_sids Set to track processed SIDs and avoid duplicates.
+    /// @return Vector of User objects representing roaming profiles.
+    std::vector<User> processRoamingProfiles(std::set<std::string>& processed_sids) override;
 
-        /// @brief Retrieves the SID for a given account name.
-        /// @param accountNameInput Wide string account name.
-        /// @return Unique pointer managing the SID bytes.
-        std::unique_ptr<BYTE[]> getSidFromAccountName(const std::wstring& accountNameInput);
+    /// @brief Retrieves the SID for a given account name.
+    /// @param accountNameInput Wide string account name.
+    /// @return Unique pointer managing the SID bytes.
+    std::unique_ptr<BYTE[]> getSidFromAccountName(const std::wstring& accountNameInput);
 
-        /// @brief Converts a SID to its string representation.
-        /// @param sid Pointer to the SID.
-        /// @return String representation of the SID.
-        std::string psidToString(PSID sid);
+    /// @brief Converts a SID to its string representation.
+    /// @param sid Pointer to the SID.
+    /// @return String representation of the SID.
+    std::string psidToString(PSID sid);
 
-        /// @brief Extracts the Relative Identifier (RID) from a SID.
-        /// @param sid Pointer to the SID.
-        /// @return RID as a DWORD.
-        DWORD getRidFromSid(PSID sid);
+    /// @brief Extracts the Relative Identifier (RID) from a SID.
+    /// @param sid Pointer to the SID.
+    /// @return RID as a DWORD.
+    DWORD getRidFromSid(PSID sid);
 
-        /// @brief Resets the cache.
-        static void resetCache();
+    /// @brief Resets the cache.
+    static void resetCache();
 };

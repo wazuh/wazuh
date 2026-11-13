@@ -13,14 +13,16 @@
 #include <cmocka.h>
 #include "mconf-config_wrappers.h"
 
-int __wrap_w_mconf_load(const char *cfgfile) {
+int __wrap_w_mconf_load(const char* cfgfile)
+{
     check_expected(cfgfile);
 
     return mock_type(int);
 }
 
-cJSON *__wrap_w_mconf_section(const char *section) {
+cJSON* __wrap_w_mconf_section(const char* section)
+{
     check_expected(section);
 
-    return mock_type(cJSON *);
+    return mock_type(cJSON*);
 }

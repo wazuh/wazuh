@@ -17,13 +17,15 @@
 #include <cmocka.h>
 #include "../../common.h"
 
-int __wrap_utf8_stat64(const char* pathname, struct _stat64* statbuf) {
-    struct _stat64 * mock_buf;
+int __wrap_utf8_stat64(const char* pathname, struct _stat64* statbuf)
+{
+    struct _stat64* mock_buf;
 
     check_expected(pathname);
 
-    mock_buf = mock_type(struct _stat64 *);
-    if (mock_buf != NULL) {
+    mock_buf = mock_type(struct _stat64*);
+    if (mock_buf != NULL)
+    {
         memcpy(statbuf, mock_buf, sizeof(struct _stat64));
     }
 
@@ -36,34 +38,42 @@ HANDLE __wrap_utf8_CreateFile(const char* utf8_path,
                               LPSECURITY_ATTRIBUTES sa,
                               DWORD creation,
                               DWORD flags,
-                              HANDLE h_template) {
-    if (test_mode) {
+                              HANDLE h_template)
+{
+    if (test_mode)
+    {
         check_expected(utf8_path);
         return mock_type(HANDLE);
-    } else {
+    }
+    else
+    {
         return CreateFileA(utf8_path, access, share, sa, creation, flags, h_template);
     }
 }
 
-BOOL __wrap_utf8_DeleteFile(const char* utf8_path) {
+BOOL __wrap_utf8_DeleteFile(const char* utf8_path)
+{
     check_expected(utf8_path);
 
     return mock_type(BOOL);
 }
 
-BOOL __wrap_utf8_RemoveDirectory(const char* utf8_path) {
+BOOL __wrap_utf8_RemoveDirectory(const char* utf8_path)
+{
     check_expected(utf8_path);
 
     return mock_type(BOOL);
 }
 
-DWORD __wrap_utf8_GetFileAttributes(const char* utf8_path) {
+DWORD __wrap_utf8_GetFileAttributes(const char* utf8_path)
+{
     check_expected(utf8_path);
 
     return mock_type(DWORD);
 }
 
-char* __wrap_utf8_GetShortPathName(const char* utf8_path) {
+char* __wrap_utf8_GetShortPathName(const char* utf8_path)
+{
     check_expected(utf8_path);
 
     return mock_type(char*);
@@ -73,15 +83,20 @@ BOOL __wrap_utf8_GetFileSecurity(const char* utf8_path,
                                  __attribute__((unused)) SECURITY_INFORMATION si,
                                  PSECURITY_DESCRIPTOR psd,
                                  DWORD len,
-                                 LPDWORD needed) {
+                                 LPDWORD needed)
+{
     check_expected(utf8_path);
 
-    if(!len) {
+    if (!len)
+    {
         *needed = mock();
-    } else {
+    }
+    else
+    {
         PSECURITY_DESCRIPTOR sec_desc = mock_type(PSECURITY_DESCRIPTOR);
 
-        if(sec_desc) {
+        if (sec_desc)
+        {
             memcpy(psd, sec_desc, len);
         }
     }
@@ -96,7 +111,8 @@ DWORD __wrap_utf8_GetNamedSecurityInfo(const char* utf8_path,
                                        __attribute__((unused)) PSID* group,
                                        __attribute__((unused)) PACL* dacl,
                                        PACL* sacl,
-                                       PSECURITY_DESCRIPTOR* psd) {
+                                       PSECURITY_DESCRIPTOR* psd)
+{
     check_expected(utf8_path);
     check_expected(obj_type);
     check_expected(si);
@@ -113,7 +129,8 @@ DWORD __wrap_utf8_SetNamedSecurityInfo(const char* utf8_path,
                                        PSID owner,
                                        PSID group,
                                        PACL dacl,
-                                       PACL sacl) {
+                                       PACL sacl)
+{
     check_expected(utf8_path);
     check_expected(obj_type);
     check_expected(si);
@@ -127,16 +144,18 @@ DWORD __wrap_utf8_SetNamedSecurityInfo(const char* utf8_path,
 
 BOOL __wrap_utf8_LookupAccountSid(__attribute__((unused)) LPCSTR lpSystemName,
                                   __attribute__((unused)) PSID lpSid,
-                                  char **lpName,
+                                  char** lpName,
                                   __attribute__((unused)) LPDWORD cchName,
-                                  char **lpReferencedDomainName,
+                                  char** lpReferencedDomainName,
                                   __attribute__((unused)) LPDWORD cchReferencedDomainName,
-                                  __attribute__((unused)) PSID_NAME_USE peUse) {
+                                  __attribute__((unused)) PSID_NAME_USE peUse)
+{
 
     // Get result first
     BOOL result = mock();
 
-    if (result) {
+    if (result)
+    {
         // On success, get the strings
         char* mock_name = mock_type(char*);
         char* mock_domain = mock_type(char*);
@@ -148,9 +167,11 @@ BOOL __wrap_utf8_LookupAccountSid(__attribute__((unused)) LPCSTR lpSystemName,
     return result;
 }
 
-void expect_utf8_LookupAccountSid_call(char *name, char *domain_name, int ret_value) {
+void expect_utf8_LookupAccountSid_call(char* name, char* domain_name, int ret_value)
+{
     will_return(__wrap_utf8_LookupAccountSid, ret_value);
-    if (ret_value) {
+    if (ret_value)
+    {
         will_return(__wrap_utf8_LookupAccountSid, name);
         will_return(__wrap_utf8_LookupAccountSid, domain_name);
     }

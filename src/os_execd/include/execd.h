@@ -16,36 +16,36 @@
 #endif
 
 /* Arguments for the commands */
-#define ENABLE_ENTRY       "enable"
-#define DISABLE_ENTRY      "disable"
-#define CONTINUE_ENTRY     "continue"
-#define ABORT_ENTRY        "abort"
+#define ENABLE_ENTRY   "enable"
+#define DISABLE_ENTRY  "disable"
+#define CONTINUE_ENTRY "continue"
+#define ABORT_ENTRY    "abort"
 
 /* Maximum number of command arguments */
-#define MAX_ARGS    32
+#define MAX_ARGS 32
 
 /* Execd select timeout -- in seconds */
-#define EXECD_TIMEOUT   1
+#define EXECD_TIMEOUT 1
 
 /* Repeated offenders table: maximum entries, rows and purge interval (seconds) */
-#define REPEATED_OFFENDERS_MAX      10000
-#define REPEATED_OFFENDERS_ROWS     2048
-#define REPEATED_OFFENDERS_PURGE    60
+#define REPEATED_OFFENDERS_MAX   10000
+#define REPEATED_OFFENDERS_ROWS  2048
+#define REPEATED_OFFENDERS_PURGE 60
 
 extern int repeated_offenders_timeout[];
 extern time_t pending_upg;
 extern int is_disabled;
 extern int req_timeout;
 extern int max_restart_lock;
-extern os_ip **ar_allowlist;
-extern char **ar_manager_hosts;
+extern os_ip** ar_allowlist;
+extern char** ar_manager_hosts;
 
 /** Function prototypes **/
 
-cJSON *getARConfig(void);
-cJSON *getExecdInternalOptions(void);
-cJSON *getClusterConfig(void);
-int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
+cJSON* getARConfig(void);
+cJSON* getExecdInternalOptions(void);
+cJSON* getClusterConfig(void);
+int ExecdConfig(const char* cfgfile) __attribute__((nonnull));
 
 /**
  * @brief Tell whether an active response must not target this address.
@@ -53,7 +53,7 @@ int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
  * @param srcip The response's source.ip, in any numeric form getaddrinfo() accepts.
  * @return true if it is in ar_allowlist or is one of the manager's addresses.
  */
-bool ar_source_allowlisted(const char *srcip);
+bool ar_source_allowlisted(const char* srcip);
 
 /**
  * @brief Resolve ar_manager_hosts and add any new address to the known manager addresses.
@@ -62,7 +62,7 @@ void ar_resolve_manager_hosts(void);
 
 #ifdef WIN32
 int WinExecdStart(void);
-void ExecdRun(char *exec_msg);
+void ExecdRun(char* exec_msg);
 void ExecdTimeoutRun();
 void ExecdShutdown();
 #else
@@ -71,16 +71,16 @@ void ExecdStart(int q);
 #else
 void ExecdStart(int q) __attribute__((noreturn));
 #endif
-void ExecdRun(char *exec_msg, int *childcount);
-void ExecdTimeoutRun(int *childcount);
+void ExecdRun(char* exec_msg, int* childcount);
+void ExecdTimeoutRun(int* childcount);
 void ExecdShutdown(int sig);
 #endif
 
-size_t wcom_unmerge(const char *file_path, char **output);
-size_t wcom_uncompress(const char * source, const char * target, char ** output);
-size_t wcom_dispatch(char *command, char **output);
+size_t wcom_unmerge(const char* file_path, char** output);
+size_t wcom_uncompress(const char* source, const char* target, char** output);
+size_t wcom_dispatch(char* command, char** output);
 size_t lock_restart(int timeout);
-size_t wcom_getconfig(const char * section, char ** output);
+size_t wcom_getconfig(const char* section, char** output);
 
 /**
  * @brief Build this daemon's entry for the agent's /config document.
@@ -88,29 +88,31 @@ size_t wcom_getconfig(const char * section, char ** output);
  * @param output Receives the allocated "ok <json>" reply.
  * @return Length of *output.
  */
-size_t wcom_getallconfig(char ** output);
+size_t wcom_getallconfig(char** output);
 
 #ifndef WIN32
 // Com request thread dispatcher
-void * wcom_main(void * arg);
+void* wcom_main(void* arg);
 #endif
 
 /* Timeout data structure */
-typedef struct _timeout_data {
+typedef struct _timeout_data
+{
     time_t time_of_addition;
     int time_to_block;
-    char **command;
-    char *parameters;
-    char *rkey;
+    char** command;
+    char* parameters;
+    char* rkey;
 } timeout_data;
 
 /* Repeated offender entry */
-typedef struct _repeated_offender {
+typedef struct _repeated_offender
+{
     int count;
-    time_t release_at;  // When the last block applied to this key ends
+    time_t release_at; // When the last block applied to this key ends
 } repeated_offender;
 
-void FreeTimeoutEntry(timeout_data *timeout_entry);
+void FreeTimeoutEntry(timeout_data* timeout_entry);
 void FreeTimeoutList();
 
 #endif /* EXECD_H */

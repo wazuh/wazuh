@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-BIO *__wrap_BIO_new_socket(__attribute__((unused)) int sock,
-                           __attribute__((unused)) int close_flag) {
+BIO* __wrap_BIO_new_socket(__attribute__((unused)) int sock, __attribute__((unused)) int close_flag)
+{
     return NULL;
 }

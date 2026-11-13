@@ -27,62 +27,61 @@
 /// Dependencies are injected via wrappers for testability and abstraction.
 class UsersProvider
 {
-    public:
-        /// @brief Constructs a UsersProvider with the given wrapper dependencies.
-        /// @param passwdWrapper Wrapper for Darwin passwd operations.
-        /// @param uuidWrapper Wrapper for UUID handling.
-        /// @param odWrapper Wrapper for OpenDirectory utilities.
-        explicit UsersProvider(
-            std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
-            std::shared_ptr<IUUIDWrapper> uuidWrapper,
-            std::shared_ptr<IODUtilsWrapper> odWrapper);
+public:
+    /// @brief Constructs a UsersProvider with the given wrapper dependencies.
+    /// @param passwdWrapper Wrapper for Darwin passwd operations.
+    /// @param uuidWrapper Wrapper for UUID handling.
+    /// @param odWrapper Wrapper for OpenDirectory utilities.
+    explicit UsersProvider(std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
+                           std::shared_ptr<IUUIDWrapper> uuidWrapper,
+                           std::shared_ptr<IODUtilsWrapper> odWrapper);
 
-        /// @brief Default constructor.
-        UsersProvider();
+    /// @brief Default constructor.
+    UsersProvider();
 
-        /// @brief Collects all user information.
-        /// @return JSON array with all user data.
-        nlohmann::json collect();
+    /// @brief Collects all user information.
+    /// @return JSON array with all user data.
+    nlohmann::json collect();
 
-        /// @brief Collects user information filtered by UIDs.
-        /// @param uids Set of user IDs to filter.
-        /// @return JSON array with filtered user data.
-        nlohmann::json collectWithConstraints(const std::set<uid_t>& uids);
+    /// @brief Collects user information filtered by UIDs.
+    /// @param uids Set of user IDs to filter.
+    /// @return JSON array with filtered user data.
+    nlohmann::json collectWithConstraints(const std::set<uid_t>& uids);
 
-    private:
-        /// @brief Generates JSON representation of a single user.
-        /// @param pwd Pointer to passwd struct representing the user.
-        /// @return JSON object representing the user.
-        nlohmann::json genUserJson(const struct passwd* pwd);
+private:
+    /// @brief Generates JSON representation of a single user.
+    /// @param pwd Pointer to passwd struct representing the user.
+    /// @return JSON object representing the user.
+    nlohmann::json genUserJson(const struct passwd* pwd);
 
-        /// @brief Collects users filtered by UIDs.
-        /// @param uids Set of user IDs to filter.
-        /// @return JSON array of users matching the UIDs.
-        nlohmann::json collectUsers(const std::set<uid_t>& uids);
+    /// @brief Collects users filtered by UIDs.
+    /// @param uids Set of user IDs to filter.
+    /// @return JSON array of users matching the UIDs.
+    nlohmann::json collectUsers(const std::set<uid_t>& uids);
 
-        /// @brief Collects account policy data for a specific user UID.
-        /// @param uid The numeric user ID (UID) for which to retrieve account policy data.
-        /// @return A JSON object containing account policy information for the given UID.
-        nlohmann::json collectAccountPolicyData(const uid_t uid);
+    /// @brief Collects account policy data for a specific user UID.
+    /// @param uid The numeric user ID (UID) for which to retrieve account policy data.
+    /// @return A JSON object containing account policy information for the given UID.
+    nlohmann::json collectAccountPolicyData(const uid_t uid);
 
-        /// @brief Resolves the password data of a single user from the collected directory data.
-        /// @param username The name of the user; OpenDirectory indexes its records under
-        ///                 every name they hold, so either the passwd or the primary name matches.
-        /// @param disabledUsers Names of the accounts macOS reports as disabled.
-        /// @param disabledUsersResolved Whether the disabled accounts could be read at all.
-        /// @param passwordData Password data of every user, keyed by record name.
-        /// @return A JSON object containing the password data for the given user.
-        nlohmann::json collectPasswordData(const std::string& username,
-                                           const std::set<std::string>& disabledUsers,
-                                           const bool disabledUsersResolved,
-                                           const std::map<std::string, nlohmann::json>& passwordData);
+    /// @brief Resolves the password data of a single user from the collected directory data.
+    /// @param username The name of the user; OpenDirectory indexes its records under
+    ///                 every name they hold, so either the passwd or the primary name matches.
+    /// @param disabledUsers Names of the accounts macOS reports as disabled.
+    /// @param disabledUsersResolved Whether the disabled accounts could be read at all.
+    /// @param passwordData Password data of every user, keyed by record name.
+    /// @return A JSON object containing the password data for the given user.
+    nlohmann::json collectPasswordData(const std::string& username,
+                                       const std::set<std::string>& disabledUsers,
+                                       const bool disabledUsersResolved,
+                                       const std::map<std::string, nlohmann::json>& passwordData);
 
-        /// @brief Passwd utility wrapper.
-        std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
+    /// @brief Passwd utility wrapper.
+    std::shared_ptr<IPasswdWrapperDarwin> m_passwdWrapper;
 
-        /// @brief UUID utility wrapper.
-        std::shared_ptr<IUUIDWrapper> m_uuidWrapper;
+    /// @brief UUID utility wrapper.
+    std::shared_ptr<IUUIDWrapper> m_uuidWrapper;
 
-        /// @brief OpenDirectory utility wrapper.
-        std::shared_ptr<IODUtilsWrapper> m_odWrapper;
+    /// @brief OpenDirectory utility wrapper.
+    std::shared_ptr<IODUtilsWrapper> m_odWrapper;
 };

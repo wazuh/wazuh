@@ -27,12 +27,9 @@
 #include "wrappers/wazuh/shared/time_op_wrappers.h"
 #include "wrappers/wazuh/shared/pthreads_op_wrappers.h"
 
-
 #include "wrappers/wazuh/syscheckd/audit_parse_wrappers.h"
 
-
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
-
 
 extern atomic_int_t audit_health_check_creation;
 extern atomic_int_t hc_thread_active;
@@ -41,26 +38,30 @@ extern atomic_int_t audit_thread_active;
 extern pthread_mutex_t audit_hc_mutex;
 extern pthread_cond_t audit_hc_cond;
 
-extern void __real_atomic_int_set(atomic_int_t *atomic, int value);
-extern int __real_atomic_int_get(atomic_int_t *atomic);
+extern void __real_atomic_int_set(atomic_int_t* atomic, int value);
+extern int __real_atomic_int_get(atomic_int_t* atomic);
 
 /* setup/teardown */
-static int setup_group(void **state) {
-    (void) state;
+static int setup_group(void** state)
+{
+    (void)state;
     test_mode = 1;
     return 0;
 }
 
-static int teardown_group(void **state) {
-    (void) state;
+static int teardown_group(void** state)
+{
+    (void)state;
     memset(&syscheck, 0, sizeof(syscheck_config));
     Free_Syscheck(&syscheck);
     test_mode = 0;
     return 0;
 }
 
-int __wrap_pthread_cond_timedwait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex,
-                                   const struct timespec *restrict abstime) {
+int __wrap_pthread_cond_timedwait(pthread_cond_t* restrict cond,
+                                  pthread_mutex_t* restrict mutex,
+                                  const struct timespec* restrict abstime)
+{
     function_called();
     return 0;
 }
@@ -68,7 +69,8 @@ int __wrap_pthread_cond_timedwait(pthread_cond_t *restrict cond, pthread_mutex_t
 /**
  * @brief Functions that prepares the wraps calls for starting the audit healthcheck thread
  */
-void prepare_audit_healthcheck_thread() {
+void prepare_audit_healthcheck_thread()
+{
     will_return(__wrap_audit_add_rule, -EEXIST);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
@@ -85,11 +87,11 @@ void prepare_audit_healthcheck_thread() {
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
-
 /**
  * @brief Functions that prepares the wraps calls for stopping the audit healthcheck thread
  */
-void prepare_post_audit_healthcheck_thread() {
+void prepare_post_audit_healthcheck_thread()
+{
     expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
     will_return(__wrap_unlink, 0);
 
@@ -106,18 +108,19 @@ void prepare_post_audit_healthcheck_thread() {
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_gettime, 1232);
-    
+
     // First check in while loop - thread is not finished (0), so exit loop
     expect_value(__wrap_atomic_int_get, atomic, &hc_thread_finished);
     will_return(__wrap_atomic_int_get, 1);
-    
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
 /* audit_health_check() tests */
 static int hc_socket = 123456;
 
-void test_audit_health_check_fail_to_add_rule(void **state) {
+void test_audit_health_check_fail_to_add_rule(void** state)
+{
     int ret;
 
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
@@ -137,7 +140,8 @@ void test_audit_health_check_fail_to_add_rule(void **state) {
     assert_int_equal(hc_thread_active.data, 0);
 }
 
-void test_audit_health_check_fail_to_create_hc_file(void **state) {
+void test_audit_health_check_fail_to_create_hc_file(void** state)
+{
     int ret;
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -180,7 +184,8 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
     assert_int_equal(__real_atomic_int_get(&hc_thread_active), 0);
 }
 
-void test_audit_health_check_no_creation_event_detected(void **state) {
+void test_audit_health_check_no_creation_event_detected(void** state)
+{
     int ret;
 
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
@@ -223,7 +228,8 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
     assert_int_equal(__real_atomic_int_get(&hc_thread_active), 0);
 }
 
-void test_audit_health_check_success(void **state) {
+void test_audit_health_check_success(void** state)
+{
     int ret;
 
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
@@ -265,7 +271,8 @@ void test_audit_health_check_success(void **state) {
     assert_int_equal(__real_atomic_int_get(&hc_thread_active), 0);
 }
 
-void test_audit_health_check_thread_wait_loop(void **state) {
+void test_audit_health_check_thread_wait_loop(void** state)
+{
     int ret;
 
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
@@ -314,18 +321,18 @@ void test_audit_health_check_thread_wait_loop(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_gettime, 1232);
-    
+
     // First check in while loop - thread is not finished (0), so enter loop
     expect_value(__wrap_atomic_int_get, atomic, &hc_thread_finished);
     will_return(__wrap_atomic_int_get, 0);
-    
+
     // pthread_cond_timedwait is called
     expect_function_call(__wrap_pthread_cond_timedwait);
-    
+
     // Second check in while loop - thread is now finished (1), so exit loop
     expect_value(__wrap_atomic_int_get, atomic, &hc_thread_finished);
     will_return(__wrap_atomic_int_get, 1);
-    
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = audit_health_check(&hc_socket);
@@ -336,15 +343,15 @@ void test_audit_health_check_thread_wait_loop(void **state) {
     assert_int_equal(__real_atomic_int_get(&hc_thread_active), 0);
 }
 
-
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
-       cmocka_unit_test(test_audit_health_check_fail_to_add_rule),
+        cmocka_unit_test(test_audit_health_check_fail_to_add_rule),
         cmocka_unit_test(test_audit_health_check_fail_to_create_hc_file),
         cmocka_unit_test(test_audit_health_check_no_creation_event_detected),
         cmocka_unit_test(test_audit_health_check_success),
         cmocka_unit_test(test_audit_health_check_thread_wait_loop),
-        };
+    };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

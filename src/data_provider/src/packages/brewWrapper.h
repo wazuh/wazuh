@@ -20,197 +20,199 @@
 
 class BrewWrapper final : public IPackageWrapper
 {
-    public:
-        explicit BrewWrapper(const PackageContext& ctx)
-            : m_name{ctx.package}
-            , m_version{Utils::splitIndex(ctx.version, '_', 0)}
-            , m_groups{UNKNOWN_VALUE}
-            , m_description {UNKNOWN_VALUE}
-            , m_architecture{UNKNOWN_VALUE}
-            , m_format{"pkg"}
-            , m_source{"homebrew"}
-            , m_location{ctx.filePath}
-            , m_priority{UNKNOWN_VALUE}
-            , m_size{std::nullopt}
-            , m_vendor{UNKNOWN_VALUE}
-            , m_installTime{UNKNOWN_VALUE}
+public:
+    explicit BrewWrapper(const PackageContext& ctx)
+        : m_name {ctx.package}
+        , m_version {Utils::splitIndex(ctx.version, '_', 0)}
+        , m_groups {UNKNOWN_VALUE}
+        , m_description {UNKNOWN_VALUE}
+        , m_architecture {UNKNOWN_VALUE}
+        , m_format {"pkg"}
+        , m_source {"homebrew"}
+        , m_location {ctx.filePath}
+        , m_priority {UNKNOWN_VALUE}
+        , m_size {std::nullopt}
+        , m_vendor {UNKNOWN_VALUE}
+        , m_installTime {UNKNOWN_VALUE}
+    {
+        const std::string packagePath = ctx.filePath + "/" + ctx.package + "/" + ctx.version;
+        const std::string installReceiptPath = packagePath + "/INSTALL_RECEIPT.json";
+        const std::string legacyBrewPath = packagePath + "/.brew/" + ctx.package + ".rb";
+
+        const file_system::FileSystemWrapper fs;
+        // PackageMetadataFile skips oversized and non-regular files
+        std::string content;
+
+        // An empty result means the walk could not establish a size: an error, the entry cap
+        // or the deadline. It stays unknown rather than becoming zero, so a scan that fails to
+        // measure does not overwrite the size a previous scan established.
+        const auto measured {fs.directory_size(packagePath, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE)};
+
+        if (measured.has_value())
         {
-            const std::string packagePath = ctx.filePath + "/" + ctx.package + "/" + ctx.version;
-            const std::string installReceiptPath = packagePath + "/INSTALL_RECEIPT.json";
-            const std::string legacyBrewPath = packagePath + "/.brew/" + ctx.package + ".rb";
+            m_size = static_cast<int64_t>(*measured);
+        }
 
-            const file_system::FileSystemWrapper fs;
-            // PackageMetadataFile skips oversized and non-regular files
-            std::string content;
-
-            // An empty result means the walk could not establish a size: an error, the entry cap
-            // or the deadline. It stays unknown rather than becoming zero, so a scan that fails to
-            // measure does not overwrite the size a previous scan established.
-            const auto measured {fs.directory_size(packagePath, PACKAGE_SIZE_MAX_ENTRIES, PACKAGE_SIZE_DEADLINE)};
-
-            if (measured.has_value())
+        // Try modern INSTALL_RECEIPT.json format first (Homebrew 2.0+)
+        if (fs.is_regular_file(installReceiptPath))
+        {
+            if (PackageMetadataFile::read(installReceiptPath, content))
             {
-                m_size = static_cast<int64_t>(*measured);
-            }
-
-            // Try modern INSTALL_RECEIPT.json format first (Homebrew 2.0+)
-            if (fs.is_regular_file(installReceiptPath))
-            {
-                if (PackageMetadataFile::read(installReceiptPath, content))
+                try
                 {
-                    try
+                    const auto jsonData = nlohmann::json::parse(content);
+
+                    // Extract architecture (e.g., "arm64", "x86_64")
+                    if (jsonData.contains("arch") && !jsonData["arch"].is_null())
                     {
-                        const auto jsonData = nlohmann::json::parse(content);
-
-                        // Extract architecture (e.g., "arm64", "x86_64")
-                        if (jsonData.contains("arch") && !jsonData["arch"].is_null())
-                        {
-                            m_architecture = jsonData["arch"].get<std::string>();
-                        }
-
-                        // Extract install time (Unix timestamp)
-                        if (jsonData.contains("time") && !jsonData["time"].is_null())
-                        {
-                            m_installTime = std::to_string(jsonData["time"].get<int64_t>());
-                        }
-
-                        // Extract vendor/tap information
-                        if (jsonData.contains("source") && jsonData["source"].contains("tap") && !jsonData["source"]["tap"].is_null())
-                        {
-                            m_vendor = jsonData["source"]["tap"].get<std::string>();
-                        }
-
-                        // Extract version from source if available (more accurate than directory name)
-                        if (jsonData.contains("source") && jsonData["source"].contains("version") && !jsonData["source"]["version"].is_null())
-                        {
-                            const auto sourceVersion = jsonData["source"]["version"].get<std::string>();
-
-                            if (!sourceVersion.empty())
-                            {
-                                m_version = sourceVersion;
-                            }
-                        }
+                        m_architecture = jsonData["arch"].get<std::string>();
                     }
-                    catch (const std::exception& e)
+
+                    // Extract install time (Unix timestamp)
+                    if (jsonData.contains("time") && !jsonData["time"].is_null())
                     {
-                        // If JSON parsing fails, continue with default values
+                        m_installTime = std::to_string(jsonData["time"].get<int64_t>());
                     }
-                }
-            }
-            // Fallback to legacy .brew/*.rb format for older Homebrew versions
-            else if (fs.is_regular_file(legacyBrewPath))
-            {
-                if (PackageMetadataFile::read(legacyBrewPath, content))
-                {
-                    const auto rows { Utils::split(content, '\n')};
 
-                    for (const auto& row : rows)
+                    // Extract vendor/tap information
+                    if (jsonData.contains("source") && jsonData["source"].contains("tap") &&
+                        !jsonData["source"]["tap"].is_null())
                     {
-                        auto rowParsed { Utils::trim(row) };
+                        m_vendor = jsonData["source"]["tap"].get<std::string>();
+                    }
 
-                        if (Utils::startsWith(rowParsed, "desc "))
+                    // Extract version from source if available (more accurate than directory name)
+                    if (jsonData.contains("source") && jsonData["source"].contains("version") &&
+                        !jsonData["source"]["version"].is_null())
+                    {
+                        const auto sourceVersion = jsonData["source"]["version"].get<std::string>();
+
+                        if (!sourceVersion.empty())
                         {
-                            Utils::replaceFirst(rowParsed, "desc ", "");
-                            Utils::replaceAll(rowParsed, "\"", "");
-                            m_description = rowParsed;
-                            break;
+                            m_version = sourceVersion;
                         }
                     }
                 }
-            }
-
-            /* Some brew packages have the version in the name separated by a '@'
-              but we'll only remove the last occurrence if it matches with a version
-              in case there is a '@' in the package name */
-            const auto pos { m_name.rfind('@') };
-
-            if (pos != std::string::npos)
-            {
-                if (std::isdigit(m_name[pos + 1]))
+                catch (const std::exception& e)
                 {
-                    m_name.resize(pos);
+                    // If JSON parsing fails, continue with default values
+                }
+            }
+        }
+        // Fallback to legacy .brew/*.rb format for older Homebrew versions
+        else if (fs.is_regular_file(legacyBrewPath))
+        {
+            if (PackageMetadataFile::read(legacyBrewPath, content))
+            {
+                const auto rows {Utils::split(content, '\n')};
+
+                for (const auto& row : rows)
+                {
+                    auto rowParsed {Utils::trim(row)};
+
+                    if (Utils::startsWith(rowParsed, "desc "))
+                    {
+                        Utils::replaceFirst(rowParsed, "desc ", "");
+                        Utils::replaceAll(rowParsed, "\"", "");
+                        m_description = rowParsed;
+                        break;
+                    }
                 }
             }
         }
 
-        ~BrewWrapper() = default;
+        /* Some brew packages have the version in the name separated by a '@'
+          but we'll only remove the last occurrence if it matches with a version
+          in case there is a '@' in the package name */
+        const auto pos {m_name.rfind('@')};
 
-        std::string name() const override
+        if (pos != std::string::npos)
         {
-            return m_name;
+            if (std::isdigit(m_name[pos + 1]))
+            {
+                m_name.resize(pos);
+            }
         }
-        std::string version() const override
-        {
-            return m_version;
-        }
-        std::string groups() const override
-        {
-            return m_groups;
-        }
-        std::string description() const override
-        {
-            return m_description;
-        }
-        std::string architecture() const override
-        {
-            return m_architecture;
-        }
-        std::string format() const override
-        {
-            return m_format;
-        }
-        std::string osPatch() const override
-        {
-            return m_osPatch;
-        }
-        std::string source() const override
-        {
-            return m_source;
-        }
-        std::string location() const override
-        {
-            return m_location;
-        }
-        std::string vendor() const override
-        {
-            return m_vendor;
-        }
+    }
 
-        std::string priority() const override
-        {
-            return m_priority;
-        }
+    ~BrewWrapper() = default;
 
-        std::optional<int64_t> size() const override
-        {
-            return m_size;
-        }
+    std::string name() const override
+    {
+        return m_name;
+    }
+    std::string version() const override
+    {
+        return m_version;
+    }
+    std::string groups() const override
+    {
+        return m_groups;
+    }
+    std::string description() const override
+    {
+        return m_description;
+    }
+    std::string architecture() const override
+    {
+        return m_architecture;
+    }
+    std::string format() const override
+    {
+        return m_format;
+    }
+    std::string osPatch() const override
+    {
+        return m_osPatch;
+    }
+    std::string source() const override
+    {
+        return m_source;
+    }
+    std::string location() const override
+    {
+        return m_location;
+    }
+    std::string vendor() const override
+    {
+        return m_vendor;
+    }
 
-        std::string install_time() const override
-        {
-            return m_installTime;
-        }
+    std::string priority() const override
+    {
+        return m_priority;
+    }
 
-        std::string multiarch() const override
-        {
-            return m_multiarch;
-        }
-    private:
-        std::string m_name;
-        std::string m_version;
-        std::string m_groups;
-        std::string m_description;
-        std::string m_architecture;
-        const std::string m_format;
-        std::string m_osPatch;
-        const std::string m_source;
-        const std::string m_location;
-        std::string m_priority;
-        std::optional<int64_t> m_size;
-        std::string m_vendor;
-        std::string m_installTime;
-        std::string m_multiarch;
+    std::optional<int64_t> size() const override
+    {
+        return m_size;
+    }
+
+    std::string install_time() const override
+    {
+        return m_installTime;
+    }
+
+    std::string multiarch() const override
+    {
+        return m_multiarch;
+    }
+
+private:
+    std::string m_name;
+    std::string m_version;
+    std::string m_groups;
+    std::string m_description;
+    std::string m_architecture;
+    const std::string m_format;
+    std::string m_osPatch;
+    const std::string m_source;
+    const std::string m_location;
+    std::string m_priority;
+    std::optional<int64_t> m_size;
+    std::string m_vendor;
+    std::string m_installTime;
+    std::string m_multiarch;
 };
-
 
 #endif //_BREW_WRAPPER_H

@@ -13,13 +13,14 @@
 #include "networkInterfaceLinux.h"
 #include "networkLinuxWrapper.h"
 
-std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
+std::shared_ptr<IOSNetwork>
+FactoryLinuxNetwork::create(const std::shared_ptr<INetworkInterfaceWrapper>& interfaceWrapper)
 {
     std::shared_ptr<IOSNetwork> ret;
 
     if (interfaceWrapper)
     {
-        const auto family { interfaceWrapper->family() };
+        const auto family {interfaceWrapper->family()};
 
         if (AF_INET == family)
         {
@@ -38,21 +39,21 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
     }
     else
     {
-        throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
+        throw std::runtime_error {"Error nullptr interfaceWrapper instance."};
     }
 
     return ret;
 }
 
-template <>
+template<>
 void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
 {
     // Get IPv4 address
-    const auto address { m_interfaceAddress->address() };
+    const auto address {m_interfaceAddress->address()};
 
     if (!address.empty())
     {
-        nlohmann::json ipv4JS { };
+        nlohmann::json ipv4JS {};
         ipv4JS["network_ip"] = address;
         ipv4JS["network_netmask"] = m_interfaceAddress->netmask();
         ipv4JS["network_broadcast"] = m_interfaceAddress->broadcast();
@@ -63,13 +64,13 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
     }
     else
     {
-        throw std::runtime_error { "Invalid IpV4 address." };
+        throw std::runtime_error {"Invalid IpV4 address."};
     }
 }
-template <>
+template<>
 void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
 {
-    const auto address { m_interfaceAddress->addressV6() };
+    const auto address {m_interfaceAddress->addressV6()};
 
     if (!address.empty())
     {
@@ -84,31 +85,31 @@ void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
     }
     else
     {
-        throw std::runtime_error { "Invalid IpV6 address." };
+        throw std::runtime_error {"Invalid IpV6 address."};
     }
 }
-template <>
+template<>
 void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network)
 {
     /* Get stats of interface */
-    network["interface_name"]  = m_interfaceAddress->name();
+    network["interface_name"] = m_interfaceAddress->name();
     network["interface_alias"] = m_interfaceAddress->adapter();
-    network["interface_type"]  = m_interfaceAddress->type();
+    network["interface_type"] = m_interfaceAddress->type();
     network["interface_state"] = m_interfaceAddress->state();
-    network["host_mac"]        = m_interfaceAddress->MAC();
+    network["host_mac"] = m_interfaceAddress->MAC();
 
-    const auto stats { m_interfaceAddress->stats() };
+    const auto stats {m_interfaceAddress->stats()};
 
-    network["host_network_egress_packages"]  = stats.txPackets;
+    network["host_network_egress_packages"] = stats.txPackets;
     network["host_network_ingress_packages"] = stats.rxPackets;
-    network["host_network_egress_bytes"]     = stats.txBytes;
-    network["host_network_ingress_bytes"]    = stats.rxBytes;
-    network["host_network_egress_errors"]    = stats.txErrors;
-    network["host_network_ingress_errors"]   = stats.rxErrors;
-    network["host_network_egress_drops"]     = stats.txDropped;
-    network["host_network_ingress_drops"]    = stats.rxDropped;
+    network["host_network_egress_bytes"] = stats.txBytes;
+    network["host_network_ingress_bytes"] = stats.rxBytes;
+    network["host_network_egress_errors"] = stats.txErrors;
+    network["host_network_ingress_errors"] = stats.rxErrors;
+    network["host_network_egress_drops"] = stats.txDropped;
+    network["host_network_ingress_drops"] = stats.rxDropped;
 
-    network["interface_mtu"]    = m_interfaceAddress->mtu();
-    network["network_gateway"]  = m_interfaceAddress->gateway();
+    network["interface_mtu"] = m_interfaceAddress->mtu();
+    network["network_gateway"] = m_interfaceAddress->gateway();
     network["network_gateway6"] = m_interfaceAddress->gatewayV6();
 }

@@ -22,7 +22,7 @@
 bool RpmPackageManager::ms_instantiated = false;
 
 RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper)
-    : m_rpmlib{wrapper}
+    : m_rpmlib {wrapper}
 {
     if (ms_instantiated)
     {
@@ -111,18 +111,17 @@ std::vector<std::string> RpmPackageManager::Iterator::getFiles() const
     return files;
 }
 
-const RpmPackageManager::Iterator RpmPackageManager::END_ITERATOR{};
+const RpmPackageManager::Iterator RpmPackageManager::END_ITERATOR {};
 
 RpmPackageManager::Iterator::Iterator()
-    : m_end{true}
+    : m_end {true}
 {
-
 }
 
 RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
-    : m_end{false},
-      m_rpmlib{rpmlib},
-      m_transactionSet{rpmlib->rpmtsCreate()}
+    : m_end {false}
+    , m_rpmlib {rpmlib}
+    , m_transactionSet {rpmlib->rpmtsCreate()}
 {
     if (!m_transactionSet)
     {

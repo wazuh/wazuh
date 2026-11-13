@@ -17,12 +17,11 @@
 
 class HashHelperTest : public ::testing::Test
 {
-    protected:
+protected:
+    HashHelperTest() = default;
+    virtual ~HashHelperTest() = default;
 
-        HashHelperTest() = default;
-        virtual ~HashHelperTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
-#endif //HASH_HELPER_TESTS_H
+#endif // HASH_HELPER_TESTS_H

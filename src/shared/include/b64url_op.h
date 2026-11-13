@@ -23,7 +23,7 @@
  * @param len Number of bytes to encode. 0 yields the empty string.
  * @return Newly allocated NUL-terminated string the caller must free(), or NULL on error.
  */
-char *w_b64url_encode(const uint8_t *in, size_t len);
+char* w_b64url_encode(const uint8_t* in, size_t len);
 
 /**
  * @brief Decode a *canonical* unpadded base64url string.
@@ -39,6 +39,6 @@ char *w_b64url_encode(const uint8_t *in, size_t len);
  * @param out_len Receives the number of decoded bytes.
  * @return 0 on success; -1 on any violation, with *out set to NULL and *out_len to 0.
  */
-int w_b64url_decode(const char *in, uint8_t **out, size_t *out_len);
+int w_b64url_decode(const char* in, uint8_t** out, size_t* out_len);
 
 #endif /* B64URL_OP_H */

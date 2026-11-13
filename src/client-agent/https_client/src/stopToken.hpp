@@ -29,55 +29,55 @@
  */
 class Waiter
 {
-    public:
-        virtual ~Waiter() = default;
+public:
+    virtual ~Waiter() = default;
 
-        /// Sleeps up to timeout. Returns false when stop was requested (the loop
-        /// must exit); true when the wait elapsed or notify() woke it early.
-        virtual bool waitFor(std::chrono::milliseconds timeout)
+    /// Sleeps up to timeout. Returns false when stop was requested (the loop
+    /// must exit); true when the wait elapsed or notify() woke it early.
+    virtual bool waitFor(std::chrono::milliseconds timeout)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_condition.waitFor(lock, timeout, [this] { return m_stop.load() || m_wake; });
+        m_wake = false;
+        return !m_stop.load();
+    }
+
+    /// Wakes a pending waitFor() without stopping (e.g. hc_notify_now).
+    virtual void notify()
+    {
         {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            m_condition.waitFor(lock, timeout, [this] { return m_stop.load() || m_wake; });
-            m_wake = false;
-            return !m_stop.load();
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_wake = true;
         }
+        m_condition.notifyAll();
+    }
 
-        /// Wakes a pending waitFor() without stopping (e.g. hc_notify_now).
-        virtual void notify()
+    /// Requests cooperative stop and wakes any pending waitFor().
+    void requestStop()
+    {
         {
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                m_wake = true;
-            }
-            m_condition.notifyAll();
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_stop = true;
         }
+        m_condition.notifyAll();
+    }
 
-        /// Requests cooperative stop and wakes any pending waitFor().
-        void requestStop()
-        {
-            {
-                std::lock_guard<std::mutex> lock(m_mutex);
-                m_stop = true;
-            }
-            m_condition.notifyAll();
-        }
+    bool stopRequested() const
+    {
+        return m_stop.load();
+    }
 
-        bool stopRequested() const
-        {
-            return m_stop.load();
-        }
+    /// The abort flag wired into in-flight transfers (CURLOPT_XFERINFO path).
+    const std::atomic<bool>* stopFlag() const
+    {
+        return &m_stop;
+    }
 
-        /// The abort flag wired into in-flight transfers (CURLOPT_XFERINFO path).
-        const std::atomic<bool>* stopFlag() const
-        {
-            return &m_stop;
-        }
-
-    private:
-        std::mutex m_mutex;
-        MonotonicCondition m_condition;
-        std::atomic<bool> m_stop {false};
-        bool m_wake {false};
+private:
+    std::mutex m_mutex;
+    MonotonicCondition m_condition;
+    std::atomic<bool> m_stop {false};
+    bool m_wake {false};
 };
 
 #endif // _HC_STOP_TOKEN_HPP

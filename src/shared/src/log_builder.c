@@ -21,8 +21,8 @@
 #define STATIC
 #ifdef WIN32
 #define get_agent_ip_legacy_win32 wrap_get_agent_ip_legacy_win32
-#define getDefine_Int __wrap_getDefine_Int
-#define getDefine_Int_default __wrap_getDefine_Int_default
+#define getDefine_Int             __wrap_getDefine_Int
+#define getDefine_Int_default     __wrap_getDefine_Int_default
 #endif
 #else
 #define STATIC static
@@ -40,7 +40,7 @@
  * @retval 0 If the hostname was updated successfully.
  * @retval 1 If the hostname failed to be updated.
  */
-static int log_builder_update_hostname(log_builder_t * builder);
+static int log_builder_update_hostname(log_builder_t* builder);
 
 /**
  * @brief Update the host's IP value
@@ -50,14 +50,15 @@ static int log_builder_update_hostname(log_builder_t * builder);
  * @retval 0 If the host IP was updated successfully.
  * @retval 1 If the host IP failed to be updated.
  */
-STATIC int log_builder_update_host_ip(log_builder_t * builder);
+STATIC int log_builder_update_host_ip(log_builder_t* builder);
 
 /* Number of seconds of how often the IP must be updated. */
 STATIC int g_ip_update_interval = 0;
 
 // Initialize a log builder structure
-log_builder_t * log_builder_init(bool update) {
-    log_builder_t * builder;
+log_builder_t* log_builder_init(bool update)
+{
+    log_builder_t* builder;
     os_calloc(1, sizeof(log_builder_t), builder);
 
     {
@@ -72,9 +73,12 @@ log_builder_t * log_builder_init(bool update) {
         rwlock_init(&builder->rwlock);
     }
 
-    if (update) {
+    if (update)
+    {
         log_builder_update(builder);
-    } else {
+    }
+    else
+    {
         strncpy(builder->host_name, "localhost", LOG_BUILDER_HOSTNAME_LEN - 1);
         strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
     }
@@ -83,13 +87,15 @@ log_builder_t * log_builder_init(bool update) {
 }
 
 // Free a log builder structure.
-void log_builder_destroy(log_builder_t * builder) {
+void log_builder_destroy(log_builder_t* builder)
+{
     rwlock_destroy(&builder->rwlock);
     free(builder);
 }
 
 // Update the pattern values
-int log_builder_update(log_builder_t * builder) {
+int log_builder_update(log_builder_t* builder)
+{
     int result = 0;
 
     result = log_builder_update_hostname(builder) == 0 ? result : -1;
@@ -99,23 +105,25 @@ int log_builder_update(log_builder_t * builder) {
 }
 
 // Build a log string
-char * log_builder_build(log_builder_t * builder, const char * pattern, const char * logmsg, const char * location) {
-    char * final;
-    char * _pattern;
-    char * cur;
-    char * tok;
-    char * end;
-    char * param;
-    const char * field;
+char* log_builder_build(log_builder_t* builder, const char* pattern, const char* logmsg, const char* location)
+{
+    char* final;
+    char* _pattern;
+    char* cur;
+    char* tok;
+    char* end;
+    char* param;
+    const char* field;
     char _timestamp[64];
-    char * escaped_log = NULL;
+    char* escaped_log = NULL;
     size_t n = 0;
     size_t z;
     time_t timestamp = time(NULL);
 
     assert(logmsg != NULL);
 
-    if (!pattern) {
+    if (!pattern)
+    {
         return strdup(logmsg);
     }
 
@@ -126,7 +134,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
 
     rwlock_lock_read(&builder->rwlock);
 
-    for (cur = _pattern; tok = strstr(cur, "$("), tok; cur = end) {
+    for (cur = _pattern; tok = strstr(cur, "$("), tok; cur = end)
+    {
         field = NULL;
         *tok = '\0';
 
@@ -136,14 +145,16 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
         // Copy anything before the token
         z = strlen(cur);
 
-        if (n + z >= OS_MAXSTR) {
+        if (n + z >= OS_MAXSTR)
+        {
             goto fail;
         }
 
         strncpy(final + n, cur, OS_MAXSTR - n);
         n += z;
 
-        if (end = strchr(param, ')'), !end) {
+        if (end = strchr(param, ')'), !end)
+        {
             // Token not closed: break
             *tok = '$';
             cur = tok;
@@ -154,54 +165,88 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
 
         // Find parameter
 
-        if (strcmp(param, "log") == 0 || strcmp(param, "output") == 0) {
+        if (strcmp(param, "log") == 0 || strcmp(param, "output") == 0)
+        {
             field = logmsg;
-        } else if (strcmp(param, "location") == 0 || strcmp(param, "command") == 0) {
+        }
+        else if (strcmp(param, "location") == 0 || strcmp(param, "command") == 0)
+        {
             field = location;
-        } else if (strncmp(param, "timestamp", 9) == 0) {
+        }
+        else if (strncmp(param, "timestamp", 9) == 0)
+        {
             struct tm tm;
-            char * format;
+            char* format;
 
             localtime_r(&timestamp, &tm);
 
-            if (format = strchr(param, ' '), format) {
-                if (strftime(_timestamp, sizeof(_timestamp), format + 1, &tm)) {
+            if (format = strchr(param, ' '), format)
+            {
+                if (strftime(_timestamp, sizeof(_timestamp), format + 1, &tm))
+                {
                     field = _timestamp;
-                } else {
+                }
+                else
+                {
                     mdebug1("Cannot format time '%s': %s (%d)", format, strerror(errno), errno);
                 }
-            } else {
+            }
+            else
+            {
                 // If format is not speficied, use RFC3164
 #ifdef WIN32
                 // strfrime() does not allow %e in Windows
-                const char * MONTHS[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+                const char* MONTHS[] = {
+                    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-                if (snprintf(_timestamp, sizeof(_timestamp), "%s %s%d %02d:%02d:%02d", MONTHS[tm.tm_mon], tm.tm_mday < 10 ? " " : "", tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec) < (int)sizeof(_timestamp)) {
+                if (snprintf(_timestamp,
+                             sizeof(_timestamp),
+                             "%s %s%d %02d:%02d:%02d",
+                             MONTHS[tm.tm_mon],
+                             tm.tm_mday < 10 ? " " : "",
+                             tm.tm_mday,
+                             tm.tm_hour,
+                             tm.tm_min,
+                             tm.tm_sec) < (int)sizeof(_timestamp))
+                {
                     field = _timestamp;
                 }
 #else
-                if (strftime(_timestamp, sizeof(_timestamp), "%b %e %T", &tm)) {
+                if (strftime(_timestamp, sizeof(_timestamp), "%b %e %T", &tm))
+                {
                     field = _timestamp;
                 }
 #endif // WIN32
             }
-        } else if (strcmp(param, "hostname") == 0) {
+        }
+        else if (strcmp(param, "hostname") == 0)
+        {
             field = builder->host_name;
-        } else if (strcmp(param, "host_ip") == 0) {
+        }
+        else if (strcmp(param, "host_ip") == 0)
+        {
             field = builder->host_ip;
-        } else if (strcmp(param, "json_escaped_log") == 0) {
+        }
+        else if (strcmp(param, "json_escaped_log") == 0)
+        {
             field = escaped_log = wstr_escape_json(logmsg);
-        } else if (strcmp(param, "base64_log") == 0) {
+        }
+        else if (strcmp(param, "base64_log") == 0)
+        {
             field = escaped_log = encode_base64(strlen(logmsg), logmsg);
-        } else {
+        }
+        else
+        {
             mdebug1("Invalid parameter '%s' for log format.", param);
             continue;
         }
 
-        if (field) {
+        if (field)
+        {
             z = strlen(field);
 
-            if (n + z >= OS_MAXSTR) {
+            if (n + z >= OS_MAXSTR)
+            {
                 goto fail;
             }
 
@@ -216,7 +261,8 @@ char * log_builder_build(log_builder_t * builder, const char * pattern, const ch
 
     z = strlen(cur);
 
-    if (n + z >= OS_MAXSTR) {
+    if (n + z >= OS_MAXSTR)
+    {
         goto fail;
     }
 
@@ -240,12 +286,14 @@ fail:
 }
 
 // Update the hostname value
-int log_builder_update_hostname(log_builder_t * builder) {
+int log_builder_update_hostname(log_builder_t* builder)
+{
     int retval = 0;
 
     rwlock_lock_write(&builder->rwlock);
 
-    if (gethostname(builder->host_name, LOG_BUILDER_HOSTNAME_LEN) != 0) {
+    if (gethostname(builder->host_name, LOG_BUILDER_HOSTNAME_LEN) != 0)
+    {
         strncpy(builder->host_name, "localhost", LOG_BUILDER_HOSTNAME_LEN - 1);
         builder->host_name[LOG_BUILDER_HOSTNAME_LEN - 1] = '\0';
         retval = -1;
@@ -256,39 +304,50 @@ int log_builder_update_hostname(log_builder_t * builder) {
 }
 
 // Update the host's IP value
-int log_builder_update_host_ip(log_builder_t * builder) {
-    static char host_ip[IPSIZE] = { '\0' };
+int log_builder_update_host_ip(log_builder_t* builder)
+{
+    static char host_ip[IPSIZE] = {'\0'};
     static time_t last_update = 0;
     time_t now = time(NULL);
 
-    if (g_ip_update_interval > 0 && (now - last_update) >= g_ip_update_interval) {
+    if (g_ip_update_interval > 0 && (now - last_update) >= g_ip_update_interval)
+    {
         last_update = now;
 #ifdef WIN32
-        char * tmp_host_ip = get_agent_ip_legacy_win32();
+        char* tmp_host_ip = get_agent_ip_legacy_win32();
 
-        if (tmp_host_ip) {
+        if (tmp_host_ip)
+        {
             strncpy(host_ip, tmp_host_ip, IPSIZE - 1);
             os_free(tmp_host_ip);
-        } else {
+        }
+        else
+        {
             mdebug1("Cannot update host IP.");
             *host_ip = '\0';
         }
 
 #elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
-        char *primary_ip = getPrimaryIP();
-        if (primary_ip) {
+        char* primary_ip = getPrimaryIP();
+        if (primary_ip)
+        {
             strncpy(host_ip, primary_ip, IPSIZE - 1);
             os_free(primary_ip);
-        } else {
+        }
+        else
+        {
             mdebug1("Cannot update host IP.");
             *host_ip = '\0';
         }
 #endif
     }
     rwlock_lock_write(&builder->rwlock);
-    if (*host_ip != '\0' && strcmp(host_ip, "Err")) {
+    if (*host_ip != '\0' && strcmp(host_ip, "Err"))
+    {
         strcpy(builder->host_ip, host_ip);
-    } else {
+    }
+    else
+    {
         strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
     }
 

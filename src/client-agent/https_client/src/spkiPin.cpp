@@ -71,7 +71,7 @@ namespace
     SpkiPinError classifyPemFailure()
     {
         return ERR_GET_REASON(ERR_peek_last_error()) == PEM_R_NO_START_LINE ? SpkiPinError::NoCertificate
-               : SpkiPinError::BadCertificate;
+                                                                            : SpkiPinError::BadCertificate;
     }
 
     /// The digest itself, over one parsed certificate.
@@ -117,9 +117,9 @@ namespace
         SpkiDigest digest {};
         unsigned int digestLength = 0;
 
-        if (EVP_Digest(owned.get(), static_cast<size_t>(length), digest.data(), &digestLength, EVP_sha256(),
-                       nullptr) != 1 ||
-                digestLength != SPKI_PIN_BYTES)
+        if (EVP_Digest(owned.get(), static_cast<size_t>(length), digest.data(), &digestLength, EVP_sha256(), nullptr) !=
+                1 ||
+            digestLength != SPKI_PIN_BYTES)
         {
             setError(error, SpkiPinError::Internal); // LCOV_EXCL_LINE: EVP failures are not reproducible here.
             return std::nullopt;                     // LCOV_EXCL_LINE
@@ -285,11 +285,10 @@ SpkiPinMatch spkiPinCompare(const SpkiDigest& digest, std::string_view pin)
     }
 
     return CRYPTO_memcmp(digest.data(), decoded->data(), SPKI_PIN_BYTES) == 0 ? SpkiPinMatch::Match
-           : SpkiPinMatch::Mismatch;
+                                                                              : SpkiPinMatch::Mismatch;
 }
 
-std::optional<std::string> spkiPinnedCertificatePem(std::string_view pem, std::string_view pin,
-                                                    SpkiPinError* error)
+std::optional<std::string> spkiPinnedCertificatePem(std::string_view pem, std::string_view pin, SpkiPinError* error)
 {
     // Same error-queue discipline as spkiSha256AllFromPem(): a libcurl request runs immediately
     // before this in the bootstrap, and residue left here surfaces as an unrelated TLS failure.

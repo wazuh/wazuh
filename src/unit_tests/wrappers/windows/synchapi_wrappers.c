@@ -15,15 +15,15 @@
 
 __attribute__((weak)) void wrap_Sleep_hook(__attribute__((unused)) DWORD dwMilliseconds) {}
 
-VOID wrap_Sleep(DWORD dwMilliseconds) {
+VOID wrap_Sleep(DWORD dwMilliseconds)
+{
     check_expected(dwMilliseconds);
     wrap_Sleep_hook(dwMilliseconds);
 }
 
-HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
-                        WINBOOL bManualReset,
-                        WINBOOL bInitialState,
-                        LPCSTR lpName) {
+HANDLE
+wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes, WINBOOL bManualReset, WINBOOL bInitialState, LPCSTR lpName)
+{
     check_expected(lpEventAttributes);
     check_expected(bManualReset);
     check_expected(bInitialState);
@@ -31,7 +31,8 @@ HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,
     return mock_type(HANDLE);
 }
 
-DWORD wrap_WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable) {
+DWORD wrap_WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable)
+{
     check_expected(hHandle);
     check_expected(dwMilliseconds);
     check_expected(bAlertable);

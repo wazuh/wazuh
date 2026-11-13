@@ -16,28 +16,31 @@
 
 #define WM_SCA_LOGTAG ARGV0 ":sca"
 
-typedef struct wm_sca_policy_t {
-    unsigned int enabled:1;
-    unsigned int remote:1;
-    char *policy_path;
-    char *policy_id;
-    char *policy_regex_type;
+typedef struct wm_sca_policy_t
+{
+    unsigned int enabled : 1;
+    unsigned int remote : 1;
+    char* policy_path;
+    char* policy_id;
+    char* policy_regex_type;
 } wm_sca_policy_t;
 
-typedef struct wm_sca_db_sync_flags_t {
-    unsigned int enable_synchronization:1;  // Enable database synchronization
-    uint32_t sync_interval;                 // Synchronization interval
-    uint32_t integrity_interval;            // Integrity check interval (0 = every sync)
+typedef struct wm_sca_db_sync_flags_t
+{
+    unsigned int enable_synchronization : 1; // Enable database synchronization
+    uint32_t sync_interval;                  // Synchronization interval
+    uint32_t integrity_interval;             // Integrity check interval (0 = every sync)
 } wm_sca_db_sync_flags_t;
 
-typedef struct wm_sca_t {
+typedef struct wm_sca_t
+{
     int enabled;
     int scan_on_start;
     int max_eps;
     wm_sca_policy_t** policies;
-    int remote_commands:1;
+    int remote_commands : 1;
     int commands_timeout;
-    unsigned int interval;                  // Scan interval in seconds
+    unsigned int interval; // Scan interval in seconds
     wm_sca_db_sync_flags_t sync;
 } wm_sca_t;
 

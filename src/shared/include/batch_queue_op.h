@@ -26,11 +26,12 @@
  * @note `in_ring` is an atomic latch indicating whether the slot currently
  *       participates in the active ring (0 = not in ring, 1 = in ring).
  */
-typedef struct w_rr_agent_slot {
-    char *key;                        ///< Agent key (owned by the slot)
-    w_linked_queue_t *q;              ///< Per-agent queue (see queue_linked_op.h)
-    struct w_rr_agent_slot *next;     ///< Next link in singly-linked circular ring
-    _Atomic int in_ring;              ///< 0/1: slot is currently in the active ring
+typedef struct w_rr_agent_slot
+{
+    char* key;                    ///< Agent key (owned by the slot)
+    w_linked_queue_t* q;          ///< Per-agent queue (see queue_linked_op.h)
+    struct w_rr_agent_slot* next; ///< Next link in singly-linked circular ring
+    _Atomic int in_ring;          ///< 0/1: slot is currently in the active ring
 } w_rr_agent_slot_t;
 
 /**
@@ -41,12 +42,13 @@ typedef struct w_rr_agent_slot {
  * and producers may reinsert the slot (set `in_ring=1`) if new items arrive
  * while the consumer is draining.
  */
-typedef struct w_rr_queue {
+typedef struct w_rr_queue
+{
     /* Active agents ring (singly-linked, circular) */
-    w_rr_agent_slot_t *ring_head;
-    w_rr_agent_slot_t *ring_tail;
-    w_rr_agent_slot_t *cursor;        ///< Next agent to drain (RR)
-    w_rr_agent_slot_t *prev_cursor;   ///< Previous node to `cursor` (for removal in a singly-linked ring)
+    w_rr_agent_slot_t* ring_head;
+    w_rr_agent_slot_t* ring_tail;
+    w_rr_agent_slot_t* cursor;      ///< Next agent to drain (RR)
+    w_rr_agent_slot_t* prev_cursor; ///< Previous node to `cursor` (for removal in a singly-linked ring)
 
     /* Index: agent_key -> slot (average O(1)) */
     hashmap_t agent_index;
@@ -55,19 +57,19 @@ typedef struct w_rr_queue {
     pthread_mutex_t ring_mu;
     pthread_cond_t any_available;
 
-    size_t ring_slots;                ///< Number of slots currently in the ring
+    size_t ring_slots; ///< Number of slots currently in the ring
 
     /* Limits and counters */
-    size_t max_items_global;          ///< Global item limit (0 = unlimited)
-    size_t max_items_per_agent;       ///< Per-agent item limit (0 = unlimited)
-    _Atomic size_t items_global;      ///< Approximate global item count
+    size_t max_items_global;     ///< Global item limit (0 = unlimited)
+    size_t max_items_per_agent;  ///< Per-agent item limit (0 = unlimited)
+    _Atomic size_t items_global; ///< Approximate global item count
 
-    size_t max_bytes_global;          ///< Global byte limit (0 = unlimited)
-    _Atomic size_t bytes_global;      ///< Approximate total bytes currently enqueued
+    size_t max_bytes_global;     ///< Global byte limit (0 = unlimited)
+    _Atomic size_t bytes_global; ///< Approximate total bytes currently enqueued
 
     /* Callbacks */
-    void (*dispose)(void *);          ///< Called to dispose an item dropped without processing (optional)
-    size_t (*get_item_bytes)(const void *); ///< Returns the byte size of an item (optional; NULL = no byte accounting)
+    void (*dispose)(void*);                ///< Called to dispose an item dropped without processing (optional)
+    size_t (*get_item_bytes)(const void*); ///< Returns the byte size of an item (optional; NULL = no byte accounting)
 } w_rr_queue_t;
 
 /*==============================================================================
@@ -80,7 +82,7 @@ typedef struct w_rr_queue {
  * @param max_items_global Global item limit across all agents (0 = unlimited).
  * @return A new scheduler instance, or NULL on allocation failure.
  */
-w_rr_queue_t *batch_queue_init(size_t max_items_global);
+w_rr_queue_t* batch_queue_init(size_t max_items_global);
 
 /**
  * @brief Free the scheduler and all internal queues.
@@ -90,7 +92,7 @@ w_rr_queue_t *batch_queue_init(size_t max_items_global);
  *
  * @param sched Scheduler to free (NULL-safe).
  */
-void batch_queue_free(w_rr_queue_t *sched);
+void batch_queue_free(w_rr_queue_t* sched);
 
 /**
  * @brief Set the disposal callback for items dropped without being processed.
@@ -98,7 +100,7 @@ void batch_queue_free(w_rr_queue_t *sched);
  * @param sched Scheduler
  * @param dispose Function pointer to dispose items; may be NULL to disable.
  */
-void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *));
+void batch_queue_set_dispose(w_rr_queue_t* sched, void (*dispose)(void*));
 
 /**
  * @brief Set a per-agent item limit (0 = unlimited).
@@ -108,7 +110,7 @@ void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *));
  * @param sched Scheduler
  * @param max_items_per_agent Maximum number of queued items per agent
  */
-void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent);
+void batch_queue_set_agent_max(w_rr_queue_t* sched, size_t max_items_per_agent);
 
 /**
  * @brief Set a global byte capacity limit (0 = unlimited).
@@ -120,7 +122,7 @@ void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent);
  * @param sched     Scheduler
  * @param max_bytes Maximum total bytes of enqueued items (0 = unlimited)
  */
-void batch_queue_set_bytes_limit(w_rr_queue_t *sched, size_t max_bytes);
+void batch_queue_set_bytes_limit(w_rr_queue_t* sched, size_t max_bytes);
 
 /**
  * @brief Set the callback used to measure the byte size of an enqueued item.
@@ -131,7 +133,7 @@ void batch_queue_set_bytes_limit(w_rr_queue_t *sched, size_t max_bytes);
  * @param sched     Scheduler
  * @param get_bytes Size callback; may be NULL to disable byte accounting
  */
-void batch_queue_set_get_item_bytes(w_rr_queue_t *sched, size_t (*get_bytes)(const void *));
+void batch_queue_set_get_item_bytes(w_rr_queue_t* sched, size_t (*get_bytes)(const void*));
 
 /*==============================================================================
  * Production (Multiple Producers)
@@ -161,7 +163,7 @@ void batch_queue_set_get_item_bytes(w_rr_queue_t *sched, size_t (*get_bytes)(con
  * @param data Pointer to the item payload
  * @return 0 on success, negative errno on failure.
  */
-int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *data);
+int batch_queue_enqueue_ex(w_rr_queue_t* sched, const char* agent_key, void* data);
 
 /*==============================================================================
  * Consumption (Single Consumer)
@@ -188,11 +190,11 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
  *                      of the drained slot (valid until slot is dropped).
  * @return Number of items drained in this turn, or 0 on timeout/none.
  */
-size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
-                                 const struct timespec *abstime,
-                                 void (*consume)(void *data, void *user),
-                                 void *user,
-                                 const char **out_agent_key);
+size_t batch_queue_drain_next_ex(w_rr_queue_t* sched,
+                                 const struct timespec* abstime,
+                                 void (*consume)(void* data, void* user),
+                                 void* user,
+                                 const char** out_agent_key);
 
 /*==============================================================================
  * Utilities / Metrics
@@ -204,7 +206,7 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
  * @param sched Scheduler
  * @return 1 if empty, 0 otherwise.
  */
-int batch_queue_empty(const w_rr_queue_t *sched);
+int batch_queue_empty(const w_rr_queue_t* sched);
 
 /**
  * @brief Approximate global size (sum of per-agent queues).
@@ -212,7 +214,7 @@ int batch_queue_empty(const w_rr_queue_t *sched);
  * @param sched Scheduler
  * @return Approximate number of queued items.
  */
-size_t batch_queue_size(const w_rr_queue_t *sched);
+size_t batch_queue_size(const w_rr_queue_t* sched);
 
 /**
  * @brief Approximate total bytes currently enqueued across all agents.
@@ -220,7 +222,7 @@ size_t batch_queue_size(const w_rr_queue_t *sched);
  * @param sched Scheduler
  * @return Approximate number of bytes.
  */
-size_t batch_queue_bytes(const w_rr_queue_t *sched);
+size_t batch_queue_bytes(const w_rr_queue_t* sched);
 
 /**
  * @brief Number of active slots currently in the ring.
@@ -228,7 +230,7 @@ size_t batch_queue_bytes(const w_rr_queue_t *sched);
  * @param sched Scheduler
  * @return Count of ring slots.
  */
-size_t batch_queue_ring_size(const w_rr_queue_t *sched);
+size_t batch_queue_ring_size(const w_rr_queue_t* sched);
 
 /**
  * @brief Approximate queue size for a given agent.
@@ -237,7 +239,7 @@ size_t batch_queue_ring_size(const w_rr_queue_t *sched);
  * @param agent_key Agent key
  * @return Size of the agent queue, or 0 if the agent does not exist.
  */
-size_t batch_queue_agent_size(w_rr_queue_t *sched, const char *agent_key);
+size_t batch_queue_agent_size(w_rr_queue_t* sched, const char* agent_key);
 
 /**
  * @brief Drop (remove) an agent and dispose all its queued items.
@@ -250,6 +252,6 @@ size_t batch_queue_agent_size(w_rr_queue_t *sched, const char *agent_key);
  * @param agent_key Agent key
  * @return 1 if the agent existed and was removed, 0 if it did not exist.
  */
-int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key);
+int batch_queue_drop_agent(w_rr_queue_t* sched, const char* agent_key);
 
 #endif /* BATCH_QUEUE_OP_H */

@@ -18,8 +18,9 @@
 
 /* tests for labels_add */
 
-void test_labels_add_new_label(void **state) {
-    wlabel_t *labels = NULL;
+void test_labels_add_new_label(void** state)
+{
+    wlabel_t* labels = NULL;
     size_t size = 0;
     label_flags_t flags = {.hidden = 0, .system = 0};
 
@@ -36,8 +37,9 @@ void test_labels_add_new_label(void **state) {
     labels_free(labels);
 }
 
-void test_labels_add_multiple_labels(void **state) {
-    wlabel_t *labels = NULL;
+void test_labels_add_multiple_labels(void** state)
+{
+    wlabel_t* labels = NULL;
     size_t size = 0;
     label_flags_t flags = {.hidden = 0, .system = 0};
 
@@ -55,8 +57,9 @@ void test_labels_add_multiple_labels(void **state) {
     labels_free(labels);
 }
 
-void test_labels_add_with_flags(void **state) {
-    wlabel_t *labels = NULL;
+void test_labels_add_with_flags(void** state)
+{
+    wlabel_t* labels = NULL;
     size_t size = 0;
     label_flags_t flags_hidden = {.hidden = 1, .system = 0};
     label_flags_t flags_system = {.hidden = 0, .system = 1};
@@ -72,8 +75,9 @@ void test_labels_add_with_flags(void **state) {
     labels_free(labels);
 }
 
-void test_labels_add_overwrite_existing(void **state) {
-    wlabel_t *labels = NULL;
+void test_labels_add_overwrite_existing(void** state)
+{
+    wlabel_t* labels = NULL;
     size_t size = 0;
     label_flags_t flags = {.hidden = 0, .system = 0};
 
@@ -87,8 +91,9 @@ void test_labels_add_overwrite_existing(void **state) {
     labels_free(labels);
 }
 
-void test_labels_add_no_overwrite(void **state) {
-    wlabel_t *labels = NULL;
+void test_labels_add_no_overwrite(void** state)
+{
+    wlabel_t* labels = NULL;
     size_t size = 0;
     label_flags_t flags = {.hidden = 0, .system = 0};
 
@@ -106,8 +111,9 @@ void test_labels_add_no_overwrite(void **state) {
 
 /* tests for labels_free */
 
-void test_labels_free_valid(void **state) {
-    wlabel_t *labels;
+void test_labels_free_valid(void** state)
+{
+    wlabel_t* labels;
     os_calloc(2, sizeof(wlabel_t), labels);
 
     labels[0].key = strdup("key1");
@@ -119,12 +125,14 @@ void test_labels_free_valid(void **state) {
     /* If no crash, test passes */
 }
 
-void test_labels_free_null(void **state) {
+void test_labels_free_null(void** state)
+{
     labels_free(NULL);
     /* If no crash, test passes */
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         // Tests labels_add
         cmocka_unit_test(test_labels_add_new_label),

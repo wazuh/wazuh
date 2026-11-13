@@ -10,32 +10,31 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-
-#define MAC_SYSVERSION "/System/Library/CoreServices/SystemVersion.plist"
+#define MAC_SYSVERSION    "/System/Library/CoreServices/SystemVersion.plist"
 #define MAC_SERVERVERSION "/System/Library/CoreServices/ServerVersion.plist"
 
 /**
  * @struct os_info
  * @brief Stores information about the operating system version.
  */
-typedef struct os_info {
-    char *os_name;      ///< Operating system name.
-    char *os_major;     ///< OS version number (major).
-    char *os_minor;     ///< OS version number (minor).
-    char *os_patch;     ///< OS version number (patch).
-    char *os_build;     ///< OS version number (build).
-    char *os_version;   ///< OS version (major.minor[.build])
-    char *os_codename;  ///< OS version codename.
-    char *os_platform;  ///< OS version ID.
-    char *sysname;      ///< Operating system name (UNIX).
-    char *nodename;     ///< Name within "some implementation-defined network" (UNIX).
-    char *release;      ///< Operating system release (UNIX).
-    char *version;      ///< Operating system version (UNIX).
-    char *machine;      ///< Hardware identifier (UNIX).
-    char *os_release;   ///< OS release.
-    char *os_display_version;   ///< OS display version (Windows).
+typedef struct os_info
+{
+    char* os_name;            ///< Operating system name.
+    char* os_major;           ///< OS version number (major).
+    char* os_minor;           ///< OS version number (minor).
+    char* os_patch;           ///< OS version number (patch).
+    char* os_build;           ///< OS version number (build).
+    char* os_version;         ///< OS version (major.minor[.build])
+    char* os_codename;        ///< OS version codename.
+    char* os_platform;        ///< OS version ID.
+    char* sysname;            ///< Operating system name (UNIX).
+    char* nodename;           ///< Name within "some implementation-defined network" (UNIX).
+    char* release;            ///< Operating system release (UNIX).
+    char* version;            ///< Operating system version (UNIX).
+    char* machine;            ///< Hardware identifier (UNIX).
+    char* os_release;         ///< OS release.
+    char* os_display_version; ///< OS display version (Windows).
 } os_info;
-
 
 /// Value returned by OSX_ReleaseName() when the Darwin version is not mapped to a release name.
 #define OSX_UNKNOWN_RELEASE_NAME "Unknown"
@@ -46,16 +45,14 @@ typedef struct os_info {
  * @param version Version number.
  * @return Reselase name.
  */
-const char *OSX_ReleaseName(int version);
-
+const char* OSX_ReleaseName(int version);
 
 /**
  * @brief Get the Windows version information.
  *
  * @return Pointer to allocated os_info struct.
  */
-os_info *get_win_version();
-
+os_info* get_win_version();
 
 /**
  * @brief Translate a Windows PROCESSOR_ARCHITECTURE value into the reported architecture.
@@ -63,24 +60,21 @@ os_info *get_win_version();
  * @param processor_arch Value of PROCESSOR_ARCHITECTURE (e.g. "AMD64", "ARM64", "x86").
  * @return Architecture name, or NULL if the value is not recognized.
  */
-const char *win_processor_arch_to_machine(const char *processor_arch);
-
+const char* win_processor_arch_to_machine(const char* processor_arch);
 
 /**
  * @brief Get the version information. (UNIX based systems).
  *
  * @return Pointer to allocated os_info struct.
  */
-os_info *get_unix_version();
-
+os_info* get_unix_version();
 
 /**
  * @brief Deallocates the memory used by the os_info struct.
  *
  * @param osinfo Pointer to allocated os_info struct.
  */
-void free_osinfo(os_info * osinfo);
-
+void free_osinfo(os_info* osinfo);
 
 /**
  * @brief Get number of processors
@@ -101,6 +95,6 @@ int get_nproc();
  * @retval 1 version1 > version2
  * @retval -1 version1 < version2
  * */
-int compare_wazuh_versions(const char *version1, const char *version2, bool compare_patch);
+int compare_wazuh_versions(const char* version1, const char* version2, bool compare_patch);
 
 #endif /* VERSION_H */

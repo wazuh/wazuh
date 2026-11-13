@@ -10,9 +10,9 @@
 #ifndef SYSTEM_CALLS_WRAPPERS_H
 #define SYSTEM_CALLS_WRAPPERS_H
 
-//#undef _mktemp_s
-//#define _mktemp_s  wrap_mktemp_s
+// #undef _mktemp_s
+// #define _mktemp_s  wrap_mktemp_s
 
-char * wrap_getenv(const char *name);
+char* wrap_getenv(const char* name);
 
 #endif

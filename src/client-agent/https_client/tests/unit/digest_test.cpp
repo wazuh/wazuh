@@ -18,15 +18,13 @@
 
 TEST(DigestTest, Sha256OfEmptyInputMatchesThePinnedVector)
 {
-    EXPECT_EQ("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-              sha256Hex("", 0));
+    EXPECT_EQ("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", sha256Hex("", 0));
 }
 
 TEST(DigestTest, Sha256OfAbcMatchesThePinnedVector)
 {
     // FIPS 180-2 appendix B.1 test vector.
-    EXPECT_EQ("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-              sha256Hex("abc", 3));
+    EXPECT_EQ("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", sha256Hex("abc", 3));
 }
 
 TEST(DigestTest, Sha256IsLowercaseHexOfExpectedLength)

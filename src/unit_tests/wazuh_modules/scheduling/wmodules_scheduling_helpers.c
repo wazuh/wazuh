@@ -11,19 +11,22 @@
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include <time.h>
 
-extern time_t __real_time(time_t *_time);
+extern time_t __real_time(time_t* _time);
 /**************** Mocked functions *************/
 /**     Mocked functions       **/
 
-time_t __wrap_time(time_t *_time){
-    if(!current_time){
+time_t __wrap_time(time_t* _time)
+{
+    if (!current_time)
+    {
         current_time = 1606797884;
     }
     return current_time;
 }
 
 /* Sets current simulation time */
-void set_current_time(time_t _time) {
+void set_current_time(time_t _time)
+{
     current_time = _time;
 }
 
@@ -42,13 +45,13 @@ void set_current_time(time_t _time) {
  *          "   <aws_profile>default</aws_profile>\n"
  *          "</bucket>"
  * */
-const XML_NODE string_to_xml_node(const char * string, OS_XML *_lxml){
+const XML_NODE string_to_xml_node(const char* string, OS_XML* _lxml)
+{
     XML_NODE nodes;
     OS_ReadXMLString(string, _lxml);
     nodes = OS_GetElementsbyNode(_lxml, NULL);
     return nodes;
 }
-
 
 /**
  *  Inits a shched_config object based on an xml format string
@@ -56,7 +59,8 @@ const XML_NODE string_to_xml_node(const char * string, OS_XML *_lxml){
  *              "<wday>tuesday</wday>\n"
  *              "<time>0:00</time>"
  * */
-sched_scan_config init_config_from_string(const char* string){
+sched_scan_config init_config_from_string(const char* string)
+{
     OS_XML _lxml;
     XML_NODE nodes = string_to_xml_node(string, &_lxml);
 

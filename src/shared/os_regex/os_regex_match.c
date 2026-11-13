@@ -6,7 +6,7 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,26 +25,31 @@
  */
 
 /* Prototypes */
-static int _InternalMatch(const char *pattern, const char *str, size_t count);
-
+static int _InternalMatch(const char* pattern, const char* str, size_t count);
 
 /* Search for pattern in the string */
-int OS_WordMatch(const char *pattern, const char *str)
+int OS_WordMatch(const char* pattern, const char* str)
 {
     size_t count = 0;
 
-    if (*pattern == '\0') {
+    if (*pattern == '\0')
+    {
         return (FALSE);
     }
 
-    do {
-        if (pattern[count] == '|') {
+    do
+    {
+        if (pattern[count] == '|')
+        {
             /* If we match '|' , search with
              * we have so far.
              */
-            if (_InternalMatch(pattern, str, count)) {
+            if (_InternalMatch(pattern, str, count))
+            {
                 return (TRUE);
-            } else {
+            }
+            else
+            {
                 pattern += count + 1;
                 count = 0;
                 continue;
@@ -59,50 +64,60 @@ int OS_WordMatch(const char *pattern, const char *str)
     return (_InternalMatch(pattern, str, count));
 }
 
-static int _InternalMatch(const char *pattern, const char *str, size_t pattern_size)
+static int _InternalMatch(const char* pattern, const char* str, size_t pattern_size)
 {
-    const uchar *pt = (const uchar *)pattern;
-    const uchar *st = (const uchar *)str;
-    const uchar last_char = (const uchar) pattern[pattern_size];
+    const uchar* pt = (const uchar*)pattern;
+    const uchar* st = (const uchar*)str;
+    const uchar last_char = (const uchar)pattern[pattern_size];
 
-    if (str == NULL) {
+    if (str == NULL)
+    {
         return (FALSE);
     }
 
-    if (*pattern == '\0') {
+    if (*pattern == '\0')
+    {
         return (TRUE);
     }
 
     /* If '^' specified, just do a strncasecmp */
-    else if (*pattern == '^') {
+    else if (*pattern == '^')
+    {
         pattern++;
-        pattern_size --;
+        pattern_size--;
 
         /* Compare two strings */
-        if (strncasecmp(pattern, str, pattern_size) == 0) {
+        if (strncasecmp(pattern, str, pattern_size) == 0)
+        {
             return (TRUE);
         }
         return (FALSE);
     }
 
     /* Null line */
-    else if (*st == '\0') {
+    else if (*st == '\0')
+    {
         return (FALSE);
     }
 
     /* Look to match the first pattern */
-    do {
+    do
+    {
         /* Match */
-        if (charmap[*st] == charmap[*pt]) {
-            str = (const char *)st++;
+        if (charmap[*st] == charmap[*pt])
+        {
+            str = (const char*)st++;
             pt++;
 
-            while (*pt != last_char) {
-                if (*st == '\0') {
+            while (*pt != last_char)
+            {
+                if (*st == '\0')
+                {
                     return (FALSE);
                 }
 
-                else if (charmap[*pt] != charmap[*st]) {
+                else if (charmap[*pt] != charmap[*st])
+                {
                     goto error;
                 }
 
@@ -113,9 +128,9 @@ static int _InternalMatch(const char *pattern, const char *str, size_t pattern_s
             /* Return here if pt == last_char */
             return (TRUE);
 
-error:
-            st = (const uchar *)str;
-            pt = (const uchar *)pattern;
+        error:
+            st = (const uchar*)str;
+            pt = (const uchar*)pattern;
         }
 
         st++;
@@ -123,4 +138,3 @@ error:
 
     return (FALSE);
 }
-

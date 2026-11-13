@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef STRING_OP_WRAPPERS_h
 #define STRING_OP_WRAPPERS_h
 
@@ -17,11 +16,11 @@
 #include <winsock2.h>
 #include <windows.h>
 
-char *__wrap_convert_windows_string(LPCWSTR string);
+char* __wrap_convert_windows_string(LPCWSTR string);
 #endif
 
-char *__wrap_wstr_replace(const char * string, const char * search, const char * replace);
+char* __wrap_wstr_replace(const char* string, const char* search, const char* replace);
 
-void __wrap_wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
+void __wrap_wstr_split(char* str, char* delim, char* replace_delim, int occurrences, char*** splitted_str);
 
 #endif

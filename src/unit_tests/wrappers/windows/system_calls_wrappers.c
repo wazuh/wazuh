@@ -12,7 +12,8 @@
 #include <cmocka.h>
 #include "system_calls_wrappers.h"
 
-char * wrap_getenv(const char *name) {
+char* wrap_getenv(const char* name)
+{
     check_expected(name);
-    return mock_type(char *);
+    return mock_type(char*);
 }

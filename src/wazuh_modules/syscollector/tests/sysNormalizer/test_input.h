@@ -1,7 +1,6 @@
 #ifndef _TEST_INPUT_H
 #define _TEST_INPUT_H
-constexpr auto TEST_INPUT_DATA
-{
+constexpr auto TEST_INPUT_DATA {
     R"([
         {
         "description": "com.apple.appstore",
@@ -254,7 +253,6 @@ constexpr auto TEST_INPUT_DATA
             "name": "Kaspersky AntivirusforMac",
             "version_": "1.0"
         }
-    ])"
-};
+    ])"};
 
 #endif //_TEST_INPUT_H

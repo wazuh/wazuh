@@ -21,24 +21,26 @@
 #include "defs.h"
 
 // Struct
-typedef struct test_struct {
+typedef struct test_struct
+{
     OS_XML xml;
     XML_NODE node;
     char xml_file_name[256];
     char xml_out_file_name[256];
-    char *buffer;
-    char *content1;
-    char *content2;
-    char *content3;
-    char *content4;
-    char **content5;
-    char **content6;
+    char* buffer;
+    char* content1;
+    char* content2;
+    char* content3;
+    char* content4;
+    char** content5;
+    char** content6;
 } test_struct_t;
 
 // Setup / Teardown
-static int test_setup(void **state) {
-    test_struct_t *init_data = NULL;
-    os_calloc(1,sizeof(test_struct_t), init_data);
+static int test_setup(void** state)
+{
+    test_struct_t* init_data = NULL;
+    os_calloc(1, sizeof(test_struct_t), init_data);
     os_calloc(OS_SIZE_6144, sizeof(char), init_data->buffer);
 
     init_data->buffer[0] = '\0';
@@ -47,35 +49,44 @@ static int test_setup(void **state) {
     return OS_SUCCESS;
 }
 
-static int test_teardown(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+static int test_teardown(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     os_free(data->buffer);
 
-    if(data->content1 != NULL) {
+    if (data->content1 != NULL)
+    {
         os_free(data->content1);
     }
-    if(data->content2 != NULL) {
+    if (data->content2 != NULL)
+    {
         os_free(data->content2);
     }
-    if(data->content3 != NULL) {
+    if (data->content3 != NULL)
+    {
         os_free(data->content3);
     }
-    if(data->content4 != NULL) {
+    if (data->content4 != NULL)
+    {
         os_free(data->content4);
     }
 
-    if(data->content5 != NULL) {
+    if (data->content5 != NULL)
+    {
         int i = 0;
-        while (data->content5[i]) {
+        while (data->content5[i])
+        {
             os_free(data->content5[i]);
             i++;
         }
         os_free(data->content5);
     }
 
-    if(data->content6 != NULL) {
+    if (data->content6 != NULL)
+    {
         int i = 0;
-        while (data->content6[i]) {
+        while (data->content6[i])
+        {
             os_free(data->content6[i]);
             i++;
         }
@@ -94,7 +105,8 @@ static int test_teardown(void **state) {
 }
 
 // Tests
-static void create_xml_file(const char *str, char file_name[], size_t length) {
+static void create_xml_file(const char* str, char file_name[], size_t length)
+{
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", length);
     int fd = mkstemp(file_name);
 
@@ -102,19 +114,23 @@ static void create_xml_file(const char *str, char file_name[], size_t length) {
     close(fd);
 }
 
-static int nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
+static int nodecat(XML_NODE node, OS_XML* xml, char* buffer)
+{
     int i = 0;
 
     // write node
-    while (node[i]) {
+    while (node[i])
+    {
         assert_non_null(node[i]->element);
         strcat(buffer, "<");
         strncat(buffer, node[i]->element, strlen(node[i]->element));
         // write attributes
-        if (node[i]->attributes) {
+        if (node[i]->attributes)
+        {
             assert_non_null(node[i]->values);
             int j = 0;
-            while (node[i]->attributes[j]) {
+            while (node[i]->attributes[j])
+            {
                 strcat(buffer, " ");
                 assert_non_null(node[i]->values[j]);
                 strncat(buffer, node[i]->attributes[j], strlen(node[i]->attributes[j]));
@@ -125,7 +141,9 @@ static int nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
                 j++;
             }
             assert_null(node[i]->values[j]);
-        } else {
+        }
+        else
+        {
             assert_null(node[i]->values);
         }
         strcat(buffer, ">");
@@ -134,7 +152,8 @@ static int nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
 
         // write children
         XML_NODE child = OS_GetElementsbyNode(xml, node[i]);
-        if (child != NULL) {
+        if (child != NULL)
+        {
             nodecat(child, xml, buffer);
             OS_ClearNode(child);
         }
@@ -149,9 +168,11 @@ static int nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
     return 1;
 }
 
-void assert_os_xml_eq_str(OS_XML *xml, const char *xml_str, char *buffer) {
+void assert_os_xml_eq_str(OS_XML* xml, const char* xml_str, char* buffer)
+{
     XML_NODE node = OS_GetElementsbyNode(xml, NULL);
-    if (node == NULL) {
+    if (node == NULL)
+    {
         assert_string_equal(xml_str, "");
         return;
     }
@@ -161,90 +182,102 @@ void assert_os_xml_eq_str(OS_XML *xml, const char *xml_str, char *buffer) {
     assert_string_equal(buffer, xml_str);
 }
 
-void assert_os_xml_eq(test_struct_t *data, char *parse_str, char *xml_str){
+void assert_os_xml_eq(test_struct_t* data, char* parse_str, char* xml_str)
+{
     create_xml_file(parse_str, data->xml_file_name, 256);
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_os_xml_eq_str(&data->xml, xml_str, data->buffer);
 }
 
-void assert_ox_xml_write_eq( test_struct_t *data,
-                            const char *xml_str_old,
-                            const char *xml_str_new,
-                            const char **xml_path,
-                            const char *oldval,
-                            const char *newval) {
+void assert_ox_xml_write_eq(test_struct_t* data,
+                            const char* xml_str_old,
+                            const char* xml_str_new,
+                            const char** xml_path,
+                            const char* oldval,
+                            const char* newval)
+{
 
     create_xml_file(xml_str_old, data->xml_file_name, 256);
     create_xml_file("", data->xml_out_file_name, 256);
     assert_int_equal(OS_WriteXML(data->xml_file_name, data->xml_out_file_name, xml_path, oldval, newval), 0);
     assert_int_equal(OS_ReadXML(data->xml_out_file_name, &data->xml), 0);
     assert_os_xml_eq_str(&data->xml, xml_str_new, data->buffer);
-
 }
 
-void test_simple_nodes1(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "";
-    char *xml_str = "";
+void test_simple_nodes1(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "";
+    char* xml_str = "";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_simple_nodes2(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root></root>";
-    char *xml_str = "<root></root>";
+void test_simple_nodes2(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root></root>";
+    char* xml_str = "<root></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_simple_nodes3(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root/>";
-    char *xml_str = "<root></root>";
+void test_simple_nodes3(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root/>";
+    char* xml_str = "<root></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_simple_nodes4(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root />";
-    char *xml_str = "<root></root>";
+void test_simple_nodes4(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root />";
+    char* xml_str = "<root></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_simple_nodes5(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root/{>";
+void test_simple_nodes5(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root/{>";
 
     create_xml_file(parse_str, data->xml_file_name, 256);
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), OS_INVALID);
 }
 
-void test_multiple_nodes(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root1></root1>""<root2></root2>""<root3/>";
-    char *xml_str = "<root1></root1>""<root2></root2>""<root3></root3>";
+void test_multiple_nodes(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root1></root1>"
+                      "<root2></root2>"
+                      "<root3/>";
+    char* xml_str = "<root1></root1>"
+                    "<root2></root2>"
+                    "<root3></root3>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_children(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str =   "<root1>"
-                        "<child1></child1>"
-                        "</root1>"
-                        "<root2>"
-                        "<child1></child1>"
-                        "<child2/>"
-                        "<child3>"
-                        "<child3.1></child3.1>"
-                        "</child3>"
-                        "</root2>"
-                        "<root3></root3>";
+void test_children(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root1>"
+                      "<child1></child1>"
+                      "</root1>"
+                      "<root2>"
+                      "<child1></child1>"
+                      "<child2/>"
+                      "<child3>"
+                      "<child3.1></child3.1>"
+                      "</child3>"
+                      "</root2>"
+                      "<root3></root3>";
 
-    char *xml_str = "<root1>"
+    char* xml_str = "<root1>"
                     "<child1></child1>"
                     "</root1>"
                     "<root2>"
@@ -259,138 +292,154 @@ void test_children(void **state) {
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_multiple_content(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str =   "<root>"
-                        "value1"
-                        "<child/>"
-                        "value2"
-                        "</root>";
-    char *xml_str = "<root>value2<child></child></root>";
+void test_multiple_content(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root>"
+                      "value1"
+                      "<child/>"
+                      "value2"
+                      "</root>";
+    char* xml_str = "<root>value2<child></child></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes1(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr1=\"test\" attr2=\"1\"></root>";
-    char *xml_str = "<root attr1=\"test\" attr2=\"1\"></root>";
+void test_attributes1(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr1=\"test\" attr2=\"1\"></root>";
+    char* xml_str = "<root attr1=\"test\" attr2=\"1\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes2(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr1=\"test\"\nattr2=\"test\"\tattr3=\"test\"></root>";
-    char *xml_str = "<root attr1=\"test\" attr2=\"test\" attr3=\"test\"></root>";
+void test_attributes2(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr1=\"test\"\nattr2=\"test\"\tattr3=\"test\"></root>";
+    char* xml_str = "<root attr1=\"test\" attr2=\"test\" attr3=\"test\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes3(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr1=\"test/test\"></root>";
-    char *xml_str = "<root attr1=\"test/test\"></root>";
+void test_attributes3(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr1=\"test/test\"></root>";
+    char* xml_str = "<root attr1=\"test/test\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes4(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>";
-    char *xml_str = "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>";
+void test_attributes4(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>";
+    char* xml_str = "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes5(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr1=\"test\"\n\t  \t\n  \n\t  \nattr2=\"test\"></root>";
-    char *xml_str = "<root attr1=\"test\" attr2=\"test\"></root>";
+void test_attributes5(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr1=\"test\"\n\t  \t\n  \n\t  \nattr2=\"test\"></root>";
+    char* xml_str = "<root attr1=\"test\" attr2=\"test\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes6(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root\n\t  \t\n  \n\t  \nattr1=\"test\"></root>";
-    char *xml_str = "<root attr1=\"test\"></root>";
+void test_attributes6(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root\n\t  \t\n  \n\t  \nattr1=\"test\"></root>";
+    char* xml_str = "<root attr1=\"test\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes7(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr1=\n\t  \t\n  \n\t  \n\"test\"></root>";
-    char *xml_str = "<root attr1=\"test\"></root>";
+void test_attributes7(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr1=\n\t  \t\n  \n\t  \n\"test\"></root>";
+    char* xml_str = "<root attr1=\"test\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes8(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr=\"test\" />";
-    char *xml_str = "<root attr=\"test\"></root>";
+void test_attributes8(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr=\"test\" />";
+    char* xml_str = "<root attr=\"test\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_attributes9(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root attr=\"test\"/>";
-    char *xml_str = "<root attr=\"test\"></root>";
+void test_attributes9(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root attr=\"test\"/>";
+    char* xml_str = "<root attr=\"test\"></root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_comments1(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root1/><!comment!><root2/>";
-    char *xml_str = "<root1></root1><root2></root2>";
+void test_comments1(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root1/><!comment!><root2/>";
+    char* xml_str = "<root1></root1><root2></root2>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_comments2(void **state) {
+void test_comments2(void** state)
+{
 
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root1/><!--comment--><root2/>";
-    char *xml_str = "<root1></root1><root2></root2>";
-
-    assert_os_xml_eq(data, parse_str, xml_str);
-}
-
-void test_comments3(void **state) {
-
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root1/><! comment with ! !><root2/>";
-    char *xml_str = "<root1></root1><root2></root2>";
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root1/><!--comment--><root2/>";
+    char* xml_str = "<root1></root1><root2></root2>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_comments4(void **state) {
+void test_comments3(void** state)
+{
 
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root1/><! comment with - --><root2/>";
-    char *xml_str = "<root1></root1><root2></root2>";
-
-    assert_os_xml_eq(data, parse_str, xml_str);
-}
-
-void test_special_chars(void **state) {
-
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root1>\\</root1\\></root1>";
-    char *xml_str = "<root1>\\</root1\\></root1>";
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root1/><! comment with ! !><root2/>";
+    char* xml_str = "<root1></root1><root2></root2>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_line_counter(void **state) {
+void test_comments4(void** state)
+{
 
-    test_struct_t *data  = (test_struct_t *)*state;
-    create_xml_file("<root1/>\n<root2/>\n<root3/>" , data->xml_file_name, 256);
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root1/><! comment with - --><root2/>";
+    char* xml_str = "<root1></root1><root2></root2>";
+
+    assert_os_xml_eq(data, parse_str, xml_str);
+}
+
+void test_special_chars(void** state)
+{
+
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root1>\\</root1\\></root1>";
+    char* xml_str = "<root1>\\</root1\\></root1>";
+
+    assert_os_xml_eq(data, parse_str, xml_str);
+}
+
+void test_line_counter(void** state)
+{
+
+    test_struct_t* data = (test_struct_t*)*state;
+    create_xml_file("<root1/>\n<root2/>\n<root3/>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
 
@@ -402,8 +451,9 @@ void test_line_counter(void **state) {
     assert_int_equal(data->xml.ln[2], 3);
 }
 
-void test_invalid_file(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_invalid_file(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     assert_int_not_equal(OS_ReadXML("invalid_file.inv", &data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: File 'invalid_file.inv' not found.");
@@ -412,10 +462,11 @@ void test_invalid_file(void **state) {
 
 /* A stream the caller opened parses the same as a file OS_ReadXML() opens by name. The stream is
  * the parser's to close, so the test never closes it. */
-void test_os_read_xml_from_stream(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_str = "<root><child>value</child></root>";
-    FILE *fp;
+void test_os_read_xml_from_stream(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_str = "<root><child>value</child></root>";
+    FILE* fp;
 
     create_xml_file(xml_str, data->xml_file_name, 256);
     fp = fopen(data->xml_file_name, "r");
@@ -426,9 +477,10 @@ void test_os_read_xml_from_stream(void **state) {
 }
 
 /* A parse error is reported as OS_ReadXML() reports it, and the stream is closed all the same. */
-void test_os_read_xml_from_stream_parse_error(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    FILE *fp;
+void test_os_read_xml_from_stream_parse_error(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    FILE* fp;
 
     create_xml_file("<root></root2>", data->xml_file_name, 256);
     fp = fopen(data->xml_file_name, "r");
@@ -439,8 +491,9 @@ void test_os_read_xml_from_stream_parse_error(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_unclosed_node1(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_unclosed_node1(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -448,8 +501,9 @@ void test_unclosed_node1(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_unclosed_node2(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_unclosed_node2(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -464,8 +518,9 @@ void test_unclosed_node2(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_unclosed_second_node(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_unclosed_second_node(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root></root2>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -473,48 +528,54 @@ void test_unclosed_second_node(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_unclosed_comment(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_unclosed_comment(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<!-- comment", data->xml_file_name, 256);
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: Comment not closed.");
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_node_not_opened(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_not_opened(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("</root>", data->xml_file_name, 256);
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: Element not opened.");
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_unclosed_attribute(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_unclosed_attribute(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr=\"attribute></root>", data->xml_file_name, 256);
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: Attribute 'attr' not closed.");
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_unquoted_attribute(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_unquoted_attribute(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr=attribute></root>", data->xml_file_name, 256);
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: Attribute 'attr' not followed by a \" or '.");
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_infinite_attribute(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_infinite_attribute(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr", data->xml_file_name, 256);
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: End of file while reading an attribute.");
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_empty_attribute(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_empty_attribute(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr=", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -522,8 +583,9 @@ void test_empty_attribute(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_invalid_attribute_start(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_invalid_attribute_start(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr=  test\"test\"/>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -531,8 +593,9 @@ void test_invalid_attribute_start(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_invalid_attribute_closing(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_invalid_attribute_closing(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr=''", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -540,16 +603,18 @@ void test_invalid_attribute_closing(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_dollar_content_is_literal(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *parse_str = "<root>$var</root>";
-    char *xml_str = "<root>$var</root>";
+void test_dollar_content_is_literal(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    char* parse_str = "<root>$var</root>";
+    char* xml_str = "<root>$var</root>";
 
     assert_os_xml_eq(data, parse_str, xml_str);
 }
 
-void test_invalid_attribute_closing_no_space(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_invalid_attribute_closing_no_space(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr='test'test/>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -557,8 +622,9 @@ void test_invalid_attribute_closing_no_space(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_invalid_attribute_closing_no_second_quote(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_invalid_attribute_closing_no_second_quote(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr='", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -566,8 +632,9 @@ void test_invalid_attribute_closing_no_second_quote(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_duplicated_attribute(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_duplicated_attribute(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr='test' attr2='test' attr='test123'></root>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -575,8 +642,9 @@ void test_duplicated_attribute(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_no_attribute_value(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_no_attribute_value(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr></root>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -584,8 +652,9 @@ void test_no_attribute_value(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_no_first_attribute_value(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_no_first_attribute_value(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr attr2='test'></root>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
@@ -593,27 +662,30 @@ void test_no_first_attribute_value(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_os_root_elements_exists(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_root_elements_exists(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root></root><root1/><root/>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_int_equal(OS_RootElementExist(&data->xml, "root"), 2);
     assert_int_equal(OS_RootElementExist(&data->xml, "root1"), 1);
     assert_int_equal(OS_RootElementExist(&data->xml, "root2"), 0);
-    char *element = NULL;
+    char* element = NULL;
     assert_int_equal(OS_RootElementExist(&data->xml, element), 0);
 }
 
-void test_os_get_one_content_for_element(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    create_xml_file("<root><child>test</child><child>test2</child><child2>test</child2></root>", data->xml_file_name, 256);
+void test_os_get_one_content_for_element(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    create_xml_file(
+        "<root><child>test</child><child>test2</child><child2>test</child2></root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
 
-    const char *xml_path1[] = { "root", "child", NULL };
-    const char *xml_path2[] = { "root", "child2", NULL };
-    const char *xml_path3[] = { "root", "child3", NULL };
+    const char* xml_path1[] = {"root", "child", NULL};
+    const char* xml_path2[] = {"root", "child2", NULL};
+    const char* xml_path3[] = {"root", "child3", NULL};
 
     data->content1 = OS_GetOneContentforElement(&data->xml, xml_path1);
     assert_string_equal(data->content1, "test");
@@ -624,77 +696,90 @@ void test_os_get_one_content_for_element(void **state) {
     assert_null(OS_GetOneContentforElement(&data->xml, xml_path3));
 }
 
-void test_os_write_xml_success1(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
-    const char *xml_str_old = "<root1></root1>""<root2></root2>""<root3/>";
-    const char *xml_str_new = "<root1></root1>""<root2></root2>""<root3></root3>";
+void test_os_write_xml_success1(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
+    const char* xml_str_old = "<root1></root1>"
+                              "<root2></root2>"
+                              "<root3/>";
+    const char* xml_str_new = "<root1></root1>"
+                              "<root2></root2>"
+                              "<root3></root3>";
 
     assert_ox_xml_write_eq(data, xml_str_old, xml_str_new, xml_path, "test", "test_new");
 }
 
-void test_os_write_xml_success2(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
-    const char *xml_str_old = "<root><child>test</child></root>";
-    const char *xml_str_new = "<root><child>test</child></root>";
+void test_os_write_xml_success2(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
+    const char* xml_str_old = "<root><child>test</child></root>";
+    const char* xml_str_new = "<root><child>test</child></root>";
 
     assert_ox_xml_write_eq(data, xml_str_old, xml_str_new, xml_path, "test", "test");
 }
 
-void test_os_write_xml_success3(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
-    const char *xml_str_old = "<root><child></child></root>";
-    const char *xml_str_new = "<root><child>test</child></root>";
+void test_os_write_xml_success3(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
+    const char* xml_str_old = "<root><child></child></root>";
+    const char* xml_str_new = "<root><child>test</child></root>";
 
     assert_ox_xml_write_eq(data, xml_str_old, xml_str_new, xml_path, "test", "test");
 }
 
-void test_os_write_xml_success4(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
-    const char *xml_str_old = "<root2><child></child></root2>";
-    const char *xml_str_new = "<root2><child></child></root2><root>\n <child>test</child></root>";
+void test_os_write_xml_success4(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
+    const char* xml_str_old = "<root2><child></child></root2>";
+    const char* xml_str_new = "<root2><child></child></root2><root>\n <child>test</child></root>";
 
     assert_ox_xml_write_eq(data, xml_str_old, xml_str_new, xml_path, NULL, "test");
 }
 
-void test_os_write_xml_success5(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
-    const char *xml_str_old = "<!--Comment--><root><child>test</child></root>";
-    const char *xml_str_new = "<root><child>test</child></root>";
+void test_os_write_xml_success5(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
+    const char* xml_str_old = "<!--Comment--><root><child>test</child></root>";
+    const char* xml_str_new = "<root><child>test</child></root>";
 
     assert_ox_xml_write_eq(data, xml_str_old, xml_str_new, xml_path, "test", "test");
 }
 
-void test_os_write_xml_failures(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_write_xml_failures(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root><child>test</child></root>", data->xml_file_name, 256);
 
     create_xml_file("", data->xml_out_file_name, 256);
 
-    const char *xml_path[] = { "root", "child", NULL };
+    const char* xml_path[] = {"root", "child", NULL};
     assert_int_equal(OS_WriteXML("invalid", data->xml_out_file_name, xml_path, "test", "test_new"), XMLW_NOIN);
-    assert_int_equal(OS_WriteXML(data->xml_file_name, "??invalid<<!!\"\"//\\\\", xml_path, "test", "test_new"), XMLW_NOOUT);
+    assert_int_equal(OS_WriteXML(data->xml_file_name, "??invalid<<!!\"\"//\\\\", xml_path, "test", "test_new"),
+                     XMLW_NOOUT);
 
     create_xml_file("<!--Invalid comment--", data->xml_file_name, 256);
-    assert_int_equal(OS_WriteXML(data->xml_file_name, data->xml_out_file_name, xml_path, "test", "test_new"), XMLW_ERROR);
+    assert_int_equal(OS_WriteXML(data->xml_file_name, data->xml_out_file_name, xml_path, "test", "test_new"),
+                     XMLW_ERROR);
 }
 
 /* Writes through OS_WriteXMLToStream() into a stream the test opened on the out file, then checks
  * the stream is still the caller's: open, and writable after the call returns. */
-static void assert_os_xml_write_to_stream_eq(test_struct_t *data,
-                                             const char *xml_str_old,
-                                             const char *xml_str_new,
-                                             const char **xml_path,
-                                             const char *oldval,
-                                             const char *newval) {
+static void assert_os_xml_write_to_stream_eq(test_struct_t* data,
+                                             const char* xml_str_old,
+                                             const char* xml_str_new,
+                                             const char** xml_path,
+                                             const char* oldval,
+                                             const char* newval)
+{
     create_xml_file(xml_str_old, data->xml_file_name, 256);
     create_xml_file("", data->xml_out_file_name, 256);
 
-    FILE *out = fopen(data->xml_out_file_name, "w");
+    FILE* out = fopen(data->xml_out_file_name, "w");
     assert_non_null(out);
 
     assert_int_equal(OS_WriteXMLToStream(data->xml_file_name, out, xml_path, oldval, newval), 0);
@@ -705,20 +790,22 @@ static void assert_os_xml_write_to_stream_eq(test_struct_t *data,
     assert_os_xml_eq_str(&data->xml, xml_str_new, data->buffer);
 }
 
-void test_os_write_xml_to_stream_replaces_the_node(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
-    const char *xml_str_old = "<root><child>test</child></root>";
-    const char *xml_str_new = "<root><child>test_new</child></root>";
+void test_os_write_xml_to_stream_replaces_the_node(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
+    const char* xml_str_old = "<root><child>test</child></root>";
+    const char* xml_str_new = "<root><child>test_new</child></root>";
 
     assert_os_xml_write_to_stream_eq(data, xml_str_old, xml_str_new, xml_path, "test", "test_new");
 }
 
-void test_os_write_xml_to_stream_appends_a_missing_node(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
-    const char *xml_str_old = "<root2><child></child></root2>";
-    const char *xml_str_new = "<root2><child></child></root2><root>\n <child>test</child></root>";
+void test_os_write_xml_to_stream_appends_a_missing_node(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
+    const char* xml_str_old = "<root2><child></child></root2>";
+    const char* xml_str_new = "<root2><child></child></root2><root>\n <child>test</child></root>";
 
     assert_os_xml_write_to_stream_eq(data, xml_str_old, xml_str_new, xml_path, NULL, "test");
 }
@@ -726,12 +813,13 @@ void test_os_write_xml_to_stream_appends_a_missing_node(void **state) {
 /* A failure reports the same codes as OS_WriteXML() and still leaves the caller's stream open.
  * XMLW_NOIN writes nothing; XMLW_ERROR may leave part of the copy behind, for the caller to
  * discard. */
-void test_os_write_xml_to_stream_failures(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    const char *xml_path[] = { "root", "child", NULL };
+void test_os_write_xml_to_stream_failures(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    const char* xml_path[] = {"root", "child", NULL};
 
     create_xml_file("", data->xml_out_file_name, 256);
-    FILE *out = fopen(data->xml_out_file_name, "w");
+    FILE* out = fopen(data->xml_out_file_name, "w");
     assert_non_null(out);
 
     assert_int_equal(OS_WriteXMLToStream("invalid", out, xml_path, "test", "test_new"), XMLW_NOIN);
@@ -744,14 +832,15 @@ void test_os_write_xml_to_stream_failures(void **state) {
     assert_int_equal(fclose(out), 0);
 }
 
-void test_os_get_attribute_content(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_get_attribute_content(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr=\"value\" attr2=\"value1\"></root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
 
-    const char *xml_path1[] = { "root", NULL };
-    const char *xml_path2[] = { NULL };
+    const char* xml_path1[] = {"root", NULL};
+    const char* xml_path2[] = {NULL};
 
     data->content1 = OS_GetAttributeContent(&data->xml, xml_path1, "attr");
     assert_string_equal(data->content1, "value");
@@ -768,13 +857,14 @@ void test_os_get_attribute_content(void **state) {
     assert_null(OS_GetAttributeContent(&data->xml, xml_path2, NULL));
 }
 
-void test_os_get_contents(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_get_contents(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root>value</root><root>value2</root><root2>value</root2>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path1[] = { "root", NULL };
-    const char *xml_path2[] = { "root2", NULL };
+    const char* xml_path1[] = {"root", NULL};
+    const char* xml_path2[] = {"root2", NULL};
 
     assert_non_null(data->content5 = OS_GetContents(&data->xml, xml_path1));
     assert_string_equal(data->content5[0], "value");
@@ -788,12 +878,13 @@ void test_os_get_contents(void **state) {
     assert_null(OS_GetContents(&data->xml, NULL));
 }
 
-void test_os_get_element_content1(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_get_element_content1(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root>value</root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path[] = { "root", NULL };
+    const char* xml_path[] = {"root", NULL};
 
     data->content5 = OS_GetElementContent(&data->xml, xml_path);
     assert_non_null(data->content5);
@@ -801,36 +892,61 @@ void test_os_get_element_content1(void **state) {
     assert_null(data->content5[1]);
 }
 
-void test_os_get_element_content_maximum_depth(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    create_xml_file("<root><root1><root2><root3><root4><root5><root6><root7><root8><root9><root10><root11><root12><root13><root14><root15><root16><root17>value</root17></root16></root15></root14></root13></root12></root11></root10></root9></root8></root7></root6></root5></root4></root3></root2></root1></root>", data->xml_file_name, 256);
+void test_os_get_element_content_maximum_depth(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    create_xml_file(
+        "<root><root1><root2><root3><root4><root5><root6><root7><root8><root9><root10><root11><root12><root13><root14><"
+        "root15><root16><root17>value</root17></root16></root15></root14></root13></root12></root11></root10></root9></"
+        "root8></root7></root6></root5></root4></root3></root2></root1></root>",
+        data->xml_file_name,
+        256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path[] = { "root", "root1", "root2", "root3", "root4", "root5", "root6", "root7", "root8", "root9", "root10",
-                                "root11", "root12", "root13", "root14", "root15", "root16", "root17", NULL };
+    const char* xml_path[] = {"root",
+                              "root1",
+                              "root2",
+                              "root3",
+                              "root4",
+                              "root5",
+                              "root6",
+                              "root7",
+                              "root8",
+                              "root9",
+                              "root10",
+                              "root11",
+                              "root12",
+                              "root13",
+                              "root14",
+                              "root15",
+                              "root16",
+                              "root17",
+                              NULL};
 
     data->content5 = OS_GetElementContent(&data->xml, xml_path);
     assert_null(data->content5);
 }
 
-void test_get_element_content(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_get_element_content(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root>value</root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path[] = { "root", NULL };
+    const char* xml_path[] = {"root", NULL};
 
     data->xml.fol = 1;
     data->content5 = OS_GetContents(&data->xml, xml_path);
     assert_null(data->content5);
 }
 
-void test_os_get_elements(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_get_elements(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root><child1/><child2/></root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path[] = { "root", NULL };
+    const char* xml_path[] = {"root", NULL};
 
     data->content5 = OS_GetElements(&data->xml, xml_path);
     assert_non_null(data->content5);
@@ -843,39 +959,64 @@ void test_os_get_elements(void **state) {
     assert_string_equal(data->content6[0], "root");
     assert_null(data->content6[1]);
 
-    const char *xml_path2[] = { NULL };
-    assert_null(OS_GetElements(&data->xml,  xml_path2));
+    const char* xml_path2[] = {NULL};
+    assert_null(OS_GetElements(&data->xml, xml_path2));
 }
 
-void test_os_get_elements2(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_get_elements2(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root><child1/></root><root1><child2/></root1>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path[] = { "root", "root1", NULL };
+    const char* xml_path[] = {"root", "root1", NULL};
 
     data->content5 = OS_GetElements(&data->xml, xml_path);
     assert_null(data->content5);
 }
 
-void test_os_get_elements3(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    create_xml_file("<root><root1><root2><root3><root4><root5><root6><root7><root8><root9><root10><root11><root12><root13><root14><root15><root16><root17>value</root17></root16></root15></root14></root13></root12></root11></root10></root9></root8></root7></root6></root5></root4></root3></root2></root1></root>", data->xml_file_name, 256);
+void test_os_get_elements3(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
+    create_xml_file(
+        "<root><root1><root2><root3><root4><root5><root6><root7><root8><root9><root10><root11><root12><root13><root14><"
+        "root15><root16><root17>value</root17></root16></root15></root14></root13></root12></root11></root10></root9></"
+        "root8></root7></root6></root5></root4></root3></root2></root1></root>",
+        data->xml_file_name,
+        256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path[] = { "root", "root1", "root2", "root3", "root4", "root5", "root6", "root7", "root8", "root9", "root10",
-                                "root11", "root12", "root13", "root14", "root15", "root16", "root17", NULL };
+    const char* xml_path[] = {"root",
+                              "root1",
+                              "root2",
+                              "root3",
+                              "root4",
+                              "root5",
+                              "root6",
+                              "root7",
+                              "root8",
+                              "root9",
+                              "root10",
+                              "root11",
+                              "root12",
+                              "root13",
+                              "root14",
+                              "root15",
+                              "root16",
+                              "root17",
+                              NULL};
 
     data->content5 = OS_GetElements(&data->xml, xml_path);
     assert_null(data->content5);
 }
 
-void test_os_get_attributes(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_os_get_attributes(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
     create_xml_file("<root attr1=\"1\" attr2=\"2\"></root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    const char *xml_path[] = { "root", NULL };
+    const char* xml_path[] = {"root", NULL};
 
     assert_non_null(data->content5 = OS_GetAttributes(&data->xml, xml_path));
     assert_string_equal(data->content5[0], "attr1");
@@ -883,8 +1024,9 @@ void test_os_get_attributes(void **state) {
     assert_null(data->content5[2]);
 }
 
-void test_node_name_overflow1(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_name_overflow1(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -899,8 +1041,9 @@ void test_node_name_overflow1(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_node_name_overflow2(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_name_overflow2(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -915,8 +1058,9 @@ void test_node_name_overflow2(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_node_value_overflow(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_value_overflow(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -931,8 +1075,9 @@ void test_node_value_overflow(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_node_value_truncate_overflow(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_value_truncate_overflow(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -942,15 +1087,16 @@ void test_node_value_truncate_overflow(void **state) {
     snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test>%s</test>", overflow_string);
     create_xml_file(xml_string, data->xml_file_name, 256);
 
-    const char *xml_path[] = { "test", NULL };
+    const char* xml_path[] = {"test", NULL};
 
     assert_int_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml, true), 0);
     assert_non_null(data->content5 = OS_GetContents(&data->xml, xml_path));
-    assert_string_equal(data->content5[0], overflow_string+9);
+    assert_string_equal(data->content5[0], overflow_string + 9);
 }
 
-void test_node_attribute_name_overflow(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_attribute_name_overflow(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -965,8 +1111,9 @@ void test_node_attribute_name_overflow(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_node_attribute_value_overflow(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_attribute_value_overflow(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -981,8 +1128,9 @@ void test_node_attribute_value_overflow(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_node_attribute_value_truncate_overflow(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
+void test_node_attribute_value_truncate_overflow(void** state)
+{
+    test_struct_t* data = (test_struct_t*)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
     memset(overflow_string, 'c', XML_MAXSIZE + 9);
@@ -991,46 +1139,49 @@ void test_node_attribute_value_truncate_overflow(void **state) {
     char xml_string[2 * XML_MAXSIZE];
     snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test attr=\"%s\"></test>", overflow_string);
     create_xml_file(xml_string, data->xml_file_name, 256);
-    const char *xml_path[] = { "test", NULL };
+    const char* xml_path[] = {"test", NULL};
 
     assert_int_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml, true), 0);
     assert_non_null(data->content1 = OS_GetAttributeContent(&data->xml, xml_path, "attr"));
 }
 
-void w_get_attr_val_by_name_null_attr(void ** state) {
+void w_get_attr_val_by_name_null_attr(void** state)
+{
 
     xml_node node = {0};
-    const char * retval;
+    const char* retval;
 
     retval = w_get_attr_val_by_name(&node, "test_attr_name");
 
     assert_null(retval);
 }
 
-void w_get_attr_val_by_name_not_found(void ** state) {
+void w_get_attr_val_by_name_not_found(void** state)
+{
 
     xml_node node = {0};
-    char * attributes[] = {"attr_name_1", "attr_name_2", NULL};
-    char * values[] = {"attr_val_1", "attr_val_2", NULL};
+    char* attributes[] = {"attr_name_1", "attr_name_2", NULL};
+    char* values[] = {"attr_val_1", "attr_val_2", NULL};
 
     node.attributes = attributes;
     node.values = values;
-    const char * retval;
+    const char* retval;
 
     retval = w_get_attr_val_by_name(&node, "test_attr_name");
 
     assert_null(retval);
 }
 
-void w_get_attr_val_by_name_found(void ** state) {
+void w_get_attr_val_by_name_found(void** state)
+{
 
     xml_node node = {0};
-    char * attributes[] = {"attr_name_1", "test_attr_name", "attr_name_3", NULL};
-    char * values[] = {"attr_val_1", "test_attr_value", "attr_val_3", NULL};
+    char* attributes[] = {"attr_name_1", "test_attr_name", "attr_name_3", NULL};
+    char* values[] = {"attr_val_1", "test_attr_value", "attr_val_3", NULL};
 
     node.attributes = attributes;
     node.values = values;
-    const char * retval;
+    const char* retval;
 
     retval = w_get_attr_val_by_name(&node, "test_attr_name");
 
@@ -1038,23 +1189,22 @@ void w_get_attr_val_by_name_found(void ** state) {
     assert_string_equal(retval, "test_attr_value");
 }
 
-
 // Test OS_ReadXMLString
-void OS_ReadXMLString_simple_invalid_xml(void **state) {
-     OS_XML xml;
-    const char * const list_xml[] = {
-        "<!ers unclosed bad comment and end string",
-        "<event attr=\"unclosed tag end string",
-        NULL
-    };
+void OS_ReadXMLString_simple_invalid_xml(void** state)
+{
+    OS_XML xml;
+    const char* const list_xml[] = {
+        "<!ers unclosed bad comment and end string", "<event attr=\"unclosed tag end string", NULL};
 
-    for (int i = 0; list_xml[i] != NULL; i++) {
+    for (int i = 0; list_xml[i] != NULL; i++)
+    {
         assert_int_not_equal(OS_ReadXMLString(list_xml[i], &xml), 0);
         OS_ClearXML(&xml);
     }
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
 
         // Test w_get_attr_val_by_name

@@ -29,47 +29,56 @@ extern int maximum_lines;
 
 /* Setup & Teardown */
 
-static int group_setup(void **state) {
+static int group_setup(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int group_teardown(void **state) {
+static int group_teardown(void** state)
+{
     test_mode = 0;
     return 0;
 }
 
 /* Wraps */
 
-int __wrap_can_read() {
+int __wrap_can_read()
+{
     return mock_type(int);
 }
 
-bool __wrap_w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position) {
+bool __wrap_w_get_hash_context(logreader* lf, EVP_MD_CTX** context, int64_t position)
+{
     return mock_type(bool);
 }
 
-int __wrap_w_update_file_status(const char *path, int64_t pos, EVP_MD_CTX *context) {
+int __wrap_w_update_file_status(const char* path, int64_t pos, EVP_MD_CTX* context)
+{
     check_expected(pos);
     bool free_context = mock_type(bool);
-    if (free_context) {
+    if (free_context)
+    {
         EVP_MD_CTX_free(context);
     }
     return mock_type(int);
 }
 
-void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX *c, const char * buf, size_t len) {
+void __wrap_OS_SHA1_Stream_Bytes(EVP_MD_CTX* c, const char* buf, size_t len)
+{
     function_called();
     check_expected(len);
     return;
 }
 
-int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget *log_target, char queue_mq) {
+int __wrap_w_msg_hash_queues_push(const char* str, char* file, unsigned long size, logtarget* log_target, char queue_mq)
+{
     check_expected(str);
     return mock_type(int);
 }
 
-bool __wrap_check_ignore_and_restrict(const char *ignore_regex, const char *restrict_regex, const char *str) {
+bool __wrap_check_ignore_and_restrict(const char* ignore_regex, const char* restrict_regex, const char* str)
+{
     check_expected_ptr(str);
     return mock_type(bool);
 }
@@ -80,10 +89,11 @@ bool __wrap_check_ignore_and_restrict(const char *ignore_regex, const char *rest
  * Test: Empty file
  * Verifies that read_audit handles an empty file correctly
  */
-void test_read_audit_empty_file(void **state) {
+void test_read_audit_empty_file(void** state)
+{
     logreader lf = {0};
     lf.file = "test.log";
-    lf.fp = (FILE *)1; // Mock file pointer
+    lf.fp = (FILE*)1; // Mock file pointer
     int rc;
 
     expect_any(__wrap_w_ftell, x);
@@ -99,7 +109,7 @@ void test_read_audit_empty_file(void **state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_w_update_file_status, pos, (int64_t) 0);
+    expect_value(__wrap_w_update_file_status, pos, (int64_t)0);
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -112,7 +122,8 @@ void test_read_audit_empty_file(void **state) {
  * Test: Verify MAX_CACHE is now 64
  * This is a compile-time test to ensure MAX_CACHE was changed from 16 to 64
  */
-void test_max_cache_value(void **state) {
+void test_max_cache_value(void** state)
+{
     // This test verifies the fix for issue #32788
     // The value should be 64 to support Kubernetes/containerd audit events with 35 records
     // We can't directly access MAX_CACHE since it's defined in read_audit.c
@@ -124,10 +135,11 @@ void test_max_cache_value(void **state) {
  * Test: Single audit line
  * Verifies basic functionality with a single audit record
  */
-void test_read_audit_single_line(void **state) {
+void test_read_audit_single_line(void** state)
+{
     logreader lf = {0};
     lf.file = "test.log";
-    lf.fp = (FILE *)1;
+    lf.fp = (FILE*)1;
     int rc;
 
     char line[] = "type=SYSCALL msg=audit(1234567890.123:100): arch=x86_64 syscall=mount\n";
@@ -167,7 +179,7 @@ void test_read_audit_single_line(void **state) {
     expect_any(__wrap_w_msg_hash_queues_push, str);
     will_return(__wrap_w_msg_hash_queues_push, 0);
 
-    expect_value(__wrap_w_update_file_status, pos, (int64_t) strlen(line));
+    expect_value(__wrap_w_update_file_status, pos, (int64_t)strlen(line));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -180,10 +192,11 @@ void test_read_audit_single_line(void **state) {
  * Test: Invalid syntax handling
  * Verifies that lines with invalid audit syntax are discarded properly
  */
-void test_read_audit_invalid_syntax(void **state) {
+void test_read_audit_invalid_syntax(void** state)
+{
     logreader lf = {0};
     lf.file = "test.log";
-    lf.fp = (FILE *)1;
+    lf.fp = (FILE*)1;
     int rc;
 
     char line[] = "This is not a valid audit log line\n";
@@ -213,7 +226,7 @@ void test_read_audit_invalid_syntax(void **state) {
     // Error message for invalid syntax. The discarded line was hashed, so the stored offset covers it
     expect_string(__wrap__mwarn, formatted_msg, "Discarding audit message because of invalid syntax.");
 
-    expect_value(__wrap_w_update_file_status, pos, (int64_t) strlen(line));
+    expect_value(__wrap_w_update_file_status, pos, (int64_t)strlen(line));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -226,10 +239,11 @@ void test_read_audit_invalid_syntax(void **state) {
  * Test: Drop_it flag
  * Verifies that messages are not sent when drop_it is set
  */
-void test_read_audit_drop_it(void **state) {
+void test_read_audit_drop_it(void** state)
+{
     logreader lf = {0};
     lf.file = "test.log";
-    lf.fp = (FILE *)1;
+    lf.fp = (FILE*)1;
     int rc;
 
     char line[] = "type=SYSCALL msg=audit(1234567890.123:100): arch=x86_64 syscall=mount\n";
@@ -265,7 +279,7 @@ void test_read_audit_drop_it(void **state) {
     // Message should NOT be sent when drop_it=1
     // (audit_send_msg is called but doesn't push to queue)
 
-    expect_value(__wrap_w_update_file_status, pos, (int64_t) strlen(line));
+    expect_value(__wrap_w_update_file_status, pos, (int64_t)strlen(line));
     will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
@@ -278,13 +292,14 @@ void test_read_audit_drop_it(void **state) {
  * Test: Line longer than the buffer
  * Verifies that every chunk of the discarded line is hashed and covered by the stored offset
  */
-void test_read_audit_oversize_line(void **state) {
+void test_read_audit_oversize_line(void** state)
+{
     logreader lf = {0};
     lf.file = "test.log";
-    lf.fp = (FILE *)1;
+    lf.fp = (FILE*)1;
     int rc;
 
-    char *line1 = calloc(OS_MAX_LOG_SIZE, sizeof(char));
+    char* line1 = calloc(OS_MAX_LOG_SIZE, sizeof(char));
     char line2[] = "BBB\n";
     const int64_t len1 = OS_MAX_LOG_SIZE - 1;
 
@@ -334,7 +349,8 @@ void test_read_audit_oversize_line(void **state) {
     free(line1);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_audit_empty_file),
         cmocka_unit_test(test_max_cache_value),

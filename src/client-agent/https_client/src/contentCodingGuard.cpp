@@ -26,8 +26,8 @@ namespace
     std::string_view trimmed(std::string_view text)
     {
         const auto begin = text.find_first_not_of(SPACE);
-        return begin == std::string_view::npos ? std::string_view {} :
-               text.substr(begin, text.find_last_not_of(SPACE) - begin + 1);
+        return begin == std::string_view::npos ? std::string_view {}
+                                               : text.substr(begin, text.find_last_not_of(SPACE) - begin + 1);
     }
 
     /// A coding as curl names it (content_encoding.c, Curl_build_unencoding_stack): without the bytes
@@ -42,8 +42,8 @@ namespace
         };
         const auto begin = std::find_if_not(token.begin(), token.end(), outside);
         const auto end = std::find_if_not(token.rbegin(), token.rend(), outside).base();
-        return begin < end ? token.substr(static_cast<size_t>(begin - token.begin()), static_cast<size_t>(end - begin)) :
-               std::string_view {};
+        return begin < end ? token.substr(static_cast<size_t>(begin - token.begin()), static_cast<size_t>(end - begin))
+                           : std::string_view {};
     }
 
     bool blankAt(std::string_view text, size_t at)
@@ -86,8 +86,8 @@ namespace
     /// HTTP/3 curl writes the status line itself, as "HTTP/2 200 \r\n" (http2.c, vquic/curl_ngtcp2.c).
     long http2Or3Code(std::string_view version)
     {
-        const bool known = !version.empty() && (version[0] == '2' || version[0] == '3') && blankAt(version, 1) &&
-                           blankAt(version, 5);
+        const bool known =
+            !version.empty() && (version[0] == '2' || version[0] == '3') && blankAt(version, 1) && blankAt(version, 5);
         return known ? threeDigitCode(version.substr(2)) : 0;
     }
 
@@ -207,10 +207,7 @@ bool ContentCodingGuard::admitCodings(std::string_view value) noexcept
         return true;
     }
 
-    const bool admitted = everyCoding(value, [this](std::string_view coding)
-    {
-        return admitCoding(coding);
-    });
+    const bool admitted = everyCoding(value, [this](std::string_view coding) { return admitCoding(coding); });
 
     if (!admitted)
     {

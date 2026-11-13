@@ -15,9 +15,10 @@
  * (or, on a 4.x <client><server> block, says what to set by hand). Named only when client.keys is
  * empty: wazuh-agent-auth refuses an agent that already has a key. On POSIX the command carries
  * the installation directory, since bin/ is not on PATH. */
-static void w_agent_hint_enrollment(const char *home_path)
+static void w_agent_hint_enrollment(const char* home_path)
 {
-    if (FileSize(KEYS_FILE) > 0) {
+    if (FileSize(KEYS_FILE) > 0)
+    {
         return;
     }
 
@@ -29,14 +30,16 @@ static void w_agent_hint_enrollment(const char *home_path)
 #endif
 }
 
-bool w_agent_validate_manager_address(const agent *cfg, const char *home_path)
+bool w_agent_validate_manager_address(const agent* cfg, const char* home_path)
 {
-    if (!(cfg->server && cfg->server[0].rip)) {
+    if (!(cfg->server && cfg->server[0].rip))
+    {
         merror(AG_INV_IP);
         return false;
     }
 
-    if (!Validate_Address(cfg->server)) {
+    if (!Validate_Address(cfg->server))
+    {
         merror(AG_INV_MNGIP, cfg->server[0].rip);
         w_agent_hint_enrollment(home_path);
         return false;

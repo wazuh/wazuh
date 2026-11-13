@@ -37,8 +37,8 @@ struct ModuleLog
 
 inline ModuleLog g_moduleLog;
 
-inline void captureModuleLog(const int level, const char*, const char*, const int, const char*, const char* message,
-                             va_list args)
+inline void
+captureModuleLog(const int level, const char*, const char*, const int, const char*, const char* message, va_list args)
 {
     if (!g_moduleLog.recording.load())
     {

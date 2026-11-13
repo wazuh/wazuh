@@ -15,19 +15,23 @@
 #include <errno.h>
 #include "../../common.h"
 
-pid_t * __wrap_w_get_process_childs(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo,
-                                    __attribute__((__unused__)) pid_t parent_pid,
-                                    __attribute__((__unused__)) unsigned int max_count) {
-    if (test_mode) {
-        pid_t * ret = mock_type(pid_t *);
+pid_t* __wrap_w_get_process_childs(__attribute__((__unused__)) w_sysinfo_helpers_t* sysinfo,
+                                   __attribute__((__unused__)) pid_t parent_pid,
+                                   __attribute__((__unused__)) unsigned int max_count)
+{
+    if (test_mode)
+    {
+        pid_t* ret = mock_type(pid_t*);
         return ret;
     }
     return w_get_process_childs(sysinfo, parent_pid, max_count);
 }
 
-char * __wrap_w_get_os_codename(__attribute__((__unused__)) w_sysinfo_helpers_t * sysinfo) {
-    if (test_mode) {
-        char * ret = mock_type(char *);
+char* __wrap_w_get_os_codename(__attribute__((__unused__)) w_sysinfo_helpers_t* sysinfo)
+{
+    if (test_mode)
+    {
+        char* ret = mock_type(char*);
         return ret;
     }
     return w_get_os_codename(sysinfo);

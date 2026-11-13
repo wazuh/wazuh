@@ -16,21 +16,22 @@
 
 class ScaPolicyLoaderTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([](const modules_log_level_t, const char*)
+protected:
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback(
+            [](const modules_log_level_t, const char*)
             {
                 // noop
             });
 
-            mockFileSystem = std::make_shared<testing::NiceMock<MockFileSystemWrapper>>();
-            mockDBSync = std::make_shared<testing::NiceMock<MockDBSync>>();
-        }
+        mockFileSystem = std::make_shared<testing::NiceMock<MockFileSystemWrapper>>();
+        mockDBSync = std::make_shared<testing::NiceMock<MockDBSync>>();
+    }
 
-        std::shared_ptr<MockFileSystemWrapper> mockFileSystem;
-        std::shared_ptr<MockDBSync> mockDBSync;
+    std::shared_ptr<MockFileSystemWrapper> mockFileSystem;
+    std::shared_ptr<MockDBSync> mockDBSync;
 };
 
 TEST_F(ScaPolicyLoaderTest, ConstructionNoPolicies)
@@ -44,10 +45,10 @@ TEST_F(ScaPolicyLoaderTest, ConstructionSomePolicies)
 {
     auto fsMock = std::make_shared<testing::NiceMock<MockFileSystemWrapper>>();
 
-    std::vector<sca::PolicyData> policies { {"dummy/path/1", true, false},
-        {"dummy/path/2", true, false},
-        {"dummy/path/3", true, false},
-        {"dummy/path/4", false, false}};
+    std::vector<sca::PolicyData> policies {{"dummy/path/1", true, false},
+                                           {"dummy/path/2", true, false},
+                                           {"dummy/path/3", true, false},
+                                           {"dummy/path/4", false, false}};
 
     const SCAPolicyLoader loader(policies, fsMock);
     SUCCEED();
@@ -55,21 +56,23 @@ TEST_F(ScaPolicyLoaderTest, ConstructionSomePolicies)
 
 TEST_F(ScaPolicyLoaderTest, LoadPoliciesSkipsDisabledPolicies)
 {
-    std::vector<sca::PolicyData> policies =
-    {
-        {"policy1.yaml", false, false},  // Disabled
-        {"policy2.yaml", true, false}    // Enabled
+    std::vector<sca::PolicyData> policies = {
+        {"policy1.yaml", false, false}, // Disabled
+        {"policy2.yaml", true, false}   // Enabled
     };
 
     EXPECT_CALL(*mockFileSystem, exists(testing::_))
-    .WillOnce(testing::Return(true))  // Only check enabled policy
-    .WillOnce(testing::Return(true));
+        .WillOnce(testing::Return(true)) // Only check enabled policy
+        .WillOnce(testing::Return(true));
 
     SCAPolicyLoader loader(policies, mockFileSystem, mockDBSync);
 
-    auto mockYamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json{}; };
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
+    {
+        return nlohmann::json {};
+    };
     auto loadedPolicies = loader.LoadPolicies(30, true, [](auto, auto) {}, mockYamlToJson);
-    EXPECT_LE(loadedPolicies.size(), 1);  // Should only load enabled policy
+    EXPECT_LE(loadedPolicies.size(), 1); // Should only load enabled policy
 }
 
 TEST_F(ScaPolicyLoaderTest, LoadPoliciesNoPolicies)
@@ -78,11 +81,11 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesNoPolicies)
     auto dbSync = std::make_shared<MockDBSync>();
 
     const SCAPolicyLoader loader({}, fsMock, dbSync);
-    auto mockYamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json{}; };
-    ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto)
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
     {
-        return;
-    }, mockYamlToJson).size(), 0);
+        return nlohmann::json {};
+    };
+    ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto) { return; }, mockYamlToJson).size(), 0);
 }
 
 TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
@@ -91,25 +94,22 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
     MockFileSystemWrapper* m_rawFsMock = fsMock.get();
 
     EXPECT_CALL(*m_rawFsMock, exists(::testing::_))
-    .Times(::testing::AnyNumber())
-    .WillRepeatedly([](const std::filesystem::path&)
-    {
-        return true;
-    });
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly([](const std::filesystem::path&) { return true; });
 
     auto dbSync = std::make_shared<MockDBSync>();
 
-    std::vector<sca::PolicyData> policies { {"dummy/path/1", true, false},
-        {"dummy/path/2", true, false},
-        {"dummy/path/3", true, false},
-        {"dummy/path/4", false, false}};
+    std::vector<sca::PolicyData> policies {{"dummy/path/1", true, false},
+                                           {"dummy/path/2", true, false},
+                                           {"dummy/path/3", true, false},
+                                           {"dummy/path/4", false, false}};
 
     const SCAPolicyLoader loader(policies, fsMock, dbSync);
-    auto mockYamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json{}; };
-    ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto)
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json
     {
-        return;
-    }, mockYamlToJson).size(), 0);
+        return nlohmann::json {};
+    };
+    ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto) { return; }, mockYamlToJson).size(), 0);
 }
 
 TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
@@ -120,11 +120,8 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
     MockFileSystemWrapper* m_rawFsMock = fsMock.get();
 
     EXPECT_CALL(*m_rawFsMock, exists(::testing::_))
-    .Times(::testing::AnyNumber())
-    .WillRepeatedly([](const std::filesystem::path&)
-    {
-        return true;
-    });
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly([](const std::filesystem::path&) { return true; });
 
     const std::string yml = R"(
       novariables:
@@ -153,29 +150,29 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
             // Handle malformed YAML case
             result["novariables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
             result["nopolicy"] = {{"id", "policy1"}};
-            result["nochecks"] = nlohmann::json::array(
-            {
-                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
-                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
-                }
-            });
+            result["nochecks"] =
+                nlohmann::json::array({{{"id", "check1"},
+                                        {"title", "title"},
+                                        {"condition", "all"},
+                                        {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}}});
         }
         else if (yml.find("variables:") != std::string::npos)
         {
             // Handle well-formed YAML case
             result["variables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
             result["policy"] = {{"id", "policy1"}};
-            result["checks"] = nlohmann::json::array(
-            {
-                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
-                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
-                }
-            });
+            result["checks"] =
+                nlohmann::json::array({{{"id", "check1"},
+                                        {"title", "title"},
+                                        {"condition", "all"},
+                                        {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}}});
 
             if (yml.find("check2") != std::string::npos)
             {
-                result["checks"].push_back({{"id", "check2"}, {"title", "title2"}, {"condition", "any"},
-                    {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
+                result["checks"].push_back({{"id", "check2"},
+                                            {"title", "title2"},
+                                            {"condition", "any"},
+                                            {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
             }
         }
 
@@ -191,13 +188,9 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
 
     const SCAPolicyLoader loader({}, fsMock, dbSync);
 
-    loader.SyncPoliciesAndReportDelta(jasonData, [](auto, auto)
-    {
-        return;
-    });
+    loader.SyncPoliciesAndReportDelta(jasonData, [](auto, auto) { return; });
     SUCCEED();
 }
-
 
 TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaNoDBSyncObject)
 {
@@ -207,11 +200,8 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaNoDBSyncObject)
     MockFileSystemWrapper* m_rawFsMock = fsMock.get();
 
     EXPECT_CALL(*m_rawFsMock, exists(::testing::_))
-    .Times(::testing::AnyNumber())
-    .WillRepeatedly([](const std::filesystem::path&)
-    {
-        return true;
-    });
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly([](const std::filesystem::path&) { return true; });
 
     const std::string yml = R"(
       variables:
@@ -246,29 +236,29 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaNoDBSyncObject)
             // Handle malformed YAML case
             result["novariables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
             result["nopolicy"] = {{"id", "policy1"}};
-            result["nochecks"] = nlohmann::json::array(
-            {
-                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
-                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
-                }
-            });
+            result["nochecks"] =
+                nlohmann::json::array({{{"id", "check1"},
+                                        {"title", "title"},
+                                        {"condition", "all"},
+                                        {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}}});
         }
         else if (yml.find("variables:") != std::string::npos)
         {
             // Handle well-formed YAML case
             result["variables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
             result["policy"] = {{"id", "policy1"}};
-            result["checks"] = nlohmann::json::array(
-            {
-                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
-                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
-                }
-            });
+            result["checks"] =
+                nlohmann::json::array({{{"id", "check1"},
+                                        {"title", "title"},
+                                        {"condition", "all"},
+                                        {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}}});
 
             if (yml.find("check2") != std::string::npos)
             {
-                result["checks"].push_back({{"id", "check2"}, {"title", "title2"}, {"condition", "any"},
-                    {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
+                result["checks"].push_back({{"id", "check2"},
+                                            {"title", "title2"},
+                                            {"condition", "any"},
+                                            {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
             }
         }
 
@@ -284,13 +274,9 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaNoDBSyncObject)
 
     const SCAPolicyLoader loader({}, fsMock, nullptr);
 
-    loader.SyncPoliciesAndReportDelta(jasonData, [](auto, auto)
-    {
-        return;
-    });
+    loader.SyncPoliciesAndReportDelta(jasonData, [](auto, auto) { return; });
     SUCCEED();
 }
-
 
 TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDelta)
 {
@@ -301,19 +287,12 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDelta)
     MockDBSync* rawDbSyncMock = dbSync.get();
 
     EXPECT_CALL(*rawFsMock, exists(::testing::_))
-    .Times(::testing::AnyNumber())
-    .WillRepeatedly([](const std::filesystem::path&)
-    {
-        return true;
-    });
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly([](const std::filesystem::path&) { return true; });
 
     EXPECT_CALL(*rawDbSyncMock, handle())
-    .Times(::testing::AnyNumber())
-    .WillRepeatedly([]()-> void*
-    {
-        return nullptr;
-    });
-
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly([]() -> void* { return nullptr; });
 
     const std::string yml = R"(
       variables:
@@ -342,29 +321,29 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDelta)
             // Handle malformed YAML case
             result["novariables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
             result["nopolicy"] = {{"id", "policy1"}};
-            result["nochecks"] = nlohmann::json::array(
-            {
-                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
-                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
-                }
-            });
+            result["nochecks"] =
+                nlohmann::json::array({{{"id", "check1"},
+                                        {"title", "title"},
+                                        {"condition", "all"},
+                                        {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}}});
         }
         else if (yml.find("variables:") != std::string::npos)
         {
             // Handle well-formed YAML case
             result["variables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
             result["policy"] = {{"id", "policy1"}};
-            result["checks"] = nlohmann::json::array(
-            {
-                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
-                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
-                }
-            });
+            result["checks"] =
+                nlohmann::json::array({{{"id", "check1"},
+                                        {"title", "title"},
+                                        {"condition", "all"},
+                                        {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}}});
 
             if (yml.find("check2") != std::string::npos)
             {
-                result["checks"].push_back({{"id", "check2"}, {"title", "title2"}, {"condition", "any"},
-                    {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
+                result["checks"].push_back({{"id", "check2"},
+                                            {"title", "title2"},
+                                            {"condition", "any"},
+                                            {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
             }
         }
 
@@ -380,10 +359,7 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDelta)
 
     const SCAPolicyLoader loader({}, fsMock, dbSync);
 
-    loader.SyncPoliciesAndReportDelta(jasonData, [](auto, auto)
-    {
-        return;
-    });
+    loader.SyncPoliciesAndReportDelta(jasonData, [](auto, auto) { return; });
     SUCCEED();
 }
 
@@ -401,21 +377,12 @@ TEST_F(ScaPolicyLoaderTest, NormalizeData_NoTransformationsNeeded)
 {
     ScaPolicyLoaderMock policyLoader;
 
-    nlohmann::json input =
-    {
-        {
-            {"id", "test1"},
-            {"name", "Test Name"},
-            {"refs", "reference1,reference2"},
-            {"description", "Test description"}
-        },
-        {
-            {"id", "test2"},
-            {"name", "Test Name 2"},
-            {"refs", "reference3"},
-            {"other_field", "value"}
-        }
-    };
+    nlohmann::json input = {
+        {{"id", "test1"},
+         {"name", "Test Name"},
+         {"refs", "reference1,reference2"},
+         {"description", "Test description"}},
+        {{"id", "test2"}, {"name", "Test Name 2"}, {"refs", "reference3"}, {"other_field", "value"}}};
 
     auto result = policyLoader.NormalizeData(input);
 
@@ -434,15 +401,10 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_PolicyTable_NoChecksum)
 {
     ScaPolicyLoaderMock policyLoader;
 
-    nlohmann::json input =
-    {
-        {
-            {"id", "policy1"},
-            {"title", "Test Policy"},
-            {"references", "ref1,ref2"},
-            {"description", "Test description"}
-        }
-    };
+    nlohmann::json input = {{{"id", "policy1"},
+                             {"title", "Test Policy"},
+                             {"references", "ref1,ref2"},
+                             {"description", "Test description"}}};
 
     auto result = policyLoader.NormalizeDataWithChecksum(input, SCA_POLICY_TABLE_NAME);
 
@@ -466,17 +428,13 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_PolicyTable_NoChecksum)
 TEST_F(ScaPolicyLoaderTest, NormalizeDataRoundTripsRefsAndRules)
 {
     const nlohmann::json policyReferences = nlohmann::json::array({"https://www.cisecurity.org/cis-benchmarks/"});
-    const nlohmann::json checkReferences = nlohmann::json::array(
-    {
-        "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
-        "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
-    });
-    const nlohmann::json checkRules = nlohmann::json::array(
-    {
-        "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found",
-        "not c:lsmod -> r:squashfs",
-        "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs"
-    });
+    const nlohmann::json checkReferences =
+        nlohmann::json::array({"https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/",
+                               "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"});
+    const nlohmann::json checkRules =
+        nlohmann::json::array({"c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found",
+                               "not c:lsmod -> r:squashfs",
+                               "d:/etc/modprobe.d -> r:.*\\.conf -> r:blacklist\\t*\\s*squashfs"});
 
     ScaPolicyLoaderMock policyLoader;
 
@@ -499,10 +457,8 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataRoundTripsRefsAndRules)
     EXPECT_EQ(storedCheck["rules"], checkRules);
 
     // No element carries a bracket or a quote from the array it was serialised into.
-    const std::vector<nlohmann::json> decodedFields
-    {
-        storedPolicy["references"], storedCheck["references"], storedCheck["rules"]
-    };
+    const std::vector<nlohmann::json> decodedFields {
+        storedPolicy["references"], storedCheck["references"], storedCheck["rules"]};
 
     for (const auto& field : decodedFields)
     {
@@ -523,16 +479,11 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_CheckTable_AddsChecksum)
 {
     ScaPolicyLoaderMock policyLoader;
 
-    nlohmann::json input =
-    {
-        {
-            {"id", "check1"},
-            {"title", "Test Check"},
-            {"references", "ref1"},
-            {"policy_id", "policy1"},
-            {"description", "Test check description"}
-        }
-    };
+    nlohmann::json input = {{{"id", "check1"},
+                             {"title", "Test Check"},
+                             {"references", "ref1"},
+                             {"policy_id", "policy1"},
+                             {"description", "Test check description"}}};
 
     auto result = policyLoader.NormalizeDataWithChecksum(input, SCA_CHECK_TABLE_NAME);
 
@@ -577,41 +528,25 @@ TEST_F(ScaPolicyLoaderTest, UpdateCheckResult_NullDBSync)
 {
     ScaPolicyLoaderMock nullLoader;
 
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"result", "passed"}
-    };
+    nlohmann::json check = {{"id", "check1"}, {"result", "passed"}};
 
     // Should not crash and should log error
-    EXPECT_NO_THROW(
-    {
-        nullLoader.UpdateCheckResult(check);
-    });
+    EXPECT_NO_THROW({ nullLoader.UpdateCheckResult(check); });
 }
-
 
 TEST_F(ScaPolicyLoaderTest, UpdateCheckResult_ValidCheck)
 {
     ScaPolicyLoaderMock nullLoader(mockDBSync);
-    nlohmann::json check =
-    {
-        {"id", "check1"},
-        {"policy_id", "policy1"},
-        {"name", "Test Check"},
-        {"result", "passed"},
-        {"description", "Test description"}
-    };
+    nlohmann::json check = {{"id", "check1"},
+                            {"policy_id", "policy1"},
+                            {"name", "Test Check"},
+                            {"result", "passed"},
+                            {"description", "Test description"}};
 
     EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
-    .WillOnce([](const nlohmann::json&,
-                 const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
-    {
-        callback(INSERTED, nlohmann::json::object());
-    });
+        .WillOnce(
+            [](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+            { callback(INSERTED, nlohmann::json::object()); });
 
-    EXPECT_NO_THROW(
-    {
-        nullLoader.UpdateCheckResult(check);
-    });
+    EXPECT_NO_THROW({ nullLoader.UpdateCheckResult(check); });
 }

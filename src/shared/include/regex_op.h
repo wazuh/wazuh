@@ -22,8 +22,7 @@
  * @param regex Regex to match.
  * @return Returns 1 if matches, 0 if not.
  */
-int OS_PRegex(const char *str, const char *regex);
-
+int OS_PRegex(const char* str, const char* regex);
 
 /**
  * @brief Compare a string with a expression.
@@ -37,10 +36,10 @@ int OS_PRegex(const char *str, const char *regex);
  * @param pmatch Array of regmatch_t objects where the function can record the matches.
  * @return Returns 1 on success or 0 on error.
  */
-int w_regexec(const char * pattern, const char * string, size_t nmatch, regmatch_t * pmatch);
+int w_regexec(const char* pattern, const char* string, size_t nmatch, regmatch_t* pmatch);
 
 // Callback to use POSIX regex with the SQLite engine
-void w_sql_regex(sqlite3_context *context, int argc, sqlite3_value **argv);
+void w_sql_regex(sqlite3_context* context, int argc, sqlite3_value** argv);
 
 #endif
 #endif

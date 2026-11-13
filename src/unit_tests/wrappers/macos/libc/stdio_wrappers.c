@@ -20,33 +20,41 @@
 #include "defs.h"
 #include "../../common.h"
 
-char * wrap_fgets (char * __s, int __n, FILE * __stream) {
-    if (test_mode) {
-        char *buffer = mock_type(char*);
+char* wrap_fgets(char* __s, int __n, FILE* __stream)
+{
+    if (test_mode)
+    {
+        char* buffer = mock_type(char*);
         check_expected(__stream);
-        if(buffer) {
+        if (buffer)
+        {
             strncpy(__s, buffer, __n);
             return __s;
         }
         return NULL;
-    } else {
+    }
+    else
+    {
         return fgets(__s, __n, __stream);
     }
 }
 
-int wrap_fprintf (FILE *__stream, const char *__format, ...) {
+int wrap_fprintf(FILE* __stream, const char* __format, ...)
+{
     char formatted_msg[OS_MAXSTR];
     va_list args;
     int ret;
     va_start(args, __format);
 
-    if (test_mode) {
+    if (test_mode)
+    {
         vsnprintf(formatted_msg, OS_MAXSTR, __format, args);
         check_expected(__stream);
         check_expected(formatted_msg);
         ret = mock();
     }
-    else {
+    else
+    {
         ret = vfprintf(__stream, __format, args);
     }
 
@@ -54,17 +62,20 @@ int wrap_fprintf (FILE *__stream, const char *__format, ...) {
     return ret;
 }
 
-int wrap_snprintf (char * s, size_t n, const char *__format, ...) {
+int wrap_snprintf(char* s, size_t n, const char* __format, ...)
+{
     va_list args;
     int ret;
     va_start(args, __format);
 
-    if (test_mode) {
+    if (test_mode)
+    {
         vsnprintf(s, n, __format, args);
         check_expected(s);
         ret = mock();
     }
-    else {
+    else
+    {
         ret = snprintf(s, n, __format, args);
     }
 
@@ -72,12 +83,15 @@ int wrap_snprintf (char * s, size_t n, const char *__format, ...) {
     return ret;
 }
 
-int wrap_fstat (int __fd, struct stat *__buf) {
-    if (test_mode) {
+int wrap_fstat(int __fd, struct stat* __buf)
+{
+    if (test_mode)
+    {
         int ret = 0;
         __buf->st_size = mock_type(int);
         ret = mock_type(int);
-        if (ret < 0) {
+        if (ret < 0)
+        {
             errno = ESRCH;
         }
 
@@ -87,19 +101,24 @@ int wrap_fstat (int __fd, struct stat *__buf) {
     return fstat(__fd, __buf);
 }
 
-int wrap_fileno (FILE *fp) {
-    if (test_mode) {
+int wrap_fileno(FILE* fp)
+{
+    if (test_mode)
+    {
         return mock_type(int);
     }
     return fileno(fp);
 }
 
-int wrap_fclose (FILE *fp) {
-    if (test_mode) {
+int wrap_fclose(FILE* fp)
+{
+    if (test_mode)
+    {
         int ret = 0;
         check_expected(fp);
         ret = mock_type(int);
-        if (ret < 0) {
+        if (ret < 0)
+        {
             errno = ESRCH;
         }
 
@@ -108,48 +127,59 @@ int wrap_fclose (FILE *fp) {
     return fclose(fp);
 }
 
-int wrap_fwrite(char *src, int n, size_t size, FILE *fp) {
-    if (test_mode) {
+int wrap_fwrite(char* src, int n, size_t size, FILE* fp)
+{
+    if (test_mode)
+    {
         check_expected(src);
         return mock();
     }
     return fwrite(src, n, size, fp);
 }
 
-int wrap_fseek(FILE *fp, int seek,  int flag) {
-    if (test_mode) {
+int wrap_fseek(FILE* fp, int seek, int flag)
+{
+    if (test_mode)
+    {
         check_expected(fp);
         return 1;
     }
     return fseek(fp, seek, flag);
 }
 
-void * wrap_mmap (void *start, size_t length, int prot, int flags, int fd, off_t offset) {
-    if (test_mode) {
+void* wrap_mmap(void* start, size_t length, int prot, int flags, int fd, off_t offset)
+{
+    if (test_mode)
+    {
         check_expected(fd);
-        void *ret = mock_type(void*);
-        if (ret == MAP_FAILED) {
+        void* ret = mock_type(void*);
+        if (ret == MAP_FAILED)
+        {
             errno = ESRCH;
         }
 
         return ret;
-        
     }
     return mmap(start, length, prot, flags, fd, offset);
 }
 
-int wrap_munmap (void *mem, size_t size) {
-    if (test_mode) {
+int wrap_munmap(void* mem, size_t size)
+{
+    if (test_mode)
+    {
         check_expected(mem);
         return 1;
     }
     return munmap(mem, size);
 }
 
-FILE * wrap_tmpfile () {
-    if (test_mode) {
+FILE* wrap_tmpfile()
+{
+    if (test_mode)
+    {
         FILE* ret = mock_type(FILE*);
-        if (ret == NULL) {
+        if (ret == NULL)
+        {
             errno = ESRCH;
         }
 
@@ -158,17 +188,22 @@ FILE * wrap_tmpfile () {
     return tmpfile();
 }
 
-FILE * wrap_fopen (const char* path, const char* mode) {
-    if(test_mode) {
+FILE* wrap_fopen(const char* path, const char* mode)
+{
+    if (test_mode)
+    {
         check_expected_ptr(path);
         check_expected(mode);
         FILE* ret = mock_ptr_type(FILE*);
-        if (ret == NULL) {
+        if (ret == NULL)
+        {
             errno = ESRCH;
         }
 
         return ret;
-    } else {
+    }
+    else
+    {
         return fopen(path, mode);
     }
 }

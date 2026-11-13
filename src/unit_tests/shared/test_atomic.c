@@ -19,7 +19,8 @@
 #include "atomic.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 
-static void test_atomic_int_get(void **state) {
+static void test_atomic_int_get(void** state)
+{
     atomic_int_t test_variable = ATOMIC_INT_INITIALIZER(1231);
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -29,7 +30,8 @@ static void test_atomic_int_get(void **state) {
     assert_int_equal(ret, 1231);
 }
 
-static void test_atomic_int_set(void **state) {
+static void test_atomic_int_set(void** state)
+{
     atomic_int_t test_variable = ATOMIC_INT_INITIALIZER(1231);
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -39,7 +41,8 @@ static void test_atomic_int_set(void **state) {
     assert_int_equal(test_variable.data, 2718);
 }
 
-static void test_atomic_int_inc(void **state) {
+static void test_atomic_int_inc(void** state)
+{
     atomic_int_t test_variable = ATOMIC_INT_INITIALIZER(1231);
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -49,7 +52,8 @@ static void test_atomic_int_inc(void **state) {
     assert_int_equal(ret, 1232);
 }
 
-static void test_atomic_int_dec(void **state) {
+static void test_atomic_int_dec(void** state)
+{
     atomic_int_t test_variable = ATOMIC_INT_INITIALIZER(1231);
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -59,13 +63,14 @@ static void test_atomic_int_dec(void **state) {
     assert_int_equal(ret, 1230);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_atomic_int_get),
         cmocka_unit_test(test_atomic_int_set),
         cmocka_unit_test(test_atomic_int_inc),
         cmocka_unit_test(test_atomic_int_dec),
-        };
+    };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

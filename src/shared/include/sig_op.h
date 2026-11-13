@@ -31,16 +31,17 @@ void HandleSIGPIPE(int sig);
 void HandleExit();
 
 /* Start signal manipulation */
-void StartSIG(const char *process_name) __attribute__((nonnull));
+void StartSIG(const char* process_name) __attribute__((nonnull));
 
 /* Start signal manipulation -- function as an argument */
-void StartSIG2(const char *process_name, void (*func)(int)) __attribute__((nonnull));
+void StartSIG2(const char* process_name, void (*func)(int)) __attribute__((nonnull));
 
 /* Make HandleSIG() only signal a thread that ends the process outside signal context.
  * Call it after StartSIG() and after goDaemon(): threads don't survive its fork. */
 void StartSIGShutdownThread();
 
-/* Callback run by the shutdown thread before the process ends. The atexit handlers are skipped on that path, so it must cover their work. */
+/* Callback run by the shutdown thread before the process ends. The atexit handlers are skipped on that path, so it must
+ * cover their work. */
 void SetSIGShutdownFunc(void (*func)(void));
 
 #endif /* SIG_H */

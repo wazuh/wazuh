@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef KERNEL32_WRAPPERS_WINDOWS_H
 #define KERNEL32_WRAPPERS_WINDOWS_H
 

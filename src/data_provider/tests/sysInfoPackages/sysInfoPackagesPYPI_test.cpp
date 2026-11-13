@@ -20,22 +20,19 @@ TEST_F(PYPITest, getPackagesTest)
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
 
-    EXPECT_CALL(*mockFileSystem, is_directory(_))
-    .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
 
-    EXPECT_CALL(*mockFileSystem, list_directory(_))
-    .WillRepeatedly(Return(fakeFiles));
+    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
 
-    EXPECT_CALL(*mockFileIO, readLineByLine(_, _))
-    .WillRepeatedly(Return());
+    EXPECT_CALL(*mockFileIO, readLineByLine(_, _)).WillRepeatedly(Return());
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -53,12 +50,12 @@ TEST_F(PYPITest, getPackages_NoFilesInDirectoryTest)
     EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -67,14 +64,12 @@ TEST_F(PYPITest, getPackages_NoFilesInDirectoryTest)
 
 TEST_F(PYPITest, getPackages_NonDirectoryPathTest)
 {
-    EXPECT_CALL(*mockFileSystem, exists(_))
-    .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, is_directory(_))
-    .WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(false));
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
@@ -92,21 +87,23 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestEggInfo)
     EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -121,26 +118,31 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileDistInfo)
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/dist-info"))).WillRepeatedly(Return(false));
-    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/dist-info/METADATA"))).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/dist-info/RECORD"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/dist-info")))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/dist-info/METADATA")))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/dist-info/RECORD")))
+        .WillRepeatedly(Return(false));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info/METADATA"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info/METADATA"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -159,21 +161,23 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
     EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(true));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -188,26 +192,31 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
-    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/egg-info"))).WillRepeatedly(Return(false));
-    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"))).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/egg-info/installed-files.txt"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/egg-info")))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/egg-info/PKG-INFO")))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_regular_file(std::filesystem::path("/fake/dir/egg-info/installed-files.txt")))
+        .WillRepeatedly(Return(false));
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage", "Version: 1.0.0"};
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info/PKG-INFO"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -215,7 +224,6 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
     EXPECT_EQ(capturedJson.at("version_"), "1.0.0");
     EXPECT_FALSE(capturedJson.contains("size"));
 }
-
 
 TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
 {
@@ -229,27 +237,31 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
     std::vector<std::string> fakePackageLines1 = {"Name: TestPackage1", "Version: 1.0.0"};
     std::vector<std::string> fakePackageLines2 = {"Name: TestPackage2", "Version: 2.0.0"};
 
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir1/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines1)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir1/egg-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines1)
+                {
+                    callback(line);
+                }
+            });
 
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir2/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines2)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir2/dist-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines2)
+                {
+                    callback(line);
+                }
+            });
 
     bool foundPackage1 = false;
     bool foundPackage2 = false;
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & json)
+    auto callback = [&](nlohmann::json& json)
     {
         if (json.at("name") == "TestPackage1" && json.at("version_") == "1.0.0")
         {
@@ -261,7 +273,7 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
         }
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -280,21 +292,23 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_NoLines)
 
     std::vector<std::string> fakePackageLines = {};
 
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/egg-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -312,21 +326,23 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_InvalidLines)
 
     std::vector<std::string> fakePackageLines = {"Invalid: TestPackage", "Invalid: 1.0.0"};
 
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -344,21 +360,23 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingName)
 
     std::vector<std::string> fakePackageLines = {"Version: 1.0.0"};
 
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -376,21 +394,23 @@ TEST_F(PYPITest, getPackages_InvalidPackageTest_MissingVersion)
 
     std::vector<std::string> fakePackageLines = {"Name: TestPackage"};
 
-    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _)).WillOnce([&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
-    {
-        for (const auto& line : fakePackageLines)
-        {
-            callback(line);
-        }
-    });
+    EXPECT_CALL(*mockFileIO, readLineByLine(std::filesystem::path("/fake/dir/dist-info"), _))
+        .WillOnce(
+            [&](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+            {
+                for (const auto& line : fakePackageLines)
+                {
+                    callback(line);
+                }
+            });
 
     nlohmann::json capturedJson;
-    auto callback = [&](nlohmann::json & j)
+    auto callback = [&](nlohmann::json& j)
     {
         capturedJson = j;
     };
 
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
     pypi->getPackages(folders, callback);
 
@@ -409,12 +429,9 @@ TEST_F(PYPITest, getPackages_NonRegularMetadataFileInDistInfoIsSkipped)
     EXPECT_CALL(*mockFileIO, readLineByLine(_, _)).Times(0);
 
     bool callbackCalled = false;
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
-    pypi->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    pypi->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -430,12 +447,9 @@ TEST_F(PYPITest, getPackages_NonRegularMetadataFileInEggInfoIsSkipped)
     EXPECT_CALL(*mockFileIO, readLineByLine(_, _)).Times(0);
 
     bool callbackCalled = false;
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
-    pypi->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    pypi->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -445,19 +459,18 @@ TEST_F(PYPITest, getPackages_EntryNeitherFileNorDirectoryIsSkipped)
     std::vector<std::filesystem::path> fakeFiles = {"/fake/dir/dist-info"};
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, is_directory(std::filesystem::path("/usr/local/lib/python3.9/site-packages"))).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, is_directory(std::filesystem::path("/fake/dir/dist-info"))).WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockFileSystem, is_directory(std::filesystem::path("/usr/local/lib/python3.9/site-packages")))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockFileSystem, is_directory(std::filesystem::path("/fake/dir/dist-info")))
+        .WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(fakeFiles));
     EXPECT_CALL(*mockFileSystem, is_regular_file(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileIO, readLineByLine(_, _)).Times(0);
 
     bool callbackCalled = false;
-    std::set<std::string> folders = { "/usr/local/lib/python3.9/site-packages" };
+    std::set<std::string> folders = {"/usr/local/lib/python3.9/site-packages"};
 
-    pypi->getPackages(folders, [&](nlohmann::json&)
-    {
-        callbackCalled = true;
-    });
+    pypi->getPackages(folders, [&](nlohmann::json&) { callbackCalled = true; });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -488,35 +501,34 @@ TEST_F(PYPITest, getPackages_DistInfoSizeIsSumOfRecordFilesOnDisk)
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
+    EXPECT_CALL(*mockFileSystem, list_directory(_))
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "METADATA")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "RECORD")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "direct_url.json")).WillRepeatedly(Return(false));
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     // The size column is ignored: the .pyc has none, and the module's is stale
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"pkg/__init__.py,sha256=abc,1",
-                         "pkg/__pycache__/__init__.cpython-39.pyc,,",
-                         "\"pkg/we,ird.py\",sha256=def,5\r",
-                         "../../../bin/pkg-cli,sha256=ghi,7",
-                         "pkg/gone.py,sha256=jkl,9",
-                         "pkg-1.0.0.dist-info/RECORD,,"}));
+        .WillOnce(feedLines({"pkg/__init__.py,sha256=abc,1",
+                             "pkg/__pycache__/__init__.cpython-39.pyc,,",
+                             "\"pkg/we,ird.py\",sha256=def,5\r",
+                             "../../../bin/pkg-cli,sha256=ghi,7",
+                             "pkg/gone.py,sha256=jkl,9",
+                             "pkg-1.0.0.dist-info/RECORD,,"}));
 
     EXPECT_CALL(*mockFileSystem, file_size(_)).WillRepeatedly(Return(0));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/__init__.py")).WillOnce(Return(100));
-    EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/__pycache__/__init__.cpython-39.pyc")).WillOnce(Return(200));
+    EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/__pycache__/__init__.cpython-39.pyc"))
+        .WillOnce(Return(200));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/we,ird.py")).WillOnce(Return(30));
     EXPECT_CALL(*mockFileSystem, file_size(std::filesystem::path("/usr/local/bin/pkg-cli"))).WillOnce(Return(4));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg-1.0.0.dist-info/RECORD")).WillOnce(Return(5));
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("name"), "pkg");
     EXPECT_EQ(capturedJson.at("size"), 339);
@@ -533,31 +545,31 @@ TEST_F(PYPITest, getPackages_RecordPathsOutsideSitePackagesAreMeasured)
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
+    EXPECT_CALL(*mockFileSystem, list_directory(_))
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "METADATA")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "RECORD")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "direct_url.json")).WillRepeatedly(Return(false));
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"pkg/__init__.py,sha256=abc,10",
-                         "../../../../../Caches/com.apple.python/Users/u/Library/Python/3.9/lib/python/site-packages/pkg/__init__.cpython-39.pyc,,",
-                         "/opt/pkg/data.bin,sha256=def,3"}));
+        .WillOnce(feedLines({"pkg/__init__.py,sha256=abc,10",
+                             "../../../../../Caches/com.apple.python/Users/u/Library/Python/3.9/lib/python/"
+                             "site-packages/pkg/__init__.cpython-39.pyc,,",
+                             "/opt/pkg/data.bin,sha256=def,3"}));
 
     EXPECT_CALL(*mockFileSystem, file_size(sitePackages / "pkg/__init__.py")).WillOnce(Return(10));
     EXPECT_CALL(*mockFileSystem,
-                file_size(std::filesystem::path("/Users/u/Library/Caches/com.apple.python/Users/u/Library/Python/3.9/lib/python/site-packages/pkg/__init__.cpython-39.pyc")))
-    .WillOnce(Return(200));
+                file_size(std::filesystem::path("/Users/u/Library/Caches/com.apple.python/Users/u/Library/Python/3.9/"
+                                                "lib/python/site-packages/pkg/__init__.cpython-39.pyc")))
+        .WillOnce(Return(200));
     // An absolute path is never touched
     EXPECT_CALL(*mockFileSystem, file_size(std::filesystem::path("/opt/pkg/data.bin"))).Times(0);
 
     nlohmann::json capturedJson;
-    pypi->getPackages({sitePackages.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({sitePackages.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("size"), 210);
 }
@@ -568,26 +580,24 @@ TEST_F(PYPITest, getPackages_EggInfoSizeIsSumOfInstalledFiles)
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(std::vector<std::filesystem::path> {eggInfo}));
+    EXPECT_CALL(*mockFileSystem, list_directory(_))
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {eggInfo}));
     EXPECT_CALL(*mockFileSystem, is_regular_file(eggInfo)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, is_regular_file(eggInfo / "PKG-INFO")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(eggInfo / "installed-files.txt")).WillRepeatedly(Return(true));
 
     EXPECT_CALL(*mockFileIO, readLineByLine(eggInfo / "PKG-INFO", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     // Paths are relative to the egg-info directory, scripts sit one level further up
     EXPECT_CALL(*mockFileIO, readLineByLine(eggInfo / "installed-files.txt", _))
-    .WillOnce(feedLines({"../pkg/__init__.py", "", "../../../../bin/pkg-cli\r", "PKG-INFO"}));
+        .WillOnce(feedLines({"../pkg/__init__.py", "", "../../../../bin/pkg-cli\r", "PKG-INFO"}));
 
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/__init__.py")).WillOnce(Return(100));
     EXPECT_CALL(*mockFileSystem, file_size(std::filesystem::path("/usr/local/bin/pkg-cli"))).WillOnce(Return(20));
     EXPECT_CALL(*mockFileSystem, file_size(eggInfo / "PKG-INFO")).WillOnce(Return(3));
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("size"), 123);
 }
@@ -598,20 +608,18 @@ TEST_F(PYPITest, getPackages_WithoutFileListSizeIsAbsent)
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
+    EXPECT_CALL(*mockFileSystem, list_directory(_))
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "METADATA")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "RECORD")).WillRepeatedly(Return(false));
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _)).Times(0);
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     // Unknown, never zero
     EXPECT_EQ(capturedJson.at("name"), "pkg");
@@ -624,23 +632,21 @@ TEST_F(PYPITest, getPackages_NoListedFileOnDiskSizeIsAbsent)
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
+    EXPECT_CALL(*mockFileSystem, list_directory(_))
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {distInfo}));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "METADATA")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "RECORD")).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_regular_file(distInfo / "direct_url.json")).WillRepeatedly(Return(false));
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"pkg/gone.py,sha256=abc,100"}));
+        .WillOnce(feedLines({"pkg/gone.py,sha256=abc,100"}));
     EXPECT_CALL(*mockFileSystem, file_size(_)).WillRepeatedly(Return(0));
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_FALSE(capturedJson.contains("size"));
 }
@@ -651,7 +657,8 @@ TEST_F(PYPITest, getPackages_SingleFileEggInfoSizeIsAbsent)
 
     EXPECT_CALL(*mockFileSystem, exists(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*mockFileSystem, is_directory(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mockFileSystem, list_directory(_)).WillRepeatedly(Return(std::vector<std::filesystem::path> {eggInfo}));
+    EXPECT_CALL(*mockFileSystem, list_directory(_))
+        .WillRepeatedly(Return(std::vector<std::filesystem::path> {eggInfo}));
     EXPECT_CALL(*mockFileSystem, is_regular_file(eggInfo)).WillRepeatedly(Return(true));
 
     // The lone file is the metadata itself, there is no list to read
@@ -659,10 +666,7 @@ TEST_F(PYPITest, getPackages_SingleFileEggInfoSizeIsAbsent)
     EXPECT_CALL(*mockFileSystem, file_size(_)).Times(0);
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("name"), "pkg");
     EXPECT_FALSE(capturedJson.contains("size"));
@@ -689,9 +693,9 @@ TEST_F(PYPITest, getPackages_RecordSymlinksAndRepeatedEntriesAreCountedOnce)
     expectDistInfo(*mockFileSystem, distInfo, false);
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"pkg/__init__.py,,", "pkg/./__init__.py,,", "pkg/link.py,,", "pkg/data.bin,,"}));
+        .WillOnce(feedLines({"pkg/__init__.py,,", "pkg/./__init__.py,,", "pkg/link.py,,", "pkg/data.bin,,"}));
 
     EXPECT_CALL(*mockFileSystem, is_symlink(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, is_symlink(SITE_PACKAGES / "pkg/link.py")).WillRepeatedly(Return(true));
@@ -701,10 +705,7 @@ TEST_F(PYPITest, getPackages_RecordSymlinksAndRepeatedEntriesAreCountedOnce)
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/data.bin")).WillOnce(Return(5));
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("size"), 15);
 }
@@ -715,20 +716,18 @@ TEST_F(PYPITest, getPackages_UninspectableEntryIsSkipped)
     expectDistInfo(*mockFileSystem, distInfo, false);
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"pkg/denied.py,,", "pkg/__init__.py,,"}));
+        .WillOnce(feedLines({"pkg/denied.py,,", "pkg/__init__.py,,"}));
 
     EXPECT_CALL(*mockFileSystem, is_symlink(SITE_PACKAGES / "pkg/denied.py"))
-    .WillOnce(testing::Throw(std::filesystem::filesystem_error("denied", std::make_error_code(std::errc::permission_denied))));
+        .WillOnce(testing::Throw(
+            std::filesystem::filesystem_error("denied", std::make_error_code(std::errc::permission_denied))));
     EXPECT_CALL(*mockFileSystem, is_symlink(SITE_PACKAGES / "pkg/__init__.py")).WillOnce(Return(false));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/__init__.py")).WillOnce(Return(10));
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     // One unreadable entry does not drop the package
     EXPECT_EQ(capturedJson.at("name"), "pkg");
@@ -741,20 +740,17 @@ TEST_F(PYPITest, getPackages_OverflowingSumSizeIsAbsent)
     expectDistInfo(*mockFileSystem, distInfo, false);
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"pkg/a.bin,,", "pkg/b.bin,,"}));
+        .WillOnce(feedLines({"pkg/a.bin,,", "pkg/b.bin,,"}));
 
     EXPECT_CALL(*mockFileSystem, is_symlink(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/a.bin"))
-    .WillOnce(Return(static_cast<std::uintmax_t>(std::numeric_limits<int64_t>::max())));
+        .WillOnce(Return(static_cast<std::uintmax_t>(std::numeric_limits<int64_t>::max())));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/b.bin")).WillOnce(Return(1));
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("name"), "pkg");
     EXPECT_FALSE(capturedJson.contains("size"));
@@ -766,18 +762,15 @@ TEST_F(PYPITest, getPackages_EditableInstallSizeIsAbsent)
     expectDistInfo(*mockFileSystem, distInfo, true);
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "direct_url.json", _))
-    .WillOnce(feedLines({"{\"url\": \"file:///home/dev/pkg\",", " \"dir_info\": {\"editable\": true}}"}));
+        .WillOnce(feedLines({"{\"url\": \"file:///home/dev/pkg\",", " \"dir_info\": {\"editable\": true}}"}));
     // Its RECORD only lists the stub pointing at the source tree, so it is not measured
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _)).Times(0);
     EXPECT_CALL(*mockFileSystem, file_size(_)).Times(0);
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("name"), "pkg");
     EXPECT_FALSE(capturedJson.contains("size"));
@@ -789,19 +782,16 @@ TEST_F(PYPITest, getPackages_NonEditableDirectUrlIsMeasured)
     expectDistInfo(*mockFileSystem, distInfo, true);
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     // Installed from a local directory without -e, and a malformed editable flag: both are measured
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "direct_url.json", _))
-    .WillOnce(feedLines({"{\"url\": \"file:///home/dev/pkg\", \"dir_info\": {\"editable\": \"yes\"}}"}));
+        .WillOnce(feedLines({"{\"url\": \"file:///home/dev/pkg\", \"dir_info\": {\"editable\": \"yes\"}}"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _)).WillOnce(feedLines({"pkg/__init__.py,,"}));
     EXPECT_CALL(*mockFileSystem, is_symlink(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/__init__.py")).WillOnce(Return(10));
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("size"), 10);
 }
@@ -812,15 +802,15 @@ TEST_F(PYPITest, getPackages_RecordEntriesOutsideTheInstallationAreNeverTouched)
     expectDistInfo(*mockFileSystem, distInfo, false);
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     // RECORD is writable by whoever owns the installation: an absolute path, a network share and a
     // relative path climbing above the prefix must not reach the filesystem at all
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"pkg/__init__.py,,",
-                         "/etc/shadow,,",
-                         "//fileserver/share/x,,",
-                         "../../../../../../../../net/fileserver/x,,",
-                         "../../../../etc/passwd,,"}));
+        .WillOnce(feedLines({"pkg/__init__.py,,",
+                             "/etc/shadow,,",
+                             "//fileserver/share/x,,",
+                             "../../../../../../../../net/fileserver/x,,",
+                             "../../../../etc/passwd,,"}));
 
     EXPECT_CALL(*mockFileSystem, is_symlink(SITE_PACKAGES / "pkg/__init__.py")).WillOnce(Return(false));
     EXPECT_CALL(*mockFileSystem, file_size(SITE_PACKAGES / "pkg/__init__.py")).WillOnce(Return(10));
@@ -829,10 +819,7 @@ TEST_F(PYPITest, getPackages_RecordEntriesOutsideTheInstallationAreNeverTouched)
     EXPECT_CALL(*mockFileSystem, file_size(testing::Ne(SITE_PACKAGES / "pkg/__init__.py"))).Times(0);
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("size"), 10);
 }
@@ -844,9 +831,9 @@ TEST_F(PYPITest, getPackages_ScriptsInThePrefixBinAreMeasured)
     expectDistInfo(*mockFileSystem, distInfo, false);
 
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "METADATA", _))
-    .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
+        .WillOnce(feedLines({"Name: pkg", "Version: 1.0.0"}));
     EXPECT_CALL(*mockFileIO, readLineByLine(distInfo / "RECORD", _))
-    .WillOnce(feedLines({"../../../bin/pkg-cli,,", "../../../../bin/outside,,"}));
+        .WillOnce(feedLines({"../../../bin/pkg-cli,,", "../../../../bin/outside,,"}));
 
     EXPECT_CALL(*mockFileSystem, is_symlink(std::filesystem::path("/usr/local/bin/pkg-cli"))).WillOnce(Return(false));
     EXPECT_CALL(*mockFileSystem, file_size(std::filesystem::path("/usr/local/bin/pkg-cli"))).WillOnce(Return(7));
@@ -854,10 +841,7 @@ TEST_F(PYPITest, getPackages_ScriptsInThePrefixBinAreMeasured)
     EXPECT_CALL(*mockFileSystem, file_size(std::filesystem::path("/usr/bin/outside"))).Times(0);
 
     nlohmann::json capturedJson;
-    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json & j)
-    {
-        capturedJson = j;
-    });
+    pypi->getPackages({SITE_PACKAGES.string()}, [&](nlohmann::json& j) { capturedJson = j; });
 
     EXPECT_EQ(capturedJson.at("size"), 7);
 }

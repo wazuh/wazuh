@@ -17,14 +17,15 @@
  * Returns 0 on success or -1 on error
  */
 
-int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data)
+int CreateThreadJoinable(pthread_t* lthread, void* (*function_pointer)(void*), void* data)
 {
     pthread_attr_t attr;
     size_t read_size = 0;
     size_t stacksize = 0;
     int ret = 0;
 
-    if (pthread_attr_init(&attr)) {
+    if (pthread_attr_init(&attr))
+    {
         merror(THREAD_ERROR " Cannot initialize attributes.");
         return -1;
     }
@@ -36,20 +37,23 @@ int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *),
 #endif
 
     /* Set the maximum stack limit to new threads */
-    if (pthread_attr_setstacksize(&attr, read_size)) {
+    if (pthread_attr_setstacksize(&attr, read_size))
+    {
         merror(THREAD_ERROR " Cannot set stack size to %d KB.", (int)read_size);
         return -1;
     }
 
-    if (pthread_attr_getstacksize(&attr, &stacksize)) {
+    if (pthread_attr_getstacksize(&attr, &stacksize))
+    {
         merror(THREAD_ERROR " Cannot confirm stack size setting.");
         return -1;
     }
 
     mdebug2("Thread stack size set to: %d KiB", (int)stacksize / 1024);
 
-    ret = pthread_create(lthread, &attr, function_pointer, (void *)data);
-    if (ret != 0) {
+    ret = pthread_create(lthread, &attr, function_pointer, (void*)data);
+    if (ret != 0)
+    {
         merror(THREAD_ERROR " %s (%d)", strerror(ret), ret);
         return -1;
     }
@@ -59,15 +63,17 @@ int CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *),
     return (0);
 }
 
-int CreateThread(void * (*function_pointer)(void *), void *data)
+int CreateThread(void* (*function_pointer)(void*), void* data)
 {
     pthread_t lthread;
 
-    if (CreateThreadJoinable(&lthread, function_pointer, data) < 0) {
+    if (CreateThreadJoinable(&lthread, function_pointer, data) < 0)
+    {
         return 0;
     }
 
-    if (pthread_detach(lthread) != 0) {
+    if (pthread_detach(lthread) != 0)
+    {
         merror(THREAD_ERROR " Cannot detach thread.");
         return 0;
     }

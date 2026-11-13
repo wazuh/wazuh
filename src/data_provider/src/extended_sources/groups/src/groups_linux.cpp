@@ -14,18 +14,19 @@
 constexpr size_t MAX_GETPW_R_BUF_SIZE = 16 * 1024;
 
 GroupsProvider::GroupsProvider(std::shared_ptr<IGroupWrapperLinux> groupWrapper)
-    : m_groupWrapper(std::move(groupWrapper)) {}
+    : m_groupWrapper(std::move(groupWrapper))
+{
+}
 
 GroupsProvider::GroupsProvider()
-    : m_groupWrapper(std::make_shared<GroupWrapperLinux>()) {}
+    : m_groupWrapper(std::make_shared<GroupWrapperLinux>())
+{
+}
 
 nlohmann::json GroupsProvider::collect(const std::set<gid_t>& gids)
 {
     nlohmann::json results = nlohmann::json::array();
-    struct group* groupResult
-    {
-        nullptr
-    };
+    struct group* groupResult {nullptr};
     struct group group;
 
     size_t bufSize = MAX_GETPW_R_BUF_SIZE;

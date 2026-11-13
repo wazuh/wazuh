@@ -29,13 +29,15 @@
 extern bool fetch_document_limits_from_agentd(void);
 
 /* setup/teardowns */
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
 
-    if (initialize_syscheck_configuration(&syscheck) == OS_INVALID) {
+    if (initialize_syscheck_configuration(&syscheck) == OS_INVALID)
+    {
         return OS_INVALID;
     }
 
-    fdb_t *fdb = calloc(1, sizeof(fdb_t));
+    fdb_t* fdb = calloc(1, sizeof(fdb_t));
     if (fdb == NULL)
         return -1;
 
@@ -44,27 +46,30 @@ static int setup_group(void **state) {
     return 0;
 }
 
-static int teardown_group(void **state) {
-    fdb_t *fdb = *state;
+static int teardown_group(void** state)
+{
+    fdb_t* fdb = *state;
 
     free(fdb);
 
     return 0;
 }
 
-static int setup_syscheck_config(void **state) {
-    syscheck_config *syscheck_conf = calloc(1, sizeof(syscheck_config));
+static int setup_syscheck_config(void** state)
+{
+    syscheck_config* syscheck_conf = calloc(1, sizeof(syscheck_config));
 
-    syscheck_conf->file_entry_limit          = 100000;
+    syscheck_conf->file_entry_limit = 100000;
 #ifdef WIN32
-    syscheck_conf->db_entry_registry_limit   = 100000;
+    syscheck_conf->db_entry_registry_limit = 100000;
 #endif
     *state = syscheck_conf;
     return 0;
 }
 
-static int teardown_syscheck_config(void **state) {
-    syscheck_config *syscheck_conf = *state;
+static int teardown_syscheck_config(void** state)
+{
+    syscheck_config* syscheck_conf = *state;
 
     free(syscheck_conf);
 
@@ -72,19 +77,24 @@ static int teardown_syscheck_config(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-static int setup_group_win(void **state) {
+static int setup_group_win(void** state)
+{
     syscheck.directories = OSList_Create();
-    if (syscheck.directories == NULL) {
+    if (syscheck.directories == NULL)
+    {
         return -1;
     }
 
     return 0;
 }
 
-static int teardown_group_win(void **state) {
-    OSListNode *node_it;
-    if (syscheck.directories) {
-        OSList_foreach(node_it, syscheck.directories) {
+static int teardown_group_win(void** state)
+{
+    OSListNode* node_it;
+    if (syscheck.directories)
+    {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             free_directory(node_it->data);
             node_it->data = NULL;
         }
@@ -98,9 +108,9 @@ static int teardown_group_win(void **state) {
 
 /* tests */
 
-void test_fim_initialize(void **state)
+void test_fim_initialize(void** state)
 {
-    syscheck_config *syscheck_conf = *state;
+    syscheck_config* syscheck_conf = *state;
 
 #ifdef TEST_WINAGENT
     // fim_initialize() guards its synced_docs counters with synced_docs_mutex; only the
@@ -110,19 +120,15 @@ void test_fim_initialize(void **state)
 #endif
 
 #ifdef TEST_WINAGENT
-    expect_wrapper_fim_db_init(FIM_DB_DISK,
-                               syscheck_conf->file_entry_limit,
-                               syscheck_conf->db_entry_registry_limit);
+    expect_wrapper_fim_db_init(FIM_DB_DISK, syscheck_conf->file_entry_limit, syscheck_conf->db_entry_registry_limit);
 #else
-    expect_wrapper_fim_db_init(FIM_DB_DISK,
-                               syscheck_conf->file_entry_limit,
-                               0);
+    expect_wrapper_fim_db_init(FIM_DB_DISK, syscheck_conf->file_entry_limit, 0);
 #endif
 
     // fetch_document_limits_from_agentd is called before asp_create in agent builds
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
-    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, "{}"); // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
     // Distinct values so a swapped or repeated argument fails
@@ -143,9 +149,9 @@ void test_fim_initialize(void **state)
     fim_initialize();
 }
 
-void test_read_internal(void **state)
+void test_read_internal(void** state)
 {
-    (void) state;
+    (void)state;
 
     will_return_always(__wrap_getDefine_Int, 1);
     will_return_always(__wrap_getDefine_Int_default, 1);
@@ -156,9 +162,9 @@ void test_read_internal(void **state)
     assert_int_equal(syscheck.sync_cache_size_kib, 1);
 }
 
-void test_read_internal_debug(void **state)
+void test_read_internal_debug(void** state)
 {
-    (void) state;
+    (void)state;
 
     will_return_always(__wrap_getDefine_Int, 1);
     will_return_always(__wrap_getDefine_Int_default, 1);
@@ -168,13 +174,13 @@ void test_read_internal_debug(void **state)
 #ifdef TEST_WINAGENT
 int Start_win32_Syscheck();
 
-int __wrap_Read_Syscheck_Config(const char * file)
+int __wrap_Read_Syscheck_Config(const char* file)
 {
     check_expected_ptr(file);
     return mock();
 }
 
-int __wrap_rootcheck_init(int value, const char * cfg)
+int __wrap_rootcheck_init(int value, const char* cfg)
 {
     return mock();
 }
@@ -189,13 +195,13 @@ void __wrap_read_internal(int debug_level)
     function_called();
 }
 
-void test_Start_win32_Syscheck_no_config_file(void **state) {
-    directory_t EMPTY = { 0 };
-    registry_t REGISTRY_EMPTY[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
+void test_Start_win32_Syscheck_no_config_file(void** state)
+{
+    directory_t EMPTY = {0};
+    registry_t REGISTRY_EMPTY[] = {{NULL, 0, 0, 0, 0, NULL, NULL}};
 
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
-
 
     /* Conf file not found */
     will_return_always(__wrap_getDefine_Int, 1);
@@ -207,13 +213,14 @@ void test_Start_win32_Syscheck_no_config_file(void **state) {
     expect_assert_failure(Start_win32_Syscheck());
 }
 
-void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
+void test_Start_win32_Syscheck_corrupted_config_file(void** state)
+{
     // fim_initialize() guards its synced_docs counters with synced_docs_mutex.
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
 
-    directory_t EMPTY = { 0 };
-    registry_t REGISTRY_EMPTY[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
+    directory_t EMPTY = {0};
+    registry_t REGISTRY_EMPTY[] = {{NULL, 0, 0, 0, 0, NULL, NULL}};
 
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
@@ -243,14 +250,15 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
-    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, "{}"); // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
 
-void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
+void test_Start_win32_Syscheck_syscheck_disabled_1(void** state)
+{
     // fim_initialize() guards its synced_docs counters with synced_docs_mutex.
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
@@ -295,19 +303,20 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
-    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, "{}"); // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
 
-void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
+void test_Start_win32_Syscheck_syscheck_disabled_2(void** state)
+{
     // fim_initialize() guards its synced_docs counters with synced_docs_mutex.
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
 
-    directory_t EMPTY = { 0 };
+    directory_t EMPTY = {0};
     char info_msg[OS_MAXSTR];
 
     will_return_always(__wrap_getDefine_Int, 1);
@@ -345,42 +354,42 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
-    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, "{}"); // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
 
-void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
+void test_Start_win32_Syscheck_dirs_and_registry(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    directory_t *directory0 = fim_create_directory("c:\\dir1", 0, NULL, 512, NULL, 1024, 0);
+    directory_t* directory0 = fim_create_directory("c:\\dir1", 0, NULL, 512, NULL, 1024, 0);
     OSList_InsertData(syscheck.directories, NULL, directory0);
 
     syscheck.disabled = 0;
 
-    registry_t syscheck_registry[] = { { "Entry1", 1, 0, 0, 0, NULL, NULL, "Tag1" },
-                                     { NULL, 0, 0, 0, 0, NULL, NULL, NULL } };
+    registry_t syscheck_registry[] = {{"Entry1", 1, 0, 0, 0, NULL, NULL, "Tag1"}, {NULL, 0, 0, 0, 0, NULL, NULL, NULL}};
     syscheck.registry = syscheck_registry;
 
-    char *syscheck_ignore[] = {"dir1", NULL};
+    char* syscheck_ignore[] = {"dir1", NULL};
     syscheck.ignore = syscheck_ignore;
     syscheck.file_size_enabled = 0;
     syscheck.disk_quota_enabled = 0;
     OSMatch regex;
     regex.raw = "^regex$";
-    OSMatch *syscheck_ignore_regex[] = {&regex, NULL};
+    OSMatch* syscheck_ignore_regex[] = {&regex, NULL};
     syscheck.ignore_regex = syscheck_ignore_regex;
 
-    registry_ignore syscheck_registry_ignore[] = { { "Entry1", 1 }, { NULL, 0 } };
+    registry_ignore syscheck_registry_ignore[] = {{"Entry1", 1}, {NULL, 0}};
     syscheck.key_ignore = syscheck_registry_ignore;
 
-    char *syscheck_nodiff[] = {"Diff", NULL};
+    char* syscheck_nodiff[] = {"Diff", NULL};
     syscheck.nodiff = syscheck_nodiff;
 
     char info_msg[OS_MAXSTR];
@@ -428,7 +437,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
-    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, "{}"); // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
     expect_function_call(__wrap_start_daemon);
@@ -438,16 +447,17 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     OSList_DeleteThisNode(syscheck.directories, syscheck.directories->first_node);
 }
 
-void test_Start_win32_Syscheck_whodata_active(void **state) {
+void test_Start_win32_Syscheck_whodata_active(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    directory_t *directory0 = fim_create_directory("c:\\dir1", WHODATA_ACTIVE, NULL, 512, NULL, -1, 0);
+    directory_t* directory0 = fim_create_directory("c:\\dir1", WHODATA_ACTIVE, NULL, 512, NULL, -1, 0);
 
-    registry_t syscheck_registry[] = { { NULL, 0, 0, 0, 0, NULL, NULL } };
+    registry_t syscheck_registry[] = {{NULL, 0, 0, 0, 0, NULL, NULL}};
 
     syscheck.disabled = 0;
 
@@ -496,7 +506,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
-    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, "{}"); // Empty JSON
     will_return(__wrap_w_query_agentd, true);
 
     expect_function_call(__wrap_start_daemon);
@@ -506,7 +516,8 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     OSList_DeleteThisNode(syscheck.directories, syscheck.directories->first_node);
 }
 
-void test_initialize_syscheck_configuration_registry(void **state) {
+void test_initialize_syscheck_configuration_registry(void** state)
+{
     syscheck_config config;
 
     // Test_Syscheck() uses a stack configuration, so nothing can be left from the caller
@@ -529,10 +540,11 @@ void test_initialize_syscheck_configuration_registry(void **state) {
 
 /* Tests for fetch_document_limits_from_agentd */
 
-void test_fetch_document_limits_success(void **state) {
-    (void) state;
+void test_fetch_document_limits_success(void** state)
+{
+    (void)state;
 
-    const char *json_response = "{\"file\": 100, \"registry_key\": 200, \"registry_value\": 300}";
+    const char* json_response = "{\"file\": 100, \"registry_key\": 200, \"registry_value\": 300}";
 
     // Initialize limits to different values
     syscheck.file_limit = 0;
@@ -550,8 +562,9 @@ void test_fetch_document_limits_success(void **state) {
     assert_int_equal(syscheck.registry_value_limit, 300);
 }
 
-void test_fetch_document_limits_query_failure(void **state) {
-    (void) state;
+void test_fetch_document_limits_query_failure(void** state)
+{
+    (void)state;
 
     syscheck.file_limit = 50;
     syscheck.registry_key_limit = 60;
@@ -571,10 +584,11 @@ void test_fetch_document_limits_query_failure(void **state) {
     assert_int_equal(syscheck.registry_value_limit, 70);
 }
 
-void test_fetch_document_limits_invalid_json(void **state) {
-    (void) state;
+void test_fetch_document_limits_invalid_json(void** state)
+{
+    (void)state;
 
-    const char *invalid_json = "not valid json {";
+    const char* invalid_json = "not valid json {";
 
     syscheck.file_limit = 50;
     syscheck.registry_key_limit = 60;
@@ -594,10 +608,11 @@ void test_fetch_document_limits_invalid_json(void **state) {
     assert_int_equal(syscheck.registry_value_limit, 70);
 }
 
-void test_fetch_document_limits_missing_fields(void **state) {
-    (void) state;
+void test_fetch_document_limits_missing_fields(void** state)
+{
+    (void)state;
 
-    const char *json_response = "{\"file\": 100}";
+    const char* json_response = "{\"file\": 100}";
 
     syscheck.file_limit = 0;
     syscheck.registry_key_limit = 50;
@@ -616,10 +631,11 @@ void test_fetch_document_limits_missing_fields(void **state) {
     assert_int_equal(syscheck.registry_value_limit, 60);
 }
 
-void test_fetch_document_limits_negative_values(void **state) {
-    (void) state;
+void test_fetch_document_limits_negative_values(void** state)
+{
+    (void)state;
 
-    const char *json_response = "{\"file\": -100, \"registry_key\": 200, \"registry_value\": -300}";
+    const char* json_response = "{\"file\": -100, \"registry_key\": 200, \"registry_value\": -300}";
 
     syscheck.file_limit = 50;
     syscheck.registry_key_limit = 0;
@@ -637,10 +653,11 @@ void test_fetch_document_limits_negative_values(void **state) {
     assert_int_equal(syscheck.registry_value_limit, 70);
 }
 
-void test_fetch_document_limits_partial_data(void **state) {
-    (void) state;
+void test_fetch_document_limits_partial_data(void** state)
+{
+    (void)state;
 
-    const char *json_response = "{\"registry_key\": 150}";
+    const char* json_response = "{\"registry_key\": 150}";
 
     syscheck.file_limit = 10;
     syscheck.registry_key_limit = 0;
@@ -658,10 +675,11 @@ void test_fetch_document_limits_partial_data(void **state) {
     assert_int_equal(syscheck.registry_value_limit, 30);
 }
 
-void test_fetch_document_limits_empty_json(void **state) {
-    (void) state;
+void test_fetch_document_limits_empty_json(void** state)
+{
+    (void)state;
 
-    const char *json_response = "{}";
+    const char* json_response = "{}";
 
     syscheck.file_limit = 10;
     syscheck.registry_key_limit = 20;
@@ -679,30 +697,32 @@ void test_fetch_document_limits_empty_json(void **state) {
     assert_int_equal(syscheck.registry_value_limit, 30);
 }
 
-int main(void) {
+int main(void)
+{
     int ret;
     const struct CMUnitTest tests[] = {
-            cmocka_unit_test_setup_teardown(test_fim_initialize, setup_syscheck_config, teardown_syscheck_config),
-            cmocka_unit_test(test_read_internal),
-            cmocka_unit_test(test_read_internal_debug),
-            cmocka_unit_test(test_fetch_document_limits_success),
-            cmocka_unit_test(test_fetch_document_limits_query_failure),
-            cmocka_unit_test(test_fetch_document_limits_invalid_json),
-            cmocka_unit_test(test_fetch_document_limits_missing_fields),
-            cmocka_unit_test(test_fetch_document_limits_negative_values),
-            cmocka_unit_test(test_fetch_document_limits_partial_data),
-            cmocka_unit_test(test_fetch_document_limits_empty_json),
+        cmocka_unit_test_setup_teardown(test_fim_initialize, setup_syscheck_config, teardown_syscheck_config),
+        cmocka_unit_test(test_read_internal),
+        cmocka_unit_test(test_read_internal_debug),
+        cmocka_unit_test(test_fetch_document_limits_success),
+        cmocka_unit_test(test_fetch_document_limits_query_failure),
+        cmocka_unit_test(test_fetch_document_limits_invalid_json),
+        cmocka_unit_test(test_fetch_document_limits_missing_fields),
+        cmocka_unit_test(test_fetch_document_limits_negative_values),
+        cmocka_unit_test(test_fetch_document_limits_partial_data),
+        cmocka_unit_test(test_fetch_document_limits_empty_json),
     };
-        /* Windows specific tests */
+    /* Windows specific tests */
 #ifdef TEST_WINAGENT
     const struct CMUnitTest tests_win[] = {
-            cmocka_unit_test(test_initialize_syscheck_configuration_registry),
-            cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
-            cmocka_unit_test_setup_teardown(test_Start_win32_Syscheck_corrupted_config_file, setup_syscheck_config, teardown_syscheck_config),
-            cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
-            cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
-            cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
-            cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
+        cmocka_unit_test(test_initialize_syscheck_configuration_registry),
+        cmocka_unit_test(test_Start_win32_Syscheck_no_config_file),
+        cmocka_unit_test_setup_teardown(
+            test_Start_win32_Syscheck_corrupted_config_file, setup_syscheck_config, teardown_syscheck_config),
+        cmocka_unit_test(test_Start_win32_Syscheck_dirs_and_registry),
+        cmocka_unit_test(test_Start_win32_Syscheck_whodata_active),
+        cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_1),
+        cmocka_unit_test(test_Start_win32_Syscheck_syscheck_disabled_2),
     };
 #endif
 

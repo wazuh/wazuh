@@ -76,8 +76,7 @@ namespace
         // thread from the OS entropy source, so the next path is unpredictable.
         static thread_local std::mt19937_64 engine {std::random_device {}()};
         char buffer[24];
-        std::snprintf(buffer, sizeof(buffer), "%016llx",
-                      static_cast<unsigned long long>(engine()));
+        std::snprintf(buffer, sizeof(buffer), "%016llx", static_cast<unsigned long long>(engine()));
         return buffer;
     }
 
@@ -88,8 +87,8 @@ namespace
         // name and make it unpredictable, so it cannot be pre-planted to force
         // the exclusive create below to collide.
         static std::atomic<uint64_t> counter {0};
-        return dir + "/" + prefix + pidHex() + "_" + threadIdHex() + "_"
-               + std::to_string(counter++) + "_" + randomTokenHex() + ".tmp";
+        return dir + "/" + prefix + pidHex() + "_" + threadIdHex() + "_" + std::to_string(counter++) + "_" +
+               randomTokenHex() + ".tmp";
     }
 
     // Atomic, exclusive create (O_EXCL) with owner-only permissions. Returns a
@@ -99,8 +98,7 @@ namespace
     {
 #ifdef WIN32
         int fd = -1;
-        _sopen_s(&fd, path.c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _SH_DENYRW,
-                 _S_IREAD | _S_IWRITE);
+        _sopen_s(&fd, path.c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _SH_DENYRW, _S_IREAD | _S_IWRITE);
         return fd;
 #else
         return ::open(path.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, S_IRUSR | S_IWUSR);

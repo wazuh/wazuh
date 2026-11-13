@@ -16,13 +16,12 @@
 
 class SysInfoHardwareLinuxTest : public ::testing::Test
 {
-    protected:
+protected:
+    SysInfoHardwareLinuxTest() = default;
+    virtual ~SysInfoHardwareLinuxTest() = default;
 
-        SysInfoHardwareLinuxTest() = default;
-        virtual ~SysInfoHardwareLinuxTest() = default;
-
-        void SetUp() override;
-        void TearDown() override;
+    void SetUp() override;
+    void TearDown() override;
 };
 
 #endif //_SYSINFO_HARDWARE_LINUX_TEST_H

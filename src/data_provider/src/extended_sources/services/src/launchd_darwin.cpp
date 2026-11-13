@@ -17,7 +17,8 @@
 LaunchdProvider::LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper,
                                  const std::vector<std::string>& searchPaths,
                                  const std::string& overridesPath)
-    : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
+    : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                            : std::make_unique<file_system::FileSystemWrapper>())
 {
     if (!searchPaths.empty())
     {
@@ -57,11 +58,7 @@ static bool cfStringToStd(CFStringRef value, std::string& out)
 static CFDictionaryRef readPlistDictionary(const std::string& path)
 {
     CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(
-                           kCFAllocatorDefault,
-                           reinterpret_cast<const UInt8*>(path.c_str()),
-                           path.length(),
-                           false
-                       );
+        kCFAllocatorDefault, reinterpret_cast<const UInt8*>(path.c_str()), path.length(), false);
 
     if (!fileURL)
     {
@@ -82,14 +79,8 @@ static CFDictionaryRef readPlistDictionary(const std::string& path)
         return nullptr;
     }
 
-    CFPropertyListRef plist = CFPropertyListCreateWithStream(
-                                  kCFAllocatorDefault,
-                                  stream,
-                                  0,
-                                  kCFPropertyListImmutable,
-                                  nullptr,
-                                  nullptr
-                              );
+    CFPropertyListRef plist =
+        CFPropertyListCreateWithStream(kCFAllocatorDefault, stream, 0, kCFPropertyListImmutable, nullptr, nullptr);
 
     CFReadStreamClose(stream);
     CFRelease(stream);
@@ -156,9 +147,8 @@ void LaunchdProvider::loadDisabledOverrides()
 
             for (CFIndex i = 0; i < count; ++i)
             {
-                if (!keys[i] || !values[i] ||
-                        CFGetTypeID(static_cast<CFTypeRef>(keys[i])) != CFStringGetTypeID() ||
-                        CFGetTypeID(static_cast<CFTypeRef>(values[i])) != CFBooleanGetTypeID())
+                if (!keys[i] || !values[i] || CFGetTypeID(static_cast<CFTypeRef>(keys[i])) != CFStringGetTypeID() ||
+                    CFGetTypeID(static_cast<CFTypeRef>(values[i])) != CFBooleanGetTypeID())
                 {
                     continue;
                 }
@@ -278,7 +268,8 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
 
                     try
                     {
-                        if (m_fileSystemWrapper->is_regular_file(fullPath) && std::filesystem::path(fullPath).extension() == ".plist")
+                        if (m_fileSystemWrapper->is_regular_file(fullPath) &&
+                            std::filesystem::path(fullPath).extension() == ".plist")
                         {
                             launchers.push_back(fullPath);
                         }
@@ -335,7 +326,8 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
 
                                 try
                                 {
-                                    if (m_fileSystemWrapper->is_regular_file(fullPath) && std::filesystem::path(fullPath).extension() == ".plist")
+                                    if (m_fileSystemWrapper->is_regular_file(fullPath) &&
+                                        std::filesystem::path(fullPath).extension() == ".plist")
                                     {
                                         launchers.push_back(fullPath);
                                     }
@@ -378,7 +370,6 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
         return false;
     }
 
-
     // Extract string values
     for (const auto& keyPair : m_launchdTopLevelStringKeys)
     {
@@ -396,22 +387,38 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
 
                     if (cfStringToStd(static_cast<CFStringRef>(value), stringVal))
                     {
-                        if (keyPair.second == "label") service.label = stringVal;
-                        else if (keyPair.second == "run_at_load") service.runAtLoad = stringVal;
-                        else if (keyPair.second == "keep_alive") service.keepAlive = stringVal;
-                        else if (keyPair.second == "stdout_path") service.stdoutPath = stringVal;
-                        else if (keyPair.second == "stderr_path") service.stderrPath = stringVal;
-                        else if (keyPair.second == "inetd_compatibility") service.inetdCompatibility = stringVal;
-                        else if (keyPair.second == "start_interval") service.startInterval = stringVal;
-                        else if (keyPair.second == "program") service.program = stringVal;
-                        else if (keyPair.second == "start_on_mount") service.startOnMount = stringVal;
-                        else if (keyPair.second == "on_demand") service.onDemand = stringVal;
-                        else if (keyPair.second == "disabled") service.disabled = stringVal;
-                        else if (keyPair.second == "username") service.username = stringVal;
-                        else if (keyPair.second == "groupname") service.groupname = stringVal;
-                        else if (keyPair.second == "root_directory") service.rootDirectory = stringVal;
-                        else if (keyPair.second == "working_directory") service.workingDirectory = stringVal;
-                        else if (keyPair.second == "process_type") service.processType = stringVal;
+                        if (keyPair.second == "label")
+                            service.label = stringVal;
+                        else if (keyPair.second == "run_at_load")
+                            service.runAtLoad = stringVal;
+                        else if (keyPair.second == "keep_alive")
+                            service.keepAlive = stringVal;
+                        else if (keyPair.second == "stdout_path")
+                            service.stdoutPath = stringVal;
+                        else if (keyPair.second == "stderr_path")
+                            service.stderrPath = stringVal;
+                        else if (keyPair.second == "inetd_compatibility")
+                            service.inetdCompatibility = stringVal;
+                        else if (keyPair.second == "start_interval")
+                            service.startInterval = stringVal;
+                        else if (keyPair.second == "program")
+                            service.program = stringVal;
+                        else if (keyPair.second == "start_on_mount")
+                            service.startOnMount = stringVal;
+                        else if (keyPair.second == "on_demand")
+                            service.onDemand = stringVal;
+                        else if (keyPair.second == "disabled")
+                            service.disabled = stringVal;
+                        else if (keyPair.second == "username")
+                            service.username = stringVal;
+                        else if (keyPair.second == "groupname")
+                            service.groupname = stringVal;
+                        else if (keyPair.second == "root_directory")
+                            service.rootDirectory = stringVal;
+                        else if (keyPair.second == "working_directory")
+                            service.workingDirectory = stringVal;
+                        else if (keyPair.second == "process_type")
+                            service.processType = stringVal;
                     }
                 }
                 else if (CFGetTypeID(value) == CFBooleanGetTypeID())
@@ -419,11 +426,16 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                     CFBooleanRef boolValue = static_cast<CFBooleanRef>(value);
                     std::string stringVal = CFBooleanGetValue(boolValue) ? "true" : "false";
 
-                    if (keyPair.second == "run_at_load") service.runAtLoad = stringVal;
-                    else if (keyPair.second == "keep_alive") service.keepAlive = stringVal;
-                    else if (keyPair.second == "start_on_mount") service.startOnMount = stringVal;
-                    else if (keyPair.second == "on_demand") service.onDemand = stringVal;
-                    else if (keyPair.second == "disabled") service.disabled = stringVal;
+                    if (keyPair.second == "run_at_load")
+                        service.runAtLoad = stringVal;
+                    else if (keyPair.second == "keep_alive")
+                        service.keepAlive = stringVal;
+                    else if (keyPair.second == "start_on_mount")
+                        service.startOnMount = stringVal;
+                    else if (keyPair.second == "on_demand")
+                        service.onDemand = stringVal;
+                    else if (keyPair.second == "disabled")
+                        service.disabled = stringVal;
                 }
                 else if (CFGetTypeID(value) == CFNumberGetTypeID())
                 {
@@ -435,22 +447,30 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                         std::string stringVal = std::to_string(intValue);
 
                         // A plist may spell any of these as a number instead of a boolean.
-                        if (keyPair.second == "start_interval") service.startInterval = stringVal;
-                        else if (keyPair.second == "run_at_load") service.runAtLoad = stringVal;
-                        else if (keyPair.second == "keep_alive") service.keepAlive = stringVal;
-                        else if (keyPair.second == "start_on_mount") service.startOnMount = stringVal;
-                        else if (keyPair.second == "on_demand") service.onDemand = stringVal;
-                        else if (keyPair.second == "disabled") service.disabled = stringVal;
+                        if (keyPair.second == "start_interval")
+                            service.startInterval = stringVal;
+                        else if (keyPair.second == "run_at_load")
+                            service.runAtLoad = stringVal;
+                        else if (keyPair.second == "keep_alive")
+                            service.keepAlive = stringVal;
+                        else if (keyPair.second == "start_on_mount")
+                            service.startOnMount = stringVal;
+                        else if (keyPair.second == "on_demand")
+                            service.onDemand = stringVal;
+                        else if (keyPair.second == "disabled")
+                            service.disabled = stringVal;
                     }
                 }
                 else if (CFGetTypeID(value) == CFDictionaryGetTypeID())
                 {
                     // inetdCompatibility is declared as a dictionary, so its mere presence marks
                     // the job as inetd compatible.
-                    if (keyPair.second == "inetd_compatibility") service.inetdCompatibility = "true";
+                    if (keyPair.second == "inetd_compatibility")
+                        service.inetdCompatibility = "true";
                     // Disabled may hold a feature flag conditional that cannot be evaluated here.
                     // Flag it so it is not mistaken for an absent key, which means enabled.
-                    else if (keyPair.second == "disabled") service.disabled = LAUNCHD_UNEVALUATED_VALUE;
+                    else if (keyPair.second == "disabled")
+                        service.disabled = LAUNCHD_UNEVALUATED_VALUE;
                 }
             }
 
@@ -501,8 +521,10 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                         service.program = elements.front();
                     }
                 }
-                else if (keyPair.second == "watch_paths") service.watchPaths = encodedValue;
-                else if (keyPair.second == "queue_directories") service.queueDirectories = encodedValue;
+                else if (keyPair.second == "watch_paths")
+                    service.watchPaths = encodedValue;
+                else if (keyPair.second == "queue_directories")
+                    service.queueDirectories = encodedValue;
             }
 
             CFRelease(key);

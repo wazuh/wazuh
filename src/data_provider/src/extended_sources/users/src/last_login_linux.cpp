@@ -30,10 +30,12 @@ constexpr int LASTLOG2_BUSY_TIMEOUT_MS = 100;
 using LastlogRecord = struct lastlog;
 
 static_assert(sizeof(LastlogRecord) == sizeof(int32_t) + 32 + 256 ||
-              sizeof(LastlogRecord) == sizeof(int64_t) + 32 + 256,
+                  sizeof(LastlogRecord) == sizeof(int64_t) + 32 + 256,
               "unexpected lastlog record layout");
 
-LastLoginProvider::LastLoginProvider(const std::string& lastlogPath, const std::string& lastlog2Path, std::shared_ptr<IPreadWrapper> reader)
+LastLoginProvider::LastLoginProvider(const std::string& lastlogPath,
+                                     const std::string& lastlog2Path,
+                                     std::shared_ptr<IPreadWrapper> reader)
     : m_reader(std::move(reader))
     , m_lastlogFd(m_reader->open(lastlogPath.c_str()))
     , m_lastlogHasRecords(false)

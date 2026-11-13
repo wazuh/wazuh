@@ -14,6 +14,6 @@
 #include "shared.h"
 
 /* Shared variables */
-extern cJSON * indexer_config;
+extern cJSON* indexer_config;
 
 #endif /* INDEXER_CONFIG_H */

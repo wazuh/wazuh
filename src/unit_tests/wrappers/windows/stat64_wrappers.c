@@ -14,12 +14,14 @@
 #include <cmocka.h>
 #include <string.h>
 
-int wrap__stat64(const char * __file, struct _stat64 * __buf) {
-    struct _stat64 * mock_buf;
+int wrap__stat64(const char* __file, struct _stat64* __buf)
+{
+    struct _stat64* mock_buf;
 
     check_expected(__file);
-    mock_buf = mock_type(struct _stat64 *);
-    if (mock_buf != NULL) {
+    mock_buf = mock_type(struct _stat64*);
+    if (mock_buf != NULL)
+    {
         memcpy(__buf, mock_buf, sizeof(struct _stat64));
     }
     return mock_type(int);

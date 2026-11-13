@@ -44,10 +44,9 @@ namespace
             return false;
         }
 
-        const bool depth0ChainTrustFailure = response.tlsFailure.kind == TlsFailureKind::None
-                                             && response.tlsFailure.sawDepth0
-                                             && response.tlsFailure.depth0VerificationFailed
-                                             && response.tlsFailure.depth0ErrorIsChainTrustRelated;
+        const bool depth0ChainTrustFailure =
+            response.tlsFailure.kind == TlsFailureKind::None && response.tlsFailure.sawDepth0 &&
+            response.tlsFailure.depth0VerificationFailed && response.tlsFailure.depth0ErrorIsChainTrustRelated;
 
         return depth0ChainTrustFailure || response.tlsFailure.chainTrustRejectedAboveDepth0;
     }
@@ -67,44 +66,32 @@ namespace
     {
         switch (option)
         {
-            case CurlOption::VerifyPeer:
-                return "SSL_VERIFYPEER";
+            case CurlOption::VerifyPeer: return "SSL_VERIFYPEER";
 
-            case CurlOption::VerifyHost:
-                return "SSL_VERIFYHOST";
+            case CurlOption::VerifyHost: return "SSL_VERIFYHOST";
 
-            case CurlOption::CaInfo:
-                return "CAINFO";
+            case CurlOption::CaInfo: return "CAINFO";
 
-            case CurlOption::SslCert:
-                return "SSLCERT";
+            case CurlOption::SslCert: return "SSLCERT";
 
-            case CurlOption::SslKey:
-                return "SSLKEY";
+            case CurlOption::SslKey: return "SSLKEY";
 
-            case CurlOption::SslVersion:
-                return "SSLVERSION";
+            case CurlOption::SslVersion: return "SSLVERSION";
 
-            case CurlOption::SslCiphers:
-                return "TLS13_CIPHERS";
+            case CurlOption::SslCiphers: return "TLS13_CIPHERS";
 
-            case CurlOption::SslOptions:
-                return "SSL_OPTIONS";
+            case CurlOption::SslOptions: return "SSL_OPTIONS";
 
-            case CurlOption::FollowLocation:
-                return "FOLLOWLOCATION";
+            case CurlOption::FollowLocation: return "FOLLOWLOCATION";
 
-            case CurlOption::NoSignal:
-                return "NOSIGNAL";
+            case CurlOption::NoSignal: return "NOSIGNAL";
 
-            case CurlOption::SuppressConnectHeaders:
-                return "SUPPRESS_CONNECT_HEADERS";
+            case CurlOption::SuppressConnectHeaders: return "SUPPRESS_CONNECT_HEADERS";
 
-            default:
-                return "unknown"; // LCOV_EXCL_LINE: applyTls sets none of the rest.
+            default: return "unknown"; // LCOV_EXCL_LINE: applyTls sets none of the rest.
         }
     }
-}
+} // namespace
 
 CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory)
     : CurlPerformer(config, std::move(factory), FsProbe {})
@@ -119,7 +106,9 @@ CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory facto
     resolveSystemCaBundle(fsProbe);
 }
 
-CurlPerformer::CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory, const IFsProbe& fsProbe,
+CurlPerformer::CurlPerformer(const ModuleConfig& config,
+                             CurlHandleFactory factory,
+                             const IFsProbe& fsProbe,
                              IClock& clock)
     : m_config(config)
     , m_factory(std::move(factory))
@@ -274,9 +263,8 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
 
         if (spec.timeoutMs != 0)
         {
-            const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                       m_clock.steadyNow() - attemptStart)
-                                   .count();
+            const auto elapsedMs =
+                std::chrono::duration_cast<std::chrono::milliseconds>(m_clock.steadyNow() - attemptStart).count();
 
             if (elapsedMs >= spec.timeoutMs)
             {
@@ -343,9 +331,9 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
         // so the retry gets the full budget against the anchor instead of splitting it with the
         // OS store again. TLS details are captured only for failed transfers, hence the Ok case;
         // a hostname mismatch after a verified chain would have been TlsFail.
-        const bool peerVerified = response.status == TransportStatus::Ok
-                                  || (response.status != TransportStatus::TlsFail && response.tlsFailure.sawDepth0
-                                      && !response.tlsFailure.depth0VerificationFailed);
+        const bool peerVerified = response.status == TransportStatus::Ok ||
+                                  (response.status != TransportStatus::TlsFail && response.tlsFailure.sawDepth0 &&
+                                   !response.tlsFailure.depth0VerificationFailed);
 
         if (peerVerified)
         {
@@ -367,11 +355,11 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
     // noOsStoreToTry() gets its own wording: no OS store was ever consulted, so saying it
     // "did not verify" would send an operator looking for the wrong problem.
     const char* const message = noOsStoreToTry()
-                                ? "verification_mode=system found no OS trust store on this system to verify "
-                                "the manager's certificate against, and the local fallback anchor ('%s') "
-                                "does not verify it either; retrying."
-                                : "verification_mode=system: the local fallback anchor ('%s') does not verify the "
-                                "manager's certificate either; retrying.";
+                                    ? "verification_mode=system found no OS trust store on this system to verify "
+                                      "the manager's certificate against, and the local fallback anchor ('%s') "
+                                      "does not verify it either; retrying."
+                                    : "verification_mode=system: the local fallback anchor ('%s') does not verify the "
+                                      "manager's certificate either; retrying.";
 
     if (!m_noTrustSourceWarned.exchange(true, std::memory_order_relaxed))
     {
@@ -395,8 +383,7 @@ void CurlPerformer::rearmWarnings(const HttpResponse& response)
     }
 }
 
-bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& spec,
-                                  std::FILE** fileOut) const
+bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& spec, std::FILE** fileOut) const
 {
     *fileOut = nullptr;
 
@@ -437,8 +424,10 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
     return true;
 }
 
-bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequestSpec& spec,
-                                          HttpResponse& response, std::FILE** fileOut) const
+bool CurlPerformer::configureResponseSink(ICurlHandle& handle,
+                                          const HttpRequestSpec& spec,
+                                          HttpResponse& response,
+                                          std::FILE** fileOut) const
 {
     *fileOut = nullptr;
 
@@ -458,15 +447,19 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
     // symlink cannot redirect the write to a victim. CREATE_ALWAYS truncates
     // like "wb".
     std::FILE* file = nullptr;
-    const HANDLE winHandle = CreateFileA(spec.responseFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
-                                         nullptr, CREATE_ALWAYS, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+    const HANDLE winHandle = CreateFileA(spec.responseFilePath.c_str(),
+                                         GENERIC_WRITE,
+                                         FILE_SHARE_READ,
+                                         nullptr,
+                                         CREATE_ALWAYS,
+                                         FILE_FLAG_OPEN_REPARSE_POINT,
+                                         nullptr);
 
     if (winHandle != INVALID_HANDLE_VALUE)
     {
         BY_HANDLE_FILE_INFORMATION info;
 
-        if (GetFileInformationByHandle(winHandle, &info) &&
-                (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0)
+        if (GetFileInformationByHandle(winHandle, &info) && (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0)
         {
             const int fd = _open_osfhandle(reinterpret_cast<intptr_t>(winHandle), _O_WRONLY | _O_BINARY);
             file = fd >= 0 ? _fdopen(fd, "wb") : nullptr; // fd owns the handle now.
@@ -487,8 +480,8 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
     }
 
 #else
-    const int fd = ::open(spec.responseFilePath.c_str(),
-                          O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
+    const int fd =
+        ::open(spec.responseFilePath.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
     std::FILE* file = fd >= 0 ? ::fdopen(fd, "wb") : nullptr;
 
     if (file == nullptr && fd >= 0)
@@ -524,15 +517,19 @@ bool CurlPerformer::offersEncoding(ICurlHandle& handle, const HttpRequestSpec& s
 
     if (!m_undecodableOfferWarned.exchange(true, std::memory_order_relaxed))
     {
-        LOGFN_WARN(m_logFn, "https_client: this agent's libcurl was built without '%s' decoding, so "
-                   "requests don't offer it and replies come uncompressed.", spec.acceptEncoding.c_str());
+        LOGFN_WARN(m_logFn,
+                   "https_client: this agent's libcurl was built without '%s' decoding, so "
+                   "requests don't offer it and replies come uncompressed.",
+                   spec.acceptEncoding.c_str());
     }
 
     return false;
 }
 
-bool CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
-                                     HttpResponse& response, ContentCodingGuard* contentCoding) const
+bool CurlPerformer::configureRequest(ICurlHandle& handle,
+                                     const HttpRequestSpec& spec,
+                                     HttpResponse& response,
+                                     ContentCodingGuard* contentCoding) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
 
@@ -588,14 +585,12 @@ bool CurlPerformer::applyTls(ICurlHandle& handle, bool useFallbackAnchor) const
     // (SSL_CTX_set_min_proto_version in RestinioHttpServer), so match it instead
     // of leaving libcurl's default, which still permits 1.0. Unconditional: this
     // is the protocol's floor, not something <ssl> is allowed to lower.
-    return setMandatoryOption(handle, CurlOption::VerifyPeer, verifyPeer ? 1L : 0L)
-           && setMandatoryOption(handle, CurlOption::VerifyHost, verifyHost ? 2L : 0L)
-           && setMandatoryOption(handle, CurlOption::SslVersion, TLS_MIN_VERSION_1_3)
-           && applyTrustAnchors(handle, useFallbackAnchor)
-           && applyClientCertificate(handle)
-           && applyCiphers(handle)
-           && setMandatoryOption(handle, CurlOption::FollowLocation, 0L) // H4: no redirects.
-           && setMandatoryOption(handle, CurlOption::NoSignal, 1L)       // H6.
+    return setMandatoryOption(handle, CurlOption::VerifyPeer, verifyPeer ? 1L : 0L) &&
+           setMandatoryOption(handle, CurlOption::VerifyHost, verifyHost ? 2L : 0L) &&
+           setMandatoryOption(handle, CurlOption::SslVersion, TLS_MIN_VERSION_1_3) &&
+           applyTrustAnchors(handle, useFallbackAnchor) && applyClientCertificate(handle) && applyCiphers(handle) &&
+           setMandatoryOption(handle, CurlOption::FollowLocation, 0L) // H4: no redirects.
+           && setMandatoryOption(handle, CurlOption::NoSignal, 1L)    // H6.
            // Never let a forward-proxy's CONNECT-tunnel response headers reach
            // headerTrampoline: without this, a proxy's own Date could be
            // captured as if it were the manager's (#38439 clock-skew fix).
@@ -678,14 +673,13 @@ bool CurlPerformer::applyClientCertificate(ICurlHandle& handle) const
         return true;
     }
 
-    return setMandatoryOption(handle, CurlOption::SslCert, m_config.clientCert)
-           && setMandatoryOption(handle, CurlOption::SslKey, m_config.clientKey);
+    return setMandatoryOption(handle, CurlOption::SslCert, m_config.clientCert) &&
+           setMandatoryOption(handle, CurlOption::SslKey, m_config.clientKey);
 }
 
 bool CurlPerformer::applyCiphers(ICurlHandle& handle) const
 {
-    return m_config.ciphers.empty()
-           || setMandatoryOption(handle, CurlOption::SslCiphers, m_config.ciphers);
+    return m_config.ciphers.empty() || setMandatoryOption(handle, CurlOption::SslCiphers, m_config.ciphers);
 }
 
 bool CurlPerformer::setMandatoryOption(ICurlHandle& handle, CurlOption option, long value) const
@@ -699,8 +693,7 @@ bool CurlPerformer::setMandatoryOption(ICurlHandle& handle, CurlOption option, l
     return false;
 }
 
-bool CurlPerformer::setMandatoryOption(ICurlHandle& handle, CurlOption option,
-                                       const std::string& value) const
+bool CurlPerformer::setMandatoryOption(ICurlHandle& handle, CurlOption option, const std::string& value) const
 {
     if (handle.setOptionString(option, value))
     {

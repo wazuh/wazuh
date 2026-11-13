@@ -19,18 +19,20 @@ namespace
     /// A stand-in for LastLoginProvider: answers from a table instead of reading the host.
     class FakeLastLoginProvider
     {
-        public:
-            explicit FakeLastLoginProvider(std::map<std::string, uint32_t> recorded)
-                : m_recorded(std::move(recorded)) {}
+    public:
+        explicit FakeLastLoginProvider(std::map<std::string, uint32_t> recorded)
+            : m_recorded(std::move(recorded))
+        {
+        }
 
-            uint32_t lastLogin(uid_t, const std::string& userName) const
-            {
-                const auto entry = m_recorded.find(userName);
-                return entry != m_recorded.end() ? entry->second : 0;
-            }
+        uint32_t lastLogin(uid_t, const std::string& userName) const
+        {
+            const auto entry = m_recorded.find(userName);
+            return entry != m_recorded.end() ? entry->second : 0;
+        }
 
-        private:
-            std::map<std::string, uint32_t> m_recorded;
+    private:
+        std::map<std::string, uint32_t> m_recorded;
     };
 
     nlohmann::json users(const std::vector<std::string>& names)
@@ -50,7 +52,7 @@ namespace
     {
         return {{"user", user}, {"time", time}, {"type", type}};
     }
-}
+} // namespace
 
 TEST(LastLoginResolutionTests, RecordedLoginsAreReturnedPerAccount)
 {
@@ -115,8 +117,7 @@ TEST(LastLoginResolutionTests, LogoutAndBootRowsAreIgnored)
     // utmp keeps the logout as a DEAD_PROCESS row and the boot time as its own row. Folding either in
     // would move the anchor past the failures of the session that just ended and hide them.
     FakeLastLoginProvider provider({{"alice", 500}});
-    nlohmann::json rows = nlohmann::json::array(
-    {
+    nlohmann::json rows = nlohmann::json::array({
         session("alice", 900, "dead"),
         session("alice", 950, "boot_time"),
         session("alice", 980, "init"),
@@ -142,8 +143,7 @@ TEST(LastLoginResolutionTests, SessionsOfAccountsNotCollectedAreIgnored)
 TEST(LastLoginResolutionTests, AccountsWithoutAUsableNameAreSkipped)
 {
     FakeLastLoginProvider provider({});
-    nlohmann::json accounts = nlohmann::json::array(
-    {
+    nlohmann::json accounts = nlohmann::json::array({
         {{"username", ""}, {"uid", 1000}},
         {{"uid", 1001}},
     });

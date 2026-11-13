@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -21,7 +20,7 @@ int FOREVER();
 
 int __wrap_FOREVER();
 
-time_t wrap_time (time_t *t);
+time_t wrap_time(time_t* t);
 
 #ifdef WIN32
 extern time_t time_mock_value;

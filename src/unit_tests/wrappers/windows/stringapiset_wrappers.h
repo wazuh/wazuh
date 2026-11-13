@@ -23,5 +23,4 @@ int wrap_WideCharToMultiByte(UINT CodePage,
                              LPCCH lpDefaultChar,
                              LPBOOL lpUsedDefaultChar);
 
-
 #endif

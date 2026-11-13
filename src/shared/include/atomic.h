@@ -16,9 +16,10 @@
 #include <pthread.h>
 #include "pthreads_op.h"
 
-#define ATOMIC_INT_INITIALIZER(v) { .data = v, .mutex = PTHREAD_MUTEX_INITIALIZER}
+#define ATOMIC_INT_INITIALIZER(v) {.data = v, .mutex = PTHREAD_MUTEX_INITIALIZER}
 
-typedef struct atomic_int_s {
+typedef struct atomic_int_s
+{
     int data;
     pthread_mutex_t mutex;
 } atomic_int_t;
@@ -29,7 +30,7 @@ typedef struct atomic_int_s {
  * @param atomic atomic_int_t structure to get the data value.
  * @return int A copy of the atomic_int value.
  */
-int atomic_int_get(atomic_int_t *atomic);
+int atomic_int_get(atomic_int_t* atomic);
 
 /**
  * @brief Thread safe function to set the value of an atomic int
@@ -37,7 +38,7 @@ int atomic_int_get(atomic_int_t *atomic);
  * @param atomic atomic_int_t structure to be updated.
  * @param value Integer value that will be used to set the atomic int value.
  */
-void atomic_int_set(atomic_int_t *atomic, int value);
+void atomic_int_set(atomic_int_t* atomic, int value);
 
 /**
  * @brief Thread safe function to increment the value of an atomic int by one.
@@ -45,7 +46,7 @@ void atomic_int_set(atomic_int_t *atomic, int value);
  * @param atomic atomic_int_t structure to be updated.
  * @return The final value of the atomic int.
  */
-int atomic_int_inc(atomic_int_t *atomic);
+int atomic_int_inc(atomic_int_t* atomic);
 
 /**
  * @brief Thread safe function to decrement the value of an atomic int by one.
@@ -53,6 +54,6 @@ int atomic_int_inc(atomic_int_t *atomic);
  * @param atomic atomic_int_t structure to be updated.
  * @return The final value of the atomic int.
  */
-int atomic_int_dec(atomic_int_t *atomic);
+int atomic_int_dec(atomic_int_t* atomic);
 
 #endif // ATOMIC_H

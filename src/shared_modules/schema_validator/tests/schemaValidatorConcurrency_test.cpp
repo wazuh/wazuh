@@ -31,8 +31,7 @@ namespace
     // Indices that the embedded schemas may register. The test only requires the
     // subset that is actually present in the build, so it adapts to whatever is
     // embedded instead of hard-coding a fixed count.
-    const std::vector<std::string> kCandidateIndices =
-    {
+    const std::vector<std::string> kCandidateIndices = {
         "wazuh-states-inventory-system",
         "wazuh-states-inventory-hardware",
         "wazuh-states-inventory-hotfixes",
@@ -66,17 +65,17 @@ namespace
 
         return reachable;
     }
-}
+} // namespace
 
 class SchemaValidatorConcurrencyTest : public ::testing::Test
 {
-    protected:
-        void TearDown() override
-        {
-            // Leave the shared singleton in an initialized state for any test
-            // that runs afterwards (initialize() is idempotent).
-            SchemaValidatorFactory::getInstance().initialize();
-        }
+protected:
+    void TearDown() override
+    {
+        // Leave the shared singleton in an initialized state for any test
+        // that runs afterwards (initialize() is idempotent).
+        SchemaValidatorFactory::getInstance().initialize();
+    }
 };
 
 // Baseline: a single-threaded initialization reaches a non-empty set of
@@ -90,7 +89,7 @@ TEST_F(SchemaValidatorConcurrencyTest, SingleThreadedInitializeReachesSchemas)
     ASSERT_TRUE(factory.initialize());
     ASSERT_TRUE(factory.isInitialized());
     ASSERT_FALSE(reachableIndices(factory).empty())
-            << "No schemas embedded; cannot exercise the concurrency regression.";
+        << "No schemas embedded; cannot exercise the concurrency regression.";
 }
 
 // Regression: many threads run the same check-then-act guard as the real modules
@@ -121,22 +120,23 @@ TEST_F(SchemaValidatorConcurrencyTest, ConcurrentInitializeDoesNotLoseValidators
 
         for (int t = 0; t < kThreads; ++t)
         {
-            threads.emplace_back([&]()
-            {
-                ready.fetch_add(1);
-
-                while (!go.load())
+            threads.emplace_back(
+                [&]()
                 {
-                    // Spin so all threads hit initialize() at the same time.
-                    // Yield to stay friendly under valgrind's serialized scheduler.
-                    std::this_thread::yield();
-                }
+                    ready.fetch_add(1);
 
-                if (!factory.isInitialized())
-                {
-                    factory.initialize();
-                }
-            });
+                    while (!go.load())
+                    {
+                        // Spin so all threads hit initialize() at the same time.
+                        // Yield to stay friendly under valgrind's serialized scheduler.
+                        std::this_thread::yield();
+                    }
+
+                    if (!factory.isInitialized())
+                    {
+                        factory.initialize();
+                    }
+                });
         }
 
         while (ready.load() < kThreads)
@@ -157,7 +157,7 @@ TEST_F(SchemaValidatorConcurrencyTest, ConcurrentInitializeDoesNotLoseValidators
         for (const auto& index : expected)
         {
             EXPECT_NE(factory.getValidator(index), nullptr)
-                    << "validator lost for index '" << index << "' at iteration " << iteration;
+                << "validator lost for index '" << index << "' at iteration " << iteration;
         }
     }
 }

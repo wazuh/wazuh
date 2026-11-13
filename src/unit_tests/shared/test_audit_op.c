@@ -31,35 +31,39 @@
 
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
-extern OSList *audit_rules_list;
+extern OSList* audit_rules_list;
 
 /* auxiliary structs */
 
-typedef struct __audit_replies {
-    struct audit_reply *reply1;
-    struct audit_reply *reply2;
-    struct audit_reply *reply3;
-}audit_replies;
+typedef struct __audit_replies
+{
+    struct audit_reply* reply1;
+    struct audit_reply* reply2;
+    struct audit_reply* reply3;
+} audit_replies;
 
 /* setups/teardowns */
 
-static int group_setup(void **state) {
+static int group_setup(void** state)
+{
     test_mode = 1;
     return 0;
 }
 
-static int group_teardown(void **state) {
+static int group_teardown(void** state)
+{
     test_mode = 0;
     audit_rules_list_free();
     return 0;
 }
 
-static int test_setup_kernel_get_reply(void **state) {
-    audit_replies *replies = calloc(1, sizeof(audit_replies));
+static int test_setup_kernel_get_reply(void** state)
+{
+    audit_replies* replies = calloc(1, sizeof(audit_replies));
 
-    struct audit_reply *reply1 = calloc(1, sizeof(struct audit_reply));
-    struct audit_reply *reply2 = calloc(1, sizeof(struct audit_reply));
-    struct audit_reply *reply3 = calloc(1, sizeof(struct audit_reply));
+    struct audit_reply* reply1 = calloc(1, sizeof(struct audit_reply));
+    struct audit_reply* reply2 = calloc(1, sizeof(struct audit_reply));
+    struct audit_reply* reply3 = calloc(1, sizeof(struct audit_reply));
 
     reply1->type = NLMSG_ERROR;
     reply1->error = calloc(1, sizeof(struct nlmsgerr));
@@ -78,8 +82,9 @@ static int test_setup_kernel_get_reply(void **state) {
     return 0;
 }
 
-static int test_teardown_kernel_get_reply(void **state) {
-    audit_replies *replies = *state;
+static int test_teardown_kernel_get_reply(void** state)
+{
+    audit_replies* replies = *state;
 
     free(replies->reply3);
     free(replies->reply2->ruledata);
@@ -91,8 +96,9 @@ static int test_teardown_kernel_get_reply(void **state) {
     return 0;
 }
 
-static int test_setup_print_reply(void **state) {
-    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+static int test_setup_print_reply(void** state)
+{
+    struct audit_reply* reply = calloc(1, sizeof(struct audit_reply));
 
     reply->type = AUDIT_LIST_RULES;
     reply->ruledata = calloc(1, sizeof(struct audit_rule_data));
@@ -109,8 +115,9 @@ static int test_setup_print_reply(void **state) {
     return 0;
 }
 
-static int test_teardown_print_reply(void **state) {
-    struct audit_reply *reply = *state;
+static int test_teardown_print_reply(void** state)
+{
+    struct audit_reply* reply = *state;
 
     free(reply->ruledata);
     free(reply);
@@ -118,24 +125,27 @@ static int test_teardown_print_reply(void **state) {
     return 0;
 }
 
-static int test_teardown_free_path(void **state) {
-    char *path = *state;
+static int test_teardown_free_path(void** state)
+{
+    char* path = *state;
 
     free(path);
 
     return 0;
 }
 
-static int test_setup_file(void **state) {
-    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+static int test_setup_file(void** state)
+{
+    wfd_t* wfd = calloc(1, sizeof(wfd_t));
 
     *state = wfd;
 
     return 0;
 }
 
-static int test_teardown_file(void **state) {
-    wfd_t * wfd = *state;
+static int test_teardown_file(void** state)
+{
+    wfd_t* wfd = *state;
 
     free(wfd);
 
@@ -144,8 +154,9 @@ static int test_teardown_file(void **state) {
 
 /* tests */
 
-static void test_audit_get_rule_list_error(void **state) {
-    (void) state;
+static void test_audit_get_rule_list_error(void** state)
+{
+    (void)state;
 
     expect_value(__wrap_audit_send, fd, 0);
     expect_value(__wrap_audit_send, type, 1013);
@@ -159,8 +170,9 @@ static void test_audit_get_rule_list_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_get_rule_list(void **state) {
-    (void) state;
+static void test_audit_get_rule_list(void** state)
+{
+    (void)state;
 
     expect_value(__wrap_audit_send, fd, 0);
     expect_value(__wrap_audit_send, type, AUDIT_LIST_RULES);
@@ -179,8 +191,9 @@ static void test_audit_get_rule_list(void **state) {
     assert_non_null(audit_rules_list);
 }
 
-static void test_kernel_get_reply(void **state) {
-    audit_replies *replies = *state;
+static void test_kernel_get_reply(void** state)
+{
+    audit_replies* replies = *state;
 
     will_return(__wrap_select, -1);
     will_return(__wrap_select, 0);
@@ -211,13 +224,14 @@ static void test_kernel_get_reply(void **state) {
     errno = 0;
 }
 
-static void test_audit_print_reply(void **state) {
-    struct audit_reply *reply = *state;
+static void test_audit_print_reply(void** state)
+{
+    struct audit_reply* reply = *state;
 
     expect_string(__wrap__mdebug2, formatted_msg, "Audit rule loaded: -w  -p rwxa -k ");
 
     int ret = audit_print_reply(reply);
-    w_audit_rule *rule = (w_audit_rule *) OSList_GetFirstNode(audit_rules_list)->data;
+    w_audit_rule* rule = (w_audit_rule*)OSList_GetFirstNode(audit_rules_list)->data;
 
     assert_int_equal(ret, 1);
     assert_non_null(audit_rules_list->first_node);
@@ -227,8 +241,9 @@ static void test_audit_print_reply(void **state) {
     assert_int_equal(audit_rules_list->currently_size, 1);
 }
 
-static void test_audit_print_reply_never_task_rule(void **state) {
-    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+static void test_audit_print_reply_never_task_rule(void** state)
+{
+    struct audit_reply* reply = calloc(1, sizeof(struct audit_reply));
 
     reply->type = AUDIT_LIST_RULES;
     reply->ruledata = calloc(1, sizeof(struct audit_rule_data));
@@ -236,7 +251,8 @@ static void test_audit_print_reply_never_task_rule(void **state) {
     reply->ruledata->flags = AUDIT_FILTER_TASK;
     reply->ruledata->field_count = 0;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Audit rule 'never,task' detected. FIM whodata may not work. See documentation.");
+    expect_string(
+        __wrap__mwarn, formatted_msg, "Audit rule 'never,task' detected. FIM whodata may not work. See documentation.");
 
     int ret = audit_print_reply(reply);
 
@@ -246,8 +262,9 @@ static void test_audit_print_reply_never_task_rule(void **state) {
     free(reply);
 }
 
-static void test_audit_print_reply_never_task_rule_type_not_list(void **state) {
-    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+static void test_audit_print_reply_never_task_rule_type_not_list(void** state)
+{
+    struct audit_reply* reply = calloc(1, sizeof(struct audit_reply));
 
     // Set type to something other than AUDIT_LIST_RULES
     reply->type = NLMSG_ERROR;
@@ -263,8 +280,9 @@ static void test_audit_print_reply_never_task_rule_type_not_list(void **state) {
     free(reply);
 }
 
-static void test_audit_print_reply_never_without_task(void **state) {
-    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+static void test_audit_print_reply_never_without_task(void** state)
+{
+    struct audit_reply* reply = calloc(1, sizeof(struct audit_reply));
 
     reply->type = AUDIT_LIST_RULES;
     reply->ruledata = calloc(1, sizeof(struct audit_rule_data));
@@ -281,8 +299,9 @@ static void test_audit_print_reply_never_without_task(void **state) {
     free(reply);
 }
 
-static void test_audit_print_reply_task_without_never(void **state) {
-    struct audit_reply *reply = calloc(1, sizeof(struct audit_reply));
+static void test_audit_print_reply_task_without_never(void** state)
+{
+    struct audit_reply* reply = calloc(1, sizeof(struct audit_reply));
 
     reply->type = AUDIT_LIST_RULES;
     reply->ruledata = calloc(1, sizeof(struct audit_rule_data));
@@ -299,22 +318,24 @@ static void test_audit_print_reply_task_without_never(void **state) {
     free(reply);
 }
 
-static void test_audit_clean_path(void **state) {
-    char *path = "../test/file";
-    char *cwd = "/home/folder";
+static void test_audit_clean_path(void** state)
+{
+    char* path = "../test/file";
+    char* cwd = "/home/folder";
 
-    char *full_path = audit_clean_path(cwd, path);
+    char* full_path = audit_clean_path(cwd, path);
 
     *state = full_path;
 
     assert_string_equal(full_path, "/home/test/file");
 }
 
-static void test_audit_restart(void **state) {
-    wfd_t * wfd = *state;
-    wfd->file_out = (FILE*) 1234;
+static void test_audit_restart(void** state)
+{
+    wfd_t* wfd = *state;
+    wfd->file_out = (FILE*)1234;
 
-    char *service_path = NULL;
+    char* service_path = NULL;
     service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
     will_return(__wrap_get_binary_path, service_path);
@@ -337,8 +358,9 @@ static void test_audit_restart(void **state) {
     assert_int_equal(ret, 0);
 }
 
-static void test_audit_restart_open_error(void **state) {
-    char *service_path = NULL;
+static void test_audit_restart_open_error(void** state)
+{
+    char* service_path = NULL;
     service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
     will_return(__wrap_get_binary_path, service_path);
@@ -353,11 +375,12 @@ static void test_audit_restart_open_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_restart_close_exec_error(void **state) {
-    wfd_t * wfd = *state;
-    wfd->file_out = (FILE*) 1234;
+static void test_audit_restart_close_exec_error(void** state)
+{
+    wfd_t* wfd = *state;
+    wfd->file_out = (FILE*)1234;
 
-    char *service_path = NULL;
+    char* service_path = NULL;
     service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
     will_return(__wrap_get_binary_path, service_path);
@@ -382,11 +405,12 @@ static void test_audit_restart_close_exec_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_restart_close_error(void **state) {
-    wfd_t * wfd = *state;
-    wfd->file_out = (FILE*) 1234;
+static void test_audit_restart_close_error(void** state)
+{
+    wfd_t* wfd = *state;
+    wfd->file_out = (FILE*)1234;
 
-    char *service_path = NULL;
+    char* service_path = NULL;
     service_path = strdup("/path/to/service");
     expect_string(__wrap_get_binary_path, command, "service");
     will_return(__wrap_get_binary_path, service_path);
@@ -411,12 +435,14 @@ static void test_audit_restart_close_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_rules_list_append(void **state) {
-    (void) state;
+static void test_audit_rules_list_append(void** state)
+{
+    (void)state;
 
     int i;
-    for(i = 0; i < 30; ++i) {
-        w_audit_rule *rule = calloc(1, sizeof(w_audit_rule));
+    for (i = 0; i < 30; ++i)
+    {
+        w_audit_rule* rule = calloc(1, sizeof(w_audit_rule));
         rule->path = strdup("/test/file");
         rule->key = strdup("key");
         rule->perm = PERMS;
@@ -426,32 +452,36 @@ static void test_audit_rules_list_append(void **state) {
     assert_int_equal(audit_rules_list->currently_size, 31);
 }
 
-static void test_search_audit_rule(void **state) {
-    (void) state;
+static void test_search_audit_rule(void** state)
+{
+    (void)state;
 
     int ret = search_audit_rule("/test/file", PERMS, "key");
 
     assert_int_equal(ret, 1);
 }
 
-static void test_search_audit_rule_null(void **state) {
-    (void) state;
+static void test_search_audit_rule_null(void** state)
+{
+    (void)state;
 
     int ret = search_audit_rule(NULL, PERMS, NULL);
 
     assert_int_equal(ret, -1);
 }
 
-static void test_search_audit_rule_not_found(void **state) {
-    (void) state;
+static void test_search_audit_rule_not_found(void** state)
+{
+    (void)state;
 
-    int ret = search_audit_rule("/test/search2", (PERMS | AUDIT_PERM_EXEC)  , "search2");
+    int ret = search_audit_rule("/test/search2", (PERMS | AUDIT_PERM_EXEC), "search2");
 
     assert_int_equal(ret, 0);
 }
 
-static void test_audit_add_rule(void **state) {
-    (void) state;
+static void test_audit_add_rule(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, 1);
 
@@ -475,8 +505,9 @@ static void test_audit_add_rule(void **state) {
     assert_int_equal(ret, 1);
 }
 
-static void test_audit_delete_rule(void **state) {
-    (void) state;
+static void test_audit_delete_rule(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, 1);
 
@@ -504,8 +535,9 @@ static void test_audit_delete_rule(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_manage_rules_open_error(void **state) {
-    (void) state;
+static void test_audit_manage_rules_open_error(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, -1);
 
@@ -514,12 +546,15 @@ static void test_audit_manage_rules_open_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_manage_rules_stat_error(void **state) {
-    (void) state;
+static void test_audit_manage_rules_stat_error(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6222): Stat() function failed on: '/folder/path' due to [(2)-(No such file or directory)]");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6222): Stat() function failed on: '/folder/path' due to [(2)-(No such file or directory)]");
 
     will_return(__wrap_audit_close, 1);
 
@@ -530,8 +565,9 @@ static void test_audit_manage_rules_stat_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_manage_rules_add_dir_error(void **state) {
-    (void) state;
+static void test_audit_manage_rules_add_dir_error(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, 1);
 
@@ -550,8 +586,9 @@ static void test_audit_manage_rules_add_dir_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_manage_rules_update_perms_error(void **state) {
-    (void) state;
+static void test_audit_manage_rules_update_perms_error(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, 1);
 
@@ -573,14 +610,20 @@ static void test_audit_manage_rules_update_perms_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_manage_rules_key_length_error(void **state) {
-    (void) state;
+static void test_audit_manage_rules_key_length_error(void** state)
+{
+    (void)state;
 
-    char *key = "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
-                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
-                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
-                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key -"
-                "this is a very long key - this is a very long key - this is a very long key - this is a very long key - this is a very long key";
+    char* key = "this is a very long key - this is a very long key - this is a very long key - this is a very long key "
+                "- this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key "
+                "- this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key "
+                "- this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key "
+                "- this is a very long key -"
+                "this is a very long key - this is a very long key - this is a very long key - this is a very long key "
+                "- this is a very long key";
 
     will_return(__wrap_audit_open, 1);
 
@@ -598,8 +641,9 @@ static void test_audit_manage_rules_key_length_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_manage_rules_fieldpair_error(void **state) {
-    (void) state;
+static void test_audit_manage_rules_fieldpair_error(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, 1);
 
@@ -625,8 +669,9 @@ static void test_audit_manage_rules_fieldpair_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_audit_manage_rules_action_error(void **state) {
-    (void) state;
+static void test_audit_manage_rules_action_error(void** state)
+{
+    (void)state;
 
     will_return(__wrap_audit_open, 1);
 
@@ -648,11 +693,13 @@ static void test_audit_manage_rules_action_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_audit_get_rule_list_error),
         cmocka_unit_test(test_audit_get_rule_list),
-        cmocka_unit_test_setup_teardown(test_kernel_get_reply, test_setup_kernel_get_reply, test_teardown_kernel_get_reply),
+        cmocka_unit_test_setup_teardown(
+            test_kernel_get_reply, test_setup_kernel_get_reply, test_teardown_kernel_get_reply),
         cmocka_unit_test_setup_teardown(test_audit_print_reply, test_setup_print_reply, test_teardown_print_reply),
         cmocka_unit_test(test_audit_print_reply_never_task_rule),
         cmocka_unit_test(test_audit_print_reply_never_task_rule_type_not_list),

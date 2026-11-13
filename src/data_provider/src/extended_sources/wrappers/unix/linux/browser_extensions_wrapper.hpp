@@ -13,32 +13,32 @@
 #include <pwd.h>
 #include "ibrowser_extensions_wrapper.hpp"
 
-#define APP_PATH ""
+#define APP_PATH  ""
 #define HOME_PATH "/home"
 
 class BrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        std::string getApplicationsPath() override
+public:
+    std::string getApplicationsPath() override
+    {
+        return std::string(APP_PATH);
+    }
+
+    std::string getHomePath() override
+    {
+        return std::string(HOME_PATH);
+    }
+
+    std::string getUserId(std::string user) override
+    {
+        std::string uid = "";
+        struct passwd* pwd = getpwnam(user.c_str());
+
+        if (pwd != nullptr)
         {
-            return std::string(APP_PATH);
+            uid = std::to_string(pwd->pw_uid);
         }
 
-        std::string getHomePath() override
-        {
-            return std::string(HOME_PATH);
-        }
-
-        std::string getUserId(std::string user) override
-        {
-            std::string uid = "";
-            struct passwd* pwd = getpwnam(user.c_str());
-
-            if (pwd != nullptr)
-            {
-                uid = std::to_string(pwd->pw_uid);
-            }
-
-            return uid;
-        }
+        return uid;
+    }
 };

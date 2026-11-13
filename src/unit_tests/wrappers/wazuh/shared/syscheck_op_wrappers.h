@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef SYSCHECK_OP_WRAPPERS_H
 #define SYSCHECK_OP_WRAPPERS_H
 
@@ -18,74 +17,74 @@
 
 #include <cJSON.h>
 
-void __wrap_decode_win_acl_json(cJSON *perms);
+void __wrap_decode_win_acl_json(cJSON* perms);
 
-int __wrap_delete_target_file(const char *path);
+int __wrap_delete_target_file(const char* path);
 
-char *__wrap_get_group(int gid);
+char* __wrap_get_group(int gid);
 
 #ifndef WIN32
-char *__wrap_get_user(int uid);
+char* __wrap_get_user(int uid);
 #else
-char *__wrap_get_user(const char *path, char **sid);
+char* __wrap_get_user(const char* path, char** sid);
 
-char *__wrap_get_file_user(const char *path, char **sid);
+char* __wrap_get_file_user(const char* path, char** sid);
 #endif
 
-unsigned int __wrap_w_directory_exists(const char *path);
+unsigned int __wrap_w_directory_exists(const char* path);
 
-unsigned int __wrap_w_get_file_attrs(const char *file_path);
+unsigned int __wrap_w_get_file_attrs(const char* file_path);
 
-int __wrap_w_get_file_permissions(const char *file_path, cJSON **output_acl);
+int __wrap_w_get_file_permissions(const char* file_path, cJSON** output_acl);
 
-int __wrap_remove_empty_folders(const char *folder);
+int __wrap_remove_empty_folders(const char* folder);
 
 #ifdef WIN32
 /**
  * @brief This function loads the expect and will return of the function get_user
  */
-void expect_get_user(const char *path, char **sid, char *user);
+void expect_get_user(const char* path, char** sid, char* user);
 
 /**
  * @brief This function loads the expect and will return of the function get_user
  */
-void expect_get_file_user(const char *path, char *sid, char *user);
+void expect_get_file_user(const char* path, char* sid, char* user);
 
 /**
  * @brief This function loads the expect and will return of the function w_get_file_permissions
  */
-void expect_w_get_file_permissions(const char *file_path, cJSON *perms, int ret);
+void expect_w_get_file_permissions(const char* file_path, cJSON* perms, int ret);
 
 /**
  * @brief Mock calls to get_registry_permissions
  */
-DWORD __wrap_get_registry_permissions(__attribute__((unused)) HKEY hndl, cJSON **output_acl);
+DWORD __wrap_get_registry_permissions(__attribute__((unused)) HKEY hndl, cJSON** output_acl);
 
 /**
  * @brief This function loads the expect and will return of the function get_registry_permissions
  */
-void expect_get_registry_permissions(cJSON *permissions, DWORD retval);
+void expect_get_registry_permissions(cJSON* permissions, DWORD retval);
 
 /**
  * @brief Mock calls to expand_wildcard_registers, copying a NULL terminated list of matches into paths
  */
-int __wrap_expand_wildcard_registers(char *entry, char **paths, int arch);
+int __wrap_expand_wildcard_registers(char* entry, char** paths, int arch);
 
 /**
  * @brief This function loads the expect and will return of the function expand_wildcard_registers
  */
-void expect_expand_wildcard_registers(const char *entry, int arch, char **matches, int status);
+void expect_expand_wildcard_registers(const char* entry, int arch, char** matches, int status);
 
 #else
 /**
  * @brief This function loads the expect and will return of the function get_user
  */
-void expect_get_user(int uid, char *ret);
+void expect_get_user(int uid, char* ret);
 #endif /*WIN32*/
 
 /**
  * @brief This function loads the expect and will return of the function get_group
  */
-void expect_get_group(int gid, char *ret);
+void expect_get_group(int gid, char* ret);
 
 #endif /*SYSCHECK_OP_WRAPPERS_H*/

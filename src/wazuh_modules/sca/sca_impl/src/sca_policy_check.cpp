@@ -47,19 +47,19 @@ namespace
         const auto isRegexOrNumeric = sca::IsRegexOrNumericPattern(pattern);
         std::string fileContent;
         const auto status = isRegexOrNumeric
-                            ? fileUtils->getRegularFileContent(filePath, followSymlinks, fileContent)
-                            : fileUtils->readRegularFileLineByLine(filePath,
-                                                                   followSymlinks,
-                                                                   [&pattern, &matchFound](const std::string & line)
-        {
-            if (line == pattern)
-            {
-                matchFound = true;
-                return false;
-            }
+                                ? fileUtils->getRegularFileContent(filePath, followSymlinks, fileContent)
+                                : fileUtils->readRegularFileLineByLine(filePath,
+                                                                       followSymlinks,
+                                                                       [&pattern, &matchFound](const std::string& line)
+                                                                       {
+                                                                           if (line == pattern)
+                                                                           {
+                                                                               matchFound = true;
+                                                                               return false;
+                                                                           }
 
-            return true;
-        });
+                                                                           return true;
+                                                                       });
 
         // Only returned when links are not followed; the caller decides what a link means
         if (status == RegularFileStatus::SymbolicLink)
@@ -99,7 +99,9 @@ namespace
             }
         }
 
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") + " found in file '" + filePath + "'");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") +
+                                             " found in file '" + filePath + "'");
         return matchFound ? RuleResult::Found : RuleResult::NotFound;
     }
 
@@ -114,10 +116,9 @@ namespace
     }
 } // namespace
 
-RuleEvaluator::RuleEvaluator(PolicyEvaluationContext ctx,
-                             std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
+RuleEvaluator::RuleEvaluator(PolicyEvaluationContext ctx, std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                          : std::make_unique<file_system::FileSystemWrapper>())
+                                            : std::make_unique<file_system::FileSystemWrapper>())
     , m_ctx(std::move(ctx))
 {
     if (m_ctx.rule.empty())
@@ -156,20 +157,22 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
 {
     const auto& pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking contents of file: '" + m_ctx.rule + "' against pattern:  " + pattern);
+    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                     "Processing file rule. Checking contents of file: '" + m_ctx.rule +
+                                         "' against pattern:  " + pattern);
 
     if (TryFunc(
-                [&]
-{ return !m_fileSystemWrapper->exists(m_ctx.rule) || !m_fileSystemWrapper->is_regular_file(m_ctx.rule); })
-    .value_or(false))
+            [&]
+            { return !m_fileSystemWrapper->exists(m_ctx.rule) || !m_fileSystemWrapper->is_regular_file(m_ctx.rule); })
+            .value_or(false))
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + m_ctx.rule + "' does not exist or is not a regular file");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "File '" + m_ctx.rule + "' does not exist or is not a regular file");
         m_lastUnresolvedReason = "File '" + m_ctx.rule + "' does not exist or is not a regular file";
         return RuleResult::Invalid; // Keep simple return for file not found - this is expected behavior
     }
 
-    const auto result =
-        TryFunc([&] { return FindContentInFile(m_fileUtils, pattern, m_ctx, m_lastUnresolvedReason); });
+    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, pattern, m_ctx, m_lastUnresolvedReason); });
 
     if (result.has_value())
     {
@@ -193,11 +196,12 @@ RuleResult FileRuleEvaluator::CheckFileExistence()
 {
     auto result = RuleResult::NotFound;
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking existence of file: '" + m_ctx.rule + "'");
+    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                     "Processing file rule. Checking existence of file: '" + m_ctx.rule + "'");
 
     if (const auto fileOk = TryFunc(
-                                [&]
-{ return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_regular_file(m_ctx.rule); }))
+            [&]
+            { return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_regular_file(m_ctx.rule); }))
     {
         if (fileOk.value())
         {
@@ -206,12 +210,14 @@ RuleResult FileRuleEvaluator::CheckFileExistence()
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + m_ctx.rule + "' does not exist or is not a regular file");
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "File '" + m_ctx.rule + "' does not exist or is not a regular file");
         }
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule '" + m_ctx.rule + "' could not be resolved");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "An error occured and file rule '" + m_ctx.rule + "' could not be resolved");
         m_lastUnresolvedReason = "File system access error for '" + m_ctx.rule + "'";
         return RuleResult::Invalid; // File system access error
     }
@@ -231,7 +237,7 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
     else
     {
         // LCOV_EXCL_START
-        m_commandExecFunc = [timeout = m_ctx.commandsTimeout](const std::string & command) -> std::optional<ExecResult>
+        m_commandExecFunc = [timeout = m_ctx.commandsTimeout](const std::string& command) -> std::optional<ExecResult>
         {
             auto wmExecCallback = SecurityConfigurationAssessment::GetGlobalWmExecFunction();
 
@@ -243,7 +249,8 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
             char* cmdOutput = nullptr;
             int resultCode = 0;
 
-            const auto wmExecResult = wmExecCallback(const_cast<char*>(command.c_str()), &cmdOutput, &resultCode, timeout, nullptr);
+            const auto wmExecResult =
+                wmExecCallback(const_cast<char*>(command.c_str()), &cmdOutput, &resultCode, timeout, nullptr);
 
             ExecResult execResult;
             execResult.StdOut = cmdOutput ? std::string(cmdOutput) : "";
@@ -283,7 +290,8 @@ RuleResult CommandRuleEvaluator::Evaluate()
     if (!m_ctx.commandsEnabled)
     {
         m_lastUnresolvedReason = "Remote commands are disabled for this policy";
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Policy is remote and remote commands are disabled. Skipping command rule.");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Policy is remote and remote commands are disabled. Skipping command rule.");
         return RuleResult::Invalid;
     }
 
@@ -295,10 +303,11 @@ RuleResult CommandRuleEvaluator::Evaluate()
         {
             if (execResult->TimedOut)
             {
-                m_lastUnresolvedReason = "Command timed out after " + std::to_string(m_ctx.commandsTimeout) +
-                                         " seconds: " + m_ctx.rule;
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule '" + m_ctx.rule + "' timed out after " +
-                                                 std::to_string(m_ctx.commandsTimeout) + " seconds");
+                m_lastUnresolvedReason =
+                    "Command timed out after " + std::to_string(m_ctx.commandsTimeout) + " seconds: " + m_ctx.rule;
+                LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                 "Command rule '" + m_ctx.rule + "' timed out after " +
+                                                     std::to_string(m_ctx.commandsTimeout) + " seconds");
                 return RuleResult::NotRun;
             }
 
@@ -310,19 +319,22 @@ RuleResult CommandRuleEvaluator::Evaluate()
 
                 if (sca::IsRegexOrNumericPattern(*m_ctx.pattern))
                 {
-                    const auto outputPatternMatch = sca::PatternMatches(execResult->StdOut, *m_ctx.pattern, m_ctx.regexEngine);
-                    const auto errorPatternMatch = sca::PatternMatches(execResult->StdErr, *m_ctx.pattern, m_ctx.regexEngine);
+                    const auto outputPatternMatch =
+                        sca::PatternMatches(execResult->StdOut, *m_ctx.pattern, m_ctx.regexEngine);
+                    const auto errorPatternMatch =
+                        sca::PatternMatches(execResult->StdErr, *m_ctx.pattern, m_ctx.regexEngine);
 
                     if (outputPatternMatch || errorPatternMatch)
                     {
                         result = outputPatternMatch.value_or(false) || errorPatternMatch.value_or(false)
-                                 ? RuleResult::Found
-                                 : RuleResult::NotFound;
+                                     ? RuleResult::Found
+                                     : RuleResult::NotFound;
                     }
                     else
                     {
                         m_lastUnresolvedReason = "Invalid pattern '" + *m_ctx.pattern + "' for command rule";
-                        LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + *m_ctx.pattern + "' for command rule evaluation");
+                        LoggingHelper::getInstance().log(
+                            LOG_DEBUG, "Invalid pattern '" + *m_ctx.pattern + "' for command rule evaluation");
                         return RuleResult::Invalid;
                     }
                 }
@@ -348,8 +360,10 @@ RuleResult CommandRuleEvaluator::Evaluate()
         LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule is empty");
     }
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule evaluation result: " + m_ctx.rule + "' pattern '" + m_ctx.pattern.value_or("") + "' was " +
-                                     (result == RuleResult::Found ? "found" : "not found"));
+    LoggingHelper::getInstance().log(LOG_DEBUG,
+                                     "Command rule evaluation result: " + m_ctx.rule + "' pattern '" +
+                                         m_ctx.pattern.value_or("") + "' was " +
+                                         (result == RuleResult::Found ? "found" : "not found"));
 
     return m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
 }
@@ -377,7 +391,7 @@ RuleResult DirRuleEvaluator::Evaluate()
 
 RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 {
-    LoggingHelper::getInstance().log(LOG_DEBUG,  "Processing directory rule:  '" + m_ctx.rule + "'");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing directory rule:  '" + m_ctx.rule + "'");
 
     if (!TryFunc([&] { return m_fileSystemWrapper->exists(m_ctx.rule); }).value_or(false))
     {
@@ -465,7 +479,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
             }
             else
             {
-                LoggingHelper::getInstance().log(LOG_DEBUG,  "Directory check failed for file '" + file.string() + "'");
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Directory check failed for file '" + file.string() + "'");
                 m_lastUnresolvedReason = "Directory check failed for file '" + file.string() + "'";
                 return RuleResult::Invalid;
             }
@@ -501,16 +515,17 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                             // Symbolic links are skipped above; not following them on open applies the same rule
                             // to the file that is actually read, also where the check above cannot see links
                             bool isSymbolicLink = false;
-                            const auto result = TryFunc([&]
-                            {
-                                return FindContentInFile(m_fileUtils,
-                                                         file.string(),
-                                                         content.value(),
-                                                         m_ctx,
-                                                         m_lastUnresolvedReason,
-                                                         false,
-                                                         isSymbolicLink);
-                            });
+                            const auto result = TryFunc(
+                                [&]
+                                {
+                                    return FindContentInFile(m_fileUtils,
+                                                             file.string(),
+                                                             content.value(),
+                                                             m_ctx,
+                                                             m_lastUnresolvedReason,
+                                                             false,
+                                                             isSymbolicLink);
+                                });
 
                             if (result.has_value() && isSymbolicLink)
                             {
@@ -550,7 +565,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                         {
                             LoggingHelper::getInstance().log(LOG_DEBUG,
                                                              "Pattern '" + pattern + "' was found in directory '" +
-                                                             rootPath.string() + "'");
+                                                                 rootPath.string() + "'");
                             return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
                         }
                     }
@@ -563,16 +578,17 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                 if (file.filename().string() == fileName)
                 {
                     bool isSymbolicLink = false;
-                    const auto result = TryFunc([&]
-                    {
-                        return FindContentInFile(m_fileUtils,
-                                                 file.string(),
-                                                 content.value(),
-                                                 m_ctx,
-                                                 m_lastUnresolvedReason,
-                                                 false,
-                                                 isSymbolicLink);
-                    });
+                    const auto result = TryFunc(
+                        [&]
+                        {
+                            return FindContentInFile(m_fileUtils,
+                                                     file.string(),
+                                                     content.value(),
+                                                     m_ctx,
+                                                     m_lastUnresolvedReason,
+                                                     false,
+                                                     isSymbolicLink);
+                        });
 
                     // Skipped as if the symbolic link check above had caught it
                     if (result.has_value() && isSymbolicLink)
@@ -589,11 +605,13 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                             return RuleResult::Invalid;
                         }
 
-                        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
+                        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found)
+                                               : value;
                     }
                     else
                     {
-                        m_lastUnresolvedReason = "Failed to read contents of file '" + file.string() + "' in directory '" + rootPath.string() + "'";
+                        m_lastUnresolvedReason = "Failed to read contents of file '" + file.string() +
+                                                 "' in directory '" + rootPath.string() + "'";
                         return RuleResult::Invalid;
                     }
                 }
@@ -602,7 +620,8 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
             {
                 if (file.filename().string() == pattern)
                 {
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
+                    LoggingHelper::getInstance().log(
+                        LOG_DEBUG, "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
                     return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
                 }
             }
@@ -610,7 +629,8 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
         if (isRegex && !hadValue)
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + pattern + "' for directory '" + rootPath.string() + "'");
+            LoggingHelper::getInstance().log(
+                LOG_DEBUG, "Invalid pattern '" + pattern + "' for directory '" + rootPath.string() + "'");
             m_lastUnresolvedReason = "Invalid pattern '" + pattern + "' for directory '" + rootPath.string() + "'";
             return RuleResult::Invalid;
         }
@@ -622,7 +642,8 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         return RuleResult::Invalid;
     }
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' was not found in directory '" + rootPath.string() + "'");
+    LoggingHelper::getInstance().log(
+        LOG_DEBUG, "Pattern '" + pattern + "' was not found in directory '" + rootPath.string() + "'");
     return m_ctx.isNegated ? RuleResult::Found : RuleResult::NotFound;
 }
 
@@ -630,10 +651,11 @@ RuleResult DirRuleEvaluator::CheckDirectoryExistence()
 {
     auto result = RuleResult::NotFound;
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Processing directory rule. Checking existence of directory: '" + m_ctx.rule + "'");
+    LoggingHelper::getInstance().log(
+        LOG_DEBUG, "Processing directory rule. Checking existence of directory: '" + m_ctx.rule + "'");
 
     if (const auto dirOk = TryFunc(
-                               [&] { return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_directory(m_ctx.rule); }))
+            [&] { return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_directory(m_ctx.rule); }))
     {
         if (dirOk.value())
         {
@@ -642,12 +664,14 @@ RuleResult DirRuleEvaluator::CheckDirectoryExistence()
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + m_ctx.rule + "' does not exist or is not a directory");
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "Directory '" + m_ctx.rule + "' does not exist or is not a directory");
         }
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule " + m_ctx.rule + " could not be resolved");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "An error occured and file rule " + m_ctx.rule + " could not be resolved");
         m_lastUnresolvedReason = "Directory access error for '" + m_ctx.rule + "'";
         return RuleResult::Invalid;
     }
@@ -703,7 +727,8 @@ RuleResult ProcessRuleEvaluator::Evaluate()
     // silently evaluating only the part before "->".
     if (m_ctx.pattern)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Process rule '" + m_ctx.rule + "' has a pattern, which process rules do not support");
+        LoggingHelper::getInstance().log(
+            LOG_DEBUG, "Process rule '" + m_ctx.rule + "' has a pattern, which process rules do not support");
         m_lastUnresolvedReason = "Patterns ('->') are not supported in process rule '" + m_ctx.rule + "'";
         return RuleResult::Invalid;
     }
@@ -721,7 +746,8 @@ RuleResult ProcessRuleEvaluator::Evaluate()
 
             if (!patternMatch)
             {
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + m_ctx.rule + "' for process rule evaluation");
+                LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                 "Invalid pattern '" + m_ctx.rule + "' for process rule evaluation");
                 m_lastUnresolvedReason = "Invalid pattern '" + m_ctx.rule + "' for process rule";
                 return RuleResult::Invalid;
             }
@@ -740,7 +766,8 @@ RuleResult ProcessRuleEvaluator::Evaluate()
         return RuleResult::Invalid;
     }
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Process '" + m_ctx.rule + "' was " + (result == RuleResult::Found ? "found" : "not found"));
+    LoggingHelper::getInstance().log(
+        LOG_DEBUG, "Process '" + m_ctx.rule + "' was " + (result == RuleResult::Found ? "found" : "not found"));
     return m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
 }
 
@@ -797,28 +824,30 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
 
     auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
 
-    PolicyEvaluationContext ctx {std::move(cleanedRule), pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine, input};
+    PolicyEvaluationContext ctx {
+        std::move(cleanedRule), pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine, input};
 
     switch (ruleType)
     {
         case sca::WM_SCA_TYPE_FILE:
-            return std::make_unique<FileRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper), std::move(fileUtils));
+            return std::make_unique<FileRuleEvaluator>(
+                std::move(ctx), std::move(fileSystemWrapper), std::move(fileUtils));
 #ifdef _WIN32
 
-        case sca::WM_SCA_TYPE_REGISTRY:
-            return std::make_unique<RegistryRuleEvaluator>(std::move(ctx));
+        case sca::WM_SCA_TYPE_REGISTRY: return std::make_unique<RegistryRuleEvaluator>(std::move(ctx));
 #endif
 
         case sca::WM_SCA_TYPE_PROCESS:
-            return std::make_unique<ProcessRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper), std::move(sysInfo));
+            return std::make_unique<ProcessRuleEvaluator>(
+                std::move(ctx), std::move(fileSystemWrapper), std::move(sysInfo));
 
         case sca::WM_SCA_TYPE_DIR:
-            return std::make_unique<DirRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper), std::move(fileUtils));
+            return std::make_unique<DirRuleEvaluator>(
+                std::move(ctx), std::move(fileSystemWrapper), std::move(fileUtils));
 
         case sca::WM_SCA_TYPE_COMMAND:
             return std::make_unique<CommandRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper));
 
-        default:
-            return nullptr;
+        default: return nullptr;
     }
 }

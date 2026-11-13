@@ -10,29 +10,31 @@
 
 #include "wmodules.h"
 
-static const char *XML_NAME = "name";
+static const char* XML_NAME = "name";
 
 // Deprecated modules and their corresponding informational messages
-static const struct {
-    const char *name;
-    const char *message;
+static const struct
+{
+    const char* name;
+    const char* message;
 } DEPRECATED_MODULES[] = {
-    { "cis-cat",   "The 'cis-cat' module is deprecated. Use the SCA module instead." },
-    { "osquery",   "The 'osquery' module is deprecated. Use the Syscollector module instead." },
-    { "open-scap", "The 'open-scap' module is deprecated. Use the SCA module instead." },
+    {"cis-cat", "The 'cis-cat' module is deprecated. Use the SCA module instead."},
+    {"osquery", "The 'osquery' module is deprecated. Use the Syscollector module instead."},
+    {"open-scap", "The 'open-scap' module is deprecated. Use the SCA module instead."},
 };
 
 #define DEPRECATED_MODULES_COUNT (sizeof(DEPRECATED_MODULES) / sizeof(DEPRECATED_MODULES[0]))
 
-const char *wm_config_logtag(const char *tag) {
+const char* wm_config_logtag(const char* tag)
+{
 #ifdef CLIENT
     return tag;
 #else
     static char buffer[OS_SIZE_256];
     const size_t prefix_len = strlen(ARGV0);
 
-    if (tag == NULL || __local_name == NULL || strcmp(__local_name, ARGV0) == 0 ||
-        strncmp(tag, ARGV0, prefix_len) != 0) {
+    if (tag == NULL || __local_name == NULL || strcmp(__local_name, ARGV0) == 0 || strncmp(tag, ARGV0, prefix_len) != 0)
+    {
         return tag;
     }
 
@@ -43,32 +45,38 @@ const char *wm_config_logtag(const char *tag) {
 
 // Read wodle element
 
-int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
+int Read_WModule(const OS_XML* xml, xml_node* node, void* d1, void* d2)
 {
-    wmodule **wmodules = (wmodule**)d1;
-    int agent_cfg = d2 ? *(int *)d2 : 0;
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+    wmodule** wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int*)d2 : 0;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
-    if (!node->attributes[0]) {
+    if (!node->attributes[0])
+    {
         merror("No such attribute '%s' at module.", XML_NAME);
         return OS_INVALID;
     }
 
-    if (strcmp(node->attributes[0], XML_NAME)) {
+    if (strcmp(node->attributes[0], XML_NAME))
+    {
         merror("Module attribute is not '%s'", XML_NAME);
         return OS_INVALID;
     }
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
         int found = 0;
 
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->values[0]) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->values[0]) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     found = 1;
                     break;
@@ -77,98 +85,128 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
 
-        if(!found) {
-            while (cur_wmodule->next)
-                cur_wmodule = cur_wmodule->next;
+        if (!found)
+        {
+            while (cur_wmodule->next) cur_wmodule = cur_wmodule->next;
 
             os_calloc(1, sizeof(wmodule), cur_wmodule->next);
             cur_wmodule = cur_wmodule->next;
         }
-    } else
+    }
+    else
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->values[0]);
     }
 
     // Select module by name
-    if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
+    if (!strcmp(node->values[0], WM_SYS_CONTEXT.name))
+    {
 #ifdef CLIENT
-        if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
+        if (wm_syscollector_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
-        if (agent_cfg) {
-            if (wm_syscollector_read(xml, children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_syscollector_read(xml, children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->values[0]);
         }
 #endif
     }
 #ifdef CLIENT
-    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {
-        if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
+    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name))
+    {
+        if (wm_command_read(children, cur_wmodule, agent_cfg) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #else
-    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name)) {
-        if (agent_cfg) {
-            if (wm_command_read(children, cur_wmodule, agent_cfg) < 0) {
+    else if (!strcmp(node->values[0], WM_COMMAND_CONTEXT.name))
+    {
+        if (agent_cfg)
+        {
+            if (wm_command_read(children, cur_wmodule, agent_cfg) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->values[0]);
         }
     }
 #endif
-    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
+    else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail"))
+    {
 #ifndef WIN32
 #ifdef CLIENT
-        if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", WM_AWS_CONTEXT.name);
-        if (wm_aws_read(xml, children, cur_wmodule) < 0) {
+        if (!strcmp(node->values[0], "aws-cloudtrail"))
+            mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", WM_AWS_CONTEXT.name);
+        if (wm_aws_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
-        if (agent_cfg) {
-            if (wm_aws_read(xml, children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_aws_read(xml, children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->values[0]);
         }
 #endif
 #else
         mwarn("The '%s' module is not available on Windows systems. Ignoring.", node->values[0]);
 #endif
-    } else if (!strcmp(node->values[0], "docker-listener")) {
+    }
+    else if (!strcmp(node->values[0], "docker-listener"))
+    {
 #ifndef WIN32
 #ifdef CLIENT
-        if (wm_docker_read(children, cur_wmodule) < 0) {
+        if (wm_docker_read(children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
-        if (agent_cfg) {
-            if (wm_docker_read(children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_docker_read(children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->values[0]);
         }
 #endif
@@ -178,41 +216,57 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #ifndef WIN32
 #ifdef CLIENT
-    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
-        if (wm_azure_read(xml, children, cur_wmodule) < 0) {
+    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name))
+    {
+        if (wm_azure_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
     }
 #else
-    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name)) {
-        if (agent_cfg) {
-            if (wm_azure_read(xml, children, cur_wmodule) < 0) {
+    else if (!strcmp(node->values[0], WM_AZURE_CONTEXT.name))
+    {
+        if (agent_cfg)
+        {
+            if (wm_azure_read(xml, children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->values[0]);
         }
     }
 #endif
 #endif
-    else {
-        if (!strcmp(node->values[0], VU_WM_NAME)) {
+    else
+    {
+        if (!strcmp(node->values[0], VU_WM_NAME))
+        {
             minfo("The '%s' module only works for the manager", node->values[0]);
-        } else {
-            const char *deprecated_message = NULL;
+        }
+        else
+        {
+            const char* deprecated_message = NULL;
 
-            for (size_t i = 0; i < DEPRECATED_MODULES_COUNT; i++) {
-                if (!strcmp(node->values[0], DEPRECATED_MODULES[i].name)) {
+            for (size_t i = 0; i < DEPRECATED_MODULES_COUNT; i++)
+            {
+                if (!strcmp(node->values[0], DEPRECATED_MODULES[i].name))
+                {
                     deprecated_message = DEPRECATED_MODULES[i].message;
                     break;
                 }
             }
 
-            if (deprecated_message) {
+            if (deprecated_message)
+            {
                 minfo("%s", deprecated_message);
-            } else {
+            }
+            else
+            {
                 mwarn("Unknown module '%s'", node->values[0]);
             }
         }
@@ -222,22 +276,26 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     return 0;
 }
 
-int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2)
+int Read_SCA(const OS_XML* xml, xml_node* node, void* d1, void* d2)
 {
-    wmodule **wmodules = (wmodule**)d1;
-    int agent_cfg = d2 ? *(int *)d2 : 0;
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+    wmodule** wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int*)d2 : 0;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
         int found = 0;
 
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     found = 1;
                     break;
@@ -246,36 +304,43 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
 
-        if(!found) {
-            while (cur_wmodule->next)
-                cur_wmodule = cur_wmodule->next;
+        if (!found)
+        {
+            while (cur_wmodule->next) cur_wmodule = cur_wmodule->next;
 
             os_calloc(1, sizeof(wmodule), cur_wmodule->next);
             cur_wmodule = cur_wmodule->next;
         }
-    } else
+    }
+    else
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-    //Policy Monitoring Module
-    if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
+    // Policy Monitoring Module
+    if (!strcmp(node->element, WM_SCA_CONTEXT.name))
+    {
 #ifdef CLIENT
-        if (wm_sca_read(xml,children, cur_wmodule, agent_cfg) < 0) {
+        if (wm_sca_read(xml, children, cur_wmodule, agent_cfg) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
-        if (agent_cfg) {
-            if (wm_sca_read(xml,children, cur_wmodule, 1) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_sca_read(xml, children, cur_wmodule, 1) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
@@ -368,29 +433,35 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
     return 0;
 }
 
-int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
-    wmodule **wmodules = (wmodule**)d1;
-    int agent_cfg = d2 ? *(int *)d2 : 0;
+int Read_GCP_pubsub(const OS_XML* xml, xml_node* node, void* d1, void* d2)
+{
+    wmodule** wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int*)d2 : 0;
 #ifdef CLIENT
     (void)agent_cfg;
 #endif
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
 
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     break;
                 }
             }
 
-            if (cur_wmodule_exists->next == NULL) {
+            if (cur_wmodule_exists->next == NULL)
+            {
                 cur_wmodule = cur_wmodule_exists;
 
                 os_calloc(1, sizeof(wmodule), cur_wmodule->next);
@@ -400,26 +471,32 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
 
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
-    } else {
+    }
+    else
+    {
         os_calloc(1, sizeof(wmodule), cur_wmodule);
         *wmodules = cur_wmodule;
     }
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-    //Google Cloud module
-    if (!strcmp(node->element, WM_GCP_PUBSUB_CONTEXT.name)) {
+    // Google Cloud module
+    if (!strcmp(node->element, WM_GCP_PUBSUB_CONTEXT.name))
+    {
 #ifdef CLIENT
 #ifndef WIN32
-        if (wm_gcp_pubsub_read(children, cur_wmodule) < 0) {
+        if (wm_gcp_pubsub_read(children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -427,12 +504,16 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->element);
 #endif
 #else
-        if (agent_cfg) {
-            if (wm_gcp_pubsub_read(children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_gcp_pubsub_read(children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->element);
         }
 #endif
@@ -442,29 +523,35 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
     return 0;
 }
 
-int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
-    wmodule **wmodules = (wmodule**)d1;
-    int agent_cfg = d2 ? *(int *)d2 : 0;
+int Read_GCP_bucket(const OS_XML* xml, xml_node* node, void* d1, void* d2)
+{
+    wmodule** wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int*)d2 : 0;
 #ifdef CLIENT
     (void)agent_cfg;
 #endif
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
 
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     break;
                 }
             }
 
-            if (cur_wmodule_exists->next == NULL) {
+            if (cur_wmodule_exists->next == NULL)
+            {
                 cur_wmodule = cur_wmodule_exists;
 
                 os_calloc(1, sizeof(wmodule), cur_wmodule->next);
@@ -474,26 +561,32 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
 
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
-    } else {
+    }
+    else
+    {
         os_calloc(1, sizeof(wmodule), cur_wmodule);
         *wmodules = cur_wmodule;
     }
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-    //Google Cloud module
-    if (!strcmp(node->element, WM_GCP_BUCKET_CONTEXT.name)) {
+    // Google Cloud module
+    if (!strcmp(node->element, WM_GCP_BUCKET_CONTEXT.name))
+    {
 #ifdef CLIENT
 #ifndef WIN32
-        if (wm_gcp_bucket_read(xml, children, cur_wmodule) < 0) {
+        if (wm_gcp_bucket_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -501,12 +594,16 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
         mwarn("The '%s' module is not available on Windows systems. Ignoring it.", node->element);
 #endif
 #else
-        if (agent_cfg) {
-            if (wm_gcp_bucket_read(xml, children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_gcp_bucket_read(xml, children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->element);
         }
 #endif
@@ -520,25 +617,31 @@ int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
  * manager, which reads their settings from the `task-manager` section of the effective document
  * (etc/wazuh-manager.conf) rather than through any XML reader. */
 #ifdef CLIENT
-int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
-    wmodule **wmodules = (wmodule**)d1;
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+int Read_AgentUpgrade(const OS_XML* xml, xml_node* node, void* d1)
+{
+    wmodule** wmodules = (wmodule**)d1;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
 
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     break;
                 }
             }
 
-            if (cur_wmodule_exists->next == NULL) {
+            if (cur_wmodule_exists->next == NULL)
+            {
                 cur_wmodule = cur_wmodule_exists;
 
                 os_calloc(1, sizeof(wmodule), cur_wmodule->next);
@@ -548,24 +651,30 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
 
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
-    } else {
+    }
+    else
+    {
         os_calloc(1, sizeof(wmodule), cur_wmodule);
         *wmodules = cur_wmodule;
     }
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-    //Agent Upgrade module
-    if (!strcmp(node->element, WM_AGENT_UPGRADE_CONTEXT.name)) {
-        if (wm_agent_upgrade_read(xml, children, cur_wmodule) < 0) {
+    // Agent Upgrade module
+    if (!strcmp(node->element, WM_AGENT_UPGRADE_CONTEXT.name))
+    {
+        if (wm_agent_upgrade_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
@@ -575,32 +684,37 @@ int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1) {
     return 0;
 }
 #endif
-
 
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
-int Read_Github(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
-    wmodule **wmodules = (wmodule**)d1;
-    int agent_cfg = d2 ? *(int *)d2 : 0;
+int Read_Github(const OS_XML* xml, xml_node* node, void* d1, void* d2)
+{
+    wmodule** wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int*)d2 : 0;
 #ifdef CLIENT
     (void)agent_cfg;
 #endif
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
 
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     break;
                 }
             }
 
-            if (cur_wmodule_exists->next == NULL) {
+            if (cur_wmodule_exists->next == NULL)
+            {
                 cur_wmodule = cur_wmodule_exists;
 
                 os_calloc(1, sizeof(wmodule), cur_wmodule->next);
@@ -610,35 +724,45 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
 
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
-    } else {
+    }
+    else
+    {
         os_calloc(1, sizeof(wmodule), cur_wmodule);
         *wmodules = cur_wmodule;
     }
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-    //GitHub module
-    if (!strcmp(node->element, WM_GITHUB_CONTEXT.name)) {
+    // GitHub module
+    if (!strcmp(node->element, WM_GITHUB_CONTEXT.name))
+    {
 #ifdef CLIENT
-        if (wm_github_read(xml, children, cur_wmodule) < 0) {
+        if (wm_github_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
-        if (agent_cfg) {
-            if (wm_github_read(xml, children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_github_read(xml, children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->element);
         }
 #endif
@@ -648,29 +772,35 @@ int Read_Github(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
     return 0;
 }
 
-int Read_Office365(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
-    wmodule **wmodules = (wmodule**)d1;
-    int agent_cfg = d2 ? *(int *)d2 : 0;
+int Read_Office365(const OS_XML* xml, xml_node* node, void* d1, void* d2)
+{
+    wmodule** wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int*)d2 : 0;
 #ifdef CLIENT
     (void)agent_cfg;
 #endif
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
 
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     break;
                 }
             }
 
-            if (cur_wmodule_exists->next == NULL) {
+            if (cur_wmodule_exists->next == NULL)
+            {
                 cur_wmodule = cur_wmodule_exists;
 
                 os_calloc(1, sizeof(wmodule), cur_wmodule->next);
@@ -680,35 +810,45 @@ int Read_Office365(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
 
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
-    } else {
+    }
+    else
+    {
         os_calloc(1, sizeof(wmodule), cur_wmodule);
         *wmodules = cur_wmodule;
     }
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-    //Office365 module
-    if (!strcmp(node->element, WM_OFFICE365_CONTEXT.name)) {
+    // Office365 module
+    if (!strcmp(node->element, WM_OFFICE365_CONTEXT.name))
+    {
 #ifdef CLIENT
-        if (wm_office365_read(xml, children, cur_wmodule) < 0) {
+        if (wm_office365_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
-        if (agent_cfg) {
-            if (wm_office365_read(xml, children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_office365_read(xml, children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->element);
         }
 #endif
@@ -718,29 +858,35 @@ int Read_Office365(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
     return 0;
 }
 
-int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
-    wmodule **wmodules = (wmodule**)d1;
-    int agent_cfg = d2 ? *(int *)d2 : 0;
+int Read_MS_Graph(const OS_XML* xml, xml_node* node, void* d1, void* d2)
+{
+    wmodule** wmodules = (wmodule**)d1;
+    int agent_cfg = d2 ? *(int*)d2 : 0;
 #ifdef CLIENT
     (void)agent_cfg;
 #endif
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
+    wmodule* cur_wmodule;
+    xml_node** children = NULL;
+    wmodule* cur_wmodule_exists;
 
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
+    if ((cur_wmodule = *wmodules))
+    {
         cur_wmodule_exists = *wmodules;
 
-        while (cur_wmodule_exists) {
-            if (cur_wmodule_exists->tag) {
-                if (strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+        while (cur_wmodule_exists)
+        {
+            if (cur_wmodule_exists->tag)
+            {
+                if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
+                {
                     cur_wmodule = cur_wmodule_exists;
                     break;
                 }
             }
 
-            if (cur_wmodule_exists->next == NULL) {
+            if (cur_wmodule_exists->next == NULL)
+            {
                 cur_wmodule = cur_wmodule_exists;
 
                 os_calloc(1, sizeof(wmodule), cur_wmodule->next);
@@ -750,35 +896,45 @@ int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
 
             cur_wmodule_exists = cur_wmodule_exists->next;
         }
-    } else {
+    }
+    else
+    {
         os_calloc(1, sizeof(wmodule), cur_wmodule);
         *wmodules = cur_wmodule;
     }
 
-    if (!cur_wmodule) {
+    if (!cur_wmodule)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return (OS_INVALID);
     }
 
     // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
+    if (children = OS_GetElementsbyNode(xml, node), !children)
+    {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
 
-    //MS Graph module
-    if (!strcmp(node->element, WM_MS_GRAPH_CONTEXT.name)) {
+    // MS Graph module
+    if (!strcmp(node->element, WM_MS_GRAPH_CONTEXT.name))
+    {
 #ifdef CLIENT
-        if (wm_ms_graph_read(xml, children, cur_wmodule) < 0) {
+        if (wm_ms_graph_read(xml, children, cur_wmodule) < 0)
+        {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
-        if (agent_cfg) {
-            if (wm_ms_graph_read(xml, children, cur_wmodule) < 0) {
+        if (agent_cfg)
+        {
+            if (wm_ms_graph_read(xml, children, cur_wmodule) < 0)
+            {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }
-        } else {
+        }
+        else
+        {
             mwarn("The '%s' module only works for the agent", node->element);
         }
 #endif
@@ -789,22 +945,27 @@ int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1, void *d2) {
 }
 #endif
 
-int Test_WModule(const char * path) {
+int Test_WModule(const char* path)
+{
     int fail = 0;
     int agent_cfg = 1;
-    wmodule *test_wmodule;
+    wmodule* test_wmodule;
     os_calloc(1, sizeof(wmodule), test_wmodule);
 
-    if (ReadConfig(CAGENT_CONFIG | CWMODULE, path, &test_wmodule, &agent_cfg) < 0) {
-        merror(RCONFIG_ERROR,"WModule", path);
+    if (ReadConfig(CAGENT_CONFIG | CWMODULE, path, &test_wmodule, &agent_cfg) < 0)
+    {
+        merror(RCONFIG_ERROR, "WModule", path);
         fail = 1;
     }
 
     wm_free(test_wmodule);
 
-    if (fail) {
+    if (fail)
+    {
         return -1;
-    } else {
+    }
+    else
+    {
         return 0;
     }
 }

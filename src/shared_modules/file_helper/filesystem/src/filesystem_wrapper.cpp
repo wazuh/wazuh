@@ -30,7 +30,7 @@ namespace
             FindClose(handle);
 
             if ((data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
-                    (data.dwReserved0 == IO_REPARSE_TAG_SYMLINK || data.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT))
+                (data.dwReserved0 == IO_REPARSE_TAG_SYMLINK || data.dwReserved0 == IO_REPARSE_TAG_MOUNT_POINT))
             {
                 return true;
             }

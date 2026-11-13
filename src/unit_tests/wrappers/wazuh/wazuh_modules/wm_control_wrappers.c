@@ -15,10 +15,12 @@
 #include <cmocka.h>
 #include <string.h>
 
-bool __wrap_wm_control_check_systemd(void) {
+bool __wrap_wm_control_check_systemd(void)
+{
     return mock_type(bool);
 }
 
-pid_t __wrap_fork(void) {
+pid_t __wrap_fork(void)
+{
     return mock_type(pid_t);
 }

@@ -18,10 +18,11 @@
 #include <shared.h>
 
 /// bqueue flag set
-typedef enum {
-    BQUEUE_NOFLAG = 0,  ///< No options defined
-    BQUEUE_WAIT   = 1,  ///< Block push if the queue is full, or pop/peek if the queue is empty
-    BQUEUE_SHRINK = 2   ///< Shrink queue on pop/peek, if more than a half of the queue is unused
+typedef enum
+{
+    BQUEUE_NOFLAG = 0, ///< No options defined
+    BQUEUE_WAIT = 1,   ///< Block push if the queue is full, or pop/peek if the queue is empty
+    BQUEUE_SHRINK = 2  ///< Shrink queue on pop/peek, if more than a half of the queue is unused
 } bqflag_t;
 
 /**
@@ -31,10 +32,11 @@ typedef enum {
  * The maximum capacity is max_length - 1, so the minimum value for max_length is 2.
  * Operations are serialized by mutual exclusion.
  */
-typedef struct {
-    void * memory;              ///< Pointer to the data segment
-    void * head;                ///< Pointer to the first avilable byte to read
-    void * tail;                ///< Pointer to the first available byte write
+typedef struct
+{
+    void* memory;               ///< Pointer to the data segment
+    void* head;                 ///< Pointer to the first avilable byte to read
+    void* tail;                 ///< Pointer to the first available byte write
     size_t length;              ///< Current queue length
     size_t max_length;          ///< Maximum length limit
     unsigned flags;             ///< Queue-wide flag set
@@ -51,14 +53,14 @@ typedef struct {
  * @return Pointer to a newly allocated queue.
  * @retval NULL No queue allocated, parameter value error.
  */
-bqueue_t * bqueue_init(size_t max_length, unsigned flags);
+bqueue_t* bqueue_init(size_t max_length, unsigned flags);
 
 /**
  * @brief Free a queue
  *
  * @param queue Pointer to a queue, NULL is allowed.
  */
-void bqueue_destroy(bqueue_t * queue);
+void bqueue_destroy(bqueue_t* queue);
 
 /**
  * @brief Push data into the queue
@@ -70,7 +72,7 @@ void bqueue_destroy(bqueue_t * queue);
  * @retval 0 On success.
  * @retval -1 No sparece available.
  */
-int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned flags);
+int bqueue_push(bqueue_t* queue, const void* data, size_t length, unsigned flags);
 
 /**
  * @brief Get and remove data from the queue
@@ -91,7 +93,7 @@ int bqueue_push(bqueue_t * queue, const void * data, size_t length, unsigned fla
  * @param flags Operation options: BQUEUE_NOFLAG or BQUEUE_WAIT.
  * @return Number of bytes popped from the queue.
  */
-size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags);
+size_t bqueue_pop(bqueue_t* queue, void* buffer, size_t length, unsigned flags);
 
 /**
  * @brief Get data from the queue
@@ -106,7 +108,7 @@ size_t bqueue_pop(bqueue_t * queue, void * buffer, size_t length, unsigned flags
  * @param flags Operation options: BQUEUE_NOFLAG or BQUEUE_WAIT.
  * @return Number of bytes read from the queue.
  */
-size_t bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flags);
+size_t bqueue_peek(bqueue_t* queue, char* buffer, size_t length, unsigned flags);
 
 /**
  * @brief Drop data from the queue
@@ -123,7 +125,7 @@ size_t bqueue_peek(bqueue_t * queue, char * buffer, size_t length, unsigned flag
  * @retval 0 On success.
  * @retval -1 length is greater than the currently used space.
  */
-int bqueue_drop(bqueue_t * queue, size_t length);
+int bqueue_drop(bqueue_t* queue, size_t length);
 
 /**
  * @brief Get the current queue size
@@ -131,7 +133,7 @@ int bqueue_drop(bqueue_t * queue, size_t length);
  * @param queue Pointer to a queue.
  * @return Number of bytes stored in the queue.
  */
-size_t bqueue_used(bqueue_t * queue);
+size_t bqueue_used(bqueue_t* queue);
 
 /**
  * @brief Clear the queue
@@ -140,6 +142,6 @@ size_t bqueue_used(bqueue_t * queue);
  *
  * @param queue Pointer to a queue.
  */
-void bqueue_clear(bqueue_t * queue);
+void bqueue_clear(bqueue_t* queue);
 
 #endif

@@ -15,9 +15,9 @@
 #include <stdint.h>
 #include "agent_metadata_wrappers.h"
 
-agent_meta_t* __wrap_agent_meta_from_agent_info(const char* id_str,
-                                                const char* agent_name,
-                                                const struct agent_info_data* ai) {
+agent_meta_t*
+__wrap_agent_meta_from_agent_info(const char* id_str, const char* agent_name, const struct agent_info_data* ai)
+{
     check_expected(id_str);
     check_expected(agent_name);
     check_expected(ai);
@@ -25,14 +25,16 @@ agent_meta_t* __wrap_agent_meta_from_agent_info(const char* id_str,
     return mock_ptr_type(agent_meta_t*);
 }
 
-int __wrap_agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh) {
+int __wrap_agent_meta_upsert_locked(const char* agent_id_str, agent_meta_t* fresh)
+{
     check_expected(agent_id_str);
     check_expected(fresh);
 
     return mock_type(int);
 }
 
-int __wrap_agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out) {
+int __wrap_agent_meta_snapshot_str(const char* agent_id_str, agent_meta_t* out)
+{
     check_expected(agent_id_str);
     check_expected(out);
     return mock_type(int);

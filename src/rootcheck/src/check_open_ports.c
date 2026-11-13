@@ -6,7 +6,7 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
-*/
+ */
 
 #include "shared.h"
 #include "debug_op.h"
@@ -16,14 +16,13 @@
 #ifndef OSSECHIDS
 
 /* Prototypes */
-static int  connect_to_port(int proto, int port);
+static int connect_to_port(int proto, int port);
 static void try_to_access_ports(void);
 
 /* Global variables */
-static int  _ports_open;
-static int  open_ports_size;
+static int _ports_open;
+static int open_ports_size;
 static char open_ports_str[OS_SIZE_1024 + 1];
-
 
 static int connect_to_port(int proto, int port)
 {
@@ -31,24 +30,32 @@ static int connect_to_port(int proto, int port)
     int ossock;
     struct sockaddr_in server;
 
-    if (proto == IPPROTO_UDP) {
-        if ((ossock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+    if (proto == IPPROTO_UDP)
+    {
+        if ((ossock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+        {
             return (0);
         }
-    } else if (proto == IPPROTO_TCP) {
-        if ((ossock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+    }
+    else if (proto == IPPROTO_TCP)
+    {
+        if ((ossock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+        {
             return (0);
         }
-    } else {
+    }
+    else
+    {
         return (0);
     }
 
     memset(&server, 0, sizeof(server));
-    server.sin_family      = AF_INET;
-    server.sin_port        = htons(port);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(port);
     server.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-    if (connect(ossock, (struct sockaddr *)&server, sizeof(server)) == 0) {
+    if (connect(ossock, (struct sockaddr*)&server, sizeof(server)) == 0)
+    {
         rc = 1;
     }
 
@@ -61,13 +68,18 @@ static void try_to_access_ports()
 {
     int i;
 
-    for (i = 0; i <= 65535; i++) {
-        if (total_ports_tcp[i] && connect_to_port(IPPROTO_TCP, i)) {
+    for (i = 0; i <= 65535; i++)
+    {
+        if (total_ports_tcp[i] && connect_to_port(IPPROTO_TCP, i))
+        {
             char port_proto[64];
 
-            if (_ports_open == 0) {
+            if (_ports_open == 0)
+            {
                 snprintf(port_proto, 64, "\n      %d (tcp),", i);
-            } else {
+            }
+            else
+            {
                 snprintf(port_proto, 64, "%d (tcp),", i);
             }
             strncat(open_ports_str, port_proto, open_ports_size);
@@ -76,12 +88,16 @@ static void try_to_access_ports()
             _ports_open++;
         }
 
-        if (total_ports_udp[i] && connect_to_port(IPPROTO_UDP, i)) {
+        if (total_ports_udp[i] && connect_to_port(IPPROTO_UDP, i))
+        {
             char port_proto[64];
 
-            if (_ports_open == 0) {
+            if (_ports_open == 0)
+            {
                 snprintf(port_proto, 64, "\n      %d (udp),", i);
-            } else {
+            }
+            else
+            {
                 snprintf(port_proto, 64, "%d (udp),", i);
             }
 
@@ -91,11 +107,11 @@ static void try_to_access_ports()
             _ports_open++;
         }
 
-        if (_ports_open >= 4) {
+        if (_ports_open >= 4)
+        {
             _ports_open = 0;
         }
     }
-
 }
 #endif
 

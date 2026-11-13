@@ -14,16 +14,18 @@
 #include "shared.h"
 
 /* Release all the memory created by the compilation/execution phases */
-void OSRegex_FreePattern(OSRegex *reg)
+void OSRegex_FreePattern(OSRegex* reg)
 {
     int i = 0;
-    if(reg == NULL)
+    if (reg == NULL)
         return;
 
     /* Free the patterns */
-    if (reg->patterns) {
-        char **pattern = reg->patterns;
-        while (*pattern) {
+    if (reg->patterns)
+    {
+        char** pattern = reg->patterns;
+        while (*pattern)
+        {
             os_free(*pattern);
             pattern++;
         }
@@ -34,14 +36,17 @@ void OSRegex_FreePattern(OSRegex *reg)
     /* Free the flags */
     os_free(reg->flags);
 
-    if (reg->raw) {
+    if (reg->raw)
+    {
         os_free(reg->raw);
     }
 
     /* Free the closure */
-    if (reg->prts_closure) {
+    if (reg->prts_closure)
+    {
         i = 0;
-        while (reg->prts_closure[i]) {
+        while (reg->prts_closure[i])
+        {
             os_free(reg->prts_closure[i]);
             i++;
         }
@@ -49,9 +54,11 @@ void OSRegex_FreePattern(OSRegex *reg)
     }
 
     /* Free the str */
-    if (reg->d_prts_str) {
+    if (reg->d_prts_str)
+    {
         i = 0;
-        while (reg->d_prts_str[i]) {
+        while (reg->d_prts_str[i])
+        {
             os_free(reg->d_prts_str[i]);
             i++;
         }
@@ -59,7 +66,8 @@ void OSRegex_FreePattern(OSRegex *reg)
     }
 
     /* Free the sub strings */
-    if (reg->d_sub_strings) {
+    if (reg->d_sub_strings)
+    {
         w_FreeArray(reg->d_sub_strings);
         os_free(reg->d_sub_strings);
     }

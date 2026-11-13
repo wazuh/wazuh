@@ -13,13 +13,14 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdint.h>
-#include <time.h>                 /* struct timespec */
+#include <time.h> /* struct timespec */
 
 #include "batch_queue_op_wrappers.h"
 
 /* ----------------------------- enqueue ---------------------------- */
 
-int __wrap_batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *data) {
+int __wrap_batch_queue_enqueue_ex(w_rr_queue_t* sched, const char* agent_key, void* data)
+{
     check_expected(sched);
     check_expected(agent_key);
     check_expected(data);

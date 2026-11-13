@@ -32,67 +32,68 @@ typedef int gid_t;
 
 #define IPV6_LINK_LOCAL_PREFIX "FE80:0000:0000:0000:"
 
-#define WAZUH_IPC_TIMEOUT 600    // seconds
+#define WAZUH_IPC_TIMEOUT 600 // seconds
 
 /* OS_SendUnix: bounded ENOBUFS retry (local Unix datagram backpressure). */
-#define OS_UNIX_SEND_RETRIES     5
-#define OS_UNIX_SEND_BACKOFF_US  1000
+#define OS_UNIX_SEND_RETRIES    5
+#define OS_UNIX_SEND_BACKOFF_US 1000
 
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
  * If the IP is not set, it is going to use ADDR_ANY
  * Return the socket.
  */
-int OS_Bindporttcp(u_int16_t _port, const char *_ip, int ipv6);
-int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6);
+int OS_Bindporttcp(u_int16_t _port, const char* _ip, int ipv6);
+int OS_Bindportudp(u_int16_t _port, const char* _ip, int ipv6);
 
 /* OS_BindUnixDomain
  * Bind to a specific file, using the "mode" permissions in
  * a Unix Domain socket.
  */
-int OS_BindUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
-int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
-int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
+int OS_BindUnixDomain(const char* path, int type, int max_msg_size) __attribute__((nonnull));
+int OS_BindUnixDomainWithPerms(const char* path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode)
+    __attribute__((nonnull));
+int OS_ConnectUnixDomain(const char* path, int type, int max_msg_size) __attribute__((nonnull));
 int OS_getsocketsize(int ossock);
 
 /* OS_Connect
  * Connect to a TCP/UDP socket
  */
-int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_interface);
-int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_interface);
+int OS_ConnectTCP(u_int16_t _port, const char* _ip, int ipv6, uint32_t network_interface);
+int OS_ConnectUDP(u_int16_t _port, const char* _ip, int ipv6, uint32_t network_interface);
 
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed
  */
-char *OS_RecvUDP(int socket, int sizet);
-int OS_RecvConnUDP(int socket, char *buffer, int buffer_size) __attribute__((nonnull));
+char* OS_RecvUDP(int socket, int sizet);
+int OS_RecvConnUDP(int socket, char* buffer, int buffer_size) __attribute__((nonnull));
 
 /* OS_RecvUnix
  * Receive a message via a Unix socket
  */
-int OS_RecvUnix(int socket, int sizet, char *ret) __attribute__((nonnull));
+int OS_RecvUnix(int socket, int sizet, char* ret) __attribute__((nonnull));
 
 /* OS_RecvTCP
  * Receive a TCP packet
  */
-int OS_AcceptTCP(int socket, char *srcip, size_t addrsize) __attribute__((nonnull));
-char *OS_RecvTCP(int socket, int sizet);
-int OS_RecvTCPBuffer(int socket, char *buffer, int sizet) __attribute__((nonnull));
+int OS_AcceptTCP(int socket, char* srcip, size_t addrsize) __attribute__((nonnull));
+char* OS_RecvTCP(int socket, int sizet);
+int OS_RecvTCPBuffer(int socket, char* buffer, int sizet) __attribute__((nonnull));
 
 /* OS_SendTCP
  * Send a TCP/UDP/UnixSocket packet (in a open socket)
  */
-int OS_SendTCP(int socket, const char *msg) __attribute__((nonnull));
-int OS_SendTCPbySize(int socket, int size, const char *msg) __attribute__((nonnull));
+int OS_SendTCP(int socket, const char* msg) __attribute__((nonnull));
+int OS_SendTCPbySize(int socket, int size, const char* msg) __attribute__((nonnull));
 
-int OS_SendUnix(int socket, const char *msg, int size) __attribute__((nonnull));
+int OS_SendUnix(int socket, const char* msg, int size) __attribute__((nonnull));
 
-int OS_SendUDPbySize(int socket, int size, const char *msg) __attribute__((nonnull));
+int OS_SendUDPbySize(int socket, int size, const char* msg) __attribute__((nonnull));
 
 /*
  * OS_GetHost retrieves the IP of a host
  */
-char *OS_GetHost(const char *host, unsigned int attempts);
+char* OS_GetHost(const char* host, unsigned int attempts);
 
 /* Close a network socket
  * Returns 0 on success, else -1 or SOCKET_ERROR
@@ -137,13 +138,13 @@ int OS_SetSendTimeout(int socket, int seconds);
  * @retval 0 on success.
  * @retval OS_SOCKTERR on error.
  */
-int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
+int OS_SendSecureTCP(int sock, uint32_t size, const void* msg);
 
 /* Receive secure TCP message
  * This function reads a header containing message size as 4-byte little-endian unsigned integer.
  * Return recvval on success or OS_SOCKTERR on error.
  */
-int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
+int OS_RecvSecureTCP(int sock, char* ret, uint32_t size);
 
 /**
  * @brief Send secure TCP Cluster message
@@ -154,7 +155,7 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
  * @return recvval on success
  * @return OS_SOCKTERR on error
  * */
-int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload, size_t length);
+int OS_SendSecureTCPCluster(int sock, const void* command, const void* payload, size_t length);
 
 /**
  * @brief Receive secure TCP Cluster message
@@ -179,7 +180,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size);
  * Returns -1 on socket error.
  * Returns 0 on socket disconnected or timeout.
  */
-ssize_t os_recv_waitall(int sock, void * buf, size_t size);
+ssize_t os_recv_waitall(int sock, void* buf, size_t size);
 
 // Wrapper for select()
 int wnet_select(int sock, int timeout);
@@ -189,14 +190,14 @@ int wnet_select(int sock, int timeout);
  * @param hostname Hostname to be resolved, if successfull, it will be modified with the format: 'hostname/x.x.x.x'
  * @param attempts Number of attempts of the call to the function OS_GetHost
  * */
-void resolve_hostname(char **hostname, int attempts);
+void resolve_hostname(char** hostname, int attempts);
 
 /**
  * @brief Extract the ip address from the result of the resolve_hostname function.
  * @param resolved_hostname String with the format: 'hostname/x.x.x.x'
  * @return String with the ip addres
  * */
-const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
+const char* get_ip_from_resolved_hostname(const char* resolved_hostname);
 
 /**
  * @brief Connect to an UNIX socket setting the sending and response timeout
@@ -205,7 +206,7 @@ const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
  * @return Socket FD on success
  * @return -1 on socket error
  * */
-int external_socket_connect(char *socket_path, int response_timeout);
+int external_socket_connect(char* socket_path, int response_timeout);
 
 /**
  * @brief Get the numeric form of an IPv4 address.
@@ -213,7 +214,7 @@ int external_socket_connect(char *socket_path, int response_timeout);
  * @param addr Buffer to store the numeric form of the IPv4.
  * @return 0 on success, -1 otherwise.
  * */
-int get_ipv4_numeric(const char *address, struct in_addr *addr);
+int get_ipv4_numeric(const char* address, struct in_addr* addr);
 
 /**
  * @brief Get the numeric form of an IPv6 address.
@@ -221,7 +222,7 @@ int get_ipv4_numeric(const char *address, struct in_addr *addr);
  * @param addr6 Buffer to store the numeric form of the IPv6.
  * @return 0 on success, -1 otherwise.
  * */
-int get_ipv6_numeric(const char *address, struct in6_addr *addr6);
+int get_ipv6_numeric(const char* address, struct in6_addr* addr6);
 
 /**
  * @brief Get the string form of an IPv4 address.
@@ -230,7 +231,7 @@ int get_ipv6_numeric(const char *address, struct in6_addr *addr6);
  * @param address_size Size of the buffer.
  * @return 0 on success, -1 otherwise.
  * */
-int get_ipv4_string(struct in_addr addr, char *address, size_t address_size);
+int get_ipv4_string(struct in_addr addr, char* address, size_t address_size);
 
 /**
  * @brief Get the string form of an IPv6 address.
@@ -239,6 +240,6 @@ int get_ipv4_string(struct in_addr addr, char *address, size_t address_size);
  * @param address_size Size of the buffer.
  * @return 0 on success, -1 otherwise.
  * */
-int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size);
+int get_ipv6_string(struct in6_addr addr6, char* address, size_t address_size);
 
 #endif /* OS_NET_H */

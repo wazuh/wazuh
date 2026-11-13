@@ -13,16 +13,13 @@
 #include "dbsync.h"
 #include "dbsync.hpp"
 
-static const std::map<ReturnTypeCallback, std::string> RETURN_TYPE_OPERATION =
-{
-    { MODIFIED, "MODIFIED" },
-    { DELETED,  "DELETED"  },
-    { INSERTED, "INSERTED" },
-    { MAX_ROWS, "MAX_ROWS" },
-    { DB_ERROR, "DB_ERROR" },
-    { SELECTED, "SELECTED" },
-    { GENERIC,  "GENERIC"  }
-};
+static const std::map<ReturnTypeCallback, std::string> RETURN_TYPE_OPERATION = {{MODIFIED, "MODIFIED"},
+                                                                                {DELETED, "DELETED"},
+                                                                                {INSERTED, "INSERTED"},
+                                                                                {MAX_ROWS, "MAX_ROWS"},
+                                                                                {DB_ERROR, "DB_ERROR"},
+                                                                                {SELECTED, "SELECTED"},
+                                                                                {GENERIC, "GENERIC"}};
 
 struct TestContext
 {
@@ -31,7 +28,6 @@ struct TestContext
     std::mutex txn_callback_mutex;
     size_t currentId;
     std::string outputPath;
-
 };
 
 #endif //_TEST_CONTEXT_H

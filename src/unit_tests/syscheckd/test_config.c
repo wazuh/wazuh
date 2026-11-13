@@ -23,19 +23,21 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 /* redefinitons/wrapping */
-typedef struct entry_struct_s {
-    directory_t *dir1;
-    directory_t *dir2;
-    char *filerestrict;
+typedef struct entry_struct_s
+{
+    directory_t* dir1;
+    directory_t* dir2;
+    char* filerestrict;
 } entry_struct_t;
 
-static int setup_read_config(void **state) {
+static int setup_read_config(void** state)
+{
     test_mode = 0;
 
     return 0;
 }
 
-static int restart_syscheck(void **state)
+static int restart_syscheck(void** state)
 {
     test_mode = 1;
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -43,8 +45,9 @@ static int restart_syscheck(void **state)
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    cJSON *data = *state;
-    if (data) {
+    cJSON* data = *state;
+    if (data)
+    {
         cJSON_Delete(data);
     }
     Free_Syscheck(&syscheck);
@@ -55,27 +58,32 @@ static int restart_syscheck(void **state)
 /* setup and teardown */
 
 // For tests that do not load the global syscheck configuration
-static int teardown_test_mode(void **state) {
+static int teardown_test_mode(void** state)
+{
     test_mode = 1;
 
     return 0;
 }
 
-static int setup_group(void **state) {
+static int setup_group(void** state)
+{
     test_mode = 1;
 
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
 
     return 0;
 }
 
-static int setup_entry(void **state) {
-    entry_struct_t *entries = calloc(1, sizeof(entry_struct_t));
-    if (entries == NULL) {
+static int setup_entry(void** state)
+{
+    entry_struct_t* entries = calloc(1, sizeof(entry_struct_t));
+    if (entries == NULL)
+    {
         return 1;
     }
 
@@ -83,18 +91,22 @@ static int setup_entry(void **state) {
     return 0;
 }
 
-static int teardown_entry(void **state) {
-    entry_struct_t *entries = *state;
+static int teardown_entry(void** state)
+{
+    entry_struct_t* entries = *state;
 
-    if (entries->dir1) {
+    if (entries->dir1)
+    {
         free_directory(entries->dir1);
     }
 
-    if (entries->dir2) {
+    if (entries->dir2)
+    {
         free_directory(entries->dir2);
     }
 
-    if (entries->filerestrict) {
+    if (entries->filerestrict)
+    {
         free(entries->filerestrict);
     }
 
@@ -103,9 +115,9 @@ static int teardown_entry(void **state) {
 }
 /* tests */
 
-void test_Read_Syscheck_Config_success(void **state)
+void test_Read_Syscheck_Config_success(void** state)
 {
-    (void) state;
+    (void)state;
     int ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -116,7 +128,6 @@ void test_Read_Syscheck_Config_success(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_any_always(__wrap__mwarn, formatted_msg);
-
 
     test_mode = 0;
     ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
@@ -140,10 +151,11 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_non_null(syscheck.directories);
     // Directories configuration have 100 directories in one line. It only can monitor 64 per line.
     // With the first 10 directories in other lines, the count should be 74 (75 should be NULL)
-    for (int i = 0; i < 70; i++){
-        assert_non_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, i)));
+    for (int i = 0; i < 70; i++)
+    {
+        assert_non_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, i)));
     }
-    assert_null(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 74)));
+    assert_null(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 74)));
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 1);
@@ -166,22 +178,24 @@ void test_Read_Syscheck_Config_success(void **state)
 #endif
 }
 
-void test_Read_Syscheck_Config_invalid(void **state)
+void test_Read_Syscheck_Config_invalid(void** state)
 {
-    (void) state;
+    (void)state;
     int ret;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
 
     ret = Read_Syscheck_Config("invalid.conf");
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_Read_Syscheck_Config_undefined(void **state)
+void test_Read_Syscheck_Config_undefined(void** state)
 {
-    (void) state;
+    (void)state;
     int ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -230,9 +244,9 @@ void test_Read_Syscheck_Config_undefined(void **state)
 #endif
 }
 
-void test_Read_Syscheck_Config_unparsed(void **state)
+void test_Read_Syscheck_Config_unparsed(void** state)
 {
-    (void) state;
+    (void)state;
     int ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -275,9 +289,9 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.diff_folder_size, 0);
 }
 
-void test_Read_Syscheck_Config_invalid_diff_limit(void **state)
+void test_Read_Syscheck_Config_invalid_diff_limit(void** state)
 {
-    (void) state;
+    (void)state;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -294,9 +308,9 @@ void test_Read_Syscheck_Config_invalid_diff_limit(void **state)
     assert_string_equal(syscheck.nodiff[0], "/etc/secret.conf");
 }
 
-void test_Read_Syscheck_Config_diff_nodiff_mixed(void **state)
+void test_Read_Syscheck_Config_diff_nodiff_mixed(void** state)
 {
-    (void) state;
+    (void)state;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -319,9 +333,9 @@ void test_Read_Syscheck_Config_diff_nodiff_mixed(void **state)
 }
 
 #ifdef TEST_WINAGENT
-void test_Read_Syscheck_Config_registry_wildcards(void **state)
+void test_Read_Syscheck_Config_registry_wildcards(void** state)
 {
-    (void) state;
+    (void)state;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -346,9 +360,9 @@ void test_Read_Syscheck_Config_registry_wildcards(void **state)
     assert_null(syscheck.registry[1].entry);
 }
 
-void test_Test_Syscheck_registry_wildcards(void **state)
+void test_Test_Syscheck_registry_wildcards(void** state)
 {
-    (void) state;
+    (void)state;
 
     // Free_Syscheck() cleans the directories list
     expect_function_call(__wrap_pthread_rwlock_wrlock);
@@ -361,9 +375,9 @@ void test_Test_Syscheck_registry_wildcards(void **state)
 }
 #endif
 
-void test_read_data_unit_short_values(void **state)
+void test_read_data_unit_short_values(void** state)
 {
-    (void) state;
+    (void)state;
     // "KB" right before the string: an unguarded content[len - 1] read sees a valid unit
     char buf[] = "KB";
 
@@ -372,10 +386,10 @@ void test_read_data_unit_short_values(void **state)
     assert_int_equal(read_data_unit("5"), 5);
 }
 
-void test_getSyscheckConfig(void **state)
+void test_getSyscheckConfig(void** state)
 {
-    (void) state;
-    cJSON * ret;
+    (void)state;
+    cJSON* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -395,48 +409,48 @@ void test_getSyscheckConfig(void **state)
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
-    cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
+    cJSON* sys_items = cJSON_GetObjectItem(ret, "syscheck");
 #if defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 18);
 #elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 26);
 #endif
 
-    cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
+    cJSON* disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
-    cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
+    cJSON* frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *db_file_entry_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    cJSON *db_file_entry_limit_enabled = cJSON_GetObjectItem(db_file_entry_limit, "enabled");
+    cJSON* db_file_entry_limit = cJSON_GetObjectItem(sys_items, "file_limit");
+    cJSON* db_file_entry_limit_enabled = cJSON_GetObjectItem(db_file_entry_limit, "enabled");
     assert_string_equal(cJSON_GetStringValue(db_file_entry_limit_enabled), "yes");
-    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_file_entry_limit, "entries");
+    cJSON* db_entry_limit_file_limit = cJSON_GetObjectItem(db_file_entry_limit, "entries");
     assert_int_equal(db_entry_limit_file_limit->valueint, 50000);
 
-    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+    cJSON* diff = cJSON_GetObjectItem(sys_items, "diff");
 
-    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
-    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    cJSON* disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON* disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
     assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
-    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    cJSON* disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
     assert_int_equal(disk_quota_limit->valueint, 1024 * 1024);
 
-    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
-    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    cJSON* file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON* file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
     assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
-    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    cJSON* file_size_limit = cJSON_GetObjectItem(file_size, "limit");
     assert_int_equal(file_size_limit->valueint, 50 * 1024);
 
-    cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
+    cJSON* skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");
-    cJSON *skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
+    cJSON* skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
     assert_string_equal(cJSON_GetStringValue(skip_dev), "yes");
-    cJSON *skip_sys = cJSON_GetObjectItem(sys_items, "skip_sys");
+    cJSON* skip_sys = cJSON_GetObjectItem(sys_items, "skip_sys");
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
-    cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
+    cJSON* skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
 
-    cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
+    cJSON* sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 
 #if defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
@@ -444,11 +458,10 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 13);
 #endif
 
-
-    cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
+    cJSON* sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
     assert_int_equal(cJSON_GetArraySize(sys_nodiff), 1);
 
-    cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
+    cJSON* sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
 #if defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 12);
 #elif defined(TEST_WINAGENT)
@@ -456,54 +469,54 @@ void test_getSyscheckConfig(void **state)
 #endif
 
 #ifdef TEST_WINAGENT
-    cJSON *sys_ignore_regex = cJSON_GetObjectItem(sys_items, "ignore_sregex");
+    cJSON* sys_ignore_regex = cJSON_GetObjectItem(sys_items, "ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_ignore_regex), 1);
 
-    cJSON *sys_windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
+    cJSON* sys_windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(sys_windows_audit_interval->valueint, 0);
 
-    cJSON *sys_registry = cJSON_GetObjectItem(sys_items, "registry");
+    cJSON* sys_registry = cJSON_GetObjectItem(sys_items, "registry");
     assert_int_equal(cJSON_GetArraySize(sys_registry), 42);
-    cJSON *sys_registry_ignore = cJSON_GetObjectItem(sys_items, "key_ignore");
+    cJSON* sys_registry_ignore = cJSON_GetObjectItem(sys_items, "key_ignore");
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore), 12);
-    cJSON *sys_registry_ignore_sregex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
+    cJSON* sys_registry_ignore_sregex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore_sregex), 1);
-    cJSON *sys_registry_value_ignore = cJSON_GetObjectItem(sys_items, "value_ignore");
+    cJSON* sys_registry_value_ignore = cJSON_GetObjectItem(sys_items, "value_ignore");
     assert_int_equal(cJSON_GetArraySize(sys_registry_value_ignore), 5);
-    cJSON *sys_registry_value_ignore_sregex = cJSON_GetObjectItem(sys_items, "value_ignore_sregex");
+    cJSON* sys_registry_value_ignore_sregex = cJSON_GetObjectItem(sys_items, "value_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_registry_value_ignore_sregex), 4);
 #endif
 
 #ifndef TEST_WINAGENT
-    cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
-    cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
+    cJSON* sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
+    cJSON* whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "yes");
-    cJSON *whodata_audit_key = cJSON_GetObjectItem(sys_whodata, "audit_key");
+    cJSON* whodata_audit_key = cJSON_GetObjectItem(sys_whodata, "audit_key");
     assert_int_equal(cJSON_GetArraySize(whodata_audit_key), 2);
-    cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
+    cJSON* whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "yes");
-    cJSON *whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
+    cJSON* whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
     assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
 #endif
 
-    cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
-    cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
+    cJSON* sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
+    cJSON* synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(synchronization_enabled), "yes");
-    cJSON *synchronization_interval = cJSON_GetObjectItem(sys_synchronization, "interval");
+    cJSON* synchronization_interval = cJSON_GetObjectItem(sys_synchronization, "interval");
     assert_int_equal(synchronization_interval->valueint, 600);
 
-    cJSON *sys_max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
+    cJSON* sys_max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
     assert_int_equal(sys_max_eps->valueint, 200);
-    cJSON *sys_notify_first_scan = cJSON_GetObjectItem(sys_items, "notify_first_scan");
+    cJSON* sys_notify_first_scan = cJSON_GetObjectItem(sys_items, "notify_first_scan");
     assert_string_equal(cJSON_GetStringValue(sys_notify_first_scan), "no");
-    cJSON *sys_process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
+    cJSON* sys_process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(sys_process_priority->valueint, 10);
 }
 
-void test_getSyscheckConfig_no_audit(void **state)
+void test_getSyscheckConfig_no_audit(void** state)
 {
-    (void) state;
-    cJSON * ret;
+    (void)state;
+    cJSON* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -521,93 +534,93 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
-    cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    #ifndef TEST_WINAGENT
+    cJSON* sys_items = cJSON_GetObjectItem(ret, "syscheck");
+#ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_items), 15);
-    #else
+#else
     assert_int_equal(cJSON_GetArraySize(sys_items), 19);
-    #endif
+#endif
 
-    cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
+    cJSON* disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
-    cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
+    cJSON* frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *db_file_entry_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    cJSON *db_file_entry_limit_enabled = cJSON_GetObjectItem(db_file_entry_limit, "enabled");
+    cJSON* db_file_entry_limit = cJSON_GetObjectItem(sys_items, "file_limit");
+    cJSON* db_file_entry_limit_enabled = cJSON_GetObjectItem(db_file_entry_limit, "enabled");
     assert_string_equal(cJSON_GetStringValue(db_file_entry_limit_enabled), "yes");
-    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_file_entry_limit, "entries");
+    cJSON* db_entry_limit_file_limit = cJSON_GetObjectItem(db_file_entry_limit, "entries");
     assert_int_equal(db_entry_limit_file_limit->valueint, 50000);
 
-    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+    cJSON* diff = cJSON_GetObjectItem(sys_items, "diff");
 
-    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
-    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    cJSON* disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON* disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
     assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
-    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    cJSON* disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
     assert_int_equal(disk_quota_limit->valueint, 2 * 1024 * 1024);
 
-    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
-    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    cJSON* file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON* file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
     assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
-    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    cJSON* file_size_limit = cJSON_GetObjectItem(file_size, "limit");
     assert_int_equal(file_size_limit->valueint, 5);
 
-    cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
+    cJSON* skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "no");
-    cJSON *skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
+    cJSON* skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
     assert_string_equal(cJSON_GetStringValue(skip_dev), "no");
-    cJSON *skip_sys = cJSON_GetObjectItem(sys_items, "skip_sys");
+    cJSON* skip_sys = cJSON_GetObjectItem(sys_items, "skip_sys");
     assert_string_equal(cJSON_GetStringValue(skip_sys), "no");
-    cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
+    cJSON* skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "no");
 
-    cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
+    cJSON* sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 #ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_dir), 8);
 #else
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
 #endif
 
-    cJSON *sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
+    cJSON* sys_nodiff = cJSON_GetObjectItem(sys_items, "nodiff");
     assert_null(sys_nodiff);
 
-    cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
+    cJSON* sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
     assert_null(sys_ignore);
 
 #ifndef TEST_WINAGENT
-    cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
-    cJSON *whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
+    cJSON* sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
+    cJSON* whodata_restart_audit = cJSON_GetObjectItem(sys_whodata, "restart_audit");
     assert_string_equal(cJSON_GetStringValue(whodata_restart_audit), "no");
-    cJSON *whodata_audit_key = cJSON_GetObjectItem(sys_whodata, "audit_key");
+    cJSON* whodata_audit_key = cJSON_GetObjectItem(sys_whodata, "audit_key");
     assert_null(whodata_audit_key);
-    cJSON *whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
+    cJSON* whodata_startup_healthcheck = cJSON_GetObjectItem(sys_whodata, "startup_healthcheck");
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "no");
-    cJSON *whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
+    cJSON* whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
     assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
 #else
-    cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
+    cJSON* windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
-    cJSON *win_registry = cJSON_GetObjectItem(sys_items, "registry");
+    cJSON* win_registry = cJSON_GetObjectItem(sys_items, "registry");
     assert_int_equal(cJSON_GetArraySize(win_registry), 33);
-    cJSON *win_registry_ignore = cJSON_GetObjectItem(sys_items, "key_ignore");
+    cJSON* win_registry_ignore = cJSON_GetObjectItem(sys_items, "key_ignore");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore), 11);
-    cJSON *win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
+    cJSON* win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore_regex), 1);
 #endif
 
-    cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
-    cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
+    cJSON* sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
+    cJSON* synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(synchronization_enabled), "no");
-    cJSON *synchronization_interval = cJSON_GetObjectItem(sys_synchronization, "interval");
+    cJSON* synchronization_interval = cJSON_GetObjectItem(sys_synchronization, "interval");
     assert_int_equal(synchronization_interval->valueint, 600);
 }
 
 #ifndef TEST_WINAGENT
-void test_getSyscheckConfig_no_directories(void **state)
+void test_getSyscheckConfig_no_directories(void** state)
 {
-    (void) state;
-    cJSON * ret;
+    (void)state;
+    cJSON* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -622,10 +635,10 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_null(ret);
 }
 #else
-void test_getSyscheckConfig_no_directories(void **state)
+void test_getSyscheckConfig_no_directories(void** state)
 {
-    (void) state;
-    cJSON * ret;
+    (void)state;
+    cJSON* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -637,73 +650,73 @@ void test_getSyscheckConfig_no_directories(void **state)
 
     ret = getSyscheckConfig();
 
-
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
-    cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
+    cJSON* sys_items = cJSON_GetObjectItem(ret, "syscheck");
     assert_int_equal(cJSON_GetArraySize(sys_items), 16);
-    cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
+    cJSON* disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
-    cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
+    cJSON* frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
-    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
+    cJSON* file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
+    cJSON* file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
     assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
-    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
+    cJSON* file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 100000);
 
-    cJSON *registry_limit = cJSON_GetObjectItem(sys_items, "registry_limit");
-    cJSON *registry_limit_enabled = cJSON_GetObjectItem(registry_limit, "enabled");
+    cJSON* registry_limit = cJSON_GetObjectItem(sys_items, "registry_limit");
+    cJSON* registry_limit_enabled = cJSON_GetObjectItem(registry_limit, "enabled");
     assert_string_equal(cJSON_GetStringValue(registry_limit_enabled), "yes");
-    cJSON *registry_limit_entries = cJSON_GetObjectItem(registry_limit, "entries");
+    cJSON* registry_limit_entries = cJSON_GetObjectItem(registry_limit, "entries");
 
     assert_int_equal(registry_limit_entries->valueint, 100000);
 
-    cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
+    cJSON* diff = cJSON_GetObjectItem(sys_items, "diff");
 
-    cJSON *disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
-    cJSON *disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
+    cJSON* disk_quota = cJSON_GetObjectItem(diff, "disk_quota");
+    cJSON* disk_quota_enabled = cJSON_GetObjectItem(disk_quota, "enabled");
     assert_string_equal(cJSON_GetStringValue(disk_quota_enabled), "yes");
-    cJSON *disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
+    cJSON* disk_quota_limit = cJSON_GetObjectItem(disk_quota, "limit");
     assert_int_equal(disk_quota_limit->valueint, 1024 * 1024);
 
-    cJSON *file_size = cJSON_GetObjectItem(diff, "file_size");
-    cJSON *file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
+    cJSON* file_size = cJSON_GetObjectItem(diff, "file_size");
+    cJSON* file_size_enabled = cJSON_GetObjectItem(file_size, "enabled");
     assert_string_equal(cJSON_GetStringValue(file_size_enabled), "yes");
-    cJSON *file_size_limit = cJSON_GetObjectItem(file_size, "limit");
+    cJSON* file_size_limit = cJSON_GetObjectItem(file_size, "limit");
     assert_int_equal(file_size_limit->valueint, 50 * 1024);
 
-    cJSON *skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
+    cJSON* skip_nfs = cJSON_GetObjectItem(sys_items, "skip_nfs");
     assert_string_equal(cJSON_GetStringValue(skip_nfs), "yes");
-    cJSON *skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
+    cJSON* skip_dev = cJSON_GetObjectItem(sys_items, "skip_dev");
     assert_string_equal(cJSON_GetStringValue(skip_dev), "yes");
-    cJSON *skip_sys = cJSON_GetObjectItem(sys_items, "skip_sys");
+    cJSON* skip_sys = cJSON_GetObjectItem(sys_items, "skip_sys");
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
-    cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
+    cJSON* skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
-    cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
+    cJSON* windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
-    cJSON *registry = cJSON_GetObjectItem(sys_items, "registry");
+    cJSON* registry = cJSON_GetObjectItem(sys_items, "registry");
     assert_int_equal(cJSON_GetArraySize(registry), 0);
-    cJSON *max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
+    cJSON* max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
     assert_int_equal(max_eps->valueint, 50);
-    cJSON *notify_first_scan = cJSON_GetObjectItem(sys_items, "notify_first_scan");
+    cJSON* notify_first_scan = cJSON_GetObjectItem(sys_items, "notify_first_scan");
     assert_string_equal(cJSON_GetStringValue(notify_first_scan), "no");
-    cJSON *process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
+    cJSON* process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(process_priority->valueint, 10);
 
-    cJSON *synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
-    cJSON *enabled = cJSON_GetObjectItem(synchronization, "enabled");
+    cJSON* synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
+    cJSON* enabled = cJSON_GetObjectItem(synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
-    cJSON *interval = cJSON_GetObjectItem(synchronization, "interval");
+    cJSON* interval = cJSON_GetObjectItem(synchronization, "interval");
     assert_int_equal(interval->valueint, 300);
 }
 #endif
 
-void test_SyscheckConf_DirectoriesWithCommas(void **state) {
-    (void) state;
+void test_SyscheckConf_DirectoriesWithCommas(void** state)
+{
+    (void)state;
     int ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -717,20 +730,20 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     ret = Read_Syscheck_Config("test_syscheck3.conf");
     assert_int_equal(ret, 0);
 
-    #ifdef WIN32
-    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "c:\\,testcommas");
-    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "c:\\test,commas");
-    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "c:\\testcommas,");
-    #else
-    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "/,testcommas");
-    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "/test,commas");
-    assert_string_equal(((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "/testcommas,");
-    #endif
+#ifdef WIN32
+    assert_string_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "c:\\,testcommas");
+    assert_string_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "c:\\test,commas");
+    assert_string_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "c:\\testcommas,");
+#else
+    assert_string_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0))->path, "/,testcommas");
+    assert_string_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 1))->path, "/test,commas");
+    assert_string_equal(((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 2))->path, "/testcommas,");
+#endif
 }
 
-void test_getSyscheckConfig_lock_not_ready(void **state)
+void test_getSyscheckConfig_lock_not_ready(void** state)
 {
-    (void) state;
+    (void)state;
 
     /* Windows reaches this in-process and can beat fim_initialize() to it.
      * Declining is what keeps it off an rwlock nothing has initialized. */
@@ -741,10 +754,10 @@ void test_getSyscheckConfig_lock_not_ready(void **state)
     syscheck_set_directories_lock_ready();
 }
 
-void test_getSyscheckInternalOptions(void **state)
+void test_getSyscheckInternalOptions(void** state)
 {
-    (void) state;
-    cJSON * ret;
+    (void)state;
+    cJSON* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -761,24 +774,25 @@ void test_getSyscheckInternalOptions(void **state)
 
     assert_non_null(ret);
     assert_int_equal(cJSON_GetArraySize(ret), 1);
-    cJSON *items = cJSON_GetObjectItem(ret, "internal");
+    cJSON* items = cJSON_GetObjectItem(ret, "internal");
     assert_int_equal(cJSON_GetArraySize(items), 2);
-    cJSON *sys_items = cJSON_GetObjectItem(items, "syscheck");
+    cJSON* sys_items = cJSON_GetObjectItem(items, "syscheck");
     assert_int_equal(cJSON_GetArraySize(sys_items), 10);
-    cJSON *root_items = cJSON_GetObjectItem(items, "rootcheck");
+    cJSON* root_items = cJSON_GetObjectItem(items, "rootcheck");
     assert_int_equal(cJSON_GetArraySize(root_items), 1);
 }
 
-void test_fim_create_directory_add_new_entry(void **state) {
-    const char *path = "./mock_path";
+void test_fim_create_directory_add_new_entry(void** state)
+{
+    const char* path = "./mock_path";
     int options = CHECK_FOLLOW;
-    const char *filerestrict = "restrict";
+    const char* filerestrict = "restrict";
     int recursion_level = 0;
-    const char *tag = "mock_tag";
+    const char* tag = "mock_tag";
     int diff_size_limit = 0;
     unsigned int is_wildcard = 0;
-    directory_t *new_entry;
-    entry_struct_t *test_struct = *state;
+    directory_t* new_entry;
+    entry_struct_t* test_struct = *state;
 
     new_entry = fim_create_directory(path, options, filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
     test_struct->dir1 = new_entry;
@@ -789,16 +803,17 @@ void test_fim_create_directory_add_new_entry(void **state) {
     assert_int_equal(is_wildcard, new_entry->is_wildcard);
 }
 
-void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
-    const char *path = "./mock_path";
+void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void** state)
+{
+    const char* path = "./mock_path";
     int recursion_level = 0;
-    const char *tag = "mock_tag";
+    const char* tag = "mock_tag";
     int options = CHECK_FOLLOW;
     int diff_size_limit = 0;
     unsigned int is_wildcard = 0;
-    directory_t *new_entry;
+    directory_t* new_entry;
     char error_msg[OS_MAXSTR + 1];
-    entry_struct_t *test_struct = *state;
+    entry_struct_t* test_struct = *state;
 
     test_struct->filerestrict = calloc(OS_PATTERN_MAXSIZE + 2, sizeof(char));
     memset(test_struct->filerestrict, 'a', OS_PATTERN_MAXSIZE + 1);
@@ -807,16 +822,18 @@ void test_fim_create_directory_OSMatch_Compile_fail_maxsize(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, error_msg);
 
-    new_entry = fim_create_directory(path, options, test_struct->filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
+    new_entry = fim_create_directory(
+        path, options, test_struct->filerestrict, recursion_level, tag, diff_size_limit, is_wildcard);
     test_struct->dir1 = new_entry;
     assert_non_null(new_entry);
     assert_string_equal(tag, new_entry->tag);
 }
 
-void test_fim_insert_directory_duplicate_entry(void **state) {
+void test_fim_insert_directory_duplicate_entry(void** state)
+{
     OSList list;
     OSListNode first_list_node;
-    entry_struct_t *test_struct = *state;
+    entry_struct_t* test_struct = *state;
 
     test_struct->dir1 = calloc(1, sizeof(directory_t));
     test_struct->dir2 = calloc(1, sizeof(directory_t));
@@ -838,11 +855,12 @@ void test_fim_insert_directory_duplicate_entry(void **state) {
     *state = test_struct;
 }
 
-void test_fim_insert_directory_insert_entry_before(void **state) {
+void test_fim_insert_directory_insert_entry_before(void** state)
+{
     OSList list = {0};
-    OSList_SetFreeDataPointer(&list, (void (*)(void *))free_directory);
-    OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
-    entry_struct_t *test_struct= *state;
+    OSList_SetFreeDataPointer(&list, (void (*)(void*))free_directory);
+    OSListNode* first_list_node = calloc(1, sizeof(OSListNode));
+    entry_struct_t* test_struct = *state;
 
     test_struct->dir1 = calloc(1, sizeof(directory_t));
     test_struct->dir2 = calloc(1, sizeof(directory_t));
@@ -868,13 +886,14 @@ void test_fim_insert_directory_insert_entry_before(void **state) {
     test_struct->dir2 = NULL;
 }
 
-void test_fim_insert_directory_insert_entry_last(void **state) {
+void test_fim_insert_directory_insert_entry_last(void** state)
+{
     OSList list = {0};
 
-    OSList_SetFreeDataPointer(&list, (void (*)(void *))free_directory);
-    OSListNode *first_list_node = calloc(1, sizeof(OSListNode));
+    OSList_SetFreeDataPointer(&list, (void (*)(void*))free_directory);
+    OSListNode* first_list_node = calloc(1, sizeof(OSListNode));
 
-    entry_struct_t *test_struct = *state;
+    entry_struct_t* test_struct = *state;
 
     test_struct->dir1 = calloc(1, sizeof(directory_t));
     test_struct->dir2 = calloc(1, sizeof(directory_t));
@@ -902,19 +921,20 @@ void test_fim_insert_directory_insert_entry_last(void **state) {
     test_struct->dir2 = NULL;
 }
 
-void test_fim_copy_directory_null(void **state) {
-    directory_t *dir = NULL;
-    directory_t *return_dir;
+void test_fim_copy_directory_null(void** state)
+{
+    directory_t* dir = NULL;
+    directory_t* return_dir;
 
     return_dir = fim_copy_directory(dir);
 
     assert_null(return_dir);
-
 }
 
-void test_fim_copy_directory_return_dir_copied(void **state) {
+void test_fim_copy_directory_return_dir_copied(void** state)
+{
     directory_t directory_copied;
-    directory_t *new_entry;
+    directory_t* new_entry;
     directory_copied.filerestrict = NULL;
     directory_copied.path = "mock_path";
     directory_copied.options = 0;
@@ -922,7 +942,7 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
     directory_copied.tag = "mock_tag";
     directory_copied.diff_size_limit = 10;
     directory_copied.is_wildcard = 0;
-    entry_struct_t *test_struct = *state;
+    entry_struct_t* test_struct = *state;
 
     new_entry = fim_copy_directory(&directory_copied);
 
@@ -933,8 +953,9 @@ void test_fim_copy_directory_return_dir_copied(void **state) {
     test_struct->dir1 = new_entry;
 }
 
-void test_fim_adjust_path_no_changes (void **state) {
-    char *path = strdup("c:\\a\\path\\not\\replaced");
+void test_fim_adjust_path_no_changes(void** state)
+{
+    char* path = strdup("c:\\a\\path\\not\\replaced");
 
     fim_adjust_path(&path);
 
@@ -943,10 +964,13 @@ void test_fim_adjust_path_no_changes (void **state) {
     free(path);
 }
 
-void test_fim_adjust_path_convert_sysnative (void **state) {
-    char *path = strdup("C:\\windows\\sysnative\\test");
+void test_fim_adjust_path_convert_sysnative(void** state)
+{
+    char* path = strdup("C:\\windows\\sysnative\\test");
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(
+        __wrap__mdebug2,
+        formatted_msg,
         "(6307): Convert 'c:\\windows\\sysnative\\test' to 'c:\\windows\\system32\\test' to process the FIM events.");
 
     fim_adjust_path(&path);
@@ -956,9 +980,10 @@ void test_fim_adjust_path_convert_sysnative (void **state) {
     free(path);
 }
 
-void test_fim_adjust_path_convert_syswow64 (void **state) {
+void test_fim_adjust_path_convert_syswow64(void** state)
+{
 
-    char *path = strdup("C:\\windows\\syswow64\\test");
+    char* path = strdup("C:\\windows\\syswow64\\test");
 
     fim_adjust_path(&path);
 
@@ -967,9 +992,10 @@ void test_fim_adjust_path_convert_syswow64 (void **state) {
     free(path);
 }
 
-void test_fim_adjust_path_convert_system32 (void **state) {
+void test_fim_adjust_path_convert_system32(void** state)
+{
 
-    char *path = strdup("c:\\windows\\system32\\test");
+    char* path = strdup("c:\\windows\\system32\\test");
 
     fim_adjust_path(&path);
 
@@ -978,7 +1004,8 @@ void test_fim_adjust_path_convert_system32 (void **state) {
     free(path);
 }
 
-int main(void) {
+int main(void)
+{
     /* getSyscheckConfig() declines until fim_initialize() publishes this.
      * fim_initialize() does this once directories_lock is real. */
     syscheck_set_directories_lock_ready();
@@ -988,10 +1015,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
-        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid_diff_limit, setup_read_config, restart_syscheck),
-        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_diff_nodiff_mixed, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(
+            test_Read_Syscheck_Config_invalid_diff_limit, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(
+            test_Read_Syscheck_Config_diff_nodiff_mixed, setup_read_config, restart_syscheck),
 #ifdef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_registry_wildcards, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(
+            test_Read_Syscheck_Config_registry_wildcards, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Test_Syscheck_registry_wildcards, setup_read_config, teardown_test_mode),
 #endif
         cmocka_unit_test(test_read_data_unit_short_values),
@@ -1002,17 +1032,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_SyscheckConf_DirectoriesWithCommas, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_fim_create_directory_add_new_entry, setup_entry, teardown_entry),
-        cmocka_unit_test_setup_teardown(test_fim_create_directory_OSMatch_Compile_fail_maxsize, setup_entry, teardown_entry),
+        cmocka_unit_test_setup_teardown(
+            test_fim_create_directory_OSMatch_Compile_fail_maxsize, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_duplicate_entry, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_before, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_insert_entry_last, setup_entry, teardown_entry),
         cmocka_unit_test(test_fim_copy_directory_null),
         cmocka_unit_test_setup_teardown(test_fim_copy_directory_return_dir_copied, setup_entry, teardown_entry),
-	    cmocka_unit_test(test_fim_adjust_path_no_changes),
+        cmocka_unit_test(test_fim_adjust_path_no_changes),
         cmocka_unit_test(test_fim_adjust_path_convert_sysnative),
         cmocka_unit_test(test_fim_adjust_path_convert_syswow64),
-        cmocka_unit_test(test_fim_adjust_path_convert_system32)
-    };
+        cmocka_unit_test(test_fim_adjust_path_convert_system32)};
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

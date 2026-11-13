@@ -21,13 +21,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-
 namespace PackageLinuxHelper
 {
     static nlohmann::json parseRpm(const RpmPackageManager::Package& package)
     {
         nlohmann::json ret;
-        auto version { package.version };
+        auto version {package.version};
 
         if (package.epoch)
         {
@@ -42,24 +41,27 @@ namespace PackageLinuxHelper
         if (package.name.compare("gpg-pubkey") != 0 && !package.name.empty())
         {
 
-            ret["name"]         = package.name;
-            ret["size"]         = package.size;
-            ret["installed"]    = package.installTime.empty() ? UNKNOWN_VALUE : Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(package.installTime)));
-            ret["path"]         = UNKNOWN_VALUE;
-            ret["category"]     = package.group;
-            ret["version_"]     = version;
-            ret["priority"]     = UNKNOWN_VALUE;
+            ret["name"] = package.name;
+            ret["size"] = package.size;
+            ret["installed"] =
+                package.installTime.empty()
+                    ? UNKNOWN_VALUE
+                    : Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(package.installTime)));
+            ret["path"] = UNKNOWN_VALUE;
+            ret["category"] = package.group;
+            ret["version_"] = version;
+            ret["priority"] = UNKNOWN_VALUE;
             ret["architecture"] = package.architecture;
-            ret["source"]       = UNKNOWN_VALUE;
-            ret["type"]         = "rpm";
-            ret["vendor"]       = package.vendor.empty() ? UNKNOWN_VALUE : package.vendor;
-            ret["description"]  = package.description;
+            ret["source"] = UNKNOWN_VALUE;
+            ret["type"] = "rpm";
+            ret["vendor"] = package.vendor.empty() ? UNKNOWN_VALUE : package.vendor;
+            ret["description"] = package.description;
         }
 
         return ret;
     }
 
-};
+}; // namespace PackageLinuxHelper
 
 #pragma GCC diagnostic pop
 

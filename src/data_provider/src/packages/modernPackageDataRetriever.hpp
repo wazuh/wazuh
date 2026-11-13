@@ -23,13 +23,15 @@
 // Extract package information in fully compatible Linux systems
 class ModernFactoryPackagesCreator final
 {
-    public:
-        static void getPackages(const std::map<std::string, std::set<std::string>>& paths, std::function<void(nlohmann::json&)> callback, const std::unordered_set<std::string>& excludePaths = {})
-        {
-            auto cbCopy {callback};
-            PYPI().getPackages(paths.at("PYPI"), std::move(callback), excludePaths);
-            NPM().getPackages(paths.at("NPM"), std::move(cbCopy));
-        }
+public:
+    static void getPackages(const std::map<std::string, std::set<std::string>>& paths,
+                            std::function<void(nlohmann::json&)> callback,
+                            const std::unordered_set<std::string>& excludePaths = {})
+    {
+        auto cbCopy {callback};
+        PYPI().getPackages(paths.at("PYPI"), std::move(callback), excludePaths);
+        NPM().getPackages(paths.at("NPM"), std::move(cbCopy));
+    }
 };
 
-#endif  // _MODERN_PACKAGE_DATA_RETRIEVER_HPP
+#endif // _MODERN_PACKAGE_DATA_RETRIEVER_HPP

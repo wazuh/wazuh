@@ -28,14 +28,14 @@
  */
 enum class TlsFailureKind
 {
-    None,             ///< Not one of the two causes below. An ordinary chain/CA-trust
+    None, ///< Not one of the two causes below. An ordinary chain/CA-trust
     ///< failure (untrusted root, wrong issuer, ...) stays a generic
     ///< TlsFail, unchanged -- this module classifies only the two
     ///< causes the issue calls out by name.
     HostnameMismatch, ///< The chain and every certificate's validity period verified;
     ///< the dialed name is not on the certificate.
-    CertNotYetValid,  ///< The leaf certificate's notBefore is still in the future.
-    CertExpired       ///< The leaf certificate's notAfter is already in the past.
+    CertNotYetValid, ///< The leaf certificate's notBefore is still in the future.
+    CertExpired      ///< The leaf certificate's notAfter is already in the past.
 };
 
 /**

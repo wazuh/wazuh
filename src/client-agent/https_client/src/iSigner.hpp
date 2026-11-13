@@ -29,21 +29,21 @@ struct SignedHeaders
 /// so callers mint one per attempt; RetrySender enforces that.
 class ISigner
 {
-    public:
-        virtual ~ISigner() = default;
+public:
+    virtual ~ISigner() = default;
 
-        /// @param timestamp The attempt's wall clock (iat). nullopt when the
-        ///        credential material is unusable (no key, bad agent id).
-        virtual std::optional<SignedHeaders> sign(std::time_t timestamp) const = 0;
+    /// @param timestamp The attempt's wall clock (iat). nullopt when the
+    ///        credential material is unusable (no key, bad agent id).
+    virtual std::optional<SignedHeaders> sign(std::time_t timestamp) const = 0;
 
-        /// The identity the tokens currently name: the configured agent id until
-        /// hc_set_agent_identity() swaps it (a re-enroll, #38465, can hand back a
-        /// new numeric id with the new key). Payloads that carry the agent id
-        /// (the /stateless H line, the /stats and /config stamps) read it from
-        /// here, never from the frozen ModuleConfig, so the identity moves as one
-        /// with the bearer -- the engine rejects an H-line identity different from
-        /// the verified JWT identity supplied by remoted; remoted relays HTTP 400.
-        virtual std::string agentId() const = 0;
+    /// The identity the tokens currently name: the configured agent id until
+    /// hc_set_agent_identity() swaps it (a re-enroll, #38465, can hand back a
+    /// new numeric id with the new key). Payloads that carry the agent id
+    /// (the /stateless H line, the /stats and /config stamps) read it from
+    /// here, never from the frozen ModuleConfig, so the identity moves as one
+    /// with the bearer -- the engine rejects an H-line identity different from
+    /// the verified JWT identity supplied by remoted; remoted relays HTTP 400.
+    virtual std::string agentId() const = 0;
 };
 
 #endif // _HC_I_SIGNER_HPP

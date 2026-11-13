@@ -7,10 +7,9 @@
  * Foundation
  */
 
-
 #ifndef AUDIT_PARSE_WRAPPERS
 #define AUDIT_PARSE_WRAPPERS
 
-void __wrap_audit_parse(char *buffer);
+void __wrap_audit_parse(char* buffer);
 
 #endif // AUDIT_PARSE_WRAPPERS

@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef ERRHANDLINGAPI_WRAPPERS_H
 #define ERRHANDLINGAPI_WRAPPERS_H
 

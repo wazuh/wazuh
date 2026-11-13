@@ -56,7 +56,7 @@ namespace SchemaValidator
 
 #ifdef _WIN32
         // Windows: Use GetProcAddress pattern (same as windowsHelper.h)
-        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+        typedef INT(WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
         static inet_pton_t pfnInetPton = nullptr;
         static bool initialized = false;
 
@@ -111,263 +111,263 @@ namespace SchemaValidator
     // Implementation class for SchemaValidatorEngine
     class SchemaValidatorEngine::Impl
     {
-        public:
-            nlohmann::json m_schema;
-            nlohmann::json m_properties;
-            bool m_strictMode;
-            std::string m_schemaName;
+    public:
+        nlohmann::json m_schema;
+        nlohmann::json m_properties;
+        bool m_strictMode;
+        std::string m_schemaName;
 
-            Impl()
-                : m_strictMode(false)
+        Impl()
+            : m_strictMode(false)
+        {
+        }
+
+        bool loadSchemaFromString(const std::string& schemaContent)
+        {
+            try
             {
+                m_schema = nlohmann::json::parse(schemaContent);
+                return parseAndInitializeSchema();
+            }
+            catch (const std::exception& e)
+            {
+                return false;
+            }
+        }
+
+    private:
+        bool parseAndInitializeSchema()
+        {
+            // Extract properties from Elasticsearch mapping
+            if (m_schema.contains("template") && m_schema["template"].contains("mappings") &&
+                m_schema["template"]["mappings"].contains("properties"))
+            {
+                m_properties = std::move(m_schema["template"]["mappings"]["properties"]);
+            }
+            else
+            {
+                return false;
             }
 
-            bool loadSchemaFromString(const std::string& schemaContent)
+            // Check for strict mode
+            if (m_schema["template"]["mappings"].contains("dynamic"))
             {
-                try
-                {
-                    m_schema = nlohmann::json::parse(schemaContent);
-                    return parseAndInitializeSchema();
-                }
-                catch (const std::exception& e)
-                {
-                    return false;
-                }
+                std::string dynamicMode = m_schema["template"]["mappings"]["dynamic"].get<std::string>();
+                m_strictMode = (dynamicMode == "strict");
             }
 
-        private:
-            bool parseAndInitializeSchema()
+            // Extract schema name from index_patterns
+            if (m_schema.contains("index_patterns") && m_schema["index_patterns"].is_array() &&
+                !m_schema["index_patterns"].empty())
             {
-                // Extract properties from Elasticsearch mapping
-                if (m_schema.contains("template") && m_schema["template"].contains("mappings") &&
-                        m_schema["template"]["mappings"].contains("properties"))
+                std::string pattern = m_schema["index_patterns"][0].get<std::string>();
+                // Remove wildcard suffix if present
+                size_t starPos = pattern.find('*');
+
+                if (starPos != std::string::npos)
                 {
-                    m_properties = std::move(m_schema["template"]["mappings"]["properties"]);
+                    m_schemaName = pattern.substr(0, starPos);
                 }
                 else
                 {
-                    return false;
+                    m_schemaName = std::move(pattern);
                 }
-
-                // Check for strict mode
-                if (m_schema["template"]["mappings"].contains("dynamic"))
-                {
-                    std::string dynamicMode = m_schema["template"]["mappings"]["dynamic"].get<std::string>();
-                    m_strictMode = (dynamicMode == "strict");
-                }
-
-                // Extract schema name from index_patterns
-                if (m_schema.contains("index_patterns") && m_schema["index_patterns"].is_array() &&
-                        !m_schema["index_patterns"].empty())
-                {
-                    std::string pattern = m_schema["index_patterns"][0].get<std::string>();
-                    // Remove wildcard suffix if present
-                    size_t starPos = pattern.find('*');
-
-                    if (starPos != std::string::npos)
-                    {
-                        m_schemaName = pattern.substr(0, starPos);
-                    }
-                    else
-                    {
-                        m_schemaName = std::move(pattern);
-                    }
-                }
-
-                return true;
             }
 
-        public:
+            return true;
+        }
 
-            ValidationResult validate(const nlohmann::json& message)
+    public:
+        ValidationResult validate(const nlohmann::json& message)
+        {
+            ValidationResult result;
+
+            // Validate against properties
+            validateObject(message, m_properties, "", result);
+
+            result.isValid = result.errors.empty();
+            return result;
+        }
+
+    private:
+        void validateObject(const nlohmann::json& obj,
+                            const nlohmann::json& properties,
+                            const std::string& path,
+                            ValidationResult& result)
+        {
+            if (!obj.is_object())
             {
-                ValidationResult result;
-
-                // Validate against properties
-                validateObject(message, m_properties, "", result);
-
-                result.isValid = result.errors.empty();
-                return result;
+                result.errors.push_back(path + ": Expected object, got " + std::string(obj.type_name()) +
+                                        " with value: " + obj.dump());
+                return;
             }
 
-        private:
-            void validateObject(const nlohmann::json& obj,
-                                const nlohmann::json& properties,
-                                const std::string& path,
-                                ValidationResult& result)
+            // Check for extra fields in strict mode
+            // OpenSearch accepts extra fields in strict mode ONLY if their value is null
+            if (m_strictMode)
             {
-                if (!obj.is_object())
+                for (auto it = obj.begin(); it != obj.end(); ++it)
                 {
-                    result.errors.push_back(path + ": Expected object, got " + std::string(obj.type_name()) +
-                                            " with value: " + obj.dump());
-                    return;
-                }
-
-                // Check for extra fields in strict mode
-                // OpenSearch accepts extra fields in strict mode ONLY if their value is null
-                if (m_strictMode)
-                {
-                    for (auto it = obj.begin(); it != obj.end(); ++it)
+                    if (!properties.contains(it.key()))
                     {
-                        if (!properties.contains(it.key()))
+                        // OpenSearch allows undefined fields if their value is null
+                        // (null values don't need mapping as they're not indexed)
+                        if (!it.value().is_null())
                         {
-                            // OpenSearch allows undefined fields if their value is null
-                            // (null values don't need mapping as they're not indexed)
-                            if (!it.value().is_null())
-                            {
-                                std::string fieldPath = path.empty() ? it.key() : path + "." + it.key();
-                                result.errors.push_back(fieldPath + ": Field not allowed in strict mode");
-                            }
+                            std::string fieldPath = path.empty() ? it.key() : path + "." + it.key();
+                            result.errors.push_back(fieldPath + ": Field not allowed in strict mode");
                         }
                     }
                 }
+            }
 
-                // Validate each property
-                for (auto it = properties.begin(); it != properties.end(); ++it)
+            // Validate each property
+            for (auto it = properties.begin(); it != properties.end(); ++it)
+            {
+                std::string fieldName = it.key();
+                std::string fieldPath = path.empty() ? fieldName : path + "." + fieldName;
+                const nlohmann::json& fieldSchema = it.value();
+
+                // Skip validation if field is not present in message (fields are optional by default)
+                if (!obj.contains(fieldName))
                 {
-                    std::string fieldName = it.key();
-                    std::string fieldPath = path.empty() ? fieldName : path + "." + fieldName;
-                    const nlohmann::json& fieldSchema = it.value();
+                    continue;
+                }
 
-                    // Skip validation if field is not present in message (fields are optional by default)
-                    if (!obj.contains(fieldName))
+                const nlohmann::json& fieldValue = obj[fieldName];
+
+                // Handle nested objects
+                if (fieldSchema.contains("properties"))
+                {
+                    // OpenSearch allows null values for any field, including nested objects
+                    if (fieldValue.is_null())
                     {
                         continue;
                     }
 
-                    const nlohmann::json& fieldValue = obj[fieldName];
-
-                    // Handle nested objects
-                    if (fieldSchema.contains("properties"))
+                    if (!fieldValue.is_object())
                     {
-                        // OpenSearch allows null values for any field, including nested objects
-                        if (fieldValue.is_null())
-                        {
-                            continue;
-                        }
-
-                        if (!fieldValue.is_object())
-                        {
-                            result.errors.push_back(fieldPath + ": Expected object, got " +
-                                                    std::string(fieldValue.type_name()) + " with value: " + fieldValue.dump());
-                            continue;
-                        }
-
-                        validateObject(fieldValue, fieldSchema["properties"], fieldPath, result);
+                        result.errors.push_back(fieldPath + ": Expected object, got " +
+                                                std::string(fieldValue.type_name()) +
+                                                " with value: " + fieldValue.dump());
+                        continue;
                     }
-                    else if (fieldSchema.contains("type"))
-                    {
-                        std::string type = fieldSchema["type"].get<std::string>();
-                        validateField(fieldValue, type, fieldPath, result);
-                    }
+
+                    validateObject(fieldValue, fieldSchema["properties"], fieldPath, result);
+                }
+                else if (fieldSchema.contains("type"))
+                {
+                    std::string type = fieldSchema["type"].get<std::string>();
+                    validateField(fieldValue, type, fieldPath, result);
                 }
             }
+        }
 
-            void validateField(const nlohmann::json& value,
-                               const std::string& type,
-                               const std::string& path,
-                               ValidationResult& result)
+        void validateField(const nlohmann::json& value,
+                           const std::string& type,
+                           const std::string& path,
+                           ValidationResult& result)
+        {
+            // Allow null values for any field
+            if (value.is_null())
             {
-                // Allow null values for any field
-                if (value.is_null())
+                return;
+            }
+
+            // Arrays use the type of their elements
+            if (value.is_array())
+            {
+                // Validate each element of the array against the expected type
+                for (size_t i = 0; i < value.size(); ++i)
                 {
-                    return;
+                    std::string elementPath = path + "[" + std::to_string(i) + "]";
+                    validateField(value[i], type, elementPath, result);
                 }
 
-                // Arrays use the type of their elements
-                if (value.is_array())
-                {
-                    // Validate each element of the array against the expected type
-                    for (size_t i = 0; i < value.size(); ++i)
-                    {
-                        std::string elementPath = path + "[" + std::to_string(i) + "]";
-                        validateField(value[i], type, elementPath, result);
-                    }
+                return;
+            }
 
-                    return;
+            // Strict validation: only accept exact type or null
+            if (type == "keyword" || type == "text" || type == "match_only_text")
+            {
+                if (!value.is_string())
+                {
+                    result.errors.push_back(path + ": Expected string, got " + std::string(value.type_name()) +
+                                            " with value: " + value.dump());
                 }
+            }
+            else if (type == "integer" || type == "long" || type == "short" || type == "unsigned_long")
+            {
+                if (!value.is_number_integer())
+                {
+                    result.errors.push_back(path + ": Expected integer, got " + std::string(value.type_name()) +
+                                            " with value: " + value.dump());
+                }
+            }
+            else if (type == "scaled_float")
+            {
+                if (!value.is_number())
+                {
+                    result.errors.push_back(path + ": Expected number, got " + std::string(value.type_name()) +
+                                            " with value: " + value.dump());
+                }
+            }
+            else if (type == "date")
+            {
+                // Date can be number (epoch) or ISO8601 string
+                if (value.is_number())
+                {
+                    // Accept epoch timestamp
+                }
+                else if (value.is_string())
+                {
+                    std::string dateStr = value.get<std::string>();
 
-                // Strict validation: only accept exact type or null
-                if (type == "keyword" || type == "text" || type == "match_only_text")
-                {
-                    if (!value.is_string())
+                    if (!isValidISO8601Date(dateStr))
                     {
-                        result.errors.push_back(path + ": Expected string, got " +
-                                                std::string(value.type_name()) + " with value: " + value.dump());
+                        result.errors.push_back(path + ": Invalid date format. Expected ISO8601, got: " + dateStr);
                     }
                 }
-                else if (type == "integer" || type == "long" || type == "short" || type == "unsigned_long")
+                else
                 {
-                    if (!value.is_number_integer())
-                    {
-                        result.errors.push_back(path + ": Expected integer, got " +
-                                                std::string(value.type_name()) + " with value: " + value.dump());
-                    }
+                    result.errors.push_back(path + ": Expected date (number or ISO8601 string), got " +
+                                            std::string(value.type_name()) + " with value: " + value.dump());
                 }
-                else if (type == "scaled_float")
+            }
+            else if (type == "ip")
+            {
+                if (!value.is_string())
                 {
-                    if (!value.is_number())
-                    {
-                        result.errors.push_back(path + ": Expected number, got " +
-                                                std::string(value.type_name()) + " with value: " + value.dump());
-                    }
+                    result.errors.push_back(path + ": Expected IP address string, got " +
+                                            std::string(value.type_name()) + " with value: " + value.dump());
                 }
-                else if (type == "date")
+                else
                 {
-                    // Date can be number (epoch) or ISO8601 string
-                    if (value.is_number())
-                    {
-                        // Accept epoch timestamp
-                    }
-                    else if (value.is_string())
-                    {
-                        std::string dateStr = value.get<std::string>();
+                    std::string ipStr = value.get<std::string>();
 
-                        if (!isValidISO8601Date(dateStr))
-                        {
-                            result.errors.push_back(path + ": Invalid date format. Expected ISO8601, got: " + dateStr);
-                        }
-                    }
-                    else
+                    if (!isValidIP(ipStr))
                     {
-                        result.errors.push_back(path + ": Expected date (number or ISO8601 string), got " +
-                                                std::string(value.type_name()) + " with value: " + value.dump());
-                    }
-                }
-                else if (type == "ip")
-                {
-                    if (!value.is_string())
-                    {
-                        result.errors.push_back(path + ": Expected IP address string, got " +
-                                                std::string(value.type_name()) + " with value: " + value.dump());
-                    }
-                    else
-                    {
-                        std::string ipStr = value.get<std::string>();
-
-                        if (!isValidIP(ipStr))
-                        {
-                            result.errors.push_back(path + ": Invalid IP address format: " + ipStr);
-                        }
-                    }
-                }
-                else if (type == "boolean")
-                {
-                    if (!value.is_boolean())
-                    {
-                        result.errors.push_back(path + ": Expected boolean, got " +
-                                                std::string(value.type_name()) + " with value: " + value.dump());
-                    }
-                }
-                else if (type == "object")
-                {
-                    if (!value.is_object())
-                    {
-                        result.errors.push_back(path + ": Expected object, got " +
-                                                std::string(value.type_name()) + " with value: " + value.dump());
+                        result.errors.push_back(path + ": Invalid IP address format: " + ipStr);
                     }
                 }
             }
+            else if (type == "boolean")
+            {
+                if (!value.is_boolean())
+                {
+                    result.errors.push_back(path + ": Expected boolean, got " + std::string(value.type_name()) +
+                                            " with value: " + value.dump());
+                }
+            }
+            else if (type == "object")
+            {
+                if (!value.is_object())
+                {
+                    result.errors.push_back(path + ": Expected object, got " + std::string(value.type_name()) +
+                                            " with value: " + value.dump());
+                }
+            }
+        }
     };
 
     // SchemaValidatorEngine implementation
@@ -412,118 +412,118 @@ namespace SchemaValidator
     // SchemaValidatorFactory implementation
     class SchemaValidatorFactory::Impl
     {
-        public:
-            std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> m_validators;
-            bool m_initialized;
-            // The factory is a process-wide singleton (see getInstance) that is
-            // initialized from several modules (syscollector, sca)
-            // running concurrently in the same process. Guard all access to
-            // m_validators/m_initialized so concurrent initialize() calls cannot race
-            // on the underlying std::map. Exclusive lock for mutation, shared for reads.
-            mutable std::shared_mutex m_mutex;
+    public:
+        std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> m_validators;
+        bool m_initialized;
+        // The factory is a process-wide singleton (see getInstance) that is
+        // initialized from several modules (syscollector, sca)
+        // running concurrently in the same process. Guard all access to
+        // m_validators/m_initialized so concurrent initialize() calls cannot race
+        // on the underlying std::map. Exclusive lock for mutation, shared for reads.
+        mutable std::shared_mutex m_mutex;
 
-            Impl()
-                : m_initialized(false)
-            {
-            }
+        Impl()
+            : m_initialized(false)
+        {
+        }
 
-            bool loadSchemaFromString(const std::string& schemaContent)
+        bool loadSchemaFromString(const std::string& schemaContent)
+        {
+            try
             {
-                try
+                auto validator = std::make_shared<SchemaValidatorEngine>();
+
+                // Load schema from string using public method
+                if (validator->loadSchemaFromString(schemaContent))
                 {
-                    auto validator = std::make_shared<SchemaValidatorEngine>();
+                    std::string schemaName = validator->getSchemaName();
 
-                    // Load schema from string using public method
-                    if (validator->loadSchemaFromString(schemaContent))
+                    if (!schemaName.empty())
                     {
-                        std::string schemaName = validator->getSchemaName();
-
-                        if (!schemaName.empty())
-                        {
-                            m_validators[schemaName] = validator;
-                            return true;
-                        }
+                        m_validators[schemaName] = validator;
+                        return true;
                     }
+                }
 
-                    return false;
-                }
-                catch (const std::exception& e)
-                {
-                    return false;
-                }
+                return false;
             }
-
-            // Assumes the caller already holds an exclusive lock on m_mutex.
-            bool initializeFromEmbeddedResources()
+            catch (const std::exception& e)
             {
-                try
-                {
-                    const auto& embeddedSchemas = Resources::getEmbeddedSchemas();
-
-                    for (const auto& [_, content] : embeddedSchemas)
-                    {
-                        loadSchemaFromString(content);
-                    }
-
-                    m_initialized = !m_validators.empty();
-                    return m_initialized;
-                }
-                catch (const std::exception& e)
-                {
-                    return false;
-                }
+                return false;
             }
+        }
 
-            bool initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators)
+        // Assumes the caller already holds an exclusive lock on m_mutex.
+        bool initializeFromEmbeddedResources()
+        {
+            try
             {
-                std::unique_lock<std::shared_mutex> lock(m_mutex);
+                const auto& embeddedSchemas = Resources::getEmbeddedSchemas();
 
-                // Idempotent: the singleton is shared across modules, each of which calls
-                // initialize() at startup. Once loaded, return success without re-loading
-                // (and without mutating the map while another thread may be reading it).
-                if (m_initialized)
+                for (const auto& [_, content] : embeddedSchemas)
                 {
-                    return true;
+                    loadSchemaFromString(content);
                 }
 
-                if (!customValidators.empty())
-                {
-                    // Use injected custom validators (for testing or extensibility)
-                    m_validators = std::move(customValidators);
-                    m_initialized = true;
-                    return true;
-                }
-
-                // Default behavior: load from embedded resources
-                return initializeFromEmbeddedResources();
-            }
-
-            std::shared_ptr<ISchemaValidatorEngine> getValidator(const std::string& indexPattern)
-            {
-                std::shared_lock<std::shared_mutex> lock(m_mutex);
-
-                auto it = m_validators.find(indexPattern);
-
-                if (it != m_validators.end())
-                {
-                    return it->second;
-                }
-
-                return nullptr;
-            }
-
-            bool isInitialized() const
-            {
-                std::shared_lock<std::shared_mutex> lock(m_mutex);
+                m_initialized = !m_validators.empty();
                 return m_initialized;
             }
-
-            void reset()
+            catch (const std::exception& e)
             {
-                std::unique_lock<std::shared_mutex> lock(m_mutex);
-                m_validators.clear();
-                m_initialized = false;
+                return false;
             }
+        }
+
+        bool initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators)
+        {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+            // Idempotent: the singleton is shared across modules, each of which calls
+            // initialize() at startup. Once loaded, return success without re-loading
+            // (and without mutating the map while another thread may be reading it).
+            if (m_initialized)
+            {
+                return true;
+            }
+
+            if (!customValidators.empty())
+            {
+                // Use injected custom validators (for testing or extensibility)
+                m_validators = std::move(customValidators);
+                m_initialized = true;
+                return true;
+            }
+
+            // Default behavior: load from embedded resources
+            return initializeFromEmbeddedResources();
+        }
+
+        std::shared_ptr<ISchemaValidatorEngine> getValidator(const std::string& indexPattern)
+        {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+
+            auto it = m_validators.find(indexPattern);
+
+            if (it != m_validators.end())
+            {
+                return it->second;
+            }
+
+            return nullptr;
+        }
+
+        bool isInitialized() const
+        {
+            std::shared_lock<std::shared_mutex> lock(m_mutex);
+            return m_initialized;
+        }
+
+        void reset()
+        {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            m_validators.clear();
+            m_initialized = false;
+        }
     };
 
     SchemaValidatorFactory::SchemaValidatorFactory()
@@ -539,7 +539,8 @@ namespace SchemaValidator
         return instance;
     }
 
-    bool SchemaValidatorFactory::initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators)
+    bool
+    SchemaValidatorFactory::initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators)
     {
         return m_impl->initialize(std::move(customValidators));
     }

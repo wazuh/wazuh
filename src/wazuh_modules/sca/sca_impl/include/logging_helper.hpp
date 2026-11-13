@@ -3,7 +3,8 @@
 // LCOV_EXCL_START
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "logging_helper.h"
@@ -17,37 +18,37 @@ extern "C" {
 
 class LoggingHelper
 {
-    public:
-        static LoggingHelper& getInstance()
+public:
+    static LoggingHelper& getInstance()
+    {
+        static LoggingHelper instance;
+        return instance;
+    }
+
+    static void setLogCallback(std::function<void(const modules_log_level_t level, const char* log)> callback)
+    {
+        getInstance().m_externalLogCallback = std::move(callback);
+    }
+
+    void log(const modules_log_level_t level, const std::string& message) const
+    {
+        if (!m_externalLogCallback)
         {
-            static LoggingHelper instance;
-            return instance;
+            throw std::runtime_error("Log callback not set.");
         }
 
-        static void setLogCallback(std::function<void(const modules_log_level_t level, const char* log)> callback)
-        {
-            getInstance().m_externalLogCallback = std::move(callback);
-        }
+        m_externalLogCallback(level, message.c_str());
+    }
 
-        void log(const modules_log_level_t level, const std::string& message) const
-        {
-            if (!m_externalLogCallback)
-            {
-                throw std::runtime_error("Log callback not set.");
-            }
+private:
+    LoggingHelper() = default;
 
-            m_externalLogCallback(level, message.c_str());
-        }
+    LoggingHelper(const LoggingHelper&) = delete;
+    LoggingHelper& operator=(const LoggingHelper&) = delete;
+    LoggingHelper(LoggingHelper&&) = delete;
+    LoggingHelper& operator=(LoggingHelper&&) = delete;
 
-    private:
-        LoggingHelper() = default;
-
-        LoggingHelper(const LoggingHelper&) = delete;
-        LoggingHelper& operator=(const LoggingHelper&) = delete;
-        LoggingHelper(LoggingHelper&&) = delete;
-        LoggingHelper& operator=(LoggingHelper&&) = delete;
-
-        std::function<void(const modules_log_level_t level, const char* log)> m_externalLogCallback;
+    std::function<void(const modules_log_level_t level, const char* log)> m_externalLogCallback;
 };
 
 // LCOV_EXCL_STOP

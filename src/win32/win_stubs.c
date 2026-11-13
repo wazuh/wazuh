@@ -17,7 +17,8 @@
 #include "shared.h"
 
 /* Stub for WinSetError */
-void WinSetError() {
+void WinSetError()
+{
     /* Active-response executables don't need this */
 }
 

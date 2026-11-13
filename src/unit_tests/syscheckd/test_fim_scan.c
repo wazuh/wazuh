@@ -48,45 +48,48 @@
 fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
-void reconcile_failed_paths_with_pending_sync(OSList *failed_paths, OSList *pending_sync_updates);
-void create_unix_who_data_events(void * data, void * ctx);
-void fim_db_remove_entry(void * data, void * ctx);
-void fim_db_process_missing_entry(void * data, void * ctx);
+void reconcile_failed_paths_with_pending_sync(OSList* failed_paths, OSList* pending_sync_updates);
+void create_unix_who_data_events(void* data, void* ctx);
+void fim_db_remove_entry(void* data, void* ctx);
+void fim_db_process_missing_entry(void* data, void* ctx);
 
 /* auxiliary structs */
-typedef struct __fim_data_s {
-    event_data_t *evt_data;
-    whodata_evt *w_evt;
-    fim_entry *fentry;
-    fim_file_data *new_data;
-    fim_file_data *old_data;
-    fim_file_data *local_data; // Used on certain tests, not affected by group setup/teardown
-    struct dirent *entry;       // Used on fim_directory tests, not affected by group setup/teardown
-    cJSON *json;
-    OSList *list;
-    rb_tree *tree;
+typedef struct __fim_data_s
+{
+    event_data_t* evt_data;
+    whodata_evt* w_evt;
+    fim_entry* fentry;
+    fim_file_data* new_data;
+    fim_file_data* old_data;
+    fim_file_data* local_data; // Used on certain tests, not affected by group setup/teardown
+    struct dirent* entry;      // Used on fim_directory tests, not affected by group setup/teardown
+    cJSON* json;
+    OSList* list;
+    rb_tree* tree;
 } fim_data_t;
 
-typedef struct _txn_data_s {
-    callback_ctx *txn_context;
-    char *diff;
-    cJSON *dbsync_event;
+typedef struct _txn_data_s
+{
+    callback_ctx* txn_context;
+    char* diff;
+    cJSON* dbsync_event;
 } txn_data_t;
 
-typedef struct _json_struct_s {
-    cJSON *json1;
-    cJSON *json2;
+typedef struct _json_struct_s
+{
+    cJSON* json1;
+    cJSON* json2;
 } json_struct_t;
 
-const struct stat DEFAULT_STATBUF = { .st_mode = S_IFREG | 00444,
-                                      .st_size = 1000,
-                                      .st_uid = 0,
-                                      .st_gid = 0,
-                                      .st_ino = 1234,
-                                      .st_dev = 2345,
-                                      .st_mtime = 3456 };
+const struct stat DEFAULT_STATBUF = {.st_mode = S_IFREG | 00444,
+                                     .st_size = 1000,
+                                     .st_uid = 0,
+                                     .st_gid = 0,
+                                     .st_ino = 1234,
+                                     .st_dev = 2345,
+                                     .st_mtime = 3456};
 
-static OSList *removed_entries;
+static OSList* removed_entries;
 
 fim_file_data DEFAULT_FILE_DATA = {
     // Checksum attributes
@@ -102,11 +105,20 @@ fim_file_data DEFAULT_FILE_DATA = {
     .hash_md5 = "0123456789abcdef0123456789abcdef",
     .hash_sha1 = "0123456789abcdef0123456789abcdef01234567",
     .hash_sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    #ifdef TEST_WINAGENT
-    .permissions = "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
-    #else
+#ifdef TEST_WINAGENT
+    .permissions =
+        "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_"
+        "owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\","
+        "\"read_attributes\",\"write_attributes\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_"
+        "control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_"
+        "ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\","
+        "\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]},\"S-"
+        "1-5-11\":{\"name\":\"Authenticated "
+        "Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\","
+        "\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+#else
     .permissions = "rw-rw-r--",
-    #endif
+#endif
     // Options
     .device = 100,
     .checksum = "0123456789abcdef0123456789abcdef01234567",
@@ -115,43 +127,46 @@ fim_file_data DEFAULT_FILE_DATA = {
 /* redefinitons/wrapping */
 
 #ifdef TEST_WINAGENT
-void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
+void __wrap_decode_win_attributes(char* str, unsigned int attrs)
+{
     check_expected(str);
     check_expected(attrs);
 }
 #endif
 
-extern int __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
+extern int __real_process_pending_sync_updates(char* table_name, OSList* pending_items);
 
 /* Snapshot of mutex_unlock_call_count taken inside the wrap below, used by the
  * regression test for issue #37824 (fim_scan_mutex must stay held through
  * process_pending_sync_updates(), not just through the db transaction). */
 static unsigned int unlock_count_at_pending_sync_updates = 0;
 
-int __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
+int __wrap_process_pending_sync_updates(char* table_name, OSList* pending_items)
+{
     function_called();
     unlock_count_at_pending_sync_updates = mutex_unlock_call_count;
     return __real_process_pending_sync_updates(table_name, pending_items);
 }
 
-static int setup_fim_data(void **state) {
-    fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
+static int setup_fim_data(void** state)
+{
+    fim_data_t* fim_data = calloc(1, sizeof(fim_data_t));
 
     test_mode = 0;
 
-    if(fim_data == NULL)
+    if (fim_data == NULL)
         return -1;
 
     if (fim_data->evt_data = calloc(1, sizeof(event_data_t)), fim_data->evt_data == NULL)
         return -1;
 
-    if(fim_data->w_evt = calloc(1, sizeof(whodata_evt)), fim_data->w_evt == NULL)
+    if (fim_data->w_evt = calloc(1, sizeof(whodata_evt)), fim_data->w_evt == NULL)
         return -1;
 
-    if(fim_data->new_data = calloc(1, sizeof(fim_file_data)), fim_data->new_data == NULL)
+    if (fim_data->new_data = calloc(1, sizeof(fim_file_data)), fim_data->new_data == NULL)
         return -1;
 
-    if(fim_data->old_data = calloc(1, sizeof(fim_file_data)), fim_data->old_data == NULL)
+    if (fim_data->old_data = calloc(1, sizeof(fim_file_data)), fim_data->old_data == NULL)
         return -1;
 
     // Setup mock whodata event
@@ -220,8 +235,9 @@ static int setup_fim_data(void **state) {
     return 0;
 }
 
-static int teardown_fim_data(void **state) {
-    fim_data_t *fim_data = *state;
+static int teardown_fim_data(void** state)
+{
+    fim_data_t* fim_data = *state;
 
     free(fim_data->evt_data);
     free_whodata_event(fim_data->w_evt);
@@ -232,8 +248,9 @@ static int teardown_fim_data(void **state) {
     return 0;
 }
 
-static int setup_group(void **state) {
-    if(setup_fim_data(state) != 0)
+static int setup_group(void** state)
+{
+    if (setup_fim_data(state) != 0)
         return -1;
 
     test_mode = 0;
@@ -255,25 +272,27 @@ static int setup_group(void **state) {
     test_mode = 1;
 
     removed_entries = OSList_Create();
-    if (removed_entries == NULL) {
+    if (removed_entries == NULL)
+    {
         merror(MEM_ERROR, errno, strerror(errno));
         return -1;
     }
-    OSList_SetFreeDataPointer(removed_entries, (void (*)(void *))free_directory);
+    OSList_SetFreeDataPointer(removed_entries, (void (*)(void*))free_directory);
 
 #ifdef TEST_WINAGENT
-    char *path = "C:\\a\\random\\path";
+    char* path = "C:\\a\\random\\path";
 #else
-    char *path = "/a/random/path";
+    char* path = "/a/random/path";
 #endif
-    directory_t *directory0 = fim_create_directory(path, WHODATA_ACTIVE, NULL, 512, NULL, 1024, 1);
+    directory_t* directory0 = fim_create_directory(path, WHODATA_ACTIVE, NULL, 512, NULL, 1024, 1);
 
     OSList_InsertData(removed_entries, NULL, directory0);
 
     return 0;
 }
 
-static int setup_fim_regex_group(void **state) {
+static int setup_fim_regex_group(void** state)
+{
     if (setup_fim_data(state) != 0)
         return -1;
 
@@ -298,7 +317,8 @@ static int setup_fim_regex_group(void **state) {
     return 0;
 }
 
-static int setup_wildcards(void **state) {
+static int setup_wildcards(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -306,10 +326,11 @@ static int setup_wildcards(void **state) {
 
     // Wildcards list
     syscheck.wildcards = OSList_Create();
-    if (syscheck.wildcards == NULL) {
+    if (syscheck.wildcards == NULL)
+    {
         return -1;
     }
-    OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
+    OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void*))free_directory);
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap_realpath, path, "/testdir?");
@@ -326,26 +347,26 @@ static int setup_wildcards(void **state) {
     int options = WHODATA_ACTIVE;
 #endif
 
-    directory_t *wildcard0 = fim_create_directory(buffer1, options, NULL, 512,
-                                                  NULL, -1, 1);
+    directory_t* wildcard0 = fim_create_directory(buffer1, options, NULL, 512, NULL, -1, 1);
 
-    directory_t *wildcard1 = fim_create_directory(buffer2, options, NULL, 512,
-                                                  NULL, -1, 1);
+    directory_t* wildcard1 = fim_create_directory(buffer2, options, NULL, 512, NULL, -1, 1);
 
     OSList_InsertData(syscheck.wildcards, NULL, wildcard0);
     OSList_InsertData(syscheck.wildcards, NULL, wildcard1);
 
     // Directories list
     syscheck.directories = OSList_Create();
-    if (syscheck.directories == NULL) {
+    if (syscheck.directories == NULL)
+    {
         return -1;
     }
 
     return 0;
 }
 
-static int setup_root_group(void **state) {
-    if(setup_fim_data(state) != 0)
+static int setup_root_group(void** state)
+{
+    if (setup_fim_data(state) != 0)
         return -1;
 
     test_mode = 0;
@@ -369,7 +390,8 @@ static int setup_root_group(void **state) {
     return 0;
 }
 
-static int teardown_group(void **state) {
+static int teardown_group(void** state)
+{
     test_mode = 0;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -377,7 +399,7 @@ static int teardown_group(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    if(teardown_fim_data(state) != 0)
+    if (teardown_fim_data(state) != 0)
         return -1;
 
     Free_Syscheck(&syscheck);
@@ -392,20 +414,23 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-static int teardown_wildcards(void **state) {
+static int teardown_wildcards(void** state)
+{
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    if (syscheck.wildcards) {
-        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void *))free_directory);
+    if (syscheck.wildcards)
+    {
+        OSList_SetFreeDataPointer(syscheck.wildcards, (void (*)(void*))free_directory);
         OSList_Destroy(syscheck.wildcards);
         syscheck.wildcards = NULL;
     }
 
-    if (syscheck.directories) {
-        OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+    if (syscheck.directories)
+    {
+        OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void*))free_directory);
         OSList_Destroy(syscheck.directories);
         syscheck.directories = NULL;
     }
@@ -413,21 +438,23 @@ static int teardown_wildcards(void **state) {
     return 0;
 }
 
-static int teardown_delete_json(void **state) {
-    fim_data_t *fim_data = *state;
+static int teardown_delete_json(void** state)
+{
+    fim_data_t* fim_data = *state;
     cJSON_Delete(fim_data->json);
     return 0;
 }
 
-static int setup_fim_entry(void **state) {
-    fim_data_t *fim_data = *state;
+static int setup_fim_entry(void** state)
+{
+    fim_data_t* fim_data = *state;
 
-    if(fim_data->fentry = calloc(1, sizeof(fim_entry)), fim_data->fentry == NULL)
+    if (fim_data->fentry = calloc(1, sizeof(fim_entry)), fim_data->fentry == NULL)
         return -1;
 
     fim_data->fentry->type = FIM_TYPE_FILE;
 
-    if(fim_data->local_data = calloc(1, sizeof(fim_file_data)), fim_data->local_data == NULL)
+    if (fim_data->local_data = calloc(1, sizeof(fim_file_data)), fim_data->local_data == NULL)
         return -1;
 
     fim_data->fentry->file_entry.path = NULL;
@@ -441,15 +468,19 @@ static int setup_fim_entry(void **state) {
     return 0;
 }
 
-static int teardown_fim_entry(void **state) {
-    fim_data_t *fim_data = *state;
-    if(fim_data->fentry != NULL) {
-        if (fim_data->fentry->file_entry.path != NULL) {
-                free(fim_data->fentry->file_entry.path);
+static int teardown_fim_entry(void** state)
+{
+    fim_data_t* fim_data = *state;
+    if (fim_data->fentry != NULL)
+    {
+        if (fim_data->fentry->file_entry.path != NULL)
+        {
+            free(fim_data->fentry->file_entry.path);
         }
         free(fim_data->fentry);
     }
-    if (fim_data != NULL) {
+    if (fim_data != NULL)
+    {
         free(fim_data->local_data->permissions);
         free(fim_data->local_data->uid);
         free(fim_data->local_data->gid);
@@ -461,31 +492,35 @@ static int teardown_fim_entry(void **state) {
     return 0;
 }
 
-static int teardown_local_data(void **state) {
-    fim_data_t *fim_data = *state;
+static int teardown_local_data(void** state)
+{
+    fim_data_t* fim_data = *state;
 
     free_file_data(fim_data->local_data);
     return 0;
 }
 
-static int setup_struct_dirent(void **state) {
-    fim_data_t *fim_data = *state;
+static int setup_struct_dirent(void** state)
+{
+    fim_data_t* fim_data = *state;
 
-    if(fim_data->entry = calloc(1, sizeof(struct dirent)), fim_data->entry == NULL)
+    if (fim_data->entry = calloc(1, sizeof(struct dirent)), fim_data->entry == NULL)
         return -1;
 
     return 0;
 }
 
-static int teardown_struct_dirent(void **state) {
-    fim_data_t *fim_data = *state;
+static int teardown_struct_dirent(void** state)
+{
+    fim_data_t* fim_data = *state;
 
     free(fim_data->entry);
 
     return 0;
 }
 
-static int setup_file_limit(void **state) {
+static int setup_file_limit(void** state)
+{
     syscheck.file_limit_enabled = false;
     syscheck.file_entry_limit = 0;
 #ifdef TEST_WINAGENT
@@ -495,7 +530,8 @@ static int setup_file_limit(void **state) {
     return 0;
 }
 
-static int teardown_file_limit(void **state) {
+static int teardown_file_limit(void** state)
+{
     syscheck.file_limit_enabled = true;
     syscheck.file_entry_limit = 50000;
 #ifdef TEST_WINAGENT
@@ -505,12 +541,14 @@ static int teardown_file_limit(void **state) {
     return 0;
 }
 
-static int setup_fim_double_scan(void **state) {
+static int setup_fim_double_scan(void** state)
+{
     activate_full_db = true;
-    struct dirent *dirent_st = calloc(1, sizeof(struct dirent));
-    syscheck.database = calloc (1, sizeof(fdb_t));
+    struct dirent* dirent_st = calloc(1, sizeof(struct dirent));
+    syscheck.database = calloc(1, sizeof(fdb_t));
 
-    if (!dirent_st || !syscheck.database ) {
+    if (!dirent_st || !syscheck.database)
+    {
         return -1;
     }
 
@@ -529,8 +567,9 @@ static int setup_fim_double_scan(void **state) {
     return 0;
 }
 
-static int teardown_fim_double_scan(void **state) {
-    struct dirent *sd = state[0];
+static int teardown_fim_double_scan(void** state)
+{
+    struct dirent* sd = state[0];
     free(sd);
     free(syscheck.database);
     syscheck.database = NULL;
@@ -538,35 +577,40 @@ static int teardown_fim_double_scan(void **state) {
     activate_full_db = false;
 
 #ifdef TEST_WINAGENT
-    char *file = state[1];
+    char* file = state[1];
     free(file);
 #endif
 
     return 0;
 }
 
-static int setup_fim_not_double_scan(void **state) {
-    syscheck.database = calloc (1, sizeof(fdb_t));
+static int setup_fim_not_double_scan(void** state)
+{
+    syscheck.database = calloc(1, sizeof(fdb_t));
 
-    if(!syscheck.database ) {
+    if (!syscheck.database)
+    {
         return -1;
     }
     syscheck.database->full = true;
     return 0;
 }
 
-static int teardown_fim_not_double_scan(void **state) {
+static int teardown_fim_not_double_scan(void** state)
+{
     free(syscheck.database);
     syscheck.database = NULL;
     return 0;
 }
 
 #ifndef TEST_WINAGENT
-static int setup_fim_scan_realtime(void **state) {
+static int setup_fim_scan_realtime(void** state)
+{
 
-    syscheck.database = calloc (1, sizeof(fdb_t));
+    syscheck.database = calloc(1, sizeof(fdb_t));
 
-    if (!syscheck.database) {
+    if (!syscheck.database)
+    {
         return -1;
     }
 
@@ -574,7 +618,8 @@ static int setup_fim_scan_realtime(void **state) {
     return 0;
 }
 
-static int teardown_fim_scan_realtime(void **state) {
+static int teardown_fim_scan_realtime(void** state)
+{
     os_free(syscheck.database);
 
     syscheck.realtime = NULL; // Used with local variables in some tests
@@ -584,15 +629,18 @@ static int teardown_fim_scan_realtime(void **state) {
 
 #endif
 
-static int setup_transaction_callback(void **state) {
-    txn_data_t *txn_data = calloc(1, sizeof(txn_data_t));
+static int setup_transaction_callback(void** state)
+{
+    txn_data_t* txn_data = calloc(1, sizeof(txn_data_t));
 
-    if (txn_data == NULL) {
+    if (txn_data == NULL)
+    {
         return 1;
     }
 
     txn_data->txn_context = calloc(1, sizeof(callback_ctx));
-    if (txn_data->txn_context == NULL) {
+    if (txn_data->txn_context == NULL)
+    {
         return 1;
     }
     txn_data->txn_context->event = calloc(1, sizeof(event_data_t));
@@ -607,16 +655,20 @@ static int setup_transaction_callback(void **state) {
     return 0;
 }
 
-static int teardown_transaction_callback(void **state) {
-    txn_data_t *txn_data = (txn_data_t *) *state;
-    cJSON_Delete (txn_data->dbsync_event);
+static int teardown_transaction_callback(void** state)
+{
+    txn_data_t* txn_data = (txn_data_t*)*state;
+    cJSON_Delete(txn_data->dbsync_event);
 
-    if (txn_data->diff != NULL) {
+    if (txn_data->diff != NULL)
+    {
         free(txn_data->diff);
     }
 
-    if (txn_data->txn_context != NULL) {
-        if (txn_data->txn_context->event != NULL) {
+    if (txn_data->txn_context != NULL)
+    {
+        if (txn_data->txn_context->event != NULL)
+        {
             free(txn_data->txn_context->event);
         }
         free(txn_data->txn_context);
@@ -629,9 +681,11 @@ static int teardown_transaction_callback(void **state) {
     return 0;
 }
 
-static int setup_json_event_attributes(void **state) {
-    json_struct_t *data = calloc(1, sizeof(json_struct_t));
-    if (data == NULL) {
+static int setup_json_event_attributes(void** state)
+{
+    json_struct_t* data = calloc(1, sizeof(json_struct_t));
+    if (data == NULL)
+    {
         return 1;
     }
 
@@ -639,8 +693,9 @@ static int setup_json_event_attributes(void **state) {
     return 0;
 }
 
-static int teardown_json_event_attributes(void **state) {
-    json_struct_t *data = *state;
+static int teardown_json_event_attributes(void** state)
+{
+    json_struct_t* data = *state;
 
     cJSON_Delete(data->json1);
     cJSON_Delete(data->json2);
@@ -651,12 +706,13 @@ static int teardown_json_event_attributes(void **state) {
 }
 
 /* Auxiliar functions */
-void expect_get_data (char *user, char *group, char *file_path, int calculate_checksums) {
+void expect_get_data(char* user, char* group, char* file_path, int calculate_checksums)
+{
 #ifndef TEST_WINAGENT
     expect_get_user(0, user);
     expect_get_group(0, group);
 #else
-    cJSON *perms = cJSON_CreateObject();
+    cJSON* perms = cJSON_CreateObject();
 
     expect_get_file_user(file_path, "0", user);
     expect_w_get_file_permissions(file_path, perms, 0);
@@ -666,7 +722,8 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
     expect_string(__wrap_get_UTC_modification_time, file_path, file_path);
     will_return(__wrap_get_UTC_modification_time, 123456);
 #endif
-    if (calculate_checksums) {
+    if (calculate_checksums)
+    {
         expect_OS_MD5_SHA1_SHA256_File_call(file_path,
                                             "d41d8cd98f00b204e9800998ecf8427e",
                                             "da39a3ee5e6b4b0d3255bfef95601890afd80709",
@@ -680,7 +737,8 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
 /* tests */
 
 /* fim_epoch_to_iso8601 */
-static void test_fim_epoch_to_iso8601_known_date(void **state) {
+static void test_fim_epoch_to_iso8601_known_date(void** state)
+{
     (void)state;
     char buffer[25];
     // 2019-10-04T10:17:03 UTC
@@ -688,22 +746,25 @@ static void test_fim_epoch_to_iso8601_known_date(void **state) {
     assert_string_equal(buffer, "2019-10-04T10:17:03.000Z");
 }
 
-static void test_fim_epoch_to_iso8601_epoch_zero(void **state) {
+static void test_fim_epoch_to_iso8601_epoch_zero(void** state)
+{
     (void)state;
     char buffer[25];
     assert_true(fim_epoch_to_iso8601(0, buffer, sizeof(buffer)));
     assert_string_equal(buffer, "1970-01-01T00:00:00.000Z");
 }
 
-static void test_fim_epoch_to_iso8601_buffer_too_small(void **state) {
+static void test_fim_epoch_to_iso8601_buffer_too_small(void** state)
+{
     (void)state;
     char buffer[5];
     assert_false(fim_epoch_to_iso8601(1570184223, buffer, sizeof(buffer)));
 }
 
-static void test_fim_attributes_json(void **state) {
-    fim_data_t *fim_data = *state;
-    directory_t configuration = { .options = -1 };
+static void test_fim_attributes_json(void** state)
+{
+    fim_data_t* fim_data = *state;
+    directory_t configuration = {.options = -1};
 
     fim_data->json = fim_attributes_json(NULL, fim_data->old_data, &configuration);
 
@@ -714,47 +775,49 @@ static void test_fim_attributes_json(void **state) {
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 11);
 #endif
 
-    cJSON *size = cJSON_GetObjectItem(fim_data->json, "size");
+    cJSON* size = cJSON_GetObjectItem(fim_data->json, "size");
     assert_non_null(size);
     assert_int_equal(size->valueint, 1500);
-    cJSON *permissions = cJSON_GetObjectItem(fim_data->json, "permissions");
-    cJSON *permission_item = cJSON_GetArrayItem(permissions, 0);
+    cJSON* permissions = cJSON_GetObjectItem(fim_data->json, "permissions");
+    cJSON* permission_item = cJSON_GetArrayItem(permissions, 0);
     assert_non_null(permission_item);
 #ifndef TEST_WINAGENT
     assert_string_equal(permission_item->valuestring, "0664");
 #endif
-    cJSON *uid = cJSON_GetObjectItem(fim_data->json, "uid");
+    cJSON* uid = cJSON_GetObjectItem(fim_data->json, "uid");
     assert_string_equal(cJSON_GetStringValue(uid), "100");
-    cJSON *gid = cJSON_GetObjectItem(fim_data->json, "gid");
+    cJSON* gid = cJSON_GetObjectItem(fim_data->json, "gid");
     assert_string_equal(cJSON_GetStringValue(gid), "1000");
-    cJSON *owner = cJSON_GetObjectItem(fim_data->json, "owner");
+    cJSON* owner = cJSON_GetObjectItem(fim_data->json, "owner");
     assert_string_equal(cJSON_GetStringValue(owner), "test");
-    cJSON *group = cJSON_GetObjectItem(fim_data->json, "group");
+    cJSON* group = cJSON_GetObjectItem(fim_data->json, "group");
     assert_string_equal(cJSON_GetStringValue(group), "testing");
-    cJSON *inode = cJSON_GetObjectItem(fim_data->json, "inode");
+    cJSON* inode = cJSON_GetObjectItem(fim_data->json, "inode");
     assert_non_null(inode);
     assert_string_equal(inode->valuestring, "606060");
-    cJSON *mtime = cJSON_GetObjectItem(fim_data->json, "mtime");
+    cJSON* mtime = cJSON_GetObjectItem(fim_data->json, "mtime");
     assert_non_null(mtime);
     assert_string_equal(mtime->valuestring, "2019-10-04T10:17:03.000Z");
-    cJSON *hash = cJSON_GetObjectItem(fim_data->json, "hash");
+    cJSON* hash = cJSON_GetObjectItem(fim_data->json, "hash");
     assert_non_null(hash);
-    cJSON *hash_md5 = cJSON_GetObjectItem(hash, "md5");
+    cJSON* hash_md5 = cJSON_GetObjectItem(hash, "md5");
     assert_string_equal(cJSON_GetStringValue(hash_md5), "3691689a513ace7e508297b583d7050d");
-    cJSON *hash_sha1 = cJSON_GetObjectItem(hash, "sha1");
+    cJSON* hash_sha1 = cJSON_GetObjectItem(hash, "sha1");
     assert_string_equal(cJSON_GetStringValue(hash_sha1), "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    cJSON *hash_sha256 = cJSON_GetObjectItem(hash, "sha256");
-    assert_string_equal(cJSON_GetStringValue(hash_sha256), "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
+    cJSON* hash_sha256 = cJSON_GetObjectItem(hash, "sha256");
+    assert_string_equal(cJSON_GetStringValue(hash_sha256),
+                        "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
 #ifdef TEST_WINAGENT
-    cJSON *attributes = cJSON_GetObjectItem(fim_data->json, "attributes");
-    cJSON *attribute_item = cJSON_GetArrayItem(attributes, 0);
+    cJSON* attributes = cJSON_GetObjectItem(fim_data->json, "attributes");
+    cJSON* attribute_item = cJSON_GetArrayItem(attributes, 0);
     assert_non_null(attribute_item);
     assert_string_equal(attribute_item->valuestring, "r--r--r--");
 #endif
 }
 
-static void test_fim_audit_json(void **state) {
-    fim_data_t *fim_data = *state;
+static void test_fim_audit_json(void** state)
+{
+    fim_data_t* fim_data = *state;
 
     fim_data->json = fim_audit_json(fim_data->w_evt);
 
@@ -765,43 +828,44 @@ static void test_fim_audit_json(void **state) {
     assert_int_equal(cJSON_GetArraySize(fim_data->json), 14);
 #endif
 
-    cJSON *user_id = cJSON_GetObjectItem(fim_data->json, "user_id");
+    cJSON* user_id = cJSON_GetObjectItem(fim_data->json, "user_id");
     assert_string_equal(cJSON_GetStringValue(user_id), "100");
-    cJSON *user_name = cJSON_GetObjectItem(fim_data->json, "user_name");
+    cJSON* user_name = cJSON_GetObjectItem(fim_data->json, "user_name");
     assert_string_equal(cJSON_GetStringValue(user_name), "test");
-    cJSON *process_name = cJSON_GetObjectItem(fim_data->json, "process_name");
+    cJSON* process_name = cJSON_GetObjectItem(fim_data->json, "process_name");
     assert_string_equal(cJSON_GetStringValue(process_name), "test_proc");
-    cJSON *process_id = cJSON_GetObjectItem(fim_data->json, "process_id");
+    cJSON* process_id = cJSON_GetObjectItem(fim_data->json, "process_id");
     assert_non_null(process_id);
     assert_int_equal(process_id->valueint, 1001);
 
 #ifndef TEST_WINAGENT
-    cJSON *cwd = cJSON_GetObjectItem(fim_data->json, "cwd");
+    cJSON* cwd = cJSON_GetObjectItem(fim_data->json, "cwd");
     assert_string_equal(cJSON_GetStringValue(cwd), "process_cwd");
-    cJSON *group_id = cJSON_GetObjectItem(fim_data->json, "group_id");
+    cJSON* group_id = cJSON_GetObjectItem(fim_data->json, "group_id");
     assert_string_equal(cJSON_GetStringValue(group_id), "1000");
-    cJSON *group_name = cJSON_GetObjectItem(fim_data->json, "group_name");
+    cJSON* group_name = cJSON_GetObjectItem(fim_data->json, "group_name");
     assert_string_equal(cJSON_GetStringValue(group_name), "testing");
-    cJSON *audit_uid = cJSON_GetObjectItem(fim_data->json, "audit_uid");
+    cJSON* audit_uid = cJSON_GetObjectItem(fim_data->json, "audit_uid");
     assert_string_equal(cJSON_GetStringValue(audit_uid), "99");
-    cJSON *audit_name = cJSON_GetObjectItem(fim_data->json, "audit_name");
+    cJSON* audit_name = cJSON_GetObjectItem(fim_data->json, "audit_name");
     assert_string_equal(cJSON_GetStringValue(audit_name), "audit_user");
-    cJSON *effective_uid = cJSON_GetObjectItem(fim_data->json, "effective_uid");
+    cJSON* effective_uid = cJSON_GetObjectItem(fim_data->json, "effective_uid");
     assert_string_equal(cJSON_GetStringValue(effective_uid), "999");
-    cJSON *effective_name = cJSON_GetObjectItem(fim_data->json, "effective_name");
+    cJSON* effective_name = cJSON_GetObjectItem(fim_data->json, "effective_name");
     assert_string_equal(cJSON_GetStringValue(effective_name), "effective_user");
-    cJSON *ppid = cJSON_GetObjectItem(fim_data->json, "ppid");
+    cJSON* ppid = cJSON_GetObjectItem(fim_data->json, "ppid");
     assert_non_null(ppid);
     assert_int_equal(ppid->valueint, 1000);
-    cJSON *parent_cwd = cJSON_GetObjectItem(fim_data->json, "parent_cwd");
+    cJSON* parent_cwd = cJSON_GetObjectItem(fim_data->json, "parent_cwd");
     assert_string_equal(cJSON_GetStringValue(parent_cwd), "parent_cwd");
-    cJSON *parent_name = cJSON_GetObjectItem(fim_data->json, "parent_name");
+    cJSON* parent_name = cJSON_GetObjectItem(fim_data->json, "parent_name");
     assert_string_equal(cJSON_GetStringValue(parent_name), "parent_name");
 #endif
 }
 
 #ifndef TEST_WINAGENT
-static void test_fim_check_ignore_strncasecmp(void **state) {
+static void test_fim_check_ignore_strncasecmp(void** state)
+{
     int ret;
     char debug_msg[OS_MAXSTR];
 
@@ -814,19 +878,19 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
     assert_int_equal(ret, 1);
 }
 #else
-static void test_fim_check_ignore_strncasecmp(void **state) {
+static void test_fim_check_ignore_strncasecmp(void** state)
+{
     int ret;
-    char *path = "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\DeskTop.ini";
+    char* path = "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\DeskTop.ini";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_ENTRY, expanded_path, syscheck.ignore[0]);
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
 
     ret = fim_check_ignore(expanded_path, FIM_REGULAR);
 
@@ -834,16 +898,20 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
 }
 #endif
 
-static void test_fim_check_ignore_regex_file(void **state) {
+static void test_fim_check_ignore_regex_file(void** state)
+{
     int ret;
     char debug_msg[OS_MAXSTR];
-
 
 #ifndef TEST_WINAGENT
     snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.swp", ".log$|.swp$");
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #else
-    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.swp", ".log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
+    snprintf(debug_msg,
+             OS_MAXSTR,
+             FIM_IGNORE_SREGEX,
+             "/test/files/test.swp",
+             ".log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #endif
 
@@ -852,10 +920,10 @@ static void test_fim_check_ignore_regex_file(void **state) {
     assert_int_equal(ret, 1);
 }
 
-static void test_fim_check_ignore_regex_directory(void **state) {
+static void test_fim_check_ignore_regex_directory(void** state)
+{
     int ret;
     char debug_msg[OS_MAXSTR];
-
 
 #ifndef TEST_WINAGENT
     snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/test_directory", "test_dir");
@@ -870,20 +938,20 @@ static void test_fim_check_ignore_regex_directory(void **state) {
     assert_int_equal(ret, 1);
 }
 
-
-static void test_fim_check_ignore_failure(void **state) {
-   int ret;
+static void test_fim_check_ignore_failure(void** state)
+{
+    int ret;
 
     ret = fim_check_ignore("/test/files/test.sp", FIM_REGULAR);
 
     assert_int_equal(ret, 0);
 }
 
+static void test_fim_check_restrict_success(void** state)
+{
+    int ret;
 
-static void test_fim_check_restrict_success(void **state) {
-   int ret;
-
-    OSMatch *restriction;
+    OSMatch* restriction;
     restriction = calloc(1, sizeof(OSMatch));
     OSMatch_Compile("test$", restriction, 0);
 
@@ -894,11 +962,11 @@ static void test_fim_check_restrict_success(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_fim_check_restrict_failure(void** state)
+{
+    int ret;
 
-static void test_fim_check_restrict_failure(void **state) {
-   int ret;
-
-    OSMatch *restriction;
+    OSMatch* restriction;
     restriction = calloc(1, sizeof(OSMatch));
     OSMatch_Compile("test$", restriction, 0);
 
@@ -911,10 +979,11 @@ static void test_fim_check_restrict_failure(void **state) {
     assert_int_equal(ret, 1);
 }
 
-static void test_fim_check_restrict_null_filename(void **state) {
-   int ret;
+static void test_fim_check_restrict_null_filename(void** state)
+{
+    int ret;
 
-    OSMatch *restriction;
+    OSMatch* restriction;
     restriction = calloc(1, sizeof(OSMatch));
     OSMatch_Compile("test$", restriction, 0);
 
@@ -927,17 +996,18 @@ static void test_fim_check_restrict_null_filename(void **state) {
     assert_int_equal(ret, 1);
 }
 
-static void test_fim_check_restrict_null_restriction(void **state) {
-   int ret;
+static void test_fim_check_restrict_null_restriction(void** state)
+{
+    int ret;
 
     ret = fim_check_restrict("my_test", NULL);
 
     assert_int_equal(ret, 0);
 }
 
-
-static void test_fim_get_checksum(void **state) {
-    fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data=&DEFAULT_FILE_DATA};
+static void test_fim_get_checksum(void** state)
+{
+    fim_entry entry = {.file_entry.path = "/media/test", .file_entry.data = &DEFAULT_FILE_DATA};
 
     fim_get_checksum(entry.file_entry.data);
 #ifdef TEST_WINAGENT
@@ -947,9 +1017,9 @@ static void test_fim_get_checksum(void **state) {
 #endif
 }
 
-
-static void test_fim_get_checksum_wrong_size(void **state) {
-    fim_data_t *fim_data = *state;
+static void test_fim_get_checksum_wrong_size(void** state)
+{
+    fim_data_t* fim_data = *state;
     fim_data->local_data = calloc(1, sizeof(fim_file_data));
 
     fim_data->local_data->size = -1;
@@ -973,20 +1043,21 @@ static void test_fim_get_checksum_wrong_size(void **state) {
     assert_string_equal(fim_data->local_data->checksum, "cabc9a9c81819b011164c0f908127b9f56b4c666");
 }
 
-static void test_fim_check_depth_success(void **state) {
+static void test_fim_check_depth_success(void** state)
+{
 #ifndef TEST_WINAGENT
-    char * path = "/usr/bin/folder1/folder2/folder3/file";
-    directory_t configuration = { .path = "/usr/bin", .recursion_level = 4 };
+    char* path = "/usr/bin/folder1/folder2/folder3/file";
+    directory_t configuration = {.path = "/usr/bin", .recursion_level = 4};
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #else
 
-    char *aux_path = "c:\\windows\\System32\\wbem\\folder1\\folder2\\folder3\\path.exe";
-    directory_t configuration = { .path = "c:\\windows\\System32\\wbem", .recursion_level = 4 };
+    char* aux_path = "c:\\windows\\System32\\wbem\\folder1\\folder2\\folder3\\path.exe";
+    directory_t configuration = {.path = "c:\\windows\\System32\\wbem", .recursion_level = 4};
     char path[OS_MAXSTR];
 
-    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
 #endif
     int ret;
@@ -996,10 +1067,10 @@ static void test_fim_check_depth_success(void **state) {
     assert_int_equal(ret, 3);
 }
 
-
-static void test_fim_check_depth_failure_strlen(void **state) {
-    char * path = "fl/fd";
-    directory_t configuration = { .path = "/usr/bin", .recursion_level = 4 };
+static void test_fim_check_depth_failure_strlen(void** state)
+{
+    char* path = "fl/fd";
+    directory_t configuration = {.path = "/usr/bin", .recursion_level = 4};
     int ret;
 
 #ifndef TEST_WINAGENT
@@ -1010,12 +1081,12 @@ static void test_fim_check_depth_failure_strlen(void **state) {
     ret = fim_check_depth(path, &configuration);
 
     assert_int_equal(ret, -1);
-
 }
 
-static void test_fim_check_depth_failure_null_directory(void **state) {
-    char * path = "/usr/bin";
-    directory_t configuration = { .path = "/usr/bin", .recursion_level = 6 };
+static void test_fim_check_depth_failure_null_directory(void** state)
+{
+    char* path = "/usr/bin";
+    directory_t configuration = {.path = "/usr/bin", .recursion_level = 6};
     int ret;
 
 #ifndef TEST_WINAGENT
@@ -1026,23 +1097,23 @@ static void test_fim_check_depth_failure_null_directory(void **state) {
     ret = fim_check_depth(path, &configuration);
 
     assert_int_equal(ret, -1);
-
 }
 
-static void test_fim_configuration_directory_no_path(void **state) {
-    directory_t *ret;
+static void test_fim_configuration_directory_no_path(void** state)
+{
+    directory_t* ret;
 
     ret = fim_configuration_directory(NULL, true, syscheck.directories);
 
     assert_null(ret);
 }
 
-
 #ifndef TEST_WINAGENT
-static void test_fim_configuration_directory_file(void **state) {
-    directory_t *ret;
+static void test_fim_configuration_directory_file(void** state)
+{
+    directory_t* ret;
 
-    const char * path = "/media";
+    const char* path = "/media";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1053,13 +1124,14 @@ static void test_fim_configuration_directory_file(void **state) {
     ret = fim_configuration_directory(path, true, syscheck.directories);
 
     assert_non_null(ret);
-    assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
+    assert_ptr_equal(ret, ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3)));
 }
 #else
-static void test_fim_configuration_directory_file(void **state) {
-    char *aux_path = "%WINDIR%\\System32\\drivers\\etc";
+static void test_fim_configuration_directory_file(void** state)
+{
+    char* aux_path = "%WINDIR%\\System32\\drivers\\etc";
     char path[OS_MAXSTR];
-    directory_t *ret;
+    directory_t* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1067,21 +1139,21 @@ static void test_fim_configuration_directory_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
 
     str_lowercase(path);
 
     ret = fim_configuration_directory(path, true, syscheck.directories);
 
-    assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
+    assert_ptr_equal(ret, ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3)));
 }
 #endif
 
-
-static void test_fim_configuration_directory_not_found(void **state) {
-    const char *path = "/invalid";
-    directory_t *ret;
+static void test_fim_configuration_directory_not_found(void** state)
+{
+    const char* path = "/invalid";
+    directory_t* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1103,9 +1175,10 @@ static void test_fim_configuration_directory_not_found(void **state) {
     assert_null(ret);
 }
 
-static void test_fim_configuration_directory_not_found_not_debug(void **state) {
-    const char *path = "/invalid";
-    directory_t *ret;
+static void test_fim_configuration_directory_not_found_not_debug(void** state)
+{
+    const char* path = "/invalid";
+    directory_t* ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1125,7 +1198,8 @@ static void test_fim_configuration_directory_not_found_not_debug(void **state) {
     assert_null(ret);
 }
 
-static void test_init_fim_data_entry(void **state) {
+static void test_init_fim_data_entry(void** state)
+{
     fim_file_data entry;
     init_fim_data_entry(&entry);
 
@@ -1143,17 +1217,19 @@ static void test_init_fim_data_entry(void **state) {
     assert_int_equal(entry.hash_sha256[0], 0);
 }
 
-static void test_fim_file_add(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
-                                             CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES };
+static void test_fim_file_add(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF};
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                            CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES};
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
     char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
 
-    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
+    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM
+    // file handling behavior, not locking implementation.
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
     ignore_function_calls(__wrap_pthread_mutex_lock);
@@ -1179,14 +1255,17 @@ static void test_fim_file_add(void **state) {
 // Saved/restored around test_fim_file_add_queues_sync_flag_update_end_to_end via cmocka
 // setup/teardown (not inline in the test body) so a failed assert/expectation mid-test still
 // restores global state instead of leaking it into the next test.
-typedef struct {
+typedef struct
+{
     int original_notify_scan;
     int original_synced_docs_files;
 } end_to_end_saved_state_t;
 
-static int setup_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
-    end_to_end_saved_state_t *saved = calloc(1, sizeof(end_to_end_saved_state_t));
-    if (saved == NULL) {
+static int setup_fim_file_add_queues_sync_flag_update_end_to_end(void** state)
+{
+    end_to_end_saved_state_t* saved = calloc(1, sizeof(end_to_end_saved_state_t));
+    if (saved == NULL)
+    {
         return -1;
     }
     saved->original_notify_scan = notify_scan;
@@ -1195,9 +1274,11 @@ static int setup_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     return 0;
 }
 
-static int teardown_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
-    end_to_end_saved_state_t *saved = *state;
-    if (saved != NULL) {
+static int teardown_fim_file_add_queues_sync_flag_update_end_to_end(void** state)
+{
+    end_to_end_saved_state_t* saved = *state;
+    if (saved != NULL)
+    {
         notify_scan = saved->original_notify_scan;
         synced_docs_files = saved->original_synced_docs_files;
         free(saved);
@@ -1208,10 +1289,11 @@ static int teardown_fim_file_add_queues_sync_flag_update_end_to_end(void **state
     return 0;
 }
 
-static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
-                                             CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM };
+static void test_fim_file_add_queues_sync_flag_update_end_to_end(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF};
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                            CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM};
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1232,21 +1314,21 @@ static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
 #ifdef TEST_WINAGENT
-    cJSON *result = cJSON_Parse(
-        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
-        "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
-        "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
-        "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
-        "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"c:\\\\windows\\\\system32\\\\cmd.exe\","
-        "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+    cJSON* result =
+        cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
+                    "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+                    "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
+                    "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+                    "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"c:\\\\windows\\\\system32\\\\cmd.exe\","
+                    "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
 #else
-    cJSON *result = cJSON_Parse(
-        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
-        "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
-        "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
-        "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
-        "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file_38522.txt\","
-        "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+    cJSON* result =
+        cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,"
+                    "\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+                    "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
+                    "\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\","
+                    "\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file_38522.txt\","
+                    "\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
 #endif
     assert_non_null(result);
 
@@ -1259,11 +1341,19 @@ static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     expect_function_call(__wrap_send_syscheck_msg);
     will_return(__wrap_validate_and_persist_fim_event, true);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\system32\\cmd.exe");
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: c:\\windows\\system32\\cmd.exe (version: 1, sync: 1)");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\system32\\cmd.exe");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "Added item to pending sync list: c:\\windows\\system32\\cmd.exe (version: 1, sync: 1)");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file_38522.txt");
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file_38522.txt (version: 1, sync: 1)");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file_38522.txt");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "Added item to pending sync list: /etc/a_test_file_38522.txt (version: 1, sync: 1)");
 #endif
 
     // process_pending_sync_updates() now genuinely has 1 item to process. No "Processed N
@@ -1282,18 +1372,19 @@ static void test_fim_file_add_queues_sync_flag_update_end_to_end(void **state) {
     cJSON_Delete(result);
 }
 
-static void test_fim_file_modify_transaction(void **state) {
-    fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
-                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
+static void test_fim_file_modify_transaction(void** state)
+{
+    fim_data_t* fim_data = *state;
+    event_data_t evt_data = {.mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF};
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                            CHECK_SHA1SUM | CHECK_SHA256SUM};
     TXN_HANDLE mock_handle = (TXN_HANDLE)1;
 
     callback_ctx mock_context = {0};
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
-    cJSON *permissions = create_win_permissions_object();
+    cJSON* permissions = create_win_permissions_object();
 #else
     char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
@@ -1329,23 +1420,28 @@ static void test_fim_file_modify_transaction(void **state) {
     expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
 
-    expect_OS_MD5_SHA1_SHA256_File_call(file_path, "d41d8cd98f00b204e9800998ecf8427e",
+    expect_OS_MD5_SHA1_SHA256_File_call(file_path,
+                                        "d41d8cd98f00b204e9800998ecf8427e",
                                         "da39a3ee5e6b4b0d3255bfef95601890afd80709",
-                                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
-                                        0x400, 0);
+                                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                                        OS_BINARY,
+                                        0x400,
+                                        0);
 
     will_return(__wrap_fim_db_transaction_sync_row, FIMDB_OK);
 
     fim_file(file_path, &configuration, &evt_data, mock_handle, &mock_context);
 }
 
-static void test_fim_file_modify(void **state) {
-    fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
-                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
+static void test_fim_file_modify(void** state)
+{
+    fim_data_t* fim_data = *state;
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF};
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                            CHECK_SHA1SUM | CHECK_SHA256SUM};
 
-    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
+    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM
+    // file handling behavior, not locking implementation.
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
     ignore_function_calls(__wrap_pthread_mutex_lock);
@@ -1354,7 +1450,7 @@ static void test_fim_file_modify(void **state) {
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
-    cJSON *permissions = create_win_permissions_object();
+    cJSON* permissions = create_win_permissions_object();
 #else
     char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
@@ -1390,10 +1486,13 @@ static void test_fim_file_modify(void **state) {
     expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
 
-    expect_OS_MD5_SHA1_SHA256_File_call(file_path, "d41d8cd98f00b204e9800998ecf8427e",
+    expect_OS_MD5_SHA1_SHA256_File_call(file_path,
+                                        "d41d8cd98f00b204e9800998ecf8427e",
                                         "da39a3ee5e6b4b0d3255bfef95601890afd80709",
-                                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
-                                        0x400, 0);
+                                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                                        OS_BINARY,
+                                        0x400,
+                                        0);
 
     will_return(__wrap_fim_db_file_update, FIMDB_OK);
 
@@ -1405,7 +1504,8 @@ static void test_fim_file_modify(void **state) {
 // (failed_paths), compensating synced_docs_files for any that had sync_value == 1 — and must
 // leave every other pending item (and the counter, when nothing matches) untouched.
 
-static void test_reconcile_failed_paths_with_pending_sync_no_overlap(void **state) {
+static void test_reconcile_failed_paths_with_pending_sync_no_overlap(void** state)
+{
     expect_any_always(__wrap__mdebug2, formatted_msg);
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
@@ -1413,13 +1513,13 @@ static void test_reconcile_failed_paths_with_pending_sync_no_overlap(void **stat
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
 
-    OSList *failed_paths = OSList_Create();
-    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList* failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void*))free);
     OSList_AddData(failed_paths, strdup("/etc/unrelated_failed.txt"));
 
-    OSList *pending_sync_updates = OSList_Create();
+    OSList* pending_sync_updates = OSList_Create();
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
-    cJSON *item_json = cJSON_CreateObject();
+    cJSON* item_json = cJSON_CreateObject();
     cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
     cJSON_AddNumberToObject(item_json, "version", 1);
     add_pending_sync_item(pending_sync_updates, item_json, 1);
@@ -1432,7 +1532,7 @@ static void test_reconcile_failed_paths_with_pending_sync_no_overlap(void **stat
 
     assert_int_equal(synced_docs_files, 5);
     assert_int_equal(pending_sync_updates->currently_size, 1);
-    pending_sync_item_t *item = (pending_sync_item_t *)OSList_GetFirstNode(pending_sync_updates)->data;
+    pending_sync_item_t* item = (pending_sync_item_t*)OSList_GetFirstNode(pending_sync_updates)->data;
     assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path")), "/etc/a_test_file.txt");
 
     synced_docs_files = original_synced_docs_files;
@@ -1440,7 +1540,8 @@ static void test_reconcile_failed_paths_with_pending_sync_no_overlap(void **stat
     OSList_Destroy(pending_sync_updates);
 }
 
-static void test_reconcile_failed_paths_with_pending_sync_removes_match_and_compensates(void **state) {
+static void test_reconcile_failed_paths_with_pending_sync_removes_match_and_compensates(void** state)
+{
     expect_any_always(__wrap__mdebug2, formatted_msg);
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
@@ -1448,13 +1549,13 @@ static void test_reconcile_failed_paths_with_pending_sync_removes_match_and_comp
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
 
-    OSList *failed_paths = OSList_Create();
-    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList* failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void*))free);
     OSList_AddData(failed_paths, strdup("/etc/a_test_file.txt"));
 
-    OSList *pending_sync_updates = OSList_Create();
+    OSList* pending_sync_updates = OSList_Create();
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
-    cJSON *item_json = cJSON_CreateObject();
+    cJSON* item_json = cJSON_CreateObject();
     cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
     cJSON_AddNumberToObject(item_json, "version", 1);
     add_pending_sync_item(pending_sync_updates, item_json, 1);
@@ -1474,7 +1575,8 @@ static void test_reconcile_failed_paths_with_pending_sync_removes_match_and_comp
     OSList_Destroy(pending_sync_updates);
 }
 
-static void test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_zero(void **state) {
+static void test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_zero(void** state)
+{
     expect_any_always(__wrap__mdebug2, formatted_msg);
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
@@ -1482,13 +1584,13 @@ static void test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
 
-    OSList *failed_paths = OSList_Create();
-    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList* failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void*))free);
     OSList_AddData(failed_paths, strdup("/etc/a_test_file.txt"));
 
-    OSList *pending_sync_updates = OSList_Create();
+    OSList* pending_sync_updates = OSList_Create();
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
-    cJSON *item_json = cJSON_CreateObject();
+    cJSON* item_json = cJSON_CreateObject();
     cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
     cJSON_AddNumberToObject(item_json, "version", 1);
     add_pending_sync_item(pending_sync_updates, item_json, 0);
@@ -1510,7 +1612,8 @@ static void test_reconcile_failed_paths_with_pending_sync_match_with_sync_value_
     OSList_Destroy(pending_sync_updates);
 }
 
-static void test_reconcile_failed_paths_with_pending_sync_multiple_items_partial_match(void **state) {
+static void test_reconcile_failed_paths_with_pending_sync_multiple_items_partial_match(void** state)
+{
     expect_any_always(__wrap__mdebug2, formatted_msg);
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
@@ -1518,16 +1621,17 @@ static void test_reconcile_failed_paths_with_pending_sync_multiple_items_partial
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
 
-    OSList *failed_paths = OSList_Create();
-    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList* failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void*))free);
     OSList_AddData(failed_paths, strdup("/etc/b_failed.txt"));
 
-    OSList *pending_sync_updates = OSList_Create();
+    OSList* pending_sync_updates = OSList_Create();
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
 
-    const char *paths[3] = {"/etc/a_ok.txt", "/etc/b_failed.txt", "/etc/c_ok.txt"};
-    for (int i = 0; i < 3; i++) {
-        cJSON *item_json = cJSON_CreateObject();
+    const char* paths[3] = {"/etc/a_ok.txt", "/etc/b_failed.txt", "/etc/c_ok.txt"};
+    for (int i = 0; i < 3; i++)
+    {
+        cJSON* item_json = cJSON_CreateObject();
         cJSON_AddStringToObject(item_json, "path", paths[i]);
         cJSON_AddNumberToObject(item_json, "version", 1);
         add_pending_sync_item(pending_sync_updates, item_json, 1);
@@ -1544,16 +1648,22 @@ static void test_reconcile_failed_paths_with_pending_sync_multiple_items_partial
 
     // Both surviving items keep their own data intact, in original relative order — proves
     // OSList_DeleteThisNode() on the middle node didn't corrupt the remaining links.
-    OSListNode *node_it;
+    OSListNode* node_it;
     int found_a = 0, found_c = 0;
-    OSList_foreach(node_it, pending_sync_updates) {
-        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
-        const char *path = cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path"));
-        if (strcmp(path, "/etc/a_ok.txt") == 0) {
+    OSList_foreach(node_it, pending_sync_updates)
+    {
+        pending_sync_item_t* item = (pending_sync_item_t*)node_it->data;
+        const char* path = cJSON_GetStringValue(cJSON_GetObjectItem(item->json, "path"));
+        if (strcmp(path, "/etc/a_ok.txt") == 0)
+        {
             found_a = 1;
-        } else if (strcmp(path, "/etc/c_ok.txt") == 0) {
+        }
+        else if (strcmp(path, "/etc/c_ok.txt") == 0)
+        {
             found_c = 1;
-        } else {
+        }
+        else
+        {
             fail_msg("Unexpected surviving item: %s", path);
         }
     }
@@ -1565,7 +1675,8 @@ static void test_reconcile_failed_paths_with_pending_sync_multiple_items_partial
     OSList_Destroy(pending_sync_updates);
 }
 
-static void test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop(void **state) {
+static void test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop(void** state)
+{
     expect_any_always(__wrap__mdebug2, formatted_msg);
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
@@ -1573,10 +1684,10 @@ static void test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop(v
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
 
-    OSList *failed_paths = OSList_Create();
-    OSList_SetFreeDataPointer(failed_paths, (void (*)(void *))free);
+    OSList* failed_paths = OSList_Create();
+    OSList_SetFreeDataPointer(failed_paths, (void (*)(void*))free);
 
-    OSList *pending_sync_updates = OSList_Create();
+    OSList* pending_sync_updates = OSList_Create();
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
 
     int original_synced_docs_files = synced_docs_files;
@@ -1587,7 +1698,7 @@ static void test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop(v
     assert_int_equal(synced_docs_files, 5);
 
     // failed_paths empty, pending_sync_updates non-empty: nothing to reconcile against.
-    cJSON *item_json = cJSON_CreateObject();
+    cJSON* item_json = cJSON_CreateObject();
     cJSON_AddStringToObject(item_json, "path", "/etc/a_test_file.txt");
     cJSON_AddNumberToObject(item_json, "version", 1);
     add_pending_sync_item(pending_sync_updates, item_json, 1);
@@ -1602,15 +1713,16 @@ static void test_reconcile_failed_paths_with_pending_sync_empty_lists_are_noop(v
     OSList_Destroy(pending_sync_updates);
 }
 
-static void test_fim_file_no_attributes(void **state) {
+static void test_fim_file_no_attributes(void** state)
+{
     char buffer1[OS_SIZE_256];
     char buffer2[OS_SIZE_256];
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
-                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
+    event_data_t evt_data = {.mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF};
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                            CHECK_SHA1SUM | CHECK_SHA256SUM};
 #ifdef TEST_WINAGENT
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
-    cJSON *permissions = create_win_permissions_object();
+    cJSON* permissions = create_win_permissions_object();
 #else
     char file_path[] = "/etc/a_test_file_38522.txt";
 #endif
@@ -1641,17 +1753,18 @@ static void test_fim_file_no_attributes(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, buffer1);
     expect_string(__wrap__mdebug1, formatted_msg, buffer2);
 
-
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
 
-static void test_fim_file_error_on_insert(void **state) {
-    fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
-                                             CHECK_SHA1SUM | CHECK_SHA256SUM };
+static void test_fim_file_error_on_insert(void** state)
+{
+    fim_data_t* fim_data = *state;
+    event_data_t evt_data = {.mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF};
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
+                                            CHECK_SHA1SUM | CHECK_SHA256SUM};
 
-    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM file handling behavior, not locking implementation.
+    // Ignore trying to match the exact pthread calls since OSList operations make this hard and these tests verify FIM
+    // file handling behavior, not locking implementation.
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
     ignore_function_calls(__wrap_pthread_mutex_lock);
@@ -1660,7 +1773,7 @@ static void test_fim_file_error_on_insert(void **state) {
 
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
-    cJSON *permissions = create_win_permissions_object();
+    cJSON* permissions = create_win_permissions_object();
 #else
     char file_path[OS_SIZE_256] = "/etc/a_test_file_38522.txt";
 #endif
@@ -1696,7 +1809,9 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, file_path);
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File,
+                  sha256output,
+                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
@@ -1706,9 +1821,10 @@ static void test_fim_file_error_on_insert(void **state) {
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
 
-static void test_fim_checker_scheduled_configuration_directory_error(void **state) {
-    char * path = "/not/found/test.file";
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+static void test_fim_checker_scheduled_configuration_directory_error(void** state)
+{
+    char* path = "/not/found/test.file";
+    event_data_t evt_data = {.mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true};
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 #ifndef TEST_WINAGENT
@@ -1726,9 +1842,10 @@ static void test_fim_checker_scheduled_configuration_directory_error(void **stat
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_not_scheduled_configuration_directory_error(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    const char *path = "/not/found/test.file";
+static void test_fim_checker_not_scheduled_configuration_directory_error(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    const char* path = "/not/found/test.file";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1748,9 +1865,10 @@ static void test_fim_checker_not_scheduled_configuration_directory_error(void **
 }
 
 #ifndef TEST_WINAGENT
-static void test_fim_checker_over_max_recursion_level(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    const char *path = "/media/a/test.file";
+static void test_fim_checker_over_max_recursion_level(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    const char* path = "/media/a/test.file";
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1758,20 +1876,22 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 0;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 0;
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/a/test.file'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/a/test.file'");
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
 }
 
-static void test_fim_checker_deleted_file(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+static void test_fim_checker_deleted_file(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
     struct stat statbuf = DEFAULT_STATBUF;
-    const char *path = "/media/test.file";
+    const char* path = "/media/test.file";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1779,7 +1899,8 @@ static void test_fim_checker_deleted_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg,
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
                   "(6222): Stat() function failed on: '/media/test.file' due to [(1)-(Operation not permitted)]");
 
     expect_string(__wrap_lstat, filename, path);
@@ -1793,11 +1914,12 @@ static void test_fim_checker_deleted_file(void **state) {
     errno = 0;
 }
 
-static void test_fim_checker_deleted_file_enoent(void **state) {
-    fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+static void test_fim_checker_deleted_file_enoent(void** state)
+{
+    fim_data_t* fim_data = *state;
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
     struct stat statbuf = DEFAULT_STATBUF;
-    const char *path = "/media/test.file";
+    const char* path = "/media/test.file";
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1805,7 +1927,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options |= CHECK_SEECHANGES;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->options |= CHECK_SEECHANGES;
 
     fim_data->fentry->file_entry.path = strdup("/media/test.file");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -1835,13 +1957,14 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 
     errno = 0;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options &= ~CHECK_SEECHANGES;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->options &= ~CHECK_SEECHANGES;
 }
 
-static void test_fim_checker_no_file_system(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+static void test_fim_checker_no_file_system(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
     struct stat statbuf = DEFAULT_STATBUF;
-    const char *path = "/media/test.file";
+    const char* path = "/media/test.file";
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -1858,16 +1981,17 @@ static void test_fim_checker_no_file_system(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_regular(void **state) {
-    const char *path = "/media/test.file";
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    struct stat statbuf = { .st_mode = S_IFREG,
-                            .st_dev = 1,
-                            .st_ino = 999,
-                            .st_uid = 0,
-                            .st_gid = 0,
-                            .st_mtime = 1433395216,
-                            .st_size = 1500 };
+static void test_fim_checker_fim_regular(void** state)
+{
+    const char* path = "/media/test.file";
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    struct stat statbuf = {.st_mode = S_IFREG,
+                           .st_dev = 1,
+                           .st_ino = 999,
+                           .st_uid = 0,
+                           .st_gid = 0,
+                           .st_mtime = 1433395216,
+                           .st_size = 1500};
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1892,16 +2016,17 @@ static void test_fim_checker_fim_regular(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_regular_warning(void **state) {
-    const char *path = "/media/test.file";
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    struct stat statbuf = { .st_mode = S_IFREG,
-                            .st_dev = 1,
-                            .st_ino = 999,
-                            .st_uid = 0,
-                            .st_gid = 0,
-                            .st_mtime = 1433395216,
-                            .st_size = 1500 };
+static void test_fim_checker_fim_regular_warning(void** state)
+{
+    const char* path = "/media/test.file";
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    struct stat statbuf = {.st_mode = S_IFREG,
+                           .st_dev = 1,
+                           .st_ino = 999,
+                           .st_uid = 0,
+                           .st_gid = 0,
+                           .st_mtime = 1433395216,
+                           .st_size = 1500};
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1927,10 +2052,11 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_regular_ignore(void **state) {
+static void test_fim_checker_fim_regular_ignore(void** state)
+{
     struct stat statbuf = DEFAULT_STATBUF;
-    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = NULL, .report_event = true };
-    const char *path = "/etc/mtab";
+    event_data_t evt_data = {.mode = FIM_WHODATA, .w_evt = NULL, .report_event = true};
+    const char* path = "/etc/mtab";
     char debug_msg[OS_MAXSTR];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -1952,10 +2078,11 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_regular_restrict(void **state) {
+static void test_fim_checker_fim_regular_restrict(void** state)
+{
     struct stat statbuf = DEFAULT_STATBUF;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    const char *path = "/media/test";
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    const char* path = "/media/test";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1975,11 +2102,12 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_directory(void **state) {
-    fim_data_t *fim_data = *state;
+static void test_fim_checker_fim_directory(void** state)
+{
+    fim_data_t* fim_data = *state;
     struct stat directory_stat = DEFAULT_STATBUF;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    const char *path = "/media/";
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    const char* path = "/media/";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -2017,11 +2145,12 @@ static void test_fim_checker_fim_directory(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) {
-    fim_data_t *fim_data = *state;
+static void test_fim_checker_fim_directory_on_max_recursion_level(void** state)
+{
+    fim_data_t* fim_data = *state;
     struct stat statbuf = DEFAULT_STATBUF;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    const char *path = "/media";
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    const char* path = "/media";
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -2031,7 +2160,7 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     statbuf.st_mode = S_IFDIR;
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 0;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 0;
 
     expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, &statbuf);
@@ -2057,17 +2186,19 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     will_return(__wrap_readdir, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->recursion_level = 50;
 }
 
-static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    const char *path = "/media/test.file";
+static void test_fim_checker_root_ignore_file_under_recursion_level(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    const char* path = "/media/test.file";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -2075,16 +2206,18 @@ static void test_fim_checker_root_ignore_file_under_recursion_level(void **state
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/test.file'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '/media/test.file'");
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_root_file_within_recursion_level(void **state) {
+static void test_fim_checker_root_file_within_recursion_level(void** state)
+{
     struct stat statbuf = DEFAULT_STATBUF;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    const char *path = "/test.file";
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    const char* path = "/test.file";
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -2111,10 +2244,11 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_scan_db_full_double_scan(void **state) {
-    struct stat directory_buf = { .st_mode = S_IFDIR };
-    directory_t *dir_it;
-    OSListNode *node_it;
+static void test_fim_scan_db_full_double_scan(void** state)
+{
+    struct stat directory_buf = {.st_mode = S_IFDIR};
+    directory_t* dir_it;
+    OSListNode* node_it;
     TXN_HANDLE mock_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -2136,7 +2270,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         expect_string(__wrap_IsLink, file, dir_it->path);
         will_return(__wrap_IsLink, -1);
@@ -2148,7 +2283,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME)
+        {
             expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
             will_return(__wrap_fim_add_inotify_watch, 0);
         }
@@ -2166,7 +2302,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     // Second scan
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         expect_string(__wrap_IsLink, file, dir_it->path);
         will_return(__wrap_IsLink, -1);
@@ -2178,7 +2315,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME)
+        {
             expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
             will_return(__wrap_fim_add_inotify_watch, 0);
         }
@@ -2194,7 +2332,11 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     // fim_check_db_state
     expect_string(__wrap__mwarn, formatted_msg, "(6926): File database is 100% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     // fim_send_scan_info
@@ -2209,11 +2351,11 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     fim_scan();
 }
 
-
-static void test_fim_scan_db_full_not_double_scan(void **state) {
-    struct stat directory_buf = { .st_mode = S_IFDIR };
-    directory_t *dir_it;
-    OSListNode *node_it;
+static void test_fim_scan_db_full_not_double_scan(void** state)
+{
+    struct stat directory_buf = {.st_mode = S_IFDIR};
+    directory_t* dir_it;
+    OSListNode* node_it;
     TXN_HANDLE mock_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -2235,7 +2377,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         expect_string(__wrap_IsLink, file, dir_it->path);
         will_return(__wrap_IsLink, -1);
@@ -2247,7 +2390,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME)
+        {
             expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
             will_return(__wrap_fim_add_inotify_watch, 0);
         }
@@ -2271,13 +2415,14 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     fim_scan();
 }
 
-static void test_fim_scan_realtime_enabled(void **state) {
-    OSHashNode empty_table = { .key = NULL }, *table = &empty_table;
-    OSHash dirtb = { .elements = 10, .table = &table, .rows = 0 }; // this hash is not reallistic but works for testing
-    rtfim realtime = { .queue_overflow = true, .dirtb = &dirtb };
-    struct stat directory_buf = { .st_mode = S_IFDIR };
-    directory_t *dir_it;
-    OSListNode *node_it;
+static void test_fim_scan_realtime_enabled(void** state)
+{
+    OSHashNode empty_table = {.key = NULL}, *table = &empty_table;
+    OSHash dirtb = {.elements = 10, .table = &table, .rows = 0}; // this hash is not reallistic but works for testing
+    rtfim realtime = {.queue_overflow = true, .dirtb = &dirtb};
+    struct stat directory_buf = {.st_mode = S_IFDIR};
+    directory_t* dir_it;
+    OSListNode* node_it;
     TXN_HANDLE mock_handle = NULL;
     char debug_buffer[OS_SIZE_128] = {0};
     int rt_folder = 0;
@@ -2303,7 +2448,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         expect_string(__wrap_IsLink, file, dir_it->path);
         will_return(__wrap_IsLink, -1);
@@ -2315,7 +2461,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME)
+        {
             rt_folder++;
             expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
             will_return(__wrap_fim_add_inotify_watch, 0);
@@ -2348,7 +2495,11 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_buffer);
 
     expect_string(__wrap__mwarn, formatted_msg, "(6926): File database is 100% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
@@ -2358,10 +2509,11 @@ static void test_fim_scan_realtime_enabled(void **state) {
     assert_int_equal(syscheck.realtime->queue_overflow, false);
 }
 
-static void test_fim_scan_no_limit(void **state) {
-    struct stat directory_buf = { .st_mode = S_IFDIR };
-    directory_t *dir_it;
-    OSListNode *node_it;
+static void test_fim_scan_no_limit(void** state)
+{
+    struct stat directory_buf = {.st_mode = S_IFDIR};
+    directory_t* dir_it;
+    OSListNode* node_it;
     TXN_HANDLE mock_handle = NULL;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -2383,7 +2535,8 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     // First scan
-    OSList_foreach(node_it, syscheck.directories) {
+    OSList_foreach(node_it, syscheck.directories)
+    {
         dir_it = node_it->data;
         expect_string(__wrap_IsLink, file, dir_it->path);
         will_return(__wrap_IsLink, -1);
@@ -2395,7 +2548,8 @@ static void test_fim_scan_no_limit(void **state) {
         expect_string(__wrap_HasFilesystem, path, dir_it->path);
         will_return(__wrap_HasFilesystem, 0);
 
-        if (FIM_MODE(dir_it->options) == FIM_REALTIME) {
+        if (FIM_MODE(dir_it->options) == FIM_REALTIME)
+        {
             expect_string(__wrap_fim_add_inotify_watch, dir, dir_it->path);
             will_return(__wrap_fim_add_inotify_watch, 0);
         }
@@ -2417,7 +2571,8 @@ static void test_fim_scan_no_limit(void **state) {
     fim_scan();
 }
 
-static int setup_fim_file_scan_symlink_test(void **state) {
+static int setup_fim_file_scan_symlink_test(void** state)
+{
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
@@ -2427,13 +2582,15 @@ static int setup_fim_file_scan_symlink_test(void **state) {
     syscheck.file_limit_enabled = false;
 
     syscheck.directories = OSList_Create();
-    if (!syscheck.directories) {
+    if (!syscheck.directories)
+    {
         return -1;
     }
-    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void*))free_directory);
 
-    directory_t *dir = fim_create_directory("/test/symdir", CHECK_SIZE, NULL, 256, NULL, 1024, 0);
-    if (!dir) {
+    directory_t* dir = fim_create_directory("/test/symdir", CHECK_SIZE, NULL, 256, NULL, 1024, 0);
+    if (!dir)
+    {
         return -1;
     }
     OSList_InsertData(syscheck.directories, NULL, dir);
@@ -2442,7 +2599,8 @@ static int setup_fim_file_scan_symlink_test(void **state) {
     return 0;
 }
 
-static int teardown_fim_file_scan_symlink_test(void **state) {
+static int teardown_fim_file_scan_symlink_test(void** state)
+{
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
     ignore_function_calls(__wrap_pthread_rwlock_unlock);
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
@@ -2457,9 +2615,10 @@ static int teardown_fim_file_scan_symlink_test(void **state) {
     return 0;
 }
 
-static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
-    directory_t *dir = *state;
-    struct stat directory_buf = { .st_mode = S_IFDIR };
+static void test_fim_file_scan_symlink_warns_when_no_follow(void** state)
+{
+    directory_t* dir = *state;
+    struct stat directory_buf = {.st_mode = S_IFDIR};
     TXN_HANDLE mock_handle = NULL;
 
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
@@ -2476,11 +2635,12 @@ static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
     expect_string(__wrap_realpath, path, "/test/symdir");
     will_return(__wrap_realpath, strdup("/actual/dir"));
 
-    expect_string(__wrap__minfo, formatted_msg,
-        "(6961): Configured path '/test/symdir' is a symbolic link to '/actual/dir'. "
-        "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
-        "not the directory contents. Consider monitoring '/actual/dir' directly or enabling "
-        "'follow_symbolic_link'.");
+    expect_string(__wrap__minfo,
+                  formatted_msg,
+                  "(6961): Configured path '/test/symdir' is a symbolic link to '/actual/dir'. "
+                  "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
+                  "not the directory contents. Consider monitoring '/actual/dir' directly or enabling "
+                  "'follow_symbolic_link'.");
 
     expect_string(__wrap_lstat, filename, "/test/symdir");
     will_return(__wrap_lstat, &directory_buf);
@@ -2502,10 +2662,11 @@ static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
     assert_true(dir->symlink_warned);
 }
 
-static void test_fim_file_scan_no_warn_second_scan(void **state) {
-    directory_t *dir = *state;
+static void test_fim_file_scan_no_warn_second_scan(void** state)
+{
+    directory_t* dir = *state;
     dir->symlink_warned = true;
-    struct stat directory_buf = { .st_mode = S_IFDIR };
+    struct stat directory_buf = {.st_mode = S_IFDIR};
     TXN_HANDLE mock_handle = NULL;
 
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
@@ -2536,8 +2697,9 @@ static void test_fim_file_scan_no_warn_second_scan(void **state) {
     assert_true(dir->symlink_warned);
 }
 
-static void test_fim_file_scan_no_warn_not_symlink(void **state) {
-    struct stat directory_buf = { .st_mode = S_IFDIR };
+static void test_fim_file_scan_no_warn_not_symlink(void** state)
+{
+    struct stat directory_buf = {.st_mode = S_IFDIR};
     TXN_HANDLE mock_handle = NULL;
 
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
@@ -2571,8 +2733,9 @@ static void test_fim_file_scan_no_warn_not_symlink(void **state) {
 
 /* Regression test for issue #37824: fim_scan_mutex must stay held through
  * process_pending_sync_updates(), not just through the db transaction. */
-static void test_fim_file_scan_holds_mutex_through_pending_sync_updates(void **state) {
-    struct stat directory_buf = { .st_mode = S_IFDIR };
+static void test_fim_file_scan_holds_mutex_through_pending_sync_updates(void** state)
+{
+    struct stat directory_buf = {.st_mode = S_IFDIR};
     TXN_HANDLE mock_handle = NULL;
 
     ignore_function_calls(__wrap_pthread_rwlock_wrlock);
@@ -2611,9 +2774,10 @@ static void test_fim_file_scan_holds_mutex_through_pending_sync_updates(void **s
 }
 
 #else
-static void test_fim_checker_over_max_recursion_level(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true, .w_evt = NULL };
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\random\\test.exe";
+static void test_fim_checker_over_max_recursion_level(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .report_event = true, .w_evt = NULL};
+    char* path = "%WINDIR%\\System32\\drivers\\etc\\random\\test.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
 
@@ -2623,24 +2787,27 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 2))->recursion_level = 0;
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 2))->recursion_level = 0;
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     str_lowercase(expanded_path);
 
-    snprintf(debug_msg, OS_MAXSTR,
-        "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '%s'", expanded_path);
+    snprintf(debug_msg,
+             OS_MAXSTR,
+             "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 '%s'",
+             expanded_path);
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_deleted_file(void **state) {
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
-    struct stat stat_s = { .st_mode = S_IFREG };
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+static void test_fim_checker_deleted_file(void** state)
+{
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
+    struct stat stat_s = {.st_mode = S_IFREG};
+    char* path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -2648,9 +2815,12 @@ static void test_fim_checker_deleted_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6222): Stat() function failed on: 'c:\\windows\\system32\\drivers\\etc\\test.exe' due to [(1)-(Operation not permitted)]");
+    expect_string(__wrap__mdebug1,
+                  formatted_msg,
+                  "(6222): Stat() function failed on: 'c:\\windows\\system32\\drivers\\etc\\test.exe' due to "
+                  "[(1)-(Operation not permitted)]");
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     str_lowercase(expanded_path);
@@ -2666,12 +2836,13 @@ static void test_fim_checker_deleted_file(void **state) {
     errno = 0;
 }
 
-static void test_fim_checker_deleted_file_enoent(void **state) {
-    fim_data_t *fim_data = *state;
-    struct stat stat_s = { .st_mode = S_IFREG };
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+static void test_fim_checker_deleted_file_enoent(void** state)
+{
+    fim_data_t* fim_data = *state;
+    struct stat stat_s = {.st_mode = S_IFREG};
+    char* path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+    event_data_t evt_data = {.mode = FIM_REALTIME, .report_event = true};
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -2679,9 +2850,9 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options |= CHECK_SEECHANGES;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->options |= CHECK_SEECHANGES;
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     str_lowercase(expanded_path);
@@ -2714,21 +2885,23 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 
     errno = 0;
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3))->options &= ~CHECK_SEECHANGES;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 3))->options &= ~CHECK_SEECHANGES;
 }
 
-static void test_fim_checker_fim_regular(void **state) {
-    fim_data_t *fim_data = *state;
-    struct stat stat_s = { .st_mode = S_IFREG };
-    char *path = "%WINDIR%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
+static void test_fim_checker_fim_regular(void** state)
+{
+    fim_data_t* fim_data = *state;
+    struct stat stat_s = {.st_mode = S_IFREG};
+    char* path = "%WINDIR%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
     char expanded_path[OS_SIZE_128];
-    event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true };
+    event_data_t evt_data = {.mode = FIM_WHODATA, .w_evt = fim_data->w_evt, .report_event = true};
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    if (!ExpandEnvironmentStrings(path, expanded_path, OS_SIZE_128)) {
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_SIZE_128))
+    {
         fail();
     }
 
@@ -2749,19 +2922,20 @@ static void test_fim_checker_fim_regular(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_regular_ignore(void **state) {
-    struct stat stat_s = { .st_mode = S_IFREG };
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\ignored.file";
+static void test_fim_checker_fim_regular_ignore(void** state)
+{
+    struct stat stat_s = {.st_mode = S_IFREG};
+    char* path = "%WINDIR%\\System32\\drivers\\etc\\ignored.file";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     str_lowercase(expanded_path);
@@ -2779,19 +2953,20 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_regular_restrict(void **state) {
-    struct stat stat_s = { .st_mode = S_IFREG };
-    char * path = "%WINDIR%\\System32\\wbem\\restricted.exe";
+static void test_fim_checker_fim_regular_restrict(void** state)
+{
+    struct stat stat_s = {.st_mode = S_IFREG};
+    char* path = "%WINDIR%\\System32\\wbem\\restricted.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+    event_data_t evt_data = {.mode = FIM_REALTIME, .report_event = true};
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     str_lowercase(expanded_path);
@@ -2809,18 +2984,19 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_regular_warning(void **state) {
-    struct stat stat_s = { .st_mode = S_IFREG };
-    char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
+static void test_fim_checker_fim_regular_warning(void** state)
+{
+    struct stat stat_s = {.st_mode = S_IFREG};
+    char* path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true };
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true};
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     str_lowercase(expanded_path);
@@ -2843,21 +3019,22 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_fim_directory(void **state) {
-    fim_data_t *fim_data = *state;
-    struct stat stat_s = { .st_mode = S_IFDIR };
-    char * path = "%WINDIR%\\System32\\drivers\\etc";
+static void test_fim_checker_fim_directory(void** state)
+{
+    fim_data_t* fim_data = *state;
+    struct stat stat_s = {.st_mode = S_IFDIR};
+    char* path = "%WINDIR%\\System32\\drivers\\etc";
     char skip_directory_message[OS_MAXSTR];
     char expanded_path[OS_MAXSTR];
     char expanded_path_test[OS_MAXSTR];
-    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+    event_data_t evt_data = {.mode = FIM_REALTIME, .report_event = true};
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
     str_lowercase(expanded_path);
@@ -2891,40 +3068,44 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(wrap_FindNextFile, (BOOL)0);
     will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
 
-    snprintf(skip_directory_message, OS_MAXSTR,
-        "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
+    snprintf(skip_directory_message,
+             OS_MAXSTR,
+             "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.",
+             expanded_path_test);
     expect_string(__wrap__mdebug2, formatted_msg, skip_directory_message);
 
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
 
-
-static void test_fim_checker_root_ignore_file_under_recursion_level(void **state) {
-    char * path = "c:\\windows\\test.file";
-    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true };
+static void test_fim_checker_root_ignore_file_under_recursion_level(void** state)
+{
+    char* path = "c:\\windows\\test.file";
+    event_data_t evt_data = {.mode = FIM_REALTIME, .report_event = true};
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 'c:\\windows\\test.file'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6217): Maximum level of recursion reached. Depth:1 recursion_level:0 'c:\\windows\\test.file'");
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
 
-static void test_fim_checker_root_file_within_recursion_level(void **state) {
-    char * path = "c:\\test.file";
+static void test_fim_checker_root_file_within_recursion_level(void** state)
+{
+    char* path = "c:\\test.file";
     struct stat statbuf = DEFAULT_STATBUF;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .report_event = true, .w_evt = NULL };
+    event_data_t evt_data = {.mode = FIM_REALTIME, .report_event = true, .w_evt = NULL};
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
-    TXN_HANDLE txn_handle = (TXN_HANDLE) 1;
+    TXN_HANDLE txn_handle = (TXN_HANDLE)1;
     callback_ctx mock_context = {0};
     statbuf.st_size = 0;
 
@@ -2948,7 +3129,8 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 // fim_directory enumerates via FindFirstFileW on Windows; queue an enumeration
 // that yields no scannable entry ("." then end), equivalent to the previous
 // opendir()+readdir()==NULL setup. wpat must outlive the checked call.
-static void expect_win_empty_dir(const char *dir, wchar_t *wpat, size_t wpat_len) {
+static void expect_win_empty_dir(const char* dir, wchar_t* wpat, size_t wpat_len)
+{
     char pattern[OS_SIZE_1024];
     snprintf(pattern, sizeof(pattern), "%s\\*", dir);
     MultiByteToWideChar(CP_UTF8, 0, pattern, -1, wpat, wpat_len);
@@ -2962,10 +3144,11 @@ static void expect_win_empty_dir(const char *dir, wchar_t *wpat, size_t wpat_len
     will_return(wrap_FindNextFile, ERROR_NO_MORE_FILES);
 }
 
-static void test_fim_scan_db_full_double_scan(void **state) {
+static void test_fim_scan_db_full_double_scan(void** state)
+{
     char test_file_path[OS_SIZE_256];
     wchar_t w_pat[6][OS_SIZE_1024];
-    struct stat directory_stat = { .st_mode = S_IFDIR };
+    struct stat directory_stat = {.st_mode = S_IFDIR};
     TXN_HANDLE mock_handle;
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[6][OS_SIZE_256] = {
@@ -2995,8 +3178,10 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    for(i = 0; i < 6; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
+    for (i = 0; i < 6; i++)
+    {
+        if (!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+        {
             fail();
         }
         str_lowercase(expanded_dirs[i]);
@@ -3010,7 +3195,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
         expect_win_empty_dir(expanded_dirs[i], w_pat[i], OS_SIZE_1024);
     }
-    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
+    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0", 1);
     will_return_maybe(__wrap_realtime_adddir, 0);
 
     will_return(__wrap_fim_db_get_count_file_entry, 1);
@@ -3028,7 +3213,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     fim_scan();
 }
 
-static void test_fim_scan_db_full_not_double_scan(void **state) {
+static void test_fim_scan_db_full_not_double_scan(void** state)
+{
     char expanded_dirs[10][OS_SIZE_1024];
     wchar_t w_pat[6][OS_SIZE_1024];
     char directories[6][OS_SIZE_256] = {
@@ -3040,7 +3226,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
     };
     int i;
-    struct stat buf = { .st_mode = S_IFDIR };
+    struct stat buf = {.st_mode = S_IFDIR};
     TXN_HANDLE mock_handle;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3061,8 +3247,10 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    for(i = 0; i < 6; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
+    for (i = 0; i < 6; i++)
+    {
+        if (!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+        {
             fail();
         }
         str_lowercase(expanded_dirs[i]);
@@ -3076,7 +3264,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         expect_win_empty_dir(expanded_dirs[i], w_pat[i], OS_SIZE_1024);
     }
 
-    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
+    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0", 1);
     will_return_maybe(__wrap_realtime_adddir, 0);
 
     will_return(__wrap_fim_db_get_count_file_entry, 1);
@@ -3092,7 +3280,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     fim_scan();
 }
 
-static void test_fim_scan_no_limit(void **state) {
+static void test_fim_scan_no_limit(void** state)
+{
     char expanded_dirs[10][OS_SIZE_1024];
     wchar_t w_pat[6][OS_SIZE_1024];
     char directories[6][OS_SIZE_256] = {
@@ -3104,7 +3293,7 @@ static void test_fim_scan_no_limit(void **state) {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
     };
     int i;
-    struct stat buf = { .st_mode = S_IFDIR };
+    struct stat buf = {.st_mode = S_IFDIR};
     TXN_HANDLE mock_handle;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3124,8 +3313,10 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
-    for(i = 0; i < 6; i++) {
-        if(!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024)) {
+    for (i = 0; i < 6; i++)
+    {
+        if (!ExpandEnvironmentStrings(directories[i], expanded_dirs[i], OS_SIZE_1024))
+        {
             fail();
         }
         str_lowercase(expanded_dirs[i]);
@@ -3138,7 +3329,7 @@ static void test_fim_scan_no_limit(void **state) {
 
         expect_win_empty_dir(expanded_dirs[i], w_pat[i], OS_SIZE_1024);
     }
-    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0",1);
+    expect_string_count(__wrap_realtime_adddir, dir, "c:\\windows\\system32\\windowspowershell\\v1.0", 1);
     will_return_maybe(__wrap_realtime_adddir, 0);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -3152,16 +3343,20 @@ static void test_fim_scan_no_limit(void **state) {
 #endif
 
 #ifndef TEST_WINAGENT
-static void test_fim_checker_unsupported_path(void **state) {
-    const char * PATH = "Unsupported\xFF\x02";
-    expect_string(__wrap__mwarn, formatted_msg, "(6955): Ignoring file 'Unsupported\xFF\x02' due to unsupported name (non-UTF8).");
+static void test_fim_checker_unsupported_path(void** state)
+{
+    const char* PATH = "Unsupported\xFF\x02";
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "(6955): Ignoring file 'Unsupported\xFF\x02' due to unsupported name (non-UTF8).");
 
     fim_checker(PATH, NULL, NULL, NULL, NULL);
 }
 #endif
 
 /* fim_check_db_state */
-static void test_fim_check_db_state_normal_to_empty(void **state) {
+static void test_fim_check_db_state_normal_to_empty(void** state)
+{
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
@@ -3170,7 +3365,8 @@ static void test_fim_check_db_state_normal_to_empty(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
-static void test_fim_check_db_state_empty_to_empty(void **state) {
+static void test_fim_check_db_state_empty_to_empty(void** state)
+{
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
     fim_check_db_state(syscheck.file_entry_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
@@ -3178,9 +3374,14 @@ static void test_fim_check_db_state_empty_to_empty(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
-static void test_fim_check_db_state_empty_to_full(void **state) {
+static void test_fim_check_db_state_empty_to_full(void** state)
+{
     expect_string(__wrap__mwarn, formatted_msg, "(6926): File database is 100% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
@@ -3190,9 +3391,13 @@ static void test_fim_check_db_state_empty_to_full(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
-static void test_fim_check_db_state_full_to_empty(void **state) {
+static void test_fim_check_db_state_full_to_empty(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6036): The file database status returns to normal.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
+    expect_string(__wrap_send_log_msg,
+                  msg,
+                  "wazuh: FIM DB: "
+                  "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
@@ -3202,9 +3407,14 @@ static void test_fim_check_db_state_full_to_empty(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
-static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
+static void test_fim_check_db_state_empty_to_90_percentage(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6040): File database is 90% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
@@ -3214,9 +3424,13 @@ static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
+static void test_fim_check_db_state_90_percentage_to_empty(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6036): The file database status returns to normal.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
+    expect_string(__wrap_send_log_msg,
+                  msg,
+                  "wazuh: FIM DB: "
+                  "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
@@ -3226,9 +3440,14 @@ static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
-static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
+static void test_fim_check_db_state_empty_to_80_percentage(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6038): File database is 80% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
@@ -3238,9 +3457,13 @@ static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
+static void test_fim_check_db_state_80_percentage_to_empty(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6036): The file database status returns to normal.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
+    expect_string(__wrap_send_log_msg,
+                  msg,
+                  "wazuh: FIM DB: "
+                  "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":0,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
@@ -3250,7 +3473,8 @@ static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
 
-static void test_fim_check_db_state_empty_to_normal(void **state) {
+static void test_fim_check_db_state_empty_to_normal(void** state)
+{
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
     fim_check_db_state(syscheck.file_entry_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
@@ -3258,7 +3482,8 @@ static void test_fim_check_db_state_empty_to_normal(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
-static void test_fim_check_db_state_normal_to_normal(void **state) {
+static void test_fim_check_db_state_normal_to_normal(void** state)
+{
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
     fim_check_db_state(syscheck.file_entry_limit, 20000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
@@ -3266,9 +3491,14 @@ static void test_fim_check_db_state_normal_to_normal(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
-static void test_fim_check_db_state_normal_to_full(void **state) {
+static void test_fim_check_db_state_normal_to_full(void** state)
+{
     expect_string(__wrap__mwarn, formatted_msg, "(6926): File database is 100% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
@@ -3278,9 +3508,14 @@ static void test_fim_check_db_state_normal_to_full(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
-static void test_fim_check_db_state_full_to_normal(void **state) {
+static void test_fim_check_db_state_full_to_normal(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6036): The file database status returns to normal.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
@@ -3290,10 +3525,15 @@ static void test_fim_check_db_state_full_to_normal(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
-static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
+static void test_fim_check_db_state_normal_to_90_percentage(void** state)
+{
 
     expect_string(__wrap__minfo, formatted_msg, "(6040): File database is 90% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
@@ -3303,10 +3543,15 @@ static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
+static void test_fim_check_db_state_90_percentage_to_normal(void** state)
+{
 
     expect_string(__wrap__minfo, formatted_msg, "(6036): The file database status returns to normal.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
@@ -3316,9 +3561,14 @@ static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
-static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
+static void test_fim_check_db_state_normal_to_80_percentage(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6038): File database is 80% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
@@ -3328,7 +3578,8 @@ static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state) {
+static void test_fim_check_db_state_80_percentage_to_80_percentage(void** state)
+{
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
     fim_check_db_state(syscheck.file_entry_limit, 42000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
@@ -3336,9 +3587,14 @@ static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state)
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_80_percentage_to_full(void **state) {
+static void test_fim_check_db_state_80_percentage_to_full(void** state)
+{
     expect_string(__wrap__mwarn, formatted_msg, "(6926): File database is 100% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
@@ -3348,10 +3604,15 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
-static void test_fim_check_db_state_full_to_80_percentage(void **state) {
+static void test_fim_check_db_state_full_to_80_percentage(void** state)
+{
 
     expect_string(__wrap__minfo, formatted_msg, "(6038): File database is 80% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
@@ -3361,9 +3622,14 @@ static void test_fim_check_db_state_full_to_80_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state) {
+static void test_fim_check_db_state_80_percentage_to_90_percentage(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6040): File database is 90% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
@@ -3373,7 +3639,8 @@ static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state)
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state) {
+static void test_fim_check_db_state_90_percentage_to_90_percentage(void** state)
+{
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
     fim_check_db_state(syscheck.file_entry_limit, 48000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
@@ -3381,9 +3648,14 @@ static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state)
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_90_percentage_to_full(void **state) {
+static void test_fim_check_db_state_90_percentage_to_full(void** state)
+{
     expect_string(__wrap__mwarn, formatted_msg, "(6926): File database is 100% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":50000,\"alert_type\":\"full\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
@@ -3393,7 +3665,8 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
-static void test_fim_check_db_state_full_to_full(void **state) {
+static void test_fim_check_db_state_full_to_full(void** state)
+{
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
     fim_check_db_state(syscheck.file_entry_limit, 60000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
@@ -3401,9 +3674,14 @@ static void test_fim_check_db_state_full_to_full(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
 
-static void test_fim_check_db_state_full_to_90_percentage(void **state) {
+static void test_fim_check_db_state_full_to_90_percentage(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6040): File database is 90% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":46000,\"alert_type\":\"90_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
@@ -3413,9 +3691,14 @@ static void test_fim_check_db_state_full_to_90_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state) {
+static void test_fim_check_db_state_90_percentage_to_80_percentage(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6038): File database is 80% full.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":41000,\"alert_type\":\"80_percentage\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
@@ -3425,9 +3708,14 @@ static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state)
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
 
-static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
+static void test_fim_check_db_state_80_percentage_to_normal(void** state)
+{
     expect_string(__wrap__minfo, formatted_msg, "(6036): The file database status returns to normal.");
-    expect_string(__wrap_send_log_msg, msg, "wazuh: FIM DB: {\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
+    expect_string(
+        __wrap_send_log_msg,
+        msg,
+        "wazuh: FIM DB: "
+        "{\"fim_db_table\":\"file_entry\",\"file_limit\":50000,\"file_count\":10000,\"alert_type\":\"normal\"}");
     will_return(__wrap_send_log_msg, 1);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
@@ -3437,7 +3725,8 @@ static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
 
-static void test_fim_check_db_state_nodes_count_database_error(void **state) {
+static void test_fim_check_db_state_nodes_count_database_error(void** state)
+{
     expect_string(__wrap__mwarn, formatted_msg, "(6948): Unable to get the number of entries in database.");
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
@@ -3448,9 +3737,10 @@ static void test_fim_check_db_state_nodes_count_database_error(void **state) {
 }
 
 /* fim_directory */
-static void test_fim_directory(void **state) {
-    fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+static void test_fim_directory(void** state)
+{
+    fim_data_t* fim_data = *state;
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION};
     int ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3498,9 +3788,10 @@ static void test_fim_directory(void **state) {
 // Regression test for issue #34878: an entry whose name has characters outside
 // the process ANSI code page (Turkish) must be enumerated wide and reported as
 // UTF-8, lowercasing ASCII only and preserving the non-ASCII bytes.
-static void test_fim_directory_non_ascii_name(void **state) {
-    (void) state;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+static void test_fim_directory_non_ascii_name(void** state)
+{
+    (void)state;
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION};
     int ret;
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3510,7 +3801,10 @@ static void test_fim_directory_non_ascii_name(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_memory(wrap_FindFirstFile, lpFileName, L"test\\*", (wcslen(L"test\\*") + 1) * sizeof(wchar_t));
-    will_return(wrap_FindFirstFile, "A" "\xc4\x9e" ".txt");   // "AĞ.txt" in UTF-8 (Ğ = U+011E, uppercase)
+    will_return(wrap_FindFirstFile,
+                "A"
+                "\xc4\x9e"
+                ".txt"); // "AĞ.txt" in UTF-8 (Ğ = U+011E, uppercase)
     will_return(wrap_FindFirstFile, FILE_ATTRIBUTE_NORMAL);
     will_return(wrap_FindFirstFile, (HANDLE)1);
     expect_value(wrap_FindNextFile, hFindFile, (HANDLE)1);
@@ -3521,17 +3815,21 @@ static void test_fim_directory_non_ascii_name(void **state) {
     // 'A' is lowercased to 'a' (ASCII); the non-ASCII uppercase 'Ğ' (0xc4 0x9e) is
     // preserved byte for byte. A Unicode case fold (the removed LCMapStringW) would
     // lowercase it to 'ğ', so this assertion fails if that regression returns.
-    expect_string(__wrap__mdebug2, formatted_msg,
-                  "(6319): No configuration found for (file):'test\\a" "\xc4\x9e" ".txt'");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(6319): No configuration found for (file):'test\\a"
+                  "\xc4\x9e"
+                  ".txt'");
 
     ret = fim_directory("test", &evt_data, NULL, NULL, NULL);
     assert_int_equal(ret, 0);
 }
 #endif
 
-static void test_fim_directory_ignore(void **state) {
-    fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION };
+static void test_fim_directory_ignore(void** state)
+{
+    fim_data_t* fim_data = *state;
+    event_data_t evt_data = {.mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .type = FIM_MODIFICATION};
     int ret;
 
     strcpy(fim_data->entry->d_name, ".");
@@ -3557,7 +3855,8 @@ static void test_fim_directory_ignore(void **state) {
     assert_int_equal(ret, 0);
 }
 
-static void test_fim_directory_nodir(void **state) {
+static void test_fim_directory_nodir(void** state)
+{
     int ret;
 
     expect_string(__wrap__merror, formatted_msg, "(1105): Attempted to use null string.");
@@ -3567,7 +3866,8 @@ static void test_fim_directory_nodir(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_fim_directory_opendir_error(void **state) {
+static void test_fim_directory_opendir_error(void** state)
+{
     int ret;
 
 #ifdef TEST_WINAGENT
@@ -3592,17 +3892,18 @@ static void test_fim_directory_opendir_error(void **state) {
 }
 
 /* fim_get_data */
-static void test_fim_get_data(void **state) {
-    fim_data_t *fim_data = *state;
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP |
-                                             CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM };
-    struct stat statbuf = { .st_mode = S_IFREG | 00444,
-                            .st_size = 1000,
-                            .st_uid = 0,
-                            .st_gid = 0,
-                            .st_ino = 1234,
-                            .st_dev = 2345,
-                            .st_mtime = 3456 };
+static void test_fim_get_data(void** state)
+{
+    fim_data_t* fim_data = *state;
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP |
+                                            CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM};
+    struct stat statbuf = {.st_mode = S_IFREG | 00444,
+                           .st_size = 1000,
+                           .st_uid = 0,
+                           .st_gid = 0,
+                           .st_ino = 1234,
+                           .st_dev = 2345,
+                           .st_mtime = 3456};
 
     expect_get_data(strdup("user"), strdup("group"), "test", 1);
     fim_data->local_data = fim_get_data("test", &configuration, &statbuf);
@@ -3615,19 +3916,21 @@ static void test_fim_get_data(void **state) {
 #endif
     assert_string_equal(fim_data->local_data->hash_md5, "d41d8cd98f00b204e9800998ecf8427e");
     assert_string_equal(fim_data->local_data->hash_sha1, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    assert_string_equal(fim_data->local_data->hash_sha256, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    assert_string_equal(fim_data->local_data->hash_sha256,
+                        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 }
 
-static void test_fim_get_data_no_hashes(void **state) {
-    fim_data_t *fim_data = *state;
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP };
-    struct stat statbuf = { .st_mode = S_IFREG | 00444,
-                            .st_size = 1000,
-                            .st_uid = 0,
-                            .st_gid = 0,
-                            .st_ino = 1234,
-                            .st_dev = 2345,
-                            .st_mtime = 3456 };
+static void test_fim_get_data_no_hashes(void** state)
+{
+    fim_data_t* fim_data = *state;
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP};
+    struct stat statbuf = {.st_mode = S_IFREG | 00444,
+                           .st_size = 1000,
+                           .st_uid = 0,
+                           .st_gid = 0,
+                           .st_ino = 1234,
+                           .st_dev = 2345,
+                           .st_mtime = 3456};
 
     expect_get_data(strdup("user"), strdup("group"), "test", 0);
 
@@ -3644,17 +3947,18 @@ static void test_fim_get_data_no_hashes(void **state) {
     assert_string_equal(fim_data->local_data->hash_sha256, "");
 }
 
-static void test_fim_get_data_hash_error(void **state) {
-    fim_data_t *fim_data = *state;
-    directory_t configuration = { .options = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_MTIME |
-                          CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP };
-    struct stat statbuf = { .st_mode = S_IFREG | 00444,
-                            .st_size = 1000,
-                            .st_uid = 0,
-                            .st_gid = 0,
-                            .st_ino = 1234,
-                            .st_dev = 2345,
-                            .st_mtime = 3456 };
+static void test_fim_get_data_hash_error(void** state)
+{
+    fim_data_t* fim_data = *state;
+    directory_t configuration = {.options = CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_MTIME | CHECK_SIZE |
+                                            CHECK_PERM | CHECK_OWNER | CHECK_GROUP};
+    struct stat statbuf = {.st_mode = S_IFREG | 00444,
+                           .st_size = 1000,
+                           .st_uid = 0,
+                           .st_gid = 0,
+                           .st_ino = 1234,
+                           .st_dev = 2345,
+                           .st_mtime = 3456};
 
     expect_get_data(strdup("user"), strdup("group"), "test", 0);
 
@@ -3662,7 +3966,9 @@ static void test_fim_get_data_hash_error(void **state) {
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File,
+                  sha256output,
+                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, mode, OS_BINARY);
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, -1);
@@ -3675,18 +3981,19 @@ static void test_fim_get_data_hash_error(void **state) {
 }
 
 #ifdef TEST_WINAGENT
-static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
-    fim_data_t *fim_data = *state;
-    directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP |
-                                             CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM };
+static void test_fim_get_data_fail_to_get_file_premissions(void** state)
+{
+    fim_data_t* fim_data = *state;
+    directory_t configuration = {.options = CHECK_SIZE | CHECK_PERM | CHECK_MTIME | CHECK_OWNER | CHECK_GROUP |
+                                            CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM};
     struct stat statbuf = DEFAULT_STATBUF;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6325): It was not possible to extract the permissions of 'test'. Error: 5");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "(6325): It was not possible to extract the permissions of 'test'. Error: 5");
 
     expect_string(__wrap_w_get_file_permissions, file_path, "test");
     will_return(__wrap_w_get_file_permissions, NULL);
     will_return(__wrap_w_get_file_permissions, ERROR_ACCESS_DENIED);
-
 
     fim_data->local_data = fim_get_data("test", &configuration, &statbuf);
 
@@ -3694,8 +4001,9 @@ static void test_fim_get_data_fail_to_get_file_premissions(void **state) {
 }
 #endif
 
-static void test_fim_realtime_event_file_exists(void **state) {
-    struct stat buf = { .st_mode = 0 };
+static void test_fim_realtime_event_file_exists(void** state)
+{
+    struct stat buf = {.st_mode = 0};
 
 #ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3726,9 +4034,10 @@ static void test_fim_realtime_event_file_exists(void **state) {
     fim_realtime_event("/test");
 }
 
-static void test_fim_realtime_event_file_missing(void **state) {
+static void test_fim_realtime_event_file_missing(void** state)
+{
 
-    struct stat stat_buf = { .st_mode = 0 };
+    struct stat stat_buf = {.st_mode = 0};
     char mdebug_msg[70];
 
 #ifndef TEST_WINAGENT
@@ -3746,9 +4055,9 @@ static void test_fim_realtime_event_file_missing(void **state) {
 #endif
 
 #ifdef TEST_WINAGENT
-    char *path = "C:\\a\\random\\path";
+    char* path = "C:\\a\\random\\path";
 #else
-    char *path = "/a/random/path";
+    char* path = "/a/random/path";
 #endif
     char buff[OS_SIZE_128] = {0};
     snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
@@ -3770,10 +4079,11 @@ static void test_fim_realtime_event_file_missing(void **state) {
     errno = 0;
 }
 
-static void test_fim_whodata_event_file_exists(void **state) {
+static void test_fim_whodata_event_file_exists(void** state)
+{
 
-    fim_data_t *fim_data = *state;
-    struct stat buf = { .st_mode = 0 };
+    fim_data_t* fim_data = *state;
+    struct stat buf = {.st_mode = 0};
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3796,9 +4106,10 @@ static void test_fim_whodata_event_file_exists(void **state) {
     fim_whodata_event(fim_data->w_evt);
 }
 
-static void test_fim_whodata_event_file_missing(void **state) {
-    fim_data_t *fim_data = *state;
-    struct stat buf = { .st_mode = 0 };
+static void test_fim_whodata_event_file_missing(void** state)
+{
+    fim_data_t* fim_data = *state;
+    struct stat buf = {.st_mode = 0};
 
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3826,17 +4137,18 @@ static void test_fim_whodata_event_file_missing(void **state) {
 
 /* fim_process_missing_entry */
 
-static void test_fim_process_missing_entry_null_configuration(void **state) {
+static void test_fim_process_missing_entry_null_configuration(void** state)
+{
 #ifdef TEST_WINAGENT
-    char *path = "C:\\a\\random\\path";
+    char* path = "C:\\a\\random\\path";
 #else
-    char *path = "/a/random/path";
+    char* path = "/a/random/path";
 #endif
 
     char buff[OS_SIZE_128] = {0};
     snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
     char debug_msg[70];
-    sprintf(debug_msg,"(6319): No configuration found for (file):'%s'", path);
+    sprintf(debug_msg, "(6319): No configuration found for (file):'%s'", path);
 
 #ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -3856,14 +4168,15 @@ static void test_fim_process_missing_entry_null_configuration(void **state) {
     fim_process_missing_entry(path, FIM_REALTIME, NULL);
 }
 
-static void test_fim_process_missing_entry_data_exists(void **state) {
-    fim_data_t *fim_data = (fim_data_t*) *state;
+static void test_fim_process_missing_entry_data_exists(void** state)
+{
+    fim_data_t* fim_data = (fim_data_t*)*state;
     free(fim_data->w_evt->path);
 #ifdef TEST_WINAGENT
-    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char* aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
     char path[OS_MAXSTR];
 
-    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
 
     str_lowercase(path);
@@ -3896,14 +4209,15 @@ static void test_fim_process_missing_entry_data_exists(void **state) {
 #endif
 }
 
-void test_fim_process_missing_entry_whodata_disabled(void **state){
-    fim_data_t *fim_data = (fim_data_t*) *state;
+void test_fim_process_missing_entry_whodata_disabled(void** state)
+{
+    fim_data_t* fim_data = (fim_data_t*)*state;
     free(fim_data->w_evt->path);
 #ifdef TEST_WINAGENT
-    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char* aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
     char path[OS_MAXSTR];
 
-    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
 
     str_lowercase(path);
@@ -3929,14 +4243,15 @@ void test_fim_process_missing_entry_whodata_disabled(void **state){
     fim_process_missing_entry(fim_data->w_evt->path, FIM_WHODATA, fim_data->w_evt);
 }
 
-void test_fim_process_missing_entry(void **state){
-    fim_data_t *fim_data = (fim_data_t*) *state;
+void test_fim_process_missing_entry(void** state)
+{
+    fim_data_t* fim_data = (fim_data_t*)*state;
     free(fim_data->w_evt->path);
 #ifdef TEST_WINAGENT
-    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char* aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
     char path[OS_MAXSTR];
 
-    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+    if (!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
         fail();
 
     str_lowercase(path);
@@ -3974,11 +4289,12 @@ void test_fim_process_missing_entry(void **state){
 #endif
 }
 
-void test_fim_diff_folder_size(void **state) {
-    (void) state;
-    char *diff_local;
+void test_fim_diff_folder_size(void** state)
+{
+    (void)state;
+    char* diff_local;
 
-    diff_local = (char *)calloc(strlen(DIFF_DIR) + strlen("/local") + 1, sizeof(char));
+    diff_local = (char*)calloc(strlen(DIFF_DIR) + strlen("/local") + 1, sizeof(char));
 
     snprintf(diff_local, strlen(DIFF_DIR) + strlen("/local") + 1, "%s/local", DIFF_DIR);
 
@@ -3992,13 +4308,15 @@ void test_fim_diff_folder_size(void **state) {
 
     assert_int_equal(syscheck.diff_folder_size, 20);
 
-    if (diff_local) {
+    if (diff_local)
+    {
         free(diff_local);
     }
 }
 
-static void test_update_wildcards_config() {
-    char **paths;
+static void test_update_wildcards_config()
+{
+    char** paths;
 #ifndef TEST_WINAGENT
     char wildcard1[20] = "/testdir?";
     char wildcard2[20] = "/*/path";
@@ -4010,7 +4328,7 @@ static void test_update_wildcards_config() {
     char resolvedpath1[20] = "c:\\testdir1";
     char resolvedpath2[20] = "c:\\testdir2";
 #endif
-    os_calloc(3, sizeof(char *), paths);
+    os_calloc(3, sizeof(char*), paths);
     os_strdup(resolvedpath1, paths[0]);
     os_strdup(resolvedpath2, paths[1]);
 
@@ -4036,13 +4354,14 @@ static void test_update_wildcards_config() {
     update_wildcards_config();
 
     // Filled config
-    directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
+    directory_t* directory0 = (directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0);
     assert_string_equal(directory0->path, resolvedpath1);
-    directory_t *directory1 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1);
+    directory_t* directory1 = (directory_t*)OSList_GetDataFromIndex(syscheck.directories, 1);
     assert_string_equal(directory1->path, resolvedpath2);
 }
 
-static void test_update_wildcards_config_remove_config() {
+static void test_update_wildcards_config_remove_config()
+{
 #ifndef TEST_WINAGENT
     char wildcard1[20] = "/testdir?";
     char wildcard2[20] = "/*/path";
@@ -4101,34 +4420,43 @@ static void test_update_wildcards_config_remove_config() {
     update_wildcards_config();
 
     // Empty config
-    directory_t *directory0 = (directory_t *)OSList_GetDataFromIndex(syscheck.directories, 0);
+    directory_t* directory0 = (directory_t*)OSList_GetDataFromIndex(syscheck.directories, 0);
     assert_null(directory0);
 }
 
-static void test_update_wildcards_config_list_null() {
+static void test_update_wildcards_config_list_null()
+{
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
 
-    if (syscheck.wildcards) {
+    if (syscheck.wildcards)
+    {
         OSList_Destroy(syscheck.wildcards);
         syscheck.wildcards = NULL;
     }
     update_wildcards_config();
 }
 
-static void test_transaction_callback_add(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_add(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    char *path = "/etc/a_test_file.txt";
+    char* path = "/etc/a_test_file.txt";
 #else
-    char *path = "c:\\windows\\a_test_file.txt";
+    char* path = "c:\\windows\\a_test_file.txt";
 #endif
 
-    callback_ctx *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
-    cJSON *result = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+    callback_ctx* txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data = &DEFAULT_FILE_DATA};
+    cJSON* result = cJSON_Parse(
+        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,"
+        "\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":"
+        "\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":"
+        "\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":\"801978\",\"mtime\":"
+        "1645001030,\"path\":\"/etc/"
+        "a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
 
     txn_context->entry = &entry;
     data->dbsync_event = result;
@@ -4153,9 +4481,12 @@ static void test_transaction_callback_add(void **state) {
     // validate_and_persist_fim_event wrapper returns validation success
     will_return(__wrap_validate_and_persist_fim_event, true);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file.txt");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file.txt");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\a_test_file.txt");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\a_test_file.txt");
 #endif
     transaction_callback(INSERTED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_ADD);
@@ -4167,22 +4498,29 @@ static void test_transaction_callback_add(void **state) {
 // real pending_sync_updates list into the callback_ctx it hands to transaction_callback (it used to
 // leave the field NULL, so the INSERTED branch below silently skipped queuing the sync flag update
 // and the row stayed at sync=0 forever). This asserts the queuing itself, given a non-NULL list.
-static void test_transaction_callback_add_queues_sync_flag_update(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_add_queues_sync_flag_update(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    char *path = "/etc/a_test_file.txt";
+    char* path = "/etc/a_test_file.txt";
 #else
-    char *path = "c:\\windows\\a_test_file.txt";
+    char* path = "c:\\windows\\a_test_file.txt";
 #endif
 
-    callback_ctx *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
-    cJSON *result = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
+    callback_ctx* txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data = &DEFAULT_FILE_DATA};
+    cJSON* result = cJSON_Parse(
+        "{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,"
+        "\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":"
+        "\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":"
+        "\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":\"801978\",\"mtime\":"
+        "1645001030,\"path\":\"/etc/"
+        "a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
 
     txn_context->entry = &entry;
     data->dbsync_event = result;
 
-    OSList *pending_sync_updates = OSList_Create();
+    OSList* pending_sync_updates = OSList_Create();
     assert_non_null(pending_sync_updates);
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
     txn_context->pending_sync_updates = pending_sync_updates;
@@ -4204,19 +4542,26 @@ static void test_transaction_callback_add_queues_sync_flag_update(void **state) 
     expect_function_call(__wrap_send_syscheck_msg);
     will_return(__wrap_validate_and_persist_fim_event, true);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file.txt");
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file.txt (version: 1, sync: 1)");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=/etc/a_test_file.txt");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file.txt (version: 1, sync: 1)");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\a_test_file.txt");
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: c:\\windows\\a_test_file.txt (version: 1, sync: 1)");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "INSERTED: file_limit=0 (unlimited), sync_flag=1, path=c:\\windows\\a_test_file.txt");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "Added item to pending sync list: c:\\windows\\a_test_file.txt (version: 1, sync: 1)");
 #endif
 
     transaction_callback(INSERTED, result, txn_context);
 
     int items_found = 0;
-    OSListNode *node_it;
-    OSList_foreach(node_it, pending_sync_updates) {
-        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+    OSListNode* node_it;
+    OSList_foreach(node_it, pending_sync_updates)
+    {
+        pending_sync_item_t* item = (pending_sync_item_t*)node_it->data;
         assert_non_null(item);
         assert_int_equal(item->sync_value, 1);
         assert_non_null(item->json);
@@ -4230,18 +4575,28 @@ static void test_transaction_callback_add_queues_sync_flag_update(void **state) 
     data->txn_context->entry = NULL;
 }
 
-static void test_transaction_callback_modify(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_modify(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    char *path = "/etc/a_test_file.txt";
+    char* path = "/etc/a_test_file.txt";
 #else
-    char *path = "c:\\windows\\a_test_file.txt";
+    char* path = "c:\\windows\\a_test_file.txt";
 #endif
-    callback_ctx *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    callback_ctx* txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data = &DEFAULT_FILE_DATA};
     txn_context->entry = &entry;
 
-    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"version\":1}}");
+    cJSON* result =
+        cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":"
+                    "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\","
+                    "\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":"
+                    "1645001693,\"path\":\"/etc/"
+                    "a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":"
+                    "\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+                    "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":"
+                    "\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,"
+                    "\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"version\":1}}");
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -4275,25 +4630,35 @@ static void test_transaction_callback_modify(void **state) {
 // does. Before the fix, fim_file()'s non-transactional (realtime/whodata) path left that field
 // NULL, so this promotion was silently skipped there too, not just the INSERTED case. This
 // asserts the queuing given a non-NULL list, mirroring test_transaction_callback_add_queues_sync_flag_update.
-static void test_transaction_callback_modify_promotes_pending_sync_update(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_modify_promotes_pending_sync_update(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    char *path = "/etc/a_test_file.txt";
+    char* path = "/etc/a_test_file.txt";
 #else
-    char *path = "c:\\windows\\a_test_file.txt";
+    char* path = "c:\\windows\\a_test_file.txt";
 #endif
-    callback_ctx *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    callback_ctx* txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data = &DEFAULT_FILE_DATA};
     txn_context->entry = &entry;
 
-    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"sync\":0,\"version\":1}}");
+    cJSON* result =
+        cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":"
+                    "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\","
+                    "\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":"
+                    "1645001693,\"path\":\"/etc/"
+                    "a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":"
+                    "\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+                    "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":"
+                    "\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,"
+                    "\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"sync\":0,\"version\":1}}");
     data->dbsync_event = result;
 
     int original_file_limit = syscheck.file_limit;
     syscheck.file_limit = 999999; // must be > 0 and > synced_docs_files for the promotion branch to run
     int original_synced_docs_files = synced_docs_files;
 
-    OSList *pending_sync_updates = OSList_Create();
+    OSList* pending_sync_updates = OSList_Create();
     assert_non_null(pending_sync_updates);
     OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
     txn_context->pending_sync_updates = pending_sync_updates;
@@ -4315,18 +4680,22 @@ static void test_transaction_callback_modify_promotes_pending_sync_update(void *
     expect_function_call(__wrap_send_syscheck_msg);
     will_return(__wrap_validate_and_persist_fim_event, true);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file.txt (version: 2, sync: 1)");
+    expect_string(
+        __wrap__mdebug2, formatted_msg, "Added item to pending sync list: /etc/a_test_file.txt (version: 2, sync: 1)");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "Added item to pending sync list: c:\\windows\\a_test_file.txt (version: 2, sync: 1)");
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "Added item to pending sync list: c:\\windows\\a_test_file.txt (version: 2, sync: 1)");
 #endif
 
     transaction_callback(MODIFIED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_MODIFICATION);
 
     int items_found = 0;
-    OSListNode *node_it;
-    OSList_foreach(node_it, pending_sync_updates) {
-        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
+    OSListNode* node_it;
+    OSList_foreach(node_it, pending_sync_updates)
+    {
+        pending_sync_item_t* item = (pending_sync_item_t*)node_it->data;
         assert_non_null(item);
         assert_int_equal(item->sync_value, 1);
         assert_non_null(item->json);
@@ -4342,18 +4711,23 @@ static void test_transaction_callback_modify_promotes_pending_sync_update(void *
     data->txn_context->entry = NULL;
 }
 
-static void test_transaction_callback_modify_empty_changed_attributes(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_modify_empty_changed_attributes(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    char *path = "/etc/a_test_file.txt";
+    char* path = "/etc/a_test_file.txt";
 #else
-    char *path = "c:\\windows\\a_test_file.txt";
+    char* path = "c:\\windows\\a_test_file.txt";
 #endif
-    callback_ctx *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    callback_ctx* txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data = &DEFAULT_FILE_DATA};
     txn_context->entry = &entry;
 
-    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"path\":\"/etc/a_test_file.txt\"}}");
+    cJSON* result = cJSON_Parse(
+        "{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":"
+        "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_"
+        "sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":"
+        "\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"path\":\"/etc/a_test_file.txt\"}}");
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -4372,9 +4746,15 @@ static void test_transaction_callback_modify_empty_changed_attributes(void **sta
 #endif
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry '/etc/a_test_file.txt' does not have any modified fields. No event will be generated.");
+    expect_string(
+        __wrap__mdebug2,
+        formatted_msg,
+        "(6954): Entry '/etc/a_test_file.txt' does not have any modified fields. No event will be generated.");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
+    expect_string(
+        __wrap__mdebug2,
+        formatted_msg,
+        "(6954): Entry 'c:\\windows\\a_test_file.txt' does not have any modified fields. No event will be generated.");
 #endif
 
     // Schema validator mocks (not called in this case due to empty changed_attributes)
@@ -4385,19 +4765,28 @@ static void test_transaction_callback_modify_empty_changed_attributes(void **sta
     data->txn_context->entry = NULL;
 }
 
-static void test_transaction_callback_modify_report_changes(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_modify_report_changes(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    char *path = "/etc/a_test_file.txt";
+    char* path = "/etc/a_test_file.txt";
 #else
-    char *path = "c:\\windows\\a_test_file.txt";
+    char* path = "c:\\windows\\a_test_file.txt";
 #endif
-    callback_ctx *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    callback_ctx* txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data = &DEFAULT_FILE_DATA};
     txn_context->entry = &entry;
 
-
-    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"version\":1}}");
+    cJSON* result =
+        cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":"
+                    "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\","
+                    "\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":"
+                    "1645001693,\"path\":\"/etc/"
+                    "a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":"
+                    "\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\","
+                    "\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":"
+                    "\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,"
+                    "\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"version\":1}}");
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -4407,7 +4796,7 @@ static void test_transaction_callback_modify_report_changes(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
 
     expect_fim_file_diff(entry.file_entry.path, strdup("diff"));
 
@@ -4421,18 +4810,30 @@ static void test_transaction_callback_modify_report_changes(void **state) {
 
     data->txn_context->entry = NULL;
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
 }
 
-static void test_transaction_callback_delete(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_delete(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    cJSON* result =
+        cJSON_Parse("{\"path\":\"/etc/"
+                    "a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":"
+                    "\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+                    "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\","
+                    "\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+                    "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    cJSON* result = cJSON_Parse(
+        "{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\","
+        "\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+        "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_"
+        "sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+        "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
 
-    callback_ctx *txn_context = data->txn_context;
+    callback_ctx* txn_context = data->txn_context;
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -4459,16 +4860,28 @@ static void test_transaction_callback_delete(void **state) {
     assert_int_equal(txn_context->event->type, FIM_DELETE);
 }
 
-static void test_transaction_callback_delete_report_changes(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_delete_report_changes(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 
-    callback_ctx *txn_context = data->txn_context;
+    callback_ctx* txn_context = data->txn_context;
 #ifndef TEST_WINAGENT
     const char* path = "/etc/a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    cJSON* result =
+        cJSON_Parse("{\"path\":\"/etc/"
+                    "a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":"
+                    "\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+                    "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\","
+                    "\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+                    "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
-    const char *path = "c:\\windows\\a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    const char* path = "c:\\windows\\a_test_file.txt";
+    cJSON* result = cJSON_Parse(
+        "{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\","
+        "\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+        "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_"
+        "sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+        "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
     data->dbsync_event = result;
 
@@ -4479,8 +4892,7 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
-
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 1))->options |= CHECK_SEECHANGES;
 
     expect_fim_diff_process_delete_file(path, 0);
 
@@ -4492,18 +4904,30 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->event->type, FIM_DELETE);
 
-    ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
+    ((directory_t*)OSList_GetDataFromIndex(syscheck.directories, 1))->options &= ~CHECK_SEECHANGES;
 }
 
-static void test_transaction_callback_delete_full_db(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_delete_full_db(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    cJSON* result =
+        cJSON_Parse("{\"path\":\"/etc/"
+                    "a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":"
+                    "\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+                    "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\","
+                    "\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+                    "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    cJSON* result = cJSON_Parse(
+        "{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\","
+        "\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+        "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_"
+        "sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+        "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
 
-    callback_ctx *txn_context = data->txn_context;
+    callback_ctx* txn_context = data->txn_context;
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -4530,20 +4954,31 @@ static void test_transaction_callback_delete_full_db(void **state) {
     assert_int_equal(txn_context->event->type, FIM_DELETE);
 }
 
-
-static void test_transaction_callback_full_db(void **state) {
-    txn_data_t *data = (txn_data_t *) *state;
+static void test_transaction_callback_full_db(void** state)
+{
+    txn_data_t* data = (txn_data_t*)*state;
 #ifndef TEST_WINAGENT
     char* path = "/etc/a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    cJSON* result =
+        cJSON_Parse("{\"path\":\"/etc/"
+                    "a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":"
+                    "\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+                    "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\","
+                    "\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+                    "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
-    char *path = "c:\\windows\\a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
+    char* path = "c:\\windows\\a_test_file.txt";
+    cJSON* result = cJSON_Parse(
+        "{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\","
+        "\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":"
+        "\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_"
+        "sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":"
+        "\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
     char debug_msg[OS_SIZE_128] = {0};
 
-    callback_ctx *txn_context = data->txn_context;
-    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
+    callback_ctx* txn_context = data->txn_context;
+    fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data = &DEFAULT_FILE_DATA};
 
     txn_context->entry = &entry;
     data->dbsync_event = result;
@@ -4563,54 +4998,58 @@ static void test_transaction_callback_full_db(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
 #endif
 
-    snprintf(debug_msg, OS_SIZE_128, "Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+    snprintf(debug_msg,
+             OS_SIZE_128,
+             "Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
+             path);
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
     transaction_callback(MAX_ROWS, result, txn_context);
 }
 
 /* fim_calculate_dbsync_difference */
-void test_fim_calculate_dbsync_difference(void **state){
-    directory_t configuration = { .options = (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME |
-                                              CHECK_INODE | CHECK_DEVICE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM) };
+void test_fim_calculate_dbsync_difference(void** state)
+{
+    directory_t configuration = {.options =
+                                     (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
+                                      CHECK_DEVICE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)};
 
-    #ifndef TEST_WINAGENT
-        char* changed_data = "{\"size\":0, \"permissions\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
+#ifndef TEST_WINAGENT
+    char* changed_data =
+        "{\"size\":0, \"permissions\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
         \"owner\":\"root\", \"group_\":\"root\", \"mtime\":123456789, \"inode\":\"1\", \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
         \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\", \
         \"checksum\":\"0123456789abcdef0123456789abcdef01234567\" }";
-    #else
-        configuration.options |= CHECK_ATTRS;
-        char* changed_data = "{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
+#else
+    configuration.options |= CHECK_ATTRS;
+    char* changed_data =
+        "{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
         \"owner\":\"root\", \"group_\":\"root\", \"mtime\":123456789, \"inode\":\"1\", \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
         \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\", \
         \"checksum\":\"0123456789abcdef0123456789abcdef01234567\" }";
-    #endif
+#endif
 
     cJSON* changed_data_json = cJSON_Parse(changed_data);
     cJSON* old_attributes = cJSON_CreateObject();
     cJSON* changed_attributes = cJSON_CreateArray();
 
-    fim_calculate_dbsync_difference(&configuration,
-                                        changed_data_json,
-                                        changed_attributes,
-                                        old_attributes);
+    fim_calculate_dbsync_difference(&configuration, changed_data_json, changed_attributes, old_attributes);
 
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
-    #ifdef TEST_WINAGENT
-    cJSON *permissions = cJSON_GetObjectItem(old_attributes, "permissions");
+#ifdef TEST_WINAGENT
+    cJSON* permissions = cJSON_GetObjectItem(old_attributes, "permissions");
     assert_int_equal(cJSON_GetArraySize(permissions), 4);
 
-    cJSON *attributes = cJSON_GetObjectItem(old_attributes, "attributes");
-    cJSON *attribute_item = cJSON_GetArrayItem(attributes, 0);
+    cJSON* attributes = cJSON_GetObjectItem(old_attributes, "attributes");
+    cJSON* attribute_item = cJSON_GetArrayItem(attributes, 0);
     assert_non_null(attribute_item);
     assert_string_equal(attribute_item->valuestring, "NULL");
-    #else
-    cJSON *permissions = cJSON_GetObjectItem(old_attributes, "permissions");
-    cJSON *permission_item = cJSON_GetArrayItem(permissions, 0);
+#else
+    cJSON* permissions = cJSON_GetObjectItem(old_attributes, "permissions");
+    cJSON* permission_item = cJSON_GetArrayItem(permissions, 0);
     assert_non_null(permission_item);
     assert_string_equal(permission_item->valuestring, "rw-rw-r--");
-    #endif
+#endif
 
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
@@ -4622,62 +5061,63 @@ void test_fim_calculate_dbsync_difference(void **state){
     assert_non_null(hash);
     assert_string_equal(cJSON_GetObjectItem(hash, "md5")->valuestring, "0123456789abcdef0123456789abcdef");
     assert_string_equal(cJSON_GetObjectItem(hash, "sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
-    assert_string_equal(cJSON_GetObjectItem(hash, "sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    assert_string_equal(cJSON_GetObjectItem(hash, "sha256")->valuestring,
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
     cJSON_Delete(changed_data_json);
     cJSON_Delete(old_attributes);
     cJSON_Delete(changed_attributes);
-
 }
 
-void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
+void test_fim_calculate_dbsync_difference_no_changed_data(void** state)
+{
 
     cJSON* changed_data_json = NULL;
     cJSON* old_attributes = cJSON_CreateObject();
     cJSON* changed_attributes = cJSON_CreateArray();
 
-    directory_t configuration = { .options = (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME |
-                                              CHECK_INODE | CHECK_DEVICE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM) };
+    directory_t configuration = {.options =
+                                     (CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
+                                      CHECK_DEVICE | CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)};
 
 #ifdef TEST_WINAGENT
     DEFAULT_FILE_DATA.attributes = "NULL";
     configuration.options |= CHECK_ATTRS;
 #endif
 
-    fim_calculate_dbsync_difference(&configuration,
-                                        changed_data_json,
-                                        changed_attributes,
-                                        old_attributes);
+    fim_calculate_dbsync_difference(&configuration, changed_data_json, changed_attributes, old_attributes);
 
     assert_int_equal(cJSON_GetArraySize(changed_attributes), 0);
     cJSON_Delete(old_attributes);
     cJSON_Delete(changed_attributes);
 }
 
-void test_create_unix_who_data_events(void **state){
-    fim_data_t* fim_data = (fim_data_t*) *state;
-    char *path = fim_data->w_evt->path;
+void test_create_unix_who_data_events(void** state)
+{
+    fim_data_t* fim_data = (fim_data_t*)*state;
+    char* path = fim_data->w_evt->path;
 
-    #ifndef TEST_WINAGENT
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    #else
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-    #endif
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
     create_unix_who_data_events(path, fim_data->w_evt);
 }
 
-void test_fim_db_remove_entry(void **state){
-    fim_data_t* fim_data = (fim_data_t*) *state;
-    char *path = fim_data->w_evt->path;
+void test_fim_db_remove_entry(void** state)
+{
+    fim_data_t* fim_data = (fim_data_t*)*state;
+    char* path = fim_data->w_evt->path;
     directory_t config;
     config.options = CHECK_SEECHANGES;
     callback_ctx get_data;
@@ -4688,26 +5128,27 @@ void test_fim_db_remove_entry(void **state){
     fim_db_remove_entry(path, &get_data);
 }
 
-void test_fim_db_process_missing_entry(void **state){
-    fim_data_t* fim_data = (fim_data_t*) *state;
+void test_fim_db_process_missing_entry(void** state)
+{
+    fim_data_t* fim_data = (fim_data_t*)*state;
     fim_data->fentry->file_entry.path = "mock_path";
     directory_t config;
     callback_ctx get_data;
     get_data.config = &config;
 
-    #ifndef TEST_WINAGENT
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    #else
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-    #endif
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'mock_path'");
 
@@ -4715,35 +5156,60 @@ void test_fim_db_process_missing_entry(void **state){
     fim_data->fentry->file_entry.path = NULL;
 }
 
-static void test_dbsync_attributes_json(void **state) {
-    directory_t configuration = { .options = -1, .tag = "tag_name" };
-    json_struct_t *data = *state;
+static void test_dbsync_attributes_json(void** state)
+{
+    directory_t configuration = {.options = -1, .tag = "tag_name"};
+    json_struct_t* data = *state;
 #ifndef TEST_WINAGENT
-    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":\"64768\",\"mtime\":\"2022-03-01T08:46:32.000Z\",\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
-    cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":\"271017\",\"mtime\":1646124392,\"path\":\"/etc/testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
+    const char* result_str =
+        "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":"
+        "\"root\",\"inode\":\"271017\",\"device\":\"64768\",\"mtime\":\"2022-03-01T08:46:32.000Z\",\"hash\":{\"md5\":"
+        "\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":"
+        "\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
+    cJSON* dbsync_event =
+        cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,"
+                    "\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":"
+                    "\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":"
+                    "\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":\"271017\","
+                    "\"mtime\":1646124392,\"path\":\"/etc/"
+                    "testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
 #else
-    cJSON *dbsync_event = cJSON_Parse("{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \
+    cJSON* dbsync_event = cJSON_Parse(
+        "{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \
         \"owner\":\"Administrators\", \"group_\":\"\", \"mtime\":1646145212, \"inode\":\"0\", \"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\", \
         \"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\", \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\", \
         \"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\" }");
 
-    char *result_str = "{\"size\":0,\"permissions\":["
-        "\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
-        "\"{\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
-        "\"{\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]}}\","
-        "\"{\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\"],"
-        "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":\"2022-03-01T14:33:32.000Z\","
-        "\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},"
+    char* result_str =
+        "{\"size\":0,\"permissions\":["
+        "\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_"
+        "control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\","
+        "\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_"
+        "attributes\\\"]}}\","
+        "\"{\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\","
+        "\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_"
+        "data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}"
+        "\","
+        "\"{\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\","
+        "\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]}}\","
+        "\"{\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated "
+        "Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\","
+        "\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_"
+        "attributes\\\",\\\"write_attributes\\\"]}}\"],"
+        "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":\"2022-03-01T14:33:32."
+        "000Z\","
+        "\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\","
+        "\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},"
         "\"attributes\":[\"ARCHIVE\"]}";
 
 #endif
-    cJSON *attributes = cJSON_CreateObject();
+    cJSON* attributes = cJSON_CreateObject();
 
     data->json1 = dbsync_event;
     data->json2 = attributes;
 
     attributes = fim_attributes_json(dbsync_event, NULL, &configuration);
-    char * json_attributes_str = cJSON_PrintUnformatted(attributes);
+    char* json_attributes_str = cJSON_PrintUnformatted(attributes);
     cJSON_Delete(attributes);
 
     assert_string_equal(json_attributes_str, result_str);
@@ -4754,18 +5220,19 @@ static void test_dbsync_attributes_json(void **state) {
  * (the column is INTEGER), it must be normalized to a string instead of
  * being dropped and logged. No __wrap__minfo expectation is set on purpose:
  * the buggy code path calls minfo(FIM_WARN_INODE_WRONG_TYPE) -> cmocka fails. */
-static void test_fim_attributes_json_inode_number(void **state) {
-    (void) state;
-    directory_t configuration = { .options = CHECK_INODE };
+static void test_fim_attributes_json_inode_number(void** state)
+{
+    (void)state;
+    directory_t configuration = {.options = CHECK_INODE};
 
     // inode arrives as a NUMBER (note: no quotes), and a large >INT_MAX value
     // to prove %llu is required (a %d/valueint conversion would truncate it).
-    cJSON *dbsync_event = cJSON_Parse("{\"inode\":4294967296}");
+    cJSON* dbsync_event = cJSON_Parse("{\"inode\":4294967296}");
 
-    cJSON *attributes = fim_attributes_json(dbsync_event, NULL, &configuration);
+    cJSON* attributes = fim_attributes_json(dbsync_event, NULL, &configuration);
 
     assert_non_null(attributes);
-    cJSON *inode = cJSON_GetObjectItem(attributes, "inode");
+    cJSON* inode = cJSON_GetObjectItem(attributes, "inode");
     assert_non_null(inode);
     assert_true(cJSON_IsString(inode));
     assert_string_equal(inode->valuestring, "4294967296");
@@ -4776,20 +5243,18 @@ static void test_fim_attributes_json_inode_number(void **state) {
 
 /* Same fix, "changed/old" path: numeric inode must become a string in
  * old_attributes and "file.inode" must be reported as a changed field. */
-static void test_fim_calculate_dbsync_difference_inode_number(void **state) {
-    (void) state;
-    directory_t configuration = { .options = CHECK_INODE };
+static void test_fim_calculate_dbsync_difference_inode_number(void** state)
+{
+    (void)state;
+    directory_t configuration = {.options = CHECK_INODE};
 
-    cJSON *changed_data_json   = cJSON_Parse("{\"inode\":4294967296}");
-    cJSON *old_attributes      = cJSON_CreateObject();
-    cJSON *changed_attributes  = cJSON_CreateArray();
+    cJSON* changed_data_json = cJSON_Parse("{\"inode\":4294967296}");
+    cJSON* old_attributes = cJSON_CreateObject();
+    cJSON* changed_attributes = cJSON_CreateArray();
 
-    fim_calculate_dbsync_difference(&configuration,
-                                    changed_data_json,
-                                    changed_attributes,
-                                    old_attributes);
+    fim_calculate_dbsync_difference(&configuration, changed_data_json, changed_attributes, old_attributes);
 
-    cJSON *inode = cJSON_GetObjectItem(old_attributes, "inode");
+    cJSON* inode = cJSON_GetObjectItem(old_attributes, "inode");
     assert_non_null(inode);
     assert_true(cJSON_IsString(inode));
     assert_string_equal(inode->valuestring, "4294967296");
@@ -4802,11 +5267,13 @@ static void test_fim_calculate_dbsync_difference_inode_number(void **state) {
     cJSON_Delete(changed_attributes);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
-        cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
+        cmocka_unit_test_setup_teardown(
+            test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
         cmocka_unit_test(test_fim_attributes_json_inode_number),
 
         /* fim_audit_json */
@@ -4855,10 +5322,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_file_error_on_insert, setup_fim_entry, teardown_fim_entry),
 
         /* fim_scan */
-        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_double_scan, setup_fim_double_scan,
-                                        teardown_fim_double_scan),
-        cmocka_unit_test_setup_teardown(test_fim_scan_db_full_not_double_scan, setup_fim_not_double_scan,
-                                        teardown_fim_not_double_scan),
+        cmocka_unit_test_setup_teardown(
+            test_fim_scan_db_full_double_scan, setup_fim_double_scan, teardown_fim_double_scan),
+        cmocka_unit_test_setup_teardown(
+            test_fim_scan_db_full_not_double_scan, setup_fim_not_double_scan, teardown_fim_not_double_scan),
         cmocka_unit_test_setup_teardown(test_fim_scan_no_limit, setup_file_limit, teardown_file_limit),
 
 #ifndef TEST_WINAGENT
@@ -4893,8 +5360,8 @@ int main(void) {
         cmocka_unit_test(test_fim_check_db_state_80_percentage_to_normal),
         cmocka_unit_test(test_fim_check_db_state_nodes_count_database_error),
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_fim_scan_realtime_enabled, setup_fim_scan_realtime,
-                                        teardown_fim_scan_realtime),
+        cmocka_unit_test_setup_teardown(
+            test_fim_scan_realtime_enabled, setup_fim_scan_realtime, teardown_fim_scan_realtime),
 #endif
         /* fim_checker */
         cmocka_unit_test(test_fim_checker_scheduled_configuration_directory_error),
@@ -4911,7 +5378,8 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
+        cmocka_unit_test_setup_teardown(
+            test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
 #endif
 
         /* fim_directory */
@@ -4942,23 +5410,37 @@ int main(void) {
         /* fim_process_missing_entry */
         cmocka_unit_test(test_fim_process_missing_entry_null_configuration),
         cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_data_exists, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_whodata_disabled, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(
+            test_fim_process_missing_entry_whodata_disabled, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_missing_entry, setup_fim_entry, teardown_fim_entry),
 
         /* fim_diff_folder_size */
         cmocka_unit_test(test_fim_diff_folder_size),
 
         /* transaction_callback */
-        cmocka_unit_test_setup_teardown(test_transaction_callback_add, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_add_queues_sync_flag_update, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_modify, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_promotes_pending_sync_update, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_empty_changed_attributes, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_report_changes, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_delete, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_delete_report_changes, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown (test_transaction_callback_delete_full_db, setup_transaction_callback, teardown_transaction_callback),
-        cmocka_unit_test_setup_teardown(test_transaction_callback_full_db, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(
+            test_transaction_callback_add, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_add_queues_sync_flag_update,
+                                        setup_transaction_callback,
+                                        teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(
+            test_transaction_callback_modify, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_promotes_pending_sync_update,
+                                        setup_transaction_callback,
+                                        teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(test_transaction_callback_modify_empty_changed_attributes,
+                                        setup_transaction_callback,
+                                        teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(
+            test_transaction_callback_modify_report_changes, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(
+            test_transaction_callback_delete, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(
+            test_transaction_callback_delete_report_changes, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(
+            test_transaction_callback_delete_full_db, setup_transaction_callback, teardown_transaction_callback),
+        cmocka_unit_test_setup_teardown(
+            test_transaction_callback_full_db, setup_transaction_callback, teardown_transaction_callback),
 
         /* fim_calculate_dbsync_difference */
         cmocka_unit_test(test_fim_calculate_dbsync_difference),
@@ -5017,5 +5499,4 @@ int main(void) {
 #endif
 
     return retval;
-
 }

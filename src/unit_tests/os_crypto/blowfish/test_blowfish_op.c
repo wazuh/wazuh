@@ -18,10 +18,10 @@
 
 // Tests
 
-void test_blowfish(void **state)
+void test_blowfish(void** state)
 {
-    const char *key = "test_key";
-    const char *string = "test string";
+    const char* key = "test_key";
+    const char* string = "test string";
     const int buffersize = 1024;
     char buffer1[buffersize];
     char buffer2[buffersize];
@@ -32,7 +32,8 @@ void test_blowfish(void **state)
     assert_string_equal(buffer2, string);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_blowfish),
     };

@@ -5,7 +5,7 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
-*/
+ */
 
 #include "wmodules.h"
 #include "config.h"
@@ -13,15 +13,15 @@
 #include "mconf-config.h"
 #include "remote-config.h" // the `remoted` struct and REMOTED_HTTPS_VERIFY_*, for the upgrade gates
 
-static const char *XML_TASK_TTL = "task_ttl";
-static const char *XML_CLEANUP_INTERVAL = "cleanup_interval";
-static const char *XML_MAX_PAYLOAD_BYTES = "max_payload_bytes";
-static const char *XML_MAX_TASKS_PER_POLL = "max_tasks_per_poll";
+static const char* XML_TASK_TTL = "task_ttl";
+static const char* XML_CLEANUP_INTERVAL = "cleanup_interval";
+static const char* XML_MAX_PAYLOAD_BYTES = "max_payload_bytes";
+static const char* XML_MAX_TASKS_PER_POLL = "max_tasks_per_poll";
 
 /* Agent upgrade. This module serves remote agent upgrades, so it owns their configuration; the
  * agent-upgrade module is agent-only and configures only what an agent accepts. */
-static const char *XML_UPGRADE_ENABLED = "upgrade_enabled";
-static const char *XML_WPK_REPOSITORY = "wpk_repository";
+static const char* XML_UPGRADE_ENABLED = "upgrade_enabled";
+static const char* XML_WPK_REPOSITORY = "wpk_repository";
 
 /**
  * @brief Resolve every internal option.
@@ -70,17 +70,20 @@ static const char *XML_WPK_REPOSITORY = "wpk_repository";
  *
  * @return 0 when unset, -1 when explicitly zero, otherwise the configured value.
  */
-static int wm_task_manager_zeroable(const char *key, int min, int max) {
+static int wm_task_manager_zeroable(const char* key, int min, int max)
+{
     const int value = getDefine_Int_default("wazuh_modules", key, min, max, -1);
 
-    if (value < 0) {
-        return 0;  /* Absent: the module applies its own default. */
+    if (value < 0)
+    {
+        return 0; /* Absent: the module applies its own default. */
     }
 
     return value == 0 ? -1 : value;
 }
 
-static void wm_task_manager_read_tunables(wm_task_manager *data) {
+static void wm_task_manager_read_tunables(wm_task_manager* data)
+{
     /* Queue mechanics. */
     data->max_attempts = getDefine_Int_default("wazuh_modules", "manager_task_max_attempts", 1, 1000, 0);
     data->max_defer = getDefine_Int_default("wazuh_modules", "manager_task_max_defer", 1, 10000, 0);
@@ -106,8 +109,10 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
 
     /* Retention. */
     data->retention_days = getDefine_Int_default("wazuh_modules", "manager_task_retention_days", 1, 3650, 0);
-    data->dead_letter_retention_days = getDefine_Int_default("wazuh_modules", "manager_task_dead_letter_retention_days", 1, 3650, 0);
-    data->history_per_schedule = getDefine_Int_default("wazuh_modules", "manager_task_history_per_schedule", 1, 100000, 0);
+    data->dead_letter_retention_days =
+        getDefine_Int_default("wazuh_modules", "manager_task_dead_letter_retention_days", 1, 3650, 0);
+    data->history_per_schedule =
+        getDefine_Int_default("wazuh_modules", "manager_task_history_per_schedule", 1, 100000, 0);
     data->max_rows = getDefine_Int_default("wazuh_modules", "manager_task_max_rows", 1, 100000000, 0);
 
     /* Recurring work. These carried `monitord.*` names while log rotation and agent monitoring
@@ -154,8 +159,10 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
     data->upgrade_batch_deadline = getDefine_Int_default("wazuh_modules", "upgrade_batch_deadline", 10, 3600, 0);
     data->upgrade_max_agents = getDefine_Int_default("wazuh_modules", "upgrade_max_agents", 1, 100000, 0);
     data->upgrade_download_attempts = getDefine_Int_default("wazuh_modules", "upgrade_download_attempts", 1, 10, 0);
-    data->upgrade_download_timeout = getDefine_Int_default("wazuh_modules", "upgrade_download_timeout", 1000, 600000, 0);
-    data->upgrade_max_concurrent_downloads = getDefine_Int_default("wazuh_modules", "upgrade_max_concurrent_downloads", 1, 32, 0);
+    data->upgrade_download_timeout =
+        getDefine_Int_default("wazuh_modules", "upgrade_download_timeout", 1000, 600000, 0);
+    data->upgrade_max_concurrent_downloads =
+        getDefine_Int_default("wazuh_modules", "upgrade_max_concurrent_downloads", 1, 32, 0);
     data->upgrade_versions_ttl = wm_task_manager_zeroable("upgrade_versions_ttl", 0, 86400);
 }
 
@@ -164,20 +171,20 @@ static void wm_task_manager_read_tunables(wm_task_manager *data) {
  * the same cross-option rule part of `wazuh-modulesd -t` instead of a failure in the module thread.
  */
 #define WM_TASK_MANAGER_DEFAULT_VD_SCAN_TIMEOUT 300
-#define WM_TASK_MANAGER_DEFAULT_DELETE_TIMEOUT 600
+#define WM_TASK_MANAGER_DEFAULT_DELETE_TIMEOUT  600
 
-static int wm_task_manager_check_timeout_pair(const wm_task_manager *data) {
-    const int vd_scan_timeout = data->vd_scan_timeout > 0
-                                    ? data->vd_scan_timeout
-                                    : WM_TASK_MANAGER_DEFAULT_VD_SCAN_TIMEOUT;
-    const int delete_timeout = data->delete_timeout > 0
-                                   ? data->delete_timeout
-                                   : WM_TASK_MANAGER_DEFAULT_DELETE_TIMEOUT;
+static int wm_task_manager_check_timeout_pair(const wm_task_manager* data)
+{
+    const int vd_scan_timeout =
+        data->vd_scan_timeout > 0 ? data->vd_scan_timeout : WM_TASK_MANAGER_DEFAULT_VD_SCAN_TIMEOUT;
+    const int delete_timeout = data->delete_timeout > 0 ? data->delete_timeout : WM_TASK_MANAGER_DEFAULT_DELETE_TIMEOUT;
 
-    if (delete_timeout <= vd_scan_timeout) {
+    if (delete_timeout <= vd_scan_timeout)
+    {
         merror("Invalid task-manager timeout pair: manager_task_delete_timeout (%ds) must exceed "
                "manager_task_vd_scan_timeout (%ds).",
-               delete_timeout, vd_scan_timeout);
+               delete_timeout,
+               vd_scan_timeout);
         return 1;
     }
 
@@ -186,10 +193,14 @@ static int wm_task_manager_check_timeout_pair(const wm_task_manager *data) {
 
 /* Default instance of the module (default_modules[] in wmodules.c): the configuration itself comes from
  * /etc/wazuh-manager/wazuh-manager.conf through wm_task_manager_read_json(). `nodes` is unused (manager only). */
-int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute__((unused)) xml_node **nodes, wmodule *module) {
+int wm_task_manager_read(__attribute__((unused)) const OS_XML* xml,
+                         __attribute__((unused)) xml_node** nodes,
+                         wmodule* module)
+{
     wm_task_manager* data;
 
-    if (!module->data) {
+    if (!module->data)
+    {
         os_calloc(1, sizeof(wm_task_manager), data);
         data->enabled = 1;
         /* Upgrades are on by default */
@@ -224,14 +235,16 @@ int wm_task_manager_read(__attribute__((unused)) const OS_XML *xml, __attribute_
  * @param[out] seconds Seconds, or 0 to leave the choice to the module.
  * @return 0 when the section was read, 1 when it was refused.
  */
-static int wm_task_manager_disconnection_time(int *seconds) {
+static int wm_task_manager_disconnection_time(int* seconds)
+{
     _Config global_config;
-    cJSON *section = w_mconf_section("global");
+    cJSON* section = w_mconf_section("global");
 
     memset(&global_config, 0, sizeof(global_config));
     *seconds = 0;
 
-    if (section == NULL || Read_Global_JSON(section, &global_config) < 0) {
+    if (section == NULL || Read_Global_JSON(section, &global_config) < 0)
+    {
         mwarn("Cannot read the global configuration; the agent disconnection sweep will use its "
               "default window.");
         cJSON_Delete(section);
@@ -265,9 +278,10 @@ static int wm_task_manager_disconnection_time(int *seconds) {
  *
  * @return 0 when the section was read, 1 when it was refused.
  */
-static int wm_task_manager_read_remoted(wm_task_manager *data) {
+static int wm_task_manager_read_remoted(wm_task_manager* data)
+{
     remoted remoted_config;
-    cJSON *section = w_mconf_section("remote");
+    cJSON* section = w_mconf_section("remote");
 
     data->remoted_config_read = 0;
     data->remoted_legacy_enabled = 0;
@@ -278,11 +292,14 @@ static int wm_task_manager_read_remoted(wm_task_manager *data) {
 
     const int read = section != NULL && Read_Remote_JSON(section, &remoted_config) >= 0;
 
-    if (read) {
+    if (read)
+    {
         data->remoted_config_read = 1;
         data->remoted_legacy_enabled = remoted_config.legacy_enabled ? 1 : 0;
         data->remoted_verification_mode = remoted_config.https.verification_mode;
-    } else {
+    }
+    else
+    {
         mwarn("Cannot read the remote configuration; the agent upgrade delivery checks will be "
               "skipped.");
     }
@@ -313,12 +330,14 @@ static int wm_task_manager_read_remoted(wm_task_manager *data) {
  * Returns 0, or 1 when `global` or `remote` was refused or an integer was out of range: the module runs
  * on its defaults for what it needed from them, and wm_config() passes the 1 on so that
  * `wazuh-manager-modulesd -t` fails. */
-int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
-    if (module == NULL || module->data == NULL) {
+int wm_task_manager_read_json(const cJSON* section, wmodule* module)
+{
+    if (module == NULL || module->data == NULL)
+    {
         return 0;
     }
 
-    wm_task_manager *data = module->data;
+    wm_task_manager* data = module->data;
 
     /* Outside the section guard below: `global` and `remote` are different sections, read whatever
      * `section` is -- the sweep needs its interval, and the upgrade gates need remoted's delivery
@@ -328,7 +347,8 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
     degraded |= wm_task_manager_read_remoted(data);
     degraded |= wm_task_manager_check_timeout_pair(data);
 
-    if (section == NULL) {
+    if (section == NULL)
+    {
         return degraded;
     }
 
@@ -337,39 +357,46 @@ int wm_task_manager_read_json(const cJSON *section, wmodule *module) {
 
     /* No schema default on purpose: left NULL, the module picks the repository from the target
      * agent version (upgrade/repoLayout.cpp). */
-    const cJSON *repository = cJSON_GetObjectItem(section, XML_WPK_REPOSITORY);
+    const cJSON* repository = cJSON_GetObjectItem(section, XML_WPK_REPOSITORY);
 
-    if (cJSON_IsString(repository) && repository->valuestring[0] != '\0') {
+    if (cJSON_IsString(repository) && repository->valuestring[0] != '\0')
+    {
         os_free(data->wpk_repository);
         os_strdup(repository->valuestring, data->wpk_repository);
     }
 
-    const struct {
-        const char *key;
-        int *value;
+    const struct
+    {
+        const char* key;
+        int* value;
     } settings[] = {
-        { XML_TASK_TTL, &data->task_ttl },
-        { XML_CLEANUP_INTERVAL, &data->cleanup_interval },
-        { XML_MAX_PAYLOAD_BYTES, &data->max_payload_bytes },
-        { XML_MAX_TASKS_PER_POLL, &data->max_tasks_per_poll },
+        {XML_TASK_TTL, &data->task_ttl},
+        {XML_CLEANUP_INTERVAL, &data->cleanup_interval},
+        {XML_MAX_PAYLOAD_BYTES, &data->max_payload_bytes},
+        {XML_MAX_TASKS_PER_POLL, &data->max_tasks_per_poll},
     };
 
     /* The schema gives these a minimum but no maximum, and cJSON saturates valueint at INT_MAX, so
      * the range is checked on valuedouble: a value the module cannot hold is refused (the module
      * keeps its default) rather than silently clamped, and the 1 makes `-t` fail on it. */
-    for (size_t i = 0; i < sizeof(settings) / sizeof(settings[0]); i++) {
-        const cJSON *item = cJSON_GetObjectItem(section, settings[i].key);
+    for (size_t i = 0; i < sizeof(settings) / sizeof(settings[0]); i++)
+    {
+        const cJSON* item = cJSON_GetObjectItem(section, settings[i].key);
 
-        if (!cJSON_IsNumber(item)) {
+        if (!cJSON_IsNumber(item))
+        {
             continue;
         }
 
-        if (item->valuedouble < 0 || item->valuedouble > (double)INT_MAX) {
-            char *text = cJSON_PrintUnformatted(item);
+        if (item->valuedouble < 0 || item->valuedouble > (double)INT_MAX)
+        {
+            char* text = cJSON_PrintUnformatted(item);
             /* Not "the default applies": `-t` (and so every start through wazuh-manager-control)
              * fails on it; only a daemon started by hand keeps the module default. */
             merror("Invalid value for element '%s': %s is out of range (0 to %d); the value is refused.",
-                   settings[i].key, text != NULL ? text : "(null)", INT_MAX);
+                   settings[i].key,
+                   text != NULL ? text : "(null)",
+                   INT_MAX);
             free(text);
             degraded = 1;
             continue;

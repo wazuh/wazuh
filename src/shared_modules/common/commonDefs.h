@@ -22,7 +22,7 @@
 typedef enum
 {
     MANAGER = 0,
-    AGENT   = 1
+    AGENT = 1
 } HostType;
 
 /**
@@ -30,8 +30,8 @@ typedef enum
  */
 typedef enum
 {
-    UNDEFINED = 0,  /*< Undefined database. */
-    SQLITE3   = 1,  /*< SQLite3 database.   */
+    UNDEFINED = 0, /*< Undefined database. */
+    SQLITE3 = 1,   /*< SQLite3 database.   */
 } DbEngineType;
 
 /**
@@ -39,23 +39,22 @@ typedef enum
  */
 typedef enum
 {
-    VOLATILE   = 0,  /*< Removes the DB every time .                          */
-    PERSISTENT = 1,  /*< The DB is kept and the correct version is checked.   */
+    VOLATILE = 0,   /*< Removes the DB every time .                          */
+    PERSISTENT = 1, /*< The DB is kept and the correct version is checked.   */
 } DbManagement;
-
 
 /**
  * @brief Represents the database operation events.
  */
 typedef enum
 {
-    MODIFIED = 0,   /*< Database modificaton operation.         */
-    DELETED  = 1,   /*< Database deletion operation.            */
-    INSERTED = 2,   /*< Database insertion operation.           */
-    MAX_ROWS = 3,   /*< Database has reached max rows number.   */
-    DB_ERROR = 4,   /*< Internal failure.                       */
-    SELECTED = 5,   /*< Database select operation.              */
-    GENERIC = 6     /*< Generic result for reuse.               */
+    MODIFIED = 0, /*< Database modificaton operation.         */
+    DELETED = 1,  /*< Database deletion operation.            */
+    INSERTED = 2, /*< Database insertion operation.           */
+    MAX_ROWS = 3, /*< Database has reached max rows number.   */
+    DB_ERROR = 4, /*< Internal failure.                       */
+    SELECTED = 5, /*< Database select operation.              */
+    GENERIC = 6   /*< Generic result for reuse.               */
 } ReturnTypeCallback;
 
 /**
@@ -99,8 +98,8 @@ typedef void((*sync_id_callback_t)(const void* buffer, size_t buffer_size, void*
 typedef struct
 {
     /*@{*/
-    result_callback_t callback;     /**< Result callback. */
-    void* user_data;                /**< User data space returned in each callback. */
+    result_callback_t callback; /**< Result callback. */
+    void* user_data;            /**< User data space returned in each callback. */
     /*@}*/
 } callback_data_t;
 
@@ -113,8 +112,8 @@ typedef struct
 typedef struct
 {
     /*@{*/
-    sync_id_callback_t callback;     /**< Sync ID callback. */
-    void* user_data;                 /**< User data space returned in each callback. */
+    sync_id_callback_t callback; /**< Sync ID callback. */
+    void* user_data;             /**< User data space returned in each callback. */
     /*@}*/
 } sync_callback_data_t;
 
@@ -139,13 +138,14 @@ typedef void((*log_fnc_t)(const char* msg));
  * @param msg      Message to be logged.
  * @param args     Variable list args.
  */
-typedef void ((*full_log_fnc_t)(int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args));
+typedef void((*full_log_fnc_t)(
+    int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args));
 
 /**
-* @brief Definition to indicate the unlimited queue.
-*
-* @details It's used to define the unlimited queue size.
-*/
+ * @brief Definition to indicate the unlimited queue.
+ *
+ * @details It's used to define the unlimited queue size.
+ */
 #define UNLIMITED_QUEUE_SIZE 0
 
 #endif // _COMMON_DEFS_H_

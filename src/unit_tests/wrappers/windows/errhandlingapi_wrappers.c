@@ -13,10 +13,12 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-DWORD wrap_GetLastError(VOID) {
+DWORD wrap_GetLastError(VOID)
+{
     return mock();
 }
 
-void expect_GetLastError_call(int error_code) {
+void expect_GetLastError_call(int error_code)
+{
     will_return(wrap_GetLastError, error_code);
 }

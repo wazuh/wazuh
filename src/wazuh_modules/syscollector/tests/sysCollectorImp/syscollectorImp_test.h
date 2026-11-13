@@ -18,16 +18,15 @@ class MockSchemaValidatorEngine;
 
 class SyscollectorImpTest : public ::testing::Test
 {
-    protected:
+protected:
+    SyscollectorImpTest() = default;
+    virtual ~SyscollectorImpTest() = default;
 
-        SyscollectorImpTest() = default;
-        virtual ~SyscollectorImpTest() = default;
+    void SetUp() override;
+    void TearDown() override;
 
-        void SetUp() override;
-        void TearDown() override;
-
-        // Store mock validator to keep it alive during test execution
-        std::shared_ptr<MockSchemaValidatorEngine> m_mockValidator;
+    // Store mock validator to keep it alive during test execution
+    std::shared_ptr<MockSchemaValidatorEngine> m_mockValidator;
 };
 
 #endif //_SYSCOLLECTOR_IMP_TEST_H

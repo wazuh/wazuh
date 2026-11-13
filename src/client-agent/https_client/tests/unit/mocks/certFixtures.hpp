@@ -71,7 +71,8 @@ namespace cert_fixtures
     ///        now; defaults match the original "valid now, for an hour" shape.
     ///        tlsCertDiagnostics_test.cpp's date-formatting cases pass explicit values.
     /// @return The certificate and the key that signed it. Null on failure.
-    inline std::pair<X509Ptr, EvpPkeyPtr> makeSelfSignedEc(const char* subjectCn, long serial,
+    inline std::pair<X509Ptr, EvpPkeyPtr> makeSelfSignedEc(const char* subjectCn,
+                                                           long serial,
                                                            EVP_PKEY* reuseKey = nullptr,
                                                            const char* san = nullptr,
                                                            long notBeforeOffsetSeconds = 0,
@@ -92,8 +93,8 @@ namespace cert_fixtures
         X509_set_pubkey(certificate.get(), signing);
 
         X509_NAME* name = X509_get_subject_name(certificate.get());
-        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(subjectCn), -1,
-                                   -1, 0);
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>(subjectCn), -1, -1, 0);
         X509_set_issuer_name(certificate.get(), name);
         addExtension(certificate.get(), NID_basic_constraints, "critical,CA:TRUE");
 

@@ -19,64 +19,65 @@
 
 static int not_reached_calls = 0;
 
-static firewall_result_t stub_not_available(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_not_available(const char* srcip, int action, int ip_version, const char* argv0)
+{
     return FIREWALL_NOT_AVAILABLE;
 }
 
-static firewall_result_t stub_execution_failed(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_execution_failed(const char* srcip, int action, int ip_version, const char* argv0)
+{
     return FIREWALL_EXECUTION_FAILED;
 }
 
-static firewall_result_t stub_invalid_state(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_invalid_state(const char* srcip, int action, int ip_version, const char* argv0)
+{
     return FIREWALL_INVALID_STATE;
 }
 
-static firewall_result_t stub_success(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_success(const char* srcip, int action, int ip_version, const char* argv0)
+{
     return FIREWALL_SUCCESS;
 }
 
 /* Used after an expected early exit, to assert the chain never reaches later methods */
-static firewall_result_t stub_not_reached(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_not_reached(const char* srcip, int action, int ip_version, const char* argv0)
+{
     not_reached_calls++;
     return FIREWALL_EXECUTION_FAILED;
 }
 
-static int test_setup(void **state) {
+static int test_setup(void** state)
+{
     not_reached_calls = 0;
     return 0;
 }
 
-void test_execute_firewall_chain_all_unavailable(void **state) {
+void test_execute_firewall_chain_all_unavailable(void** state)
+{
     const firewall_method_t methods[] = {
-        {"m1", stub_not_available, false},
-        {"m2", stub_not_available, false},
-        {NULL, NULL, false}
-    };
+        {"m1", stub_not_available, false}, {"m2", stub_not_available, false}, {NULL, NULL, false}};
 
     int ret = execute_firewall_chain(methods, "203.0.113.10", ENABLE_COMMAND, 4, "test_argv0");
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_execute_firewall_chain_mixed_failures(void **state) {
-    const firewall_method_t methods[] = {
-        {"m1", stub_not_available, false},
-        {"m2", stub_execution_failed, false},
-        {"m3", stub_invalid_state, false},
-        {NULL, NULL, false}
-    };
+void test_execute_firewall_chain_mixed_failures(void** state)
+{
+    const firewall_method_t methods[] = {{"m1", stub_not_available, false},
+                                         {"m2", stub_execution_failed, false},
+                                         {"m3", stub_invalid_state, false},
+                                         {NULL, NULL, false}};
 
     int ret = execute_firewall_chain(methods, "203.0.113.11", ENABLE_COMMAND, 4, "test_argv0");
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_execute_firewall_chain_first_method_succeeds(void **state) {
+void test_execute_firewall_chain_first_method_succeeds(void** state)
+{
     const firewall_method_t methods[] = {
-        {"m1", stub_success, false},
-        {"m2", stub_not_reached, false},
-        {NULL, NULL, false}
-    };
+        {"m1", stub_success, false}, {"m2", stub_not_reached, false}, {NULL, NULL, false}};
 
     int ret = execute_firewall_chain(methods, "203.0.113.12", ENABLE_COMMAND, 4, "test_argv0");
 
@@ -84,14 +85,13 @@ void test_execute_firewall_chain_first_method_succeeds(void **state) {
     assert_int_equal(not_reached_calls, 0);
 }
 
-void test_execute_firewall_chain_success_after_earlier_failures(void **state) {
-    const firewall_method_t methods[] = {
-        {"m1", stub_not_available, false},
-        {"m2", stub_execution_failed, false},
-        {"m3", stub_success, false},
-        {"m4", stub_not_reached, false},
-        {NULL, NULL, false}
-    };
+void test_execute_firewall_chain_success_after_earlier_failures(void** state)
+{
+    const firewall_method_t methods[] = {{"m1", stub_not_available, false},
+                                         {"m2", stub_execution_failed, false},
+                                         {"m3", stub_success, false},
+                                         {"m4", stub_not_reached, false},
+                                         {NULL, NULL, false}};
 
     int ret = execute_firewall_chain(methods, "203.0.113.13", DISABLE_COMMAND, 6, "test_argv0");
 
@@ -105,32 +105,35 @@ void test_execute_firewall_chain_success_after_earlier_failures(void **state) {
  * fix: pf declines (disabled by default), hosts.deny declines (missing by
  * default), and route -- which needs no prior configuration -- succeeds.
  */
-static firewall_result_t stub_pf_invalid_state(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_pf_invalid_state(const char* srcip, int action, int ip_version, const char* argv0)
+{
     return FIREWALL_INVALID_STATE;
 }
 
-static firewall_result_t stub_hostsdeny_not_available(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_hostsdeny_not_available(const char* srcip, int action, int ip_version, const char* argv0)
+{
     return FIREWALL_NOT_AVAILABLE;
 }
 
-static firewall_result_t stub_route_success(const char *srcip, int action, int ip_version, const char *argv0) {
+static firewall_result_t stub_route_success(const char* srcip, int action, int ip_version, const char* argv0)
+{
     return FIREWALL_SUCCESS;
 }
 
-void test_execute_firewall_chain_macos_stock_install_falls_back_to_route(void **state) {
-    const firewall_method_t methods[] = {
-        {"pf", stub_pf_invalid_state, false},
-        {"hostsdeny", stub_hostsdeny_not_available, false},
-        {"route", stub_route_success, false},
-        {NULL, NULL, false}
-    };
+void test_execute_firewall_chain_macos_stock_install_falls_back_to_route(void** state)
+{
+    const firewall_method_t methods[] = {{"pf", stub_pf_invalid_state, false},
+                                         {"hostsdeny", stub_hostsdeny_not_available, false},
+                                         {"route", stub_route_success, false},
+                                         {NULL, NULL, false}};
 
     int ret = execute_firewall_chain(methods, "203.0.113.14", ENABLE_COMMAND, 4, "block-ip");
 
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_execute_firewall_chain_all_unavailable, test_setup),
         cmocka_unit_test_setup(test_execute_firewall_chain_mixed_failures, test_setup),

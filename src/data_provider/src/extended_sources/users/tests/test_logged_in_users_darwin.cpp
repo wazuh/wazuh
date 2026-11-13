@@ -15,11 +15,11 @@
 
 class MockUtmpxWrapper : public IUtmpxWrapper
 {
-    public:
-        MOCK_METHOD(void, utmpxname, (const char* file), (override));
-        MOCK_METHOD(void, setutxent, (), (override));
-        MOCK_METHOD(void, endutxent, (), (override));
-        MOCK_METHOD(struct utmpx*, getutxent, (), (override));
+public:
+    MOCK_METHOD(void, utmpxname, (const char* file), (override));
+    MOCK_METHOD(void, setutxent, (), (override));
+    MOCK_METHOD(void, endutxent, (), (override));
+    MOCK_METHOD(struct utmpx*, getutxent, (), (override));
 };
 
 TEST(LoggedInUsersProviderTest, CollectReturnsExpectedJson)
@@ -36,9 +36,7 @@ TEST(LoggedInUsersProviderTest, CollectReturnsExpectedJson)
 
     EXPECT_CALL(*mockWrapper, utmpxname(::testing::_)).Times(1);
     EXPECT_CALL(*mockWrapper, setutxent()).Times(1);
-    EXPECT_CALL(*mockWrapper, getutxent())
-    .WillOnce(::testing::Return(&fakeEntry))
-    .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*mockWrapper, getutxent()).WillOnce(::testing::Return(&fakeEntry)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endutxent()).Times(1);
 
     LoggedInUsersProvider provider(mockWrapper);
@@ -66,9 +64,7 @@ TEST(LoggedInUsersProviderTest, CollectFiltersOutDeadProcessEntries)
 
     EXPECT_CALL(*mockWrapper, utmpxname(::testing::_)).Times(1);
     EXPECT_CALL(*mockWrapper, setutxent()).Times(1);
-    EXPECT_CALL(*mockWrapper, getutxent())
-    .WillOnce(::testing::Return(&deadEntry))
-    .WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*mockWrapper, getutxent()).WillOnce(::testing::Return(&deadEntry)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endutxent()).Times(1);
 
     LoggedInUsersProvider provider(mockWrapper);
@@ -98,9 +94,9 @@ TEST(LoggedInUsersProviderTest, CollectKeepsLiveSessionAmongDeadOnes)
     EXPECT_CALL(*mockWrapper, utmpxname(::testing::_)).Times(1);
     EXPECT_CALL(*mockWrapper, setutxent()).Times(1);
     EXPECT_CALL(*mockWrapper, getutxent())
-    .WillOnce(::testing::Return(&deadEntry))
-    .WillOnce(::testing::Return(&liveEntry))
-    .WillOnce(::testing::Return(nullptr));
+        .WillOnce(::testing::Return(&deadEntry))
+        .WillOnce(::testing::Return(&liveEntry))
+        .WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*mockWrapper, endutxent()).Times(1);
 
     LoggedInUsersProvider provider(mockWrapper);

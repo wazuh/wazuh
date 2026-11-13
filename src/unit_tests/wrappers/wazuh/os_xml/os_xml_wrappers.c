@@ -17,24 +17,30 @@
 #include <string.h>
 #include <stdlib.h>
 
-
-extern const char * __real_w_get_attr_val_by_name(xml_node * node, const char * name);
-const char * __wrap_w_get_attr_val_by_name(xml_node * node, const char * name) {
-    if (test_mode) {
-        return mock_type(const char *);
+extern const char* __real_w_get_attr_val_by_name(xml_node* node, const char* name);
+const char* __wrap_w_get_attr_val_by_name(xml_node* node, const char* name)
+{
+    if (test_mode)
+    {
+        return mock_type(const char*);
     }
 
     return __real_w_get_attr_val_by_name(node, name);
 }
 
-int __wrap_OS_ReadXML(__attribute__ ((__unused__)) const char * file, OS_XML * _lxml) {
+int __wrap_OS_ReadXML(__attribute__((__unused__)) const char* file, OS_XML* _lxml)
+{
     int retval = mock_type(int);
-    if (retval < 0) {
-        char * buffer = mock_type(char *);
+    if (retval < 0)
+    {
+        char* buffer = mock_type(char*);
         strcpy(_lxml->err, buffer);
         _lxml->err_line = mock_type(int);
     }
     return retval;
 }
 
-void __wrap_OS_ClearXML(__attribute__ ((__unused__)) OS_XML * _lxml) { return; }
+void __wrap_OS_ClearXML(__attribute__((__unused__)) OS_XML* _lxml)
+{
+    return;
+}

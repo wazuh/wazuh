@@ -107,7 +107,8 @@ namespace
                 // is a manager-side defect: it can be neither deduped nor
                 // acknowledged, and dropping it silently would leave a future
                 // reader with no way to tell it ever arrived.
-                LOGFN_DEBUG1(logFn, "Ignoring a /control task with no task_id (type '%s').",
+                LOGFN_DEBUG1(logFn,
+                             "Ignoring a /control task with no task_id (type '%s').",
                              taskType.empty() ? "(none)" : taskType.c_str());
                 continue;
             }
@@ -118,8 +119,10 @@ namespace
                 // the durable registry's TTL is the mechanism working (or, on
                 // an IPC hiccup with agent-info, the fail-closed guard: either
                 // way the safe move is to not dispatch again).
-                LOGFN_DEBUG2(logFn, "Dropping /control task %s: already seen (or its durable "
-                             "record could not be confirmed).", taskId.c_str());
+                LOGFN_DEBUG2(logFn,
+                             "Dropping /control task %s: already seen (or its durable "
+                             "record could not be confirmed).",
+                             taskId.c_str());
                 continue;
             }
 
@@ -130,17 +133,30 @@ namespace
     }
 } // namespace
 
-ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
-                             const ISigner& signer, IClock& clock, IRandom& random,
-                             ICallbackSink& sink, ISpoolFileFactory& spoolFactory,
-                             ConfigHashState& configHash, CaPublicationState& caPublication,
+ControlStream::ControlStream(const ModuleConfig& config,
+                             IHttpPerformer& performer,
+                             const ISigner& signer,
+                             IClock& clock,
+                             IRandom& random,
+                             ICallbackSink& sink,
+                             ISpoolFileFactory& spoolFactory,
+                             ConfigHashState& configHash,
+                             CaPublicationState& caPublication,
                              ClusterIdentity& cluster,
-                             AuthGate& authGate, CompressionGate& compressionGate,
-                             ITaskIdStore& taskStore, IVdOffsetStore& vdOffsetStore,
+                             AuthGate& authGate,
+                             CompressionGate& compressionGate,
+                             ITaskIdStore& taskStore,
+                             IVdOffsetStore& vdOffsetStore,
                              std::function<std::string()> collectHost)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
-    , m_sender(performer, signer, clock, m_backoff, config.httpsCompressionEnabled, &compressionGate, &authGate,
+    , m_sender(performer,
+               signer,
+               clock,
+               m_backoff,
+               config.httpsCompressionEnabled,
+               &compressionGate,
+               &authGate,
                config.serverEndpoint)
     , m_clock(clock)
     , m_sink(sink)
@@ -195,11 +211,9 @@ OutcomeClass ControlStream::runStep(Waiter& waiter)
 
     switch (m_machine.nextAction())
     {
-        case ControlStateMachine::ActionKind::Startup:
-            return sendStartup(waiter);
+        case ControlStateMachine::ActionKind::Startup: return sendStartup(waiter);
 
-        case ControlStateMachine::ActionKind::Notify:
-            return sendNotify(waiter);
+        case ControlStateMachine::ActionKind::Notify: return sendNotify(waiter);
 
         default:
             // LCOV_EXCL_START: Idle only when Stopping, never driven here.
@@ -234,7 +248,8 @@ void ControlStream::sendShutdown(Waiter& waiter)
 
     if (result.outcome != OutcomeClass::Ok)
     {
-        LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (%s)%s.",
+        LOGFN_WARN(m_logFn,
+                   "Shutdown notification to the manager failed (%s)%s.",
                    outcomeName(result.outcome),
                    transportReason(result.response.curlError).c_str());
     }
@@ -265,21 +280,19 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 
     LOGFN_DEBUG2(m_logFn, "Sending /control startup.");
 
-    const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
-                                      m_config.controlMaxAttempts);
+    const auto result =
+        m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter, m_config.controlMaxAttempts);
     updateConnectionInfo(result.response);
 
     if (result.outcome == OutcomeClass::Ok)
     {
         m_settingsHash = computeSettingsHash(result.response.body);
-        LOGFN_DEBUG2(m_logFn, "settings_hash baseline computed from the startup response: %s",
-                     m_settingsHash.c_str());
+        LOGFN_DEBUG2(m_logFn, "settings_hash baseline computed from the startup response: %s", m_settingsHash.c_str());
         applyClusterIdentity(result.response.body);
     }
 
-    const auto event = (result.outcome == OutcomeClass::Ok)
-                       ? ControlStateMachine::Event::StartupAccepted
-                       : eventFor(result.outcome);
+    const auto event =
+        (result.outcome == OutcomeClass::Ok) ? ControlStateMachine::Event::StartupAccepted : eventFor(result.outcome);
     const auto effects = m_machine.onEvent(event);
     applyEffects(effects, result.response.body);
 
@@ -327,8 +340,8 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
 
     LOGFN_DEBUG2(m_logFn, "Sending /control notify.");
 
-    const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
-                                      m_config.controlMaxAttempts);
+    const auto result =
+        m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter, m_config.controlMaxAttempts);
     updateConnectionInfo(result.response);
     const auto effects = m_machine.onEvent(eventFor(result.outcome));
     applyEffects(effects, {});
@@ -499,7 +512,8 @@ void ControlStream::maybeAdoptCaPublication(std::optional<std::int64_t> advertis
     // Logged on the observation that arms the refresh, not on every notify that raises the
     // target: at the keepalive cadence the latter would be a line every ten seconds for as long
     // as a rotation is in flight.
-    LOGFN_INFO(m_logFn, "Manager advertises CA bundle publication %lld; the agent holds %lld. A refresh is due.",
+    LOGFN_INFO(m_logFn,
+               "Manager advertises CA bundle publication %lld; the agent holds %lld. A refresh is due.",
                static_cast<long long>(m_caPublication.pending()),
                static_cast<long long>(m_caPublication.local()));
 }
@@ -518,8 +532,7 @@ void ControlStream::maybeRequestVdRescan(uint64_t offset, Waiter& waiter)
     }
 }
 
-void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& configToken,
-                                        Waiter& waiter)
+void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& configToken, Waiter& waiter)
 {
     const std::string localHash = m_configHash.get();
 
@@ -527,13 +540,19 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
     {
         // Every notify reports a hash, so this is the steady state: DEBUG2 to
         // keep DEBUG1 for the notifies that actually make something happen.
-        LOGFN_DEBUG2(m_logFn, "Shared agent configuration unchanged (manager=%s local=%s); "
-                     "nothing to download.", managerHash.c_str(), localHash.c_str());
+        LOGFN_DEBUG2(m_logFn,
+                     "Shared agent configuration unchanged (manager=%s local=%s); "
+                     "nothing to download.",
+                     managerHash.c_str(),
+                     localHash.c_str());
         return; // Nothing reported, not resolved yet, or already in sync.
     }
 
-    LOGFN_DEBUG1(m_logFn, "Manager config hash %s differs from the local one (%s); downloading "
-                 "the new configuration.", managerHash.c_str(), localHash.c_str());
+    LOGFN_DEBUG1(m_logFn,
+                 "Manager config hash %s differs from the local one (%s); downloading "
+                 "the new configuration.",
+                 managerHash.c_str(),
+                 localHash.c_str());
     auto file = m_fetcher.fetch(managerHash, configToken, waiter);
 
     if (!file)
@@ -590,8 +609,10 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
         // instead of re-requesting Startup every Notify.
         if (!m_settingsLoopWarned)
         {
-            LOGFN_WARN(m_logFn, "settings_hash %s still mismatches after a refresh; "
-                       "holding the baseline until it changes.", incoming.c_str());
+            LOGFN_WARN(m_logFn,
+                       "settings_hash %s still mismatches after a refresh; "
+                       "holding the baseline until it changes.",
+                       incoming.c_str());
             m_settingsLoopWarned = true;
         }
 
@@ -633,8 +654,10 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         {
             m_routeNotFoundReported = false;
             const std::string target = prefixedTarget(m_config.serverEndpoint, "/control");
-            LOGFN_INFO(m_logFn, "The request target '%s' is being served again; the HTTP 404 "
-                       "condition is cleared.", target.c_str());
+            LOGFN_INFO(m_logFn,
+                       "The request target '%s' is being served again; the HTTP 404 "
+                       "condition is cleared.",
+                       target.c_str());
         }
 
         // Pairs with the WARNING below, on the same reasoning as the 404 recovery
@@ -644,7 +667,8 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
         {
             m_certVerificationReported = false;
             m_certVerificationLimiter.reset();
-            LOGFN_INFO(m_logFn, "The manager's certificate is verifying successfully again; "
+            LOGFN_INFO(m_logFn,
+                       "The manager's certificate is verifying successfully again; "
                        "the TLS verification failure is cleared.");
         }
 
@@ -669,9 +693,11 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     {
         m_routeNotFoundReported = true;
         const std::string target = prefixedTarget(m_config.serverEndpoint, "/control");
-        LOGFN_ERROR(m_logFn, "The manager answered HTTP 404 to the request target '%s': it "
+        LOGFN_ERROR(m_logFn,
+                    "The manager answered HTTP 404 to the request target '%s': it "
                     "serves no such route. The path in <endpoint> must match the global "
-                    "prefix the manager serves.", target.c_str());
+                    "prefix the manager serves.",
+                    target.c_str());
     }
 
     // A cert-trust TLS failure gets its own report, on the same "before the pause
@@ -694,8 +720,11 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
             // reader still having the one-time startup INFO line in view to know which manager
             // is being rejected.
             const std::string url = m_config.baseUrl() + prefixedTarget(m_config.serverEndpoint, "/control");
-            LOGFN_WARN(m_logFn, "Could not verify the manager's certificate at '%s': %s%s",
-                       url.c_str(), m_lastCurlError.c_str(), m_certVerificationLimiter.suppressedNote(decision).c_str());
+            LOGFN_WARN(m_logFn,
+                       "Could not verify the manager's certificate at '%s': %s%s",
+                       url.c_str(),
+                       m_lastCurlError.c_str(),
+                       m_certVerificationLimiter.suppressedNote(decision).c_str());
         }
     }
 
@@ -709,8 +738,7 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     // thrown away (eventFor()), not whether the data is flowing. Excluded: answers that clear on
     // their own (5xx, 429/503, 413), a plain 400, and a 404 -- which does not clear on its own but
     // is left to the buffer's own cap rather than the producer lock.
-    const bool blocksDelivery = outcome == OutcomeClass::Unreachable ||
-                                outcome == OutcomeClass::AuthFail ||
+    const bool blocksDelivery = outcome == OutcomeClass::Unreachable || outcome == OutcomeClass::AuthFail ||
                                 outcome == OutcomeClass::VersionRejected;
 
     if (!blocksDelivery)
@@ -733,24 +761,28 @@ void ControlStream::updateProducerPause(OutcomeClass outcome)
     // manager answered, so a stored curl error there is from an earlier and
     // unrelated incident -- and the auth-gate path reaches here having sent
     // nothing at all.
-    const std::string reason = (outcome == OutcomeClass::Unreachable)
-                               ? m_lastCurlError
-                               : std::string();
+    const std::string reason = (outcome == OutcomeClass::Unreachable) ? m_lastCurlError : std::string();
 
     if (++m_undeliverableStreak < m_config.producerPauseThreshold)
     {
-        LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u)%s.",
-                     outcomeName(outcome), m_undeliverableStreak,
-                     m_config.producerPauseThreshold, transportReason(reason).c_str());
+        LOGFN_DEBUG1(m_logFn,
+                     "/control undeliverable (%s) (%u/%u)%s.",
+                     outcomeName(outcome),
+                     m_undeliverableStreak,
+                     m_config.producerPauseThreshold,
+                     transportReason(reason).c_str());
         return;
     }
 
     m_producersPaused = true;
     // Debug: the consumer emits the operator-facing line, and the reason rides
     // along so that line can name the cause instead of just "unreachable".
-    LOGFN_DEBUG1(m_logFn, "/control undeliverable (%s) (%u/%u); pausing event production%s.",
-                 outcomeName(outcome), m_undeliverableStreak,
-                 m_config.producerPauseThreshold, transportReason(reason).c_str());
+    LOGFN_DEBUG1(m_logFn,
+                 "/control undeliverable (%s) (%u/%u); pausing event production%s.",
+                 outcomeName(outcome),
+                 m_undeliverableStreak,
+                 m_config.producerPauseThreshold,
+                 transportReason(reason).c_str());
     m_sink.onProducerPause(true, reason);
 }
 
@@ -760,8 +792,11 @@ void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& 
 
     for (const auto& [task, subsumer] : plan.dropped)
     {
-        LOGFN_INFO(m_logFn, "Task %s (%s) dropped: covered by a %s in the same batch.",
-                   task.id.c_str(), task.type.c_str(), subsumer.c_str());
+        LOGFN_INFO(m_logFn,
+                   "Task %s (%s) dropped: covered by a %s in the same batch.",
+                   task.id.c_str(),
+                   task.type.c_str(),
+                   subsumer.c_str());
     }
 
     for (const auto& task : plan.ordered)
@@ -788,8 +823,10 @@ void ControlStream::dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter)
 
     if (payload.is_discarded() || !payload.is_object())
     {
-        LOGFN_WARN(m_logFn, "remote_upgrade task %s has a malformed payload; aborting "
-                   "(no /control response is sent).", task.id.c_str());
+        LOGFN_WARN(m_logFn,
+                   "remote_upgrade task %s has a malformed payload; aborting "
+                   "(no /control response is sent).",
+                   task.id.c_str());
         m_sink.onTaskFailed(task.id, task.type, "malformed payload");
         return;
     }
@@ -800,8 +837,10 @@ void ControlStream::dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter)
 
     if (wpkFile.empty() || wpkSha1.empty() || installer.empty())
     {
-        LOGFN_WARN(m_logFn, "remote_upgrade task %s is missing wpk_file/wpk_sha1/installer; "
-                   "aborting.", task.id.c_str());
+        LOGFN_WARN(m_logFn,
+                   "remote_upgrade task %s is missing wpk_file/wpk_sha1/installer; "
+                   "aborting.",
+                   task.id.c_str());
         m_sink.onTaskFailed(task.id, task.type, "missing wpk_file/wpk_sha1/installer");
         return;
     }
@@ -823,19 +862,19 @@ void ControlStream::dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter)
     }
 
     m_upgradeThread = std::thread(
-                          [this, taskId = task.id, taskType = task.type, wpkFile, wpkSha1, installer, &waiter]()
-    {
-        auto file = m_wpkFetcher.fetch(wpkFile, wpkSha1, waiter);
-
-        if (!file)
+        [this, taskId = task.id, taskType = task.type, wpkFile, wpkSha1, installer, &waiter]()
         {
-            // Already logged by the fetcher (download failure or sha1 mismatch).
-            m_sink.onTaskFailed(taskId, taskType, "WPK download or sha1 verification failed");
-            return;
-        }
+            auto file = m_wpkFetcher.fetch(wpkFile, wpkSha1, waiter);
 
-        m_sink.onUpgradeReady(taskId, wpkFile, std::move(file), installer);
-    });
+            if (!file)
+            {
+                // Already logged by the fetcher (download failure or sha1 mismatch).
+                m_sink.onTaskFailed(taskId, taskType, "WPK download or sha1 verification failed");
+                return;
+            }
+
+            m_sink.onUpgradeReady(taskId, wpkFile, std::move(file), installer);
+        });
 }
 
 void ControlStream::joinUpgradeWork()
@@ -890,7 +929,7 @@ ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome)
         // "Latched" is the incident count, not only paused(): a key renewed from inside
         // on_reenroll_required can already have released the gate here (#38329).
         return takeAuthIncident() ? ControlStateMachine::Event::AuthFailed
-               : ControlStateMachine::Event::TransientFailure;
+                                  : ControlStateMachine::Event::TransientFailure;
     }
 
     if (outcome == OutcomeClass::VersionRejected)

@@ -60,11 +60,11 @@ namespace
     /// The window itself is unit-tested; waiting one out here would only buy real seconds.
     class NoJitter final : public IRandom
     {
-        public:
-            double uniform01() override
-            {
-                return 0.0;
-            }
+    public:
+        double uniform01() override
+        {
+            return 0.0;
+        }
     };
 
     /// FakeManager takes thirteen positional arguments before the one this suite cares about.
@@ -127,46 +127,52 @@ namespace
     /// record of what crossed the install boundary.
     class Refresher final
     {
-        public:
-            Refresher(uint16_t port, const std::string& caPath, std::int64_t local = HELD)
-                : m_config(verifiedConfig(port, caPath))
-                , m_performer(m_config, defaultCurlHandleFactory())
-                , m_state(local)
-                , m_fetcher(m_config, m_performer, m_fsProbe, m_clock, m_random, m_state,
-                            [this](const std::string & pem, std::int64_t generation)
+    public:
+        Refresher(uint16_t port, const std::string& caPath, std::int64_t local = HELD)
+            : m_config(verifiedConfig(port, caPath))
+            , m_performer(m_config, defaultCurlHandleFactory())
+            , m_state(local)
+            , m_fetcher(
+                  m_config,
+                  m_performer,
+                  m_fsProbe,
+                  m_clock,
+                  m_random,
+                  m_state,
+                  [this](const std::string& pem, std::int64_t generation)
+                  {
+                      m_installed.emplace_back(pem, generation);
+                      return m_consumerAccepts;
+                  },
+                  TEST_LOG)
+        {
+        }
+
+        /// Arms the target, lets the (zero-length) jitter window pass, and runs `attempts`
+        /// refreshes. Each attempt is one tick, because a failed one re-arms immediately
+        /// on the near-zero ramp configured above.
+        void run(std::int64_t advertised, int attempts = 1)
+        {
+            m_state.observe(advertised);
+            m_fetcher.tick(m_waiter); // Schedules the wait.
+
+            for (int attempt = 0; attempt < attempts; attempt++)
             {
-                m_installed.emplace_back(pem, generation);
-                return m_consumerAccepts;
-            },
-            TEST_LOG)
-            {
+                m_fetcher.tick(m_waiter);
             }
+        }
 
-            /// Arms the target, lets the (zero-length) jitter window pass, and runs `attempts`
-            /// refreshes. Each attempt is one tick, because a failed one re-arms immediately
-            /// on the near-zero ramp configured above.
-            void run(std::int64_t advertised, int attempts = 1)
-            {
-                m_state.observe(advertised);
-                m_fetcher.tick(m_waiter); // Schedules the wait.
+        std::vector<std::pair<std::string, std::int64_t>> m_installed;
+        bool m_consumerAccepts {true};
 
-                for (int attempt = 0; attempt < attempts; attempt++)
-                {
-                    m_fetcher.tick(m_waiter);
-                }
-            }
-
-            std::vector<std::pair<std::string, std::int64_t>> m_installed;
-            bool m_consumerAccepts {true};
-
-            ModuleConfig m_config;
-            CurlPerformer m_performer;
-            FsProbe m_fsProbe;
-            SystemClock m_clock;
-            NoJitter m_random;
-            CaPublicationState m_state;
-            Waiter m_waiter;
-            CaBundleFetcher m_fetcher;
+        ModuleConfig m_config;
+        CurlPerformer m_performer;
+        FsProbe m_fsProbe;
+        SystemClock m_clock;
+        NoJitter m_random;
+        CaPublicationState m_state;
+        Waiter m_waiter;
+        CaBundleFetcher m_fetcher;
     };
 
     /// How many certificates a PEM holds, counted by encapsulation boundary rather than by

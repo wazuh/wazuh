@@ -33,8 +33,8 @@ enum class TransportStatus
     ///< problem; verify_mode=system's local-anchor fallback (curlPerformer.cpp, #39123)
     ///< acts only when tlsFailure.kind is still None -- a genuine chain/CA-trust failure,
     ///< the one cause a different anchor could plausibly fix.
-    Aborted,     ///< Interrupted through the abort flag (shutdown).
-    OtherError   ///< Any other transport error.
+    Aborted,   ///< Interrupted through the abort flag (shutdown).
+    OtherError ///< Any other transport error.
 };
 
 /// D9 outcome classes for a completed attempt.
@@ -45,20 +45,20 @@ enum class TransportStatus
 enum class OutcomeClass
 {
     Ok,
-    Unreachable,     ///< Transport failed; no HTTP status ever arrived.
-    ServerError,     ///< Answered, unhappily, and worth retrying: 5xx other than
+    Unreachable, ///< Transport failed; no HTTP status ever arrived.
+    ServerError, ///< Answered, unhappily, and worth retrying: 5xx other than
     ///< 503, plus the 403/426 an intermediary can inject.
-    BackPressure,    ///< 503 + Retry-After / 429: server delay wins when longer.
-    AuthFail,        ///< 401: one fresh-timestamp retry, then re-enrollment.
-    Permanent,       ///< 400/...: retrying identical bytes cannot succeed.
-    RouteNotFound,   ///< 404: the target names no route the manager serves (an
+    BackPressure,  ///< 503 + Retry-After / 429: server delay wins when longer.
+    AuthFail,      ///< 401: one fresh-timestamp retry, then re-enrollment.
+    Permanent,     ///< 400/...: retrying identical bytes cannot succeed.
+    RouteNotFound, ///< 404: the target names no route the manager serves (an
     ///< endpoint/global_prefix mismatch), or -- on /download alone -- no such
     ///< resource. Which one it is depends on the endpoint, so the consumer decides.
-    PayloadTooLarge, ///< 413: /stateless splits + resends smaller (#37835).
-    VersionRejected, ///< 409 at Startup: REJECTED state, slow re-Startup.
+    PayloadTooLarge,     ///< 413: /stateless splits + resends smaller (#37835).
+    VersionRejected,     ///< 409 at Startup: REJECTED state, slow re-Startup.
     CompressionRejected, ///< 415: manager doesn't accept Content-Encoding: zstd;
     ///< RetrySender retries once, uncompressed.
-    Interrupted      ///< Aborted by shutdown: never a silent success.
+    Interrupted ///< Aborted by shutdown: never a silent success.
 };
 
 /// Name of an OutcomeClass, for logs: the class is the reason a request
@@ -67,41 +67,29 @@ inline const char* outcomeName(OutcomeClass outcome)
 {
     switch (outcome)
     {
-        case OutcomeClass::Ok:
-            return "Ok";
+        case OutcomeClass::Ok: return "Ok";
 
-        case OutcomeClass::Unreachable:
-            return "Unreachable";
+        case OutcomeClass::Unreachable: return "Unreachable";
 
-        case OutcomeClass::ServerError:
-            return "ServerError";
+        case OutcomeClass::ServerError: return "ServerError";
 
-        case OutcomeClass::BackPressure:
-            return "BackPressure";
+        case OutcomeClass::BackPressure: return "BackPressure";
 
-        case OutcomeClass::AuthFail:
-            return "AuthFail";
+        case OutcomeClass::AuthFail: return "AuthFail";
 
-        case OutcomeClass::Permanent:
-            return "Permanent";
+        case OutcomeClass::Permanent: return "Permanent";
 
-        case OutcomeClass::RouteNotFound:
-            return "RouteNotFound";
+        case OutcomeClass::RouteNotFound: return "RouteNotFound";
 
-        case OutcomeClass::PayloadTooLarge:
-            return "PayloadTooLarge";
+        case OutcomeClass::PayloadTooLarge: return "PayloadTooLarge";
 
-        case OutcomeClass::VersionRejected:
-            return "VersionRejected";
+        case OutcomeClass::VersionRejected: return "VersionRejected";
 
-        case OutcomeClass::CompressionRejected:
-            return "CompressionRejected";
+        case OutcomeClass::CompressionRejected: return "CompressionRejected";
 
-        case OutcomeClass::Interrupted:
-            return "Interrupted";
+        case OutcomeClass::Interrupted: return "Interrupted";
 
-        default:
-            return "Unknown";
+        default: return "Unknown";
     }
 }
 
@@ -117,42 +105,32 @@ inline int toHcResult(OutcomeClass outcome)
 {
     switch (outcome)
     {
-        case OutcomeClass::Ok:
-            return HC_RESULT_OK;
+        case OutcomeClass::Ok: return HC_RESULT_OK;
 
         // Both cross the ABI as RETRYABLE: the C core only needs the policy,
         // and the arm/disarm decision that needs the finer fact never leaves
         // the module (ControlStream owns it), so hc_result_t is unchanged.
         case OutcomeClass::Unreachable:
-        case OutcomeClass::ServerError:
-            return HC_RESULT_RETRYABLE;
+        case OutcomeClass::ServerError: return HC_RESULT_RETRYABLE;
 
-        case OutcomeClass::BackPressure:
-            return HC_RESULT_BACKPRESSURE;
+        case OutcomeClass::BackPressure: return HC_RESULT_BACKPRESSURE;
 
-        case OutcomeClass::AuthFail:
-            return HC_RESULT_AUTH_FAIL;
+        case OutcomeClass::AuthFail: return HC_RESULT_AUTH_FAIL;
 
-        case OutcomeClass::Permanent:
-            return HC_RESULT_PERMANENT;
+        case OutcomeClass::Permanent: return HC_RESULT_PERMANENT;
 
-        case OutcomeClass::RouteNotFound:
-            return HC_RESULT_PERMANENT;
+        case OutcomeClass::RouteNotFound: return HC_RESULT_PERMANENT;
 
-        case OutcomeClass::PayloadTooLarge:
-            return HC_RESULT_PERMANENT;
+        case OutcomeClass::PayloadTooLarge: return HC_RESULT_PERMANENT;
 
-        case OutcomeClass::VersionRejected:
-            return HC_RESULT_PERMANENT;
+        case OutcomeClass::VersionRejected: return HC_RESULT_PERMANENT;
 
         // Reached here only if RetrySender's one-shot uncompressed retry was
         // itself rejected too (unexpected -- the manager should never 415 an
         // uncompressed body) -- same terminal treatment as Permanent.
-        case OutcomeClass::CompressionRejected:
-            return HC_RESULT_PERMANENT;
+        case OutcomeClass::CompressionRejected: return HC_RESULT_PERMANENT;
 
-        default:
-            return HC_RESULT_ERROR;
+        default: return HC_RESULT_ERROR;
     }
 }
 
@@ -180,32 +158,32 @@ constexpr uint64_t SHORT_REPLY_MAX_RESPONSE_BYTES = 64ULL * 1024;
 /// per-request data.
 struct HttpRequestSpec
 {
-    std::string target;                ///< e.g. "/stateless" (also the MAC'd target).
+    std::string target;                   ///< e.g. "/stateless" (also the MAC'd target).
     HttpMethod method {HttpMethod::Post}; ///< Defaults to POST so every pre-existing caller
     ///< (which never sets this) keeps behaving unchanged.
-    std::string contentType;           ///< Emitted as Content-Type when non-empty; empty
+    std::string contentType; ///< Emitted as Content-Type when non-empty; empty
     ///< leaves libcurl's default (non-JSON endpoints).
-    std::vector<std::string> headers;  ///< Extra headers (auth headers included).
-    std::string acceptEncoding;        ///< One coding to offer. Sent as Accept-Encoding only when
+    std::vector<std::string> headers; ///< Extra headers (auth headers included).
+    std::string acceptEncoding;       ///< One coding to offer. Sent as Accept-Encoding only when
     ///< the agent's libcurl decodes it, and libcurl then decodes a
     ///< reply in one coding, any it was built with; one
     ///< naming more is refused (contentDecodingFailed). A reply cut
     ///< short in a properly ended body decodes to a prefix without
     ///< error, so the caller verifies what it got. Empty sends no
     ///< header and decodes nothing.
-    const uint8_t* body {nullptr};     ///< In-memory body (nullptr when file-backed).
+    const uint8_t* body {nullptr}; ///< In-memory body (nullptr when file-backed).
     size_t bodyLength {0};
-    std::string bodyFilePath;          ///< When non-empty: stream the body from this file.
+    std::string bodyFilePath; ///< When non-empty: stream the body from this file.
     uint64_t bodyFileSize {0};
     std::string precompressedBodyFilePath; ///< Optional zstd-compressed sibling of
     ///< bodyFilePath, precomputed once by the caller (only /stateful today).
     ///< attemptOnce() swaps it in when compression is enabled/allowed; empty
     ///< means no such sibling exists, so bodyFilePath is sent as-is.
     uint64_t precompressedBodyFileSize {0};
-    std::string responseFilePath;      ///< When non-empty: stream the response body to this
+    std::string responseFilePath; ///< When non-empty: stream the response body to this
     ///< file (truncated per attempt) instead of
     ///< HttpResponse::body.
-    uint64_t maxResponseBytes {0};     ///< Cap on the response body, streamed or in memory (0 = unlimited);
+    uint64_t maxResponseBytes {0}; ///< Cap on the response body, streamed or in memory (0 = unlimited);
     ///< exceeding it aborts the transfer.
     uint32_t timeoutMs {0};
     const std::atomic<bool>* abortFlag {nullptr}; ///< Optional cooperative abort.
@@ -216,7 +194,7 @@ struct HttpResponse
 {
     TransportStatus status {TransportStatus::OtherError};
     long httpCode {0};
-    long retryAfterSeconds {0}; ///< Parsed Retry-After header (0 = absent).
+    long retryAfterSeconds {0};    ///< Parsed Retry-After header (0 = absent).
     std::int64_t caGeneration {0}; ///< Parsed Wazuh-CA-Generation header (0 = absent or
     ///< not a positive integer). Only ever set on GET /cacerts.
     std::time_t serverDateSeconds {0}; ///< Parsed Date header, manager's clock at
@@ -224,10 +202,10 @@ struct HttpResponse
     ///< transport builds carries one, including every 401 -- RetrySender's
     ///< one-shot auth retry uses it to detect and correct clock skew before
     ///< assuming a 401 means a dead credential (#37828 follow-up).
-    std::string localIp;        ///< Local IP of the connection (CURLINFO_LOCAL_IP);
+    std::string localIp; ///< Local IP of the connection (CURLINFO_LOCAL_IP);
     ///< the agent's own address toward the manager.
     std::string body;
-    std::string curlError;      ///< libcurl's own wording for a failed attempt, empty
+    std::string curlError; ///< libcurl's own wording for a failed attempt, empty
     ///< otherwise (success, or a failure that never reached libcurl).
     TlsFailureDetail tlsFailure; ///< Populated (kind != None) only when status == TlsFail
     ///< AND the failure was classified as a hostname mismatch or a certificate-date
@@ -263,26 +241,19 @@ inline const char* transportStatusName(TransportStatus status)
 {
     switch (status)
     {
-        case TransportStatus::Ok:
-            return "Ok";
+        case TransportStatus::Ok: return "Ok";
 
-        case TransportStatus::Timeout:
-            return "Timeout";
+        case TransportStatus::Timeout: return "Timeout";
 
-        case TransportStatus::ConnectFail:
-            return "ConnectFail";
+        case TransportStatus::ConnectFail: return "ConnectFail";
 
-        case TransportStatus::TlsFail:
-            return "TlsFail";
+        case TransportStatus::TlsFail: return "TlsFail";
 
-        case TransportStatus::Aborted:
-            return "Aborted";
+        case TransportStatus::Aborted: return "Aborted";
 
-        case TransportStatus::OtherError:
-            return "OtherError";
+        case TransportStatus::OtherError: return "OtherError";
 
-        default:
-            return "unknown";
+        default: return "unknown";
     }
 }
 
@@ -305,12 +276,10 @@ inline const char* transportStatusName(TransportStatus status)
  */
 inline void PrintTo(const HttpResponse& response, std::ostream* os)
 {
-    *os << "HttpResponse{status=" << transportStatusName(response.status)
-        << ", httpCode=" << response.httpCode
-        << ", retryAfterSeconds=" << response.retryAfterSeconds
-        << ", caGeneration=" << response.caGeneration
-        << ", serverDateSeconds=" << static_cast<long long>(response.serverDateSeconds)
-        << ", localIp='" << response.localIp << "'"
+    *os << "HttpResponse{status=" << transportStatusName(response.status) << ", httpCode=" << response.httpCode
+        << ", retryAfterSeconds=" << response.retryAfterSeconds << ", caGeneration=" << response.caGeneration
+        << ", serverDateSeconds=" << static_cast<long long>(response.serverDateSeconds) << ", localIp='"
+        << response.localIp << "'"
         << ", body=" << response.body.size() << " byte(s)"
         << ", curlError='" << response.curlError << "'"
         << ", tlsFailureKind=" << static_cast<int>(response.tlsFailure.kind) << "}";

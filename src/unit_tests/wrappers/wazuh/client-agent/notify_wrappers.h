@@ -10,6 +10,6 @@
 #ifndef NOTIFY_WRAPPERS_H
 #define NOTIFY_WRAPPERS_H
 
-char * wrap_get_agent_ip_legacy_win32();
+char* wrap_get_agent_ip_legacy_win32();
 
 #endif

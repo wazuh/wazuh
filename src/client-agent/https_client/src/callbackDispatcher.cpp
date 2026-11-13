@@ -101,11 +101,10 @@ void CallbackDispatcher::onStartupResult(bool accepted, const std::string& hands
     }
 
     enqueue([this, accepted, handshakeJson]
-    { m_callbacks.on_startup_result(accepted, handshakeJson.c_str(), m_callbacks.user_data); });
+            { m_callbacks.on_startup_result(accepted, handshakeJson.c_str(), m_callbacks.user_data); });
 }
 
-void CallbackDispatcher::onTask(const std::string& taskId, const std::string& taskType,
-                                const std::string& payloadJson)
+void CallbackDispatcher::onTask(const std::string& taskId, const std::string& taskType, const std::string& payloadJson)
 {
     if (m_callbacks.on_task == nullptr)
     {
@@ -113,10 +112,7 @@ void CallbackDispatcher::onTask(const std::string& taskId, const std::string& ta
     }
 
     enqueue([this, taskId, taskType, payloadJson]
-    {
-        m_callbacks.on_task(taskId.c_str(), taskType.c_str(), payloadJson.c_str(),
-                            m_callbacks.user_data);
-    });
+            { m_callbacks.on_task(taskId.c_str(), taskType.c_str(), payloadJson.c_str(), m_callbacks.user_data); });
 }
 
 void CallbackDispatcher::onReenrollRequired()
@@ -129,8 +125,7 @@ void CallbackDispatcher::onReenrollRequired()
     enqueue([this] { m_callbacks.on_reenroll_required(m_callbacks.user_data); });
 }
 
-void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
-                                            std::shared_ptr<SpoolFile> file)
+void CallbackDispatcher::onConfigDownloaded(const std::string& configHash, std::shared_ptr<SpoolFile> file)
 {
     if (m_callbacks.on_config_downloaded == nullptr)
     {
@@ -140,14 +135,13 @@ void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
     // The lambda owns the file; run() destroys the task right after invoking
     // it, so the file is deleted as soon as the C callback returns.
     enqueue([this, configHash, file = std::move(file)]
-    {
-        m_callbacks.on_config_downloaded(configHash.c_str(), file->path().c_str(),
-                                         m_callbacks.user_data);
-    });
+            { m_callbacks.on_config_downloaded(configHash.c_str(), file->path().c_str(), m_callbacks.user_data); });
 }
 
-void CallbackDispatcher::onUpgradeReady(const std::string& taskId, const std::string& wpkFile,
-                                        std::shared_ptr<SpoolFile> file, const std::string& installer)
+void CallbackDispatcher::onUpgradeReady(const std::string& taskId,
+                                        const std::string& wpkFile,
+                                        std::shared_ptr<SpoolFile> file,
+                                        const std::string& installer)
 {
     if (m_callbacks.on_remote_upgrade_ready == nullptr)
     {
@@ -157,15 +151,15 @@ void CallbackDispatcher::onUpgradeReady(const std::string& taskId, const std::st
     // The lambda owns the file; run() destroys the task right after invoking
     // it, so the file is deleted as soon as the C callback returns (same
     // convention as onConfigDownloaded).
-    enqueue([this, taskId, wpkFile, file = std::move(file), installer]
-    {
-        m_callbacks.on_remote_upgrade_ready(taskId.c_str(), wpkFile.c_str(), file->path().c_str(),
-                                            installer.c_str(), m_callbacks.user_data);
-    });
+    enqueue(
+        [this, taskId, wpkFile, file = std::move(file), installer]
+        {
+            m_callbacks.on_remote_upgrade_ready(
+                taskId.c_str(), wpkFile.c_str(), file->path().c_str(), installer.c_str(), m_callbacks.user_data);
+        });
 }
 
-void CallbackDispatcher::onTaskFailed(const std::string& taskId, const std::string& taskType,
-                                      const std::string& reason)
+void CallbackDispatcher::onTaskFailed(const std::string& taskId, const std::string& taskType, const std::string& reason)
 {
     if (m_callbacks.on_task_failed == nullptr)
     {
@@ -173,10 +167,7 @@ void CallbackDispatcher::onTaskFailed(const std::string& taskId, const std::stri
     }
 
     enqueue([this, taskId, taskType, reason]
-    {
-        m_callbacks.on_task_failed(taskId.c_str(), taskType.c_str(), reason.c_str(),
-                                   m_callbacks.user_data);
-    });
+            { m_callbacks.on_task_failed(taskId.c_str(), taskType.c_str(), reason.c_str(), m_callbacks.user_data); });
 }
 
 void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
@@ -186,10 +177,7 @@ void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
         return;
     }
 
-    enqueue([this, configHash]
-    {
-        m_callbacks.on_manager_config_hash(configHash.c_str(), m_callbacks.user_data);
-    });
+    enqueue([this, configHash] { m_callbacks.on_manager_config_hash(configHash.c_str(), m_callbacks.user_data); });
 }
 
 void CallbackDispatcher::onAgentGroups(const std::string& groupsCsv)
@@ -199,27 +187,23 @@ void CallbackDispatcher::onAgentGroups(const std::string& groupsCsv)
         return;
     }
 
-    enqueue([this, groupsCsv]
-    {
-        m_callbacks.on_agent_groups(groupsCsv.c_str(), m_callbacks.user_data);
-    });
+    enqueue([this, groupsCsv] { m_callbacks.on_agent_groups(groupsCsv.c_str(), m_callbacks.user_data); });
 }
 
-void CallbackDispatcher::onSyncResponse(const std::string& sessionId, int result,
-                                        const std::string& body)
+void CallbackDispatcher::onSyncResponse(const std::string& sessionId, int result, const std::string& body)
 {
     if (m_callbacks.on_sync_response == nullptr)
     {
         return;
     }
 
-    enqueue([this, sessionId, result, body]
-    {
-        // Length-carrying: the body is the manager's raw /stateful JSON response, and
-        // c_str() alone would truncate it at the first embedded NUL, if any.
-        m_callbacks.on_sync_response(
-            sessionId.c_str(), result, body.data(), body.size(), m_callbacks.user_data);
-    });
+    enqueue(
+        [this, sessionId, result, body]
+        {
+            // Length-carrying: the body is the manager's raw /stateful JSON response, and
+            // c_str() alone would truncate it at the first embedded NUL, if any.
+            m_callbacks.on_sync_response(sessionId.c_str(), result, body.data(), body.size(), m_callbacks.user_data);
+        });
 }
 
 void CallbackDispatcher::onStateChange(hc_conn_state_t state)
@@ -252,8 +236,5 @@ void CallbackDispatcher::onProducerPause(bool paused, const std::string& reason)
     // Captured by value, and c_str() deferred to the body: the worker thread runs
     // this after the caller's string may already be destroyed, so the pointer the
     // C callback gets has to be into storage the task itself owns.
-    enqueue([this, paused, reason]
-    {
-        m_callbacks.on_producer_pause(paused, reason.c_str(), m_callbacks.user_data);
-    });
+    enqueue([this, paused, reason] { m_callbacks.on_producer_pause(paused, reason.c_str(), m_callbacks.user_data); });
 }

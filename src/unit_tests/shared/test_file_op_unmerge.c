@@ -362,8 +362,12 @@ static void test_unmerge_rename_failure(void** state)
     snprintf(path, sizeof(path), "%s/existing", sb->dest);
     assert_int_equal(mkdir(path, 0700), 0);
     write_file(sb->merged, "!3 existing\none!3 last.conf\ntwo");
-    snprintf(expected, sizeof(expected), "Unmerging '%s': could not save entry 'existing' due to [(%d)-(%s)].",
-             sb->merged, EISDIR, strerror(EISDIR));
+    snprintf(expected,
+             sizeof(expected),
+             "Unmerging '%s': could not save entry 'existing' due to [(%d)-(%s)].",
+             sb->merged,
+             EISDIR,
+             strerror(EISDIR));
     expect_any(__wrap__mferror, formatted_msg);
     expect_string(__wrap__merror, formatted_msg, expected);
     assert_int_equal(UnmergeFiles(sb->merged, sb->dest, OS_TEXT, &list), UNMERGE_FAILED);
@@ -406,11 +410,22 @@ static void test_unmerge_incomplete_entry(void** state)
 static void test_entry_name_validation(void** state)
 {
     sandbox_t* sb = *state;
-    const char* invalid[] =
-    {
-        "", ".", "..", "a/../b", "/a", "a/..", "a/", "a/.", "./",
-        "a\rb", "a\tb", "a\177b", "merged.mg", "merged.mgt", "MERGED.MG", "./Merged.MGT"
-    };
+    const char* invalid[] = {"",
+                             ".",
+                             "..",
+                             "a/../b",
+                             "/a",
+                             "a/..",
+                             "a/",
+                             "a/.",
+                             "./",
+                             "a\rb",
+                             "a\tb",
+                             "a\177b",
+                             "merged.mg",
+                             "merged.mgt",
+                             "MERGED.MG",
+                             "./Merged.MGT"};
 
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
     {
@@ -446,11 +461,24 @@ static void test_unmerge_reserved_names(void** state)
 static void test_names_invalid_only_on_windows(void** state)
 {
     sandbox_t* sb = *state;
-    const char* names[] =
-    {
-        "agent.conf", "rules:v2.txt", "C:a", "a?b", "a<b>c", "a|b", "a\"b", "a*b",
-        "notes.", "space ", "...", "a\\b", "\\a", "a\\..\\b", "sub/a\\b", "COM1", "nul.txt", "MERGED~1.TMP"
-    };
+    const char* names[] = {"agent.conf",
+                           "rules:v2.txt",
+                           "C:a",
+                           "a?b",
+                           "a<b>c",
+                           "a|b",
+                           "a\"b",
+                           "a*b",
+                           "notes.",
+                           "space ",
+                           "...",
+                           "a\\b",
+                           "\\a",
+                           "a\\..\\b",
+                           "sub/a\\b",
+                           "COM1",
+                           "nul.txt",
+                           "MERGED~1.TMP"};
     const size_t count = sizeof(names) / sizeof(*names);
     char bundle[1024];
     size_t length = 0;
@@ -503,12 +531,16 @@ static void test_relative_name_normalization(void** state)
 static void test_invalid_header_validation(void** state)
 {
     sandbox_t* sb = *state;
-    const char* invalid[] =
-    {
-        "!-1 file\n", "!+1 file\n", "!x file\n", "!2x file\n",
-        "!99999999999999999999999999999 file\n", "!10 file\nx",
-        "!1 file", "!0\n", "unexpected\n", "#unfinished"
-    };
+    const char* invalid[] = {"!-1 file\n",
+                             "!+1 file\n",
+                             "!x file\n",
+                             "!2x file\n",
+                             "!99999999999999999999999999999 file\n",
+                             "!10 file\nx",
+                             "!1 file",
+                             "!0\n",
+                             "unexpected\n",
+                             "#unfinished"};
 
     for (size_t i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i)
     {
@@ -570,8 +602,7 @@ static void test_invalid_name_logged_as_received(void** state)
 
 int main(void)
 {
-    const struct CMUnitTest tests[] =
-    {
+    const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_entry_name_validation, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_names_invalid_only_on_windows, setup_sandbox, teardown_sandbox),
         cmocka_unit_test_setup_teardown(test_unmerge_reserved_names, setup_sandbox, teardown_sandbox),

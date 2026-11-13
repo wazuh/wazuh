@@ -63,20 +63,23 @@ pthread_mutex_t synced_docs_mutex = PTHREAD_MUTEX_INITIALIZER;
 #include <magic.h>
 magic_t magic_cookie = 0;
 
-
-void init_magic(magic_t *cookie_ptr)
+void init_magic(magic_t* cookie_ptr)
 {
-    if (!cookie_ptr || *cookie_ptr) {
+    if (!cookie_ptr || *cookie_ptr)
+    {
         return;
     }
 
     *cookie_ptr = magic_open(MAGIC_MIME_TYPE);
 
-    if (!*cookie_ptr) {
-        const char *err = magic_error(*cookie_ptr);
+    if (!*cookie_ptr)
+    {
+        const char* err = magic_error(*cookie_ptr);
         merror(FIM_ERROR_LIBMAGIC_START, err ? err : "unknown");
-    } else if (magic_load(*cookie_ptr, NULL) < 0) {
-        const char *err = magic_error(*cookie_ptr);
+    }
+    else if (magic_load(*cookie_ptr, NULL) < 0)
+    {
+        const char* err = magic_error(*cookie_ptr);
         merror(FIM_ERROR_LIBMAGIC_LOAD, err ? err : "unknown");
         magic_close(*cookie_ptr);
         *cookie_ptr = 0;
@@ -93,7 +96,8 @@ void read_internal(int debug_level)
     syscheck.sym_checker_interval = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
     syscheck.sync_flush_batch_size = getDefine_Int_default("syscheck", "sync_flush_batch_size", 1, 100000, 100);
     syscheck.sync_flush_interval_ms = getDefine_Int_default("syscheck", "sync_flush_interval_ms", 50, 3600000, 500);
-    syscheck.sync_wal_autocheckpoint_pages = getDefine_Int_default("syscheck", "sync_wal_autocheckpoint_pages", 100, 1000000, 1000);
+    syscheck.sync_wal_autocheckpoint_pages =
+        getDefine_Int_default("syscheck", "sync_wal_autocheckpoint_pages", 100, 1000000, 1000);
     syscheck.sync_cache_size_kib = getDefine_Int_default("syscheck", "sync_cache_size_kib", 64, 1048576, 256);
 
 #ifndef WIN32
@@ -104,9 +108,11 @@ void read_internal(int debug_level)
     /* Check current debug_level
      * Command line setting takes precedence
      */
-    if (debug_level == 0) {
+    if (debug_level == 0)
+    {
         int debug_level = sys_debug_level;
-        while (debug_level != 0) {
+        while (debug_level != 0)
+        {
             nowDebug();
             debug_level--;
         }
@@ -115,27 +121,33 @@ void read_internal(int debug_level)
     return;
 }
 
-void free_pending_sync_item(void *data) {
-    if (data) {
-        pending_sync_item_t *item = (pending_sync_item_t *)data;
+void free_pending_sync_item(void* data)
+{
+    if (data)
+    {
+        pending_sync_item_t* item = (pending_sync_item_t*)data;
         cJSON_Delete(item->json);
         free(item);
     }
 }
 
-void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value) {
-    if (pending_items == NULL || json == NULL) {
+void add_pending_sync_item(OSList* pending_items, const cJSON* json, int sync_value)
+{
+    if (pending_items == NULL || json == NULL)
+    {
         return;
     }
 
-    pending_sync_item_t *item = (pending_sync_item_t *)malloc(sizeof(pending_sync_item_t));
-    if (item == NULL) {
+    pending_sync_item_t* item = (pending_sync_item_t*)malloc(sizeof(pending_sync_item_t));
+    if (item == NULL)
+    {
         merror("Failed to allocate memory for pending sync item");
         return;
     }
 
     item->json = cJSON_Duplicate(json, true);
-    if (item->json == NULL) {
+    if (item->json == NULL)
+    {
         merror("Failed to duplicate item for pending sync item");
         free(item);
         return;
@@ -148,27 +160,37 @@ void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_va
     const cJSON* path = cJSON_GetObjectItem(json, "path");
     const cJSON* version = cJSON_GetObjectItem(json, "version");
 
-    if (cJSON_IsString(path) && cJSON_IsNumber(version)) {
+    if (cJSON_IsString(path) && cJSON_IsNumber(version))
+    {
         mdebug2("Added item to pending sync list: %s (version: %d, sync: %d)",
-                cJSON_GetStringValue(path), (int)cJSON_GetNumberValue(version), sync_value);
-    } else {
+                cJSON_GetStringValue(path),
+                (int)cJSON_GetNumberValue(version),
+                sync_value);
+    }
+    else
+    {
         mdebug2("Added item to pending sync list (sync: %d)", sync_value);
     }
 }
 
-int process_pending_sync_updates(char* table_name, OSList *pending_items) {
-    if (pending_items == NULL) {
+int process_pending_sync_updates(char* table_name, OSList* pending_items)
+{
+    if (pending_items == NULL)
+    {
         return 0;
     }
 
     int count = 0;
-    OSListNode *node_it;
-    OSList_foreach(node_it, pending_items) {
-        pending_sync_item_t *item = (pending_sync_item_t *)node_it->data;
-        if (item != NULL && item->json != NULL) {
+    OSListNode* node_it;
+    OSList_foreach(node_it, pending_items)
+    {
+        pending_sync_item_t* item = (pending_sync_item_t*)node_it->data;
+        if (item != NULL && item->json != NULL)
+        {
             const cJSON* path = cJSON_GetObjectItem(item->json, "path");
             mdebug2("Setting sync=%d for path: %s", item->sync_value, cJSON_GetStringValue(path));
-            if (fim_db_set_sync_flag(table_name, item, item->sync_value) == 0) {
+            if (fim_db_set_sync_flag(table_name, item, item->sync_value) == 0)
+            {
                 count++;
             }
         }
@@ -194,8 +216,10 @@ int process_pending_sync_updates(char* table_name, OSList *pending_items) {
  * @param docs cJSON array of documents about to be promoted. Modified in place.
  * @return Number of documents dropped.
  */
-int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
-    if (!docs || !cJSON_IsArray(docs) || table_name == NULL) {
+int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs)
+{
+    if (!docs || !cJSON_IsArray(docs) || table_name == NULL)
+    {
         return 0;
     }
 
@@ -207,7 +231,8 @@ int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
     const bool is_registry = false;
 #endif
 
-    if (!is_file && !is_registry) {
+    if (!is_file && !is_registry)
+    {
         return 0;
     }
 
@@ -218,29 +243,34 @@ int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
     // The registry tables reach tens of thousands of rows and this runs on the startup path.
     cJSON* item = docs->child;
 
-    while (item != NULL) {
+    while (item != NULL)
+    {
         // Saved before any detach, which unlinks item from the list.
         cJSON* next = item->next;
 
         const cJSON* path_json = cJSON_GetObjectItem(item, "path");
         const char* path = cJSON_GetStringValue(path_json);
-        if (path == NULL) {
+        if (path == NULL)
+        {
             item = next;
             continue;
         }
 
         bool orphaned = false;
 
-        if (is_file) {
+        if (is_file)
+        {
             orphaned = fim_configuration_directory(path, false, syscheck.directories) == NULL;
         }
 #ifdef WIN32
-        else {
+        else
+        {
             // Registry rows are only meaningful together with their architecture: the same path can
             // be monitored for [x32], [x64] or both. A row without it cannot be resolved at all.
             const char* arch_str = cJSON_GetStringValue(cJSON_GetObjectItem(item, "architecture"));
 
-            if (arch_str == NULL) {
+            if (arch_str == NULL)
+            {
                 mdebug2("Skipping promotion of registry document without architecture: %s", path);
                 cJSON_Delete(cJSON_DetachItemViaPointer(docs, item));
                 dropped++;
@@ -253,7 +283,8 @@ int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
         }
 #endif
 
-        if (orphaned) {
+        if (orphaned)
+        {
             mdebug2("Skipping promotion of orphaned path (no active configuration): %s", path);
             cJSON_Delete(cJSON_DetachItemViaPointer(docs, item));
             dropped++;
@@ -271,9 +302,11 @@ int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
  * @param full_doc Full document JSON
  * @return cJSON object with only primary keys and version, or NULL on error
  */
-cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc) {
+cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc)
+{
     cJSON* keys = cJSON_CreateObject();
-    if (!keys) {
+    if (!keys)
+    {
         return NULL;
     }
 
@@ -281,20 +314,26 @@ cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc) {
     const cJSON* path = cJSON_GetObjectItem(full_doc, "path");
     const cJSON* version = cJSON_GetObjectItem(full_doc, "version");
 
-    if (path) cJSON_AddStringToObject(keys, "path", cJSON_GetStringValue(path));
-    if (version) cJSON_AddNumberToObject(keys, "version", cJSON_GetNumberValue(version));
+    if (path)
+        cJSON_AddStringToObject(keys, "path", cJSON_GetStringValue(path));
+    if (version)
+        cJSON_AddNumberToObject(keys, "version", cJSON_GetNumberValue(version));
 
     // Registry tables also have architecture
     if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0 ||
-        strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0)
+    {
         const cJSON* arch = cJSON_GetObjectItem(full_doc, "architecture");
-        if (arch) cJSON_AddStringToObject(keys, "architecture", cJSON_GetStringValue(arch));
+        if (arch)
+            cJSON_AddStringToObject(keys, "architecture", cJSON_GetStringValue(arch));
     }
 
     // Registry value table also has value field
-    if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+    if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0)
+    {
         const cJSON* value = cJSON_GetObjectItem(full_doc, "value");
-        if (value) cJSON_AddStringToObject(keys, "value", cJSON_GetStringValue(value));
+        if (value)
+            cJSON_AddStringToObject(keys, "value", cJSON_GetStringValue(value));
     }
 
     return keys;
@@ -306,8 +345,10 @@ cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc) {
  * @param table_name Name of the table (file_entry, registry_key, registry_data)
  * @param docs_to_promote cJSON array with full document data
  */
-void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation) {
-    if (!docs || !cJSON_IsArray(docs)) {
+void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation)
+{
+    if (!docs || !cJSON_IsArray(docs))
+    {
         return;
     }
 
@@ -315,11 +356,13 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
     int count = 0;
     const char* operation_name = (operation == OPERATION_CREATE) ? "promoted" : "demoted";
 
-    cJSON_ArrayForEach(item, docs) {
+    cJSON_ArrayForEach(item, docs)
+    {
         const cJSON* path_json = cJSON_GetObjectItem(item, "path");
         const cJSON* version_json = cJSON_GetObjectItem(item, "version");
 
-        if (!path_json || !version_json) {
+        if (!path_json || !version_json)
+        {
             mwarn("Skipping %s document with missing required fields", operation_name);
             continue;
         }
@@ -329,9 +372,11 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
 
         // For promoted documents, checksum is required
         const char* checksum = NULL;
-        if (operation == OPERATION_CREATE) {
+        if (operation == OPERATION_CREATE)
+        {
             const cJSON* checksum_json = cJSON_GetObjectItem(item, "checksum");
-            if (!checksum_json) {
+            if (!checksum_json)
+            {
                 mwarn("Skipping promoted document with missing checksum");
                 continue;
             }
@@ -343,16 +388,22 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
         const char* sync_index = NULL;
 
         // Build stateful event based on table type and operation
-        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0)
+        {
             sync_index = FIM_FILES_SYNC_INDEX;
             OS_SHA1_Str(path, -1, id);
 
-            if (operation == OPERATION_CREATE) {
-                stateful_event = build_stateful_event_file(path, checksum, document_version, item, NULL, syscheck.directories);
-            } else {
+            if (operation == OPERATION_CREATE)
+            {
+                stateful_event =
+                    build_stateful_event_file(path, checksum, document_version, item, NULL, syscheck.directories);
+            }
+            else
+            {
                 // Build minimal DELETE event for file
                 stateful_event = cJSON_CreateObject();
-                if (stateful_event) {
+                if (stateful_event)
+                {
                     cJSON* file_obj = cJSON_CreateObject();
                     cJSON_AddItemToObject(stateful_event, "file", file_obj);
                     cJSON_AddStringToObject(file_obj, "path", path);
@@ -364,7 +415,8 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
             }
         }
 #ifdef WIN32
-        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0)
+        {
             sync_index = FIM_REGISTRY_KEYS_SYNC_INDEX;
             const cJSON* arch_json = cJSON_GetObjectItem(item, "architecture");
             int arch = (strcmp(cJSON_GetStringValue(arch_json), "[x32]") == 0) ? ARCH_32BIT : ARCH_64BIT;
@@ -373,12 +425,16 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
             snprintf(id_source, OS_MAXSTR - 1, "%d:%s", arch, path);
             OS_SHA1_Str(id_source, -1, id);
 
-            if (operation == OPERATION_CREATE) {
+            if (operation == OPERATION_CREATE)
+            {
                 stateful_event = build_stateful_event_registry_key(path, checksum, document_version, arch, item, NULL);
-            } else {
+            }
+            else
+            {
                 // Build minimal DELETE event for registry key
                 stateful_event = cJSON_CreateObject();
-                if (stateful_event) {
+                if (stateful_event)
+                {
                     cJSON* registry_obj = cJSON_CreateObject();
                     cJSON_AddItemToObject(stateful_event, "registry", registry_obj);
                     cJSON_AddStringToObject(registry_obj, "path", path);
@@ -390,7 +446,8 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
                 }
             }
         }
-        else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0)
+        {
             sync_index = FIM_REGISTRY_VALUES_SYNC_INDEX;
             const cJSON* arch_json = cJSON_GetObjectItem(item, "architecture");
             const cJSON* value_json = cJSON_GetObjectItem(item, "value");
@@ -402,12 +459,17 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
             snprintf(id_source, OS_MAXSTR - 1, "%s:%d:%s", path, arch, value);
             OS_SHA1_Str(id_source, -1, id);
 
-            if (operation == OPERATION_CREATE) {
-                stateful_event = build_stateful_event_registry_value(path, value, checksum, document_version, arch, item, NULL);
-            } else {
+            if (operation == OPERATION_CREATE)
+            {
+                stateful_event =
+                    build_stateful_event_registry_value(path, value, checksum, document_version, arch, item, NULL);
+            }
+            else
+            {
                 // Build minimal DELETE event for registry value
                 stateful_event = cJSON_CreateObject();
-                if (stateful_event) {
+                if (stateful_event)
+                {
                     cJSON* registry_obj = cJSON_CreateObject();
                     cJSON_AddItemToObject(stateful_event, "registry", registry_obj);
                     cJSON_AddStringToObject(registry_obj, "path", path);
@@ -422,17 +484,21 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
         }
 #endif
 
-        if (stateful_event) {
+        if (stateful_event)
+        {
             char item_desc[PATH_MAX + 128];
             // Use same description format as transaction callbacks
-            if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0)
+            {
                 snprintf(item_desc, sizeof(item_desc), "file %s", path);
             }
 #ifdef WIN32
-            else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+            else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0)
+            {
                 snprintf(item_desc, sizeof(item_desc), "registry key %s", path);
             }
-            else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+            else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0)
+            {
                 const cJSON* value_json = cJSON_GetObjectItem(item, "value");
                 const char* value = cJSON_GetStringValue(value_json);
                 snprintf(item_desc, sizeof(item_desc), "registry value %s:%s", path, value);
@@ -440,9 +506,8 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
 #endif
 
             // Send to persistent queue with sync_flag=1
-            validate_and_persist_fim_event(stateful_event, id, operation,
-                                          sync_index, document_version,
-                                          item_desc, false, NULL, NULL, 1);
+            validate_and_persist_fim_event(
+                stateful_event, id, operation, sync_index, document_version, item_desc, false, NULL, NULL, 1);
             cJSON_Delete(stateful_event);
             count++;
         }
@@ -459,7 +524,8 @@ void persist_sync_documents(char* table_name, cJSON* docs, Operation_t operation
  *
  * @return true if limits were successfully fetched and parsed, false otherwise.
  */
-bool fetch_document_limits_from_agentd(){
+bool fetch_document_limits_from_agentd()
+{
     char json_buffer[OS_MAXSTR] = {0};
 
     if (!w_query_agentd(SYSCHECK, "getdoclimits fim", json_buffer, sizeof(json_buffer)))
@@ -509,14 +575,11 @@ bool fetch_document_limits_from_agentd(){
     return true;
 }
 
-void fim_initialize() {
+void fim_initialize()
+{
     // Create store data
 #ifndef WIN32
-    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
-                                         loggingFunction,
-                                         syscheck.file_entry_limit,
-                                         0,
-                                         NULL);
+    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK, loggingFunction, syscheck.file_entry_limit, 0, NULL);
 #else
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
                                          loggingFunction,
@@ -525,7 +588,8 @@ void fim_initialize() {
                                          loggingErrorFunction);
 #endif
 
-    if (ret_val != FIMDB_OK) {
+    if (ret_val != FIMDB_OK)
+    {
         merror("Unable to initialize database. FIM module will be disabled.");
         syscheck.disabled = 1;
         return;
@@ -536,7 +600,8 @@ void fim_initialize() {
     syscheck.registry_value_limit = 0;
     while (!fetch_document_limits_from_agentd())
     {
-        if (fim_shutdown_process_on()) {
+        if (fim_shutdown_process_on())
+        {
             mdebug1("Stop in progress: aborting the document limits wait.");
             syscheck.disabled = 1;
             return;
@@ -549,7 +614,8 @@ void fim_initialize() {
 #endif // WIN32
     }
 
-    if (fim_shutdown_process_on()) {
+    if (fim_shutdown_process_on())
+    {
         mdebug1("Stop in progress: aborting FIM sync initialization.");
         syscheck.disabled = 1;
         return;
@@ -563,10 +629,15 @@ void fim_initialize() {
 
     // Initialize sync handle early so it's available for document promotion
     // 0 would select the built-in default; FIM always passes its configured values.
-    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, loggingFunction,
-                                      (uint64_t)syscheck.sync_flush_batch_size, (uint64_t)syscheck.sync_flush_interval_ms,
-                                      (uint64_t)syscheck.sync_wal_autocheckpoint_pages, (uint64_t)syscheck.sync_cache_size_kib);
-    if (!syscheck.sync_handle) {
+    syscheck.sync_handle = asp_create("fim",
+                                      FIM_SYNC_PROTOCOL_DB_PATH,
+                                      loggingFunction,
+                                      (uint64_t)syscheck.sync_flush_batch_size,
+                                      (uint64_t)syscheck.sync_flush_interval_ms,
+                                      (uint64_t)syscheck.sync_wal_autocheckpoint_pages,
+                                      (uint64_t)syscheck.sync_cache_size_kib);
+    if (!syscheck.sync_handle)
+    {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }
 
@@ -586,24 +657,31 @@ void fim_initialize() {
     char* table_names[1] = {FIMDB_FILE_TABLE_NAME};
 #endif
 
-    for (int i = 0; i < table_count; i++) {
+    for (int i = 0; i < table_count; i++)
+    {
         char* table_name = table_names[i];
 
         // Get the appropriate limit and synced_docs pointer for this table
         int limit = 0;
         int* synced_docs_ptr = NULL;
-        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0)
+        {
             limit = syscheck.file_limit;
             synced_docs_ptr = &synced_docs_files;
-        } else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0) {
+        }
+        else if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0)
+        {
             limit = syscheck.registry_key_limit;
             synced_docs_ptr = &synced_docs_registry_keys;
-        } else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {
+        }
+        else if (strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0)
+        {
             limit = syscheck.registry_value_limit;
             synced_docs_ptr = &synced_docs_registry_values;
         }
 
-        if (synced_docs_ptr == NULL) {
+        if (synced_docs_ptr == NULL)
+        {
             mwarn("fim_initialize: unknown table name '%s', skipping limit check.", table_name);
             continue;
         }
@@ -613,33 +691,44 @@ void fim_initialize() {
         *synced_docs_ptr = current_synced;
         w_mutex_unlock(&synced_docs_mutex);
 
-        if (current_synced != 0) { // No need to check if no scans have been run
-            if (limit == 0) { // If moving from limited agent to unlimited, promote everything
+        if (current_synced != 0)
+        { // No need to check if no scans have been run
+            if (limit == 0)
+            { // If moving from limited agent to unlimited, promote everything
                 limit = INT_MAX;
             }
-            if (current_synced < limit) { // Limit might have increased
+            if (current_synced < limit)
+            { // Limit might have increased
                 int document_count = limit - current_synced;
                 cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
-                if (docs_to_promote) { // Limit has increased
+                if (docs_to_promote)
+                { // Limit has increased
                     // Drop rows whose path is no longer covered by the current FIM
                     // configuration (e.g. a group with a realtime rule was removed).
                     // The scheduled scan that follows handles them via the orphan-delete path.
                     drop_orphaned_promoted_documents(table_name, docs_to_promote);
 
                     // Send promoted documents to persistent queue as CREATE events
-                    mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", current_synced, limit, table_name, current_synced + cJSON_GetArraySize(docs_to_promote));
+                    mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d",
+                            current_synced,
+                            limit,
+                            table_name,
+                            current_synced + cJSON_GetArraySize(docs_to_promote));
                     persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
 
                     OSList* pending_sync_updates = OSList_Create();
-                    if (pending_sync_updates) {
+                    if (pending_sync_updates)
+                    {
                         OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
 
                         // Iterate through full documents and extract primary keys for sync flag update
                         cJSON* full_doc = NULL;
-                        cJSON_ArrayForEach(full_doc, docs_to_promote) {
+                        cJSON_ArrayForEach(full_doc, docs_to_promote)
+                        {
                             cJSON* primary_keys = extract_primary_keys(table_name, full_doc);
-                            if (primary_keys) {
+                            if (primary_keys)
+                            {
                                 add_pending_sync_item(pending_sync_updates, primary_keys, 1);
                                 cJSON_Delete(primary_keys);
                                 // fim_initialize() runs once at startup before the scan/
@@ -660,22 +749,31 @@ void fim_initialize() {
                     }
                     cJSON_Delete(docs_to_promote);
                 }
-            } else if (current_synced > limit) { // Limit might have decreased
+            }
+            else if (current_synced > limit)
+            { // Limit might have decreased
                 int document_count = current_synced - limit;
                 cJSON* docs_to_demote = fim_db_get_documents_to_demote(table_name, document_count);
 
-                if (docs_to_demote) { // Limit has decreased
-                    minfo("Document limit decreased from %d to %d for table %s. Currently synced documents: %d", document_count, limit, table_name, limit);
+                if (docs_to_demote)
+                { // Limit has decreased
+                    minfo("Document limit decreased from %d to %d for table %s. Currently synced documents: %d",
+                          document_count,
+                          limit,
+                          table_name,
+                          limit);
                     // Send demoted documents to persistent queue as DELETE events
                     persist_sync_documents(table_name, docs_to_demote, OPERATION_DELETE);
 
                     OSList* pending_sync_updates = OSList_Create();
-                    if (pending_sync_updates) {
+                    if (pending_sync_updates)
+                    {
                         OSList_SetFreeDataPointer(pending_sync_updates, free_pending_sync_item);
 
                         // Iterate through the cJSON array and add to pending list
                         cJSON* item = NULL;
-                        cJSON_ArrayForEach(item, docs_to_demote) {
+                        cJSON_ArrayForEach(item, docs_to_demote)
+                        {
                             add_pending_sync_item(pending_sync_updates, item, 0);
                             // See the comment on the promote branch above: not load-bearing
                             // at startup, kept for consistency.
@@ -697,55 +795,68 @@ void fim_initialize() {
     }
 
     // Initialize schema validator from embedded resources
-    if (!schema_validator_is_initialized()) {
-        if (schema_validator_initialize()) {
+    if (!schema_validator_is_initialized())
+    {
+        if (schema_validator_initialize())
+        {
             mdebug1("Schema validator initialized successfully from embedded resources");
-        } else {
+        }
+        else
+        {
             mwarn("Failed to initialize schema validator. Schema validation will be disabled.");
         }
     }
 }
 
-
 #ifdef WIN32
 /* syscheck main for Windows */
-int Start_win32_Syscheck() {
+int Start_win32_Syscheck()
+{
     int debug_level = 0;
     int r = 0;
-    char *cfg = WAZUHCONF;
-    OSListNode *node_it;
+    char* cfg = WAZUHCONF;
+    OSListNode* node_it;
 
     /* Read internal options */
     read_internal(debug_level);
 
     /* Check if the configuration is present */
-    if (File_DateofChange(cfg) < 0) {
+    if (File_DateofChange(cfg) < 0)
+    {
         merror_exit(NO_CONFIG, cfg);
     }
 
     /* Read syscheck config */
-    if ((r = Read_Syscheck_Config(cfg)) < 0) {
+    if ((r = Read_Syscheck_Config(cfg)) < 0)
+    {
         mwarn(RCONFIG_ERROR, SYSCHECK, cfg);
         syscheck.disabled = 1;
-    } else if ((r == 1) || (syscheck.disabled == 1)) {
+    }
+    else if ((r == 1) || (syscheck.disabled == 1))
+    {
         /* Disabled */
         minfo(FIM_DIRECTORY_NOPROVIDED);
 
         // Free directories list
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             free_directory(node_it->data);
             node_it->data = NULL;
         }
         OSList_CleanNodes(syscheck.directories);
 
-        if (!syscheck.ignore) {
-            os_calloc(1, sizeof(char *), syscheck.ignore);
-        } else {
+        if (!syscheck.ignore)
+        {
+            os_calloc(1, sizeof(char*), syscheck.ignore);
+        }
+        else
+        {
             os_free(syscheck.ignore[0]);
         }
 
-        if (!syscheck.registry) {
-            dump_syscheck_registry(&syscheck, "", 0, NULL, NULL,  0, NULL, 0, -1);
+        if (!syscheck.registry)
+        {
+            dump_syscheck_registry(&syscheck, "", 0, NULL, NULL, 0, NULL, 0, -1);
         }
         os_free(syscheck.registry[0].entry);
 
@@ -753,22 +864,29 @@ int Start_win32_Syscheck() {
     }
 
     /* Rootcheck config */
-    if (rootcheck_init(0, cfg) == 0) {
+    if (rootcheck_init(0, cfg) == 0)
+    {
         syscheck.rootcheck = 1;
-    } else {
+    }
+    else
+    {
         syscheck.rootcheck = 0;
     }
 
-    if (!syscheck.disabled) {
-        directory_t *dir_it;
-        OSListNode *node_it;
+    if (!syscheck.disabled)
+    {
+        directory_t* dir_it;
+        OSListNode* node_it;
 #ifndef WIN_WHODATA
         int whodata_notification = 0;
         /* Remove whodata attributes */
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
-            if (dir_it->options & WHODATA_ACTIVE) {
-                if (!whodata_notification) {
+            if (dir_it->options & WHODATA_ACTIVE)
+            {
+                if (!whodata_notification)
+                {
                     whodata_notification = 1;
                     minfo(FIM_REALTIME_INCOMPATIBLE);
                 }
@@ -781,97 +899,109 @@ int Start_win32_Syscheck() {
         /* Print options */
         r = 0;
         // TODO: allow sha256 sum on registries
-        while (syscheck.registry[r].entry != NULL) {
+        while (syscheck.registry[r].entry != NULL)
+        {
             char optstr[1024];
-            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry,
+            minfo(FIM_MONITORING_REGISTRY,
+                  syscheck.registry[r].entry,
                   syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
                   syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
-            if (syscheck.file_size_enabled){
+            if (syscheck.file_size_enabled)
+            {
                 mdebug1(FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
             }
             r++;
         }
 
         /* The keys matching each wildcard are listed when every scan expands it */
-        for (r = 0; syscheck.registry_wildcards && syscheck.registry_wildcards[r].entry; r++) {
+        for (r = 0; syscheck.registry_wildcards && syscheck.registry_wildcards[r].entry; r++)
+        {
             char optstr[1024];
-            minfo(FIM_MONITORING_REGISTRY, syscheck.registry_wildcards[r].entry,
+            minfo(FIM_MONITORING_REGISTRY,
+                  syscheck.registry_wildcards[r].entry,
                   syscheck.registry_wildcards[r].arch == ARCH_64BIT ? " [x64]" : "",
                   syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry_wildcards[r].opts));
         }
 
         /* Print directories to be monitored */
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
-            char optstr[ 1024 ];
+            char optstr[1024];
 
             mdebug1(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
 
-            if (dir_it->tag != NULL) {
+            if (dir_it->tag != NULL)
+            {
                 mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
             }
 
             // Print diff file size limit
-            if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
+            if ((dir_it->options & CHECK_SEECHANGES) && syscheck.file_size_enabled)
+            {
                 mdebug2(FIM_DIFF_FILE_SIZE_LIMIT, dir_it->diff_size_limit, dir_it->path);
             }
         }
 
-        if (!syscheck.file_size_enabled) {
+        if (!syscheck.file_size_enabled)
+        {
             minfo(FIM_FILE_SIZE_LIMIT_DISABLED);
         }
 
         // Print maximum disk quota to be used by the queue\diff\local folder
-        if (syscheck.disk_quota_enabled) {
+        if (syscheck.disk_quota_enabled)
+        {
             mdebug2(FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
         }
-        else {
+        else
+        {
             minfo(FIM_DISK_QUOTA_LIMIT_DISABLED);
         }
 
         /* Print ignores. */
-        if(syscheck.ignore)
-            for (r = 0; syscheck.ignore[r] != NULL; r++)
-                mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
+        if (syscheck.ignore)
+            for (r = 0; syscheck.ignore[r] != NULL; r++) mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
-        if(syscheck.ignore_regex)
+        if (syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
                 mdebug1(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print registry ignores. */
-        if(syscheck.key_ignore)
+        if (syscheck.key_ignore)
             for (r = 0; syscheck.key_ignore[r].entry != NULL; r++)
                 mdebug1(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
 
         /* Print sregex registry ignores. */
-        if(syscheck.key_ignore_regex)
+        if (syscheck.key_ignore_regex)
             for (r = 0; syscheck.key_ignore_regex[r].regex != NULL; r++)
                 mdebug1(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
 
-        if(syscheck.value_ignore)
+        if (syscheck.value_ignore)
             for (r = 0; syscheck.value_ignore[r].entry != NULL; r++)
                 mdebug1(FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
 
         /* Print sregex registry ignores. */
-        if(syscheck.value_ignore_regex)
+        if (syscheck.value_ignore_regex)
             for (r = 0; syscheck.value_ignore_regex[r].regex != NULL; r++)
                 mdebug1(FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
 
         /* Print registry values with nodiff. */
-        if(syscheck.registry_nodiff)
+        if (syscheck.registry_nodiff)
             for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
                 mdebug1(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
 
         /* Print sregex registry values with nodiff. */
-        if(syscheck.registry_nodiff_regex)
+        if (syscheck.registry_nodiff_regex)
             for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
                 mdebug1(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
 
         /* Print files with no diff. */
-        if (syscheck.nodiff){
+        if (syscheck.nodiff)
+        {
             r = 0;
-            while (syscheck.nodiff[r] != NULL) {
+            while (syscheck.nodiff[r] != NULL)
+            {
                 mdebug1(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
@@ -879,19 +1009,24 @@ int Start_win32_Syscheck() {
 
         /* Start up message */
         minfo(STARTUP_MSG, getpid());
-        OSList_foreach(node_it, syscheck.directories) {
+        OSList_foreach(node_it, syscheck.directories)
+        {
             dir_it = node_it->data;
-            if (dir_it->options & REALTIME_ACTIVE) {
+            if (dir_it->options & REALTIME_ACTIVE)
+            {
                 realtime_start();
                 break;
             }
         }
 
-        if (syscheck.realtime == NULL) {
+        if (syscheck.realtime == NULL)
+        {
             // Check if a wildcard might require realtime later
-            OSList_foreach(node_it, syscheck.wildcards) {
+            OSList_foreach(node_it, syscheck.wildcards)
+            {
                 dir_it = node_it->data;
-                if (dir_it->options & REALTIME_ACTIVE) {
+                if (dir_it->options & REALTIME_ACTIVE)
+                {
                     realtime_start();
                     break;
                 }
@@ -913,8 +1048,9 @@ int Start_win32_Syscheck() {
 /* Whodata-enabled lookup for the eBPF provider. Holds directories_lock while
  * reading syscheck.directories: the callback runs on the eBPF thread and the
  * list is rebuilt on reload. */
-static bool fim_whodata_active_ebpf(const char *path) {
-    directory_t *configuration;
+static bool fim_whodata_active_ebpf(const char* path)
+{
+    directory_t* configuration;
     bool active;
 
     w_rwlock_rdlock(&syscheck.directories_lock);
@@ -925,19 +1061,23 @@ static bool fim_whodata_active_ebpf(const char *path) {
     return active;
 }
 
-void fim_ebpf_update_dirs() {
-    char **paths = NULL;
-    OSListNode *node_it;
+void fim_ebpf_update_dirs()
+{
+    char** paths = NULL;
+    OSListNode* node_it;
 
-    if (!syscheck.enable_whodata || syscheck.whodata_provider != EBPF_PROVIDER) {
+    if (!syscheck.enable_whodata || syscheck.whodata_provider != EBPF_PROVIDER)
+    {
         return;
     }
 
     w_rwlock_rdlock(&syscheck.directories_lock);
-    OSList_foreach(node_it, syscheck.directories) {
-        directory_t *dir_it = node_it->data;
-        if (dir_it->options & WHODATA_ACTIVE) {
-            char *real_path = fim_get_real_path(dir_it);
+    OSList_foreach(node_it, syscheck.directories)
+    {
+        directory_t* dir_it = node_it->data;
+        if (dir_it->options & WHODATA_ACTIVE)
+        {
+            char* real_path = fim_get_real_path(dir_it);
             paths = os_AddStrArray(real_path, paths);
             os_free(real_path);
         }
@@ -948,11 +1088,20 @@ void fim_ebpf_update_dirs() {
     free_strarray(paths);
 }
 
-void check_ebpf_availability() {
+void check_ebpf_availability()
+{
     minfo(FIM_EBPF_INIT);
-    fimebpf_initialize(fim_whodata_active_ebpf, get_user, get_group, fim_whodata_event,
-                       free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
-    if (ebpf_whodata_healthcheck()) {
+    fimebpf_initialize(fim_whodata_active_ebpf,
+                       get_user,
+                       get_group,
+                       fim_whodata_event,
+                       free_whodata_event,
+                       loggingFunction,
+                       abspath,
+                       fim_shutdown_process_on,
+                       syscheck.queue_size);
+    if (ebpf_whodata_healthcheck())
+    {
         mwarn(FIM_ERROR_EBPF_HEALTHCHECK);
 
         // Switch whodata eBPF to whodata audit

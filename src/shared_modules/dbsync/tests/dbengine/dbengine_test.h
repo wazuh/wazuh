@@ -14,10 +14,9 @@
 
 class DBEngineTest : public ::testing::Test
 {
-    protected:
-
-        DBEngineTest() = default;
-        virtual ~DBEngineTest() = default;
+protected:
+    DBEngineTest() = default;
+    virtual ~DBEngineTest() = default;
 };
 
 #endif //_DBENGINE_TEST_H

@@ -38,7 +38,7 @@ namespace Log
 {
     // Single definition of the DSO-global log sink used by loggerHelper.h.
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-    GLOBAL_LOG_FUNCTION;
+        GLOBAL_LOG_FUNCTION;
 } // namespace Log
 
 struct hc_handle
@@ -68,8 +68,8 @@ namespace
     void (*g_onFatal)(const char*, void*) = nullptr;
     void* g_onFatalUserData = nullptr;
 
-    void forwardLog(int level, const char* tag, const char* file, int line, const char* func,
-                    const char* logMessage, va_list args)
+    void forwardLog(
+        int level, const char* tag, const char* file, int line, const char* func, const char* logMessage, va_list args)
     {
         const auto lifecycle = g_lifecycle.load();
 
@@ -220,8 +220,7 @@ extern "C"
         }
     }
 
-    bool hc_submit_sync_session(hc_handle* handle, const char* session_id, const uint8_t* buffer,
-                                size_t length)
+    bool hc_submit_sync_session(hc_handle* handle, const char* session_id, const uint8_t* buffer, size_t length)
     {
         if (handle == nullptr)
         {
@@ -238,8 +237,7 @@ extern "C"
         }
     }
 
-    bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id, const char* file_path,
-                                     uint64_t size)
+    bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id, const char* file_path, uint64_t size)
     {
         if (handle == nullptr)
         {
@@ -256,8 +254,7 @@ extern "C"
         }
     }
 
-    bool hc_send_sync_session(const char* socket_path, const char* session_id, const uint8_t* body,
-                              size_t length)
+    bool hc_send_sync_session(const char* socket_path, const char* session_id, const uint8_t* body, size_t length)
     {
         if (socket_path == nullptr || session_id == nullptr)
         {
@@ -343,8 +340,7 @@ extern "C"
         }
     }
 
-    bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request,
-                   hc_enroll_result_t* result)
+    bool hc_enroll(const hc_config_t* config, const hc_enroll_request_t* request, hc_enroll_result_t* result)
     {
         if (config == nullptr || request == nullptr || result == nullptr)
         {
@@ -390,8 +386,7 @@ extern "C"
             result->http_code = response.httpCode;
             result->retry_after_seconds = response.retryAfterSeconds;
             std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
-            std::strncpy(result->transport_error, response.curlError.c_str(),
-                         sizeof(result->transport_error) - 1);
+            std::strncpy(result->transport_error, response.curlError.c_str(), sizeof(result->transport_error) - 1);
 
             return response.httpCode != 0;
         }
@@ -401,8 +396,7 @@ extern "C"
         }
     }
 
-    bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request,
-                          hc_cacerts_result_t* result)
+    bool hc_fetch_cacerts(const hc_config_t* config, const hc_cacerts_request_t* request, hc_cacerts_result_t* result)
     {
         if (config == nullptr || request == nullptr || result == nullptr)
         {
@@ -437,8 +431,7 @@ extern "C"
             // able to tell "this is not the CA I expected" from "I could not read all of it".
             result->body_truncated = response.body.size() >= sizeof(result->body);
             std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
-            std::strncpy(result->transport_error, response.curlError.c_str(),
-                         sizeof(result->transport_error) - 1);
+            std::strncpy(result->transport_error, response.curlError.c_str(), sizeof(result->transport_error) - 1);
 
             return response.httpCode != 0;
         }
@@ -448,8 +441,8 @@ extern "C"
         }
     }
 
-    bool hc_spki_pinned_certificate(const char* cacerts_body, size_t body_len, const char* pin_b64url,
-                                    char* matched_pem, size_t matched_pem_size)
+    bool hc_spki_pinned_certificate(
+        const char* cacerts_body, size_t body_len, const char* pin_b64url, char* matched_pem, size_t matched_pem_size)
     {
         if (cacerts_body == nullptr || pin_b64url == nullptr || matched_pem == nullptr || matched_pem_size == 0)
         {

@@ -19,32 +19,33 @@
 
 class IRpmLibWrapper
 {
-    public:
-        // LCOV_EXCL_START
-        virtual ~IRpmLibWrapper() = default;
-        // LCOV_EXCL_STOP
-        virtual int rpmReadConfigFiles(const char* file, const char* target) = 0;
-        virtual void rpmFreeRpmrc() = 0;
-        virtual void rpmFreeMacros() = 0;
-        virtual rpmtd rpmtdNew() = 0;
-        virtual void rpmtdFree(rpmtd td) = 0;
-        virtual rpmts rpmtsCreate() = 0;
-        virtual int rpmtsOpenDB(rpmts ts, int dbmode) = 0;
-        virtual int rpmtsCloseDB(rpmts ts) = 0;
-        virtual rpmts rpmtsFree(rpmts ts) = 0;
-        virtual int headerGet(Header h, rpmTagVal tag, rpmtd td, headerGetFlags flags) = 0;
-        virtual const char* rpmtdGetString(rpmtd td) = 0;
-        virtual uint64_t rpmtdGetNumber(rpmtd td) = 0;
-        virtual int rpmtsRun(rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet) = 0;
-        virtual rpmdbMatchIterator rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen) = 0;
-        virtual rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags) = 0;
-        virtual Header rpmdbNextIterator(rpmdbMatchIterator mi) = 0;
-        virtual rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi) = 0;
-        virtual rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags) = 0;
-        virtual rpm_count_t rpmfiFC(rpmfi fi) = 0;
-        virtual int rpmfiNext(rpmfi fi) = 0;
-        virtual const char* rpmfiFN(rpmfi fi) = 0;
-        virtual rpmfi rpmfiFree(rpmfi fi) = 0;
+public:
+    // LCOV_EXCL_START
+    virtual ~IRpmLibWrapper() = default;
+    // LCOV_EXCL_STOP
+    virtual int rpmReadConfigFiles(const char* file, const char* target) = 0;
+    virtual void rpmFreeRpmrc() = 0;
+    virtual void rpmFreeMacros() = 0;
+    virtual rpmtd rpmtdNew() = 0;
+    virtual void rpmtdFree(rpmtd td) = 0;
+    virtual rpmts rpmtsCreate() = 0;
+    virtual int rpmtsOpenDB(rpmts ts, int dbmode) = 0;
+    virtual int rpmtsCloseDB(rpmts ts) = 0;
+    virtual rpmts rpmtsFree(rpmts ts) = 0;
+    virtual int headerGet(Header h, rpmTagVal tag, rpmtd td, headerGetFlags flags) = 0;
+    virtual const char* rpmtdGetString(rpmtd td) = 0;
+    virtual uint64_t rpmtdGetNumber(rpmtd td) = 0;
+    virtual int rpmtsRun(rpmts ts, rpmps okProbs, rpmprobFilterFlags ignoreSet) = 0;
+    virtual rpmdbMatchIterator
+    rpmtsInitIterator(const rpmts ts, rpmDbiTagVal rpmtag, const void* keypointer, size_t keylen) = 0;
+    virtual rpmVSFlags rpmtsSetVSFlags(rpmts ts, rpmVSFlags vsflags) = 0;
+    virtual Header rpmdbNextIterator(rpmdbMatchIterator mi) = 0;
+    virtual rpmdbMatchIterator rpmdbFreeIterator(rpmdbMatchIterator mi) = 0;
+    virtual rpmfi rpmfiNew(rpmts ts, Header h, rpmTagVal tag, rpmfiFlags flags) = 0;
+    virtual rpm_count_t rpmfiFC(rpmfi fi) = 0;
+    virtual int rpmfiNext(rpmfi fi) = 0;
+    virtual const char* rpmfiFN(rpmfi fi) = 0;
+    virtual rpmfi rpmfiFree(rpmfi fi) = 0;
 };
 
 #endif // _RPMLIB_WRAPPER_H

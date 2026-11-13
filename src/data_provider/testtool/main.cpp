@@ -13,95 +13,86 @@
 #include "sysInfo.hpp"
 #include "sysInfo.h"
 
-constexpr auto JSON_PRETTY_SPACES
-{
-    2
-};
+constexpr auto JSON_PRETTY_SPACES {2};
 
 class SysInfoPrinter final
 {
-    public:
-        SysInfoPrinter() = default;
+public:
+    SysInfoPrinter() = default;
 
-        void printHardwareInfo()
-        {
-            m_data["hw"] = m_sysinfo.hardware();
-        }
+    void printHardwareInfo()
+    {
+        m_data["hw"] = m_sysinfo.hardware();
+    }
 
-        void printNetworksInfo()
-        {
-            m_data["networks"] = m_sysinfo.networks();
-        }
+    void printNetworksInfo()
+    {
+        m_data["networks"] = m_sysinfo.networks();
+    }
 
-        void printOSInfo()
-        {
-            m_data["os"] = m_sysinfo.os();
-        }
+    void printOSInfo()
+    {
+        m_data["os"] = m_sysinfo.os();
+    }
 
-        void printPackagesInfo()
-        {
-            m_data["packages"] = m_sysinfo.packages();
-        }
+    void printPackagesInfo()
+    {
+        m_data["packages"] = m_sysinfo.packages();
+    }
 
-        void printProcessesInfo()
-        {
-            m_data["processes"] = m_sysinfo.processes();
-        }
+    void printProcessesInfo()
+    {
+        m_data["processes"] = m_sysinfo.processes();
+    }
 
-        void printPortsInfo()
-        {
-            m_data["ports"] = m_sysinfo.ports();
-        }
+    void printPortsInfo()
+    {
+        m_data["ports"] = m_sysinfo.ports();
+    }
 
-        void printHotfixesInfo()
-        {
-            m_data["hotfixes"] = m_sysinfo.hotfixes();
-        }
+    void printHotfixesInfo()
+    {
+        m_data["hotfixes"] = m_sysinfo.hotfixes();
+    }
 
-        void printGroupsInfo()
-        {
-            m_data["groups"] = m_sysinfo.groups();
-        }
+    void printGroupsInfo()
+    {
+        m_data["groups"] = m_sysinfo.groups();
+    }
 
-        void printUsersInfo()
-        {
-            m_data["users"] = m_sysinfo.users();
-        }
+    void printUsersInfo()
+    {
+        m_data["users"] = m_sysinfo.users();
+    }
 
-        void printServicesInfo()
-        {
-            m_data["services"] = m_sysinfo.services();
-        }
+    void printServicesInfo()
+    {
+        m_data["services"] = m_sysinfo.services();
+    }
 
-        void printBrowserExtensionsInfo()
-        {
-            m_data["browser_extensions"] = m_sysinfo.browserExtensions();
-        }
+    void printBrowserExtensionsInfo()
+    {
+        m_data["browser_extensions"] = m_sysinfo.browserExtensions();
+    }
 
-        void printData()
-        {
-            std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
-        }
+    void printData()
+    {
+        std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
+    }
 
-        void printProcessesInfoCallback()
-        {
-            m_sysinfo.processes([this](nlohmann::json & process)
-            {
-                m_data["processes_cb"].push_back(process);
-            });
-        }
+    void printProcessesInfoCallback()
+    {
+        m_sysinfo.processes([this](nlohmann::json& process) { m_data["processes_cb"].push_back(process); });
+    }
 
-        void printPackagesInfoCallback()
-        {
-            m_sysinfo.packages([this](nlohmann::json & package)
-            {
-                m_data["packages_cb"].push_back(package);
-            });
-        }
+    void printPackagesInfoCallback()
+    {
+        m_sysinfo.packages([this](nlohmann::json& package) { m_data["packages_cb"].push_back(package); });
+    }
 
-    private:
-        SysInfo m_sysinfo;
-        nlohmann::json m_data;
+private:
+    SysInfo m_sysinfo;
+    nlohmann::json m_data;
 };
 
 int main(int argc, const char* argv[])
@@ -186,20 +177,14 @@ int main(int argc, const char* argv[])
             }
             else
             {
-                throw std::runtime_error
-                {
-                    "Action value: " + std::string(argv[1]) + " not found."
-                };
+                throw std::runtime_error {"Action value: " + std::string(argv[1]) + " not found."};
             }
 
             printer.printData();
         }
         else
         {
-            throw std::runtime_error
-            {
-                "Multiple action are not allowed"
-            };
+            throw std::runtime_error {"Multiple action are not allowed"};
         }
     }
     catch (const std::exception& e)

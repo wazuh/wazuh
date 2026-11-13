@@ -42,7 +42,7 @@ nlohmann::json ShadowProvider::collect()
     // Acquire exclusive access to the shadow file
     if (m_shadowWrapper->lckpwdf() == -1)
     {
-        //TODO: Logs and Error with "lckpwdf"
+        // TODO: Logs and Error with "lckpwdf"
         return results;
     }
 
@@ -122,7 +122,7 @@ nlohmann::json ShadowProvider::collect()
 
     if (m_shadowWrapper->ulckpwdf() == -1)
     {
-        //TODO: Logs and Error with "ulckpwdf"
+        // TODO: Logs and Error with "ulckpwdf"
         return results;
     }
 

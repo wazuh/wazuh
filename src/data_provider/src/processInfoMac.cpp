@@ -14,7 +14,7 @@
 std::string resolveProcessName(const pid_t pid, const std::string& fallbackName)
 {
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
-    const auto pathLen { proc_pidpath(pid, pathBuffer, sizeof(pathBuffer)) };
+    const auto pathLen {proc_pidpath(pid, pathBuffer, sizeof(pathBuffer))};
 
     if (pathLen > 0)
     {

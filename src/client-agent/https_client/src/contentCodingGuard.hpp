@@ -28,38 +28,38 @@
  */
 class ContentCodingGuard final
 {
-    public:
-        /// Shows it one header line as curl hands it over, CRLF included.
-        /// @return false once the final response has named a second coding.
-        bool admitHeader(std::string_view line) noexcept;
+public:
+    /// Shows it one header line as curl hands it over, CRLF included.
+    /// @return false once the final response has named a second coding.
+    bool admitHeader(std::string_view line) noexcept;
 
-        /// Whether admitHeader() refused the reply.
-        bool refused() const noexcept;
+    /// Whether admitHeader() refused the reply.
+    bool refused() const noexcept;
 
-        /// Says what was refused, for a log line ("; refused Content-Encoding '...': ..."), with the
-        /// peer's bytes cut short and escaped. Empty while nothing was refused.
-        const std::string& refusalNote() const;
+    /// Says what was refused, for a log line ("; refused Content-Encoding '...': ..."), with the
+    /// peer's bytes cut short and escaped. Empty while nothing was refused.
+    const std::string& refusalNote() const;
 
-    private:
-        void startResponse(std::string_view statusLine) noexcept;
-        bool admitCodings(std::string_view value) noexcept;
-        bool admitCoding(std::string_view coding) noexcept;
-        void noteRefused(std::string_view value) noexcept;
+private:
+    void startResponse(std::string_view statusLine) noexcept;
+    bool admitCodings(std::string_view value) noexcept;
+    bool admitCoding(std::string_view coding) noexcept;
+    void noteRefused(std::string_view value) noexcept;
 
-        /// Where the next header line falls: a block's status line, one of its headers, or a trailer.
-        enum class Expecting
-        {
-            StatusLine,
-            Headers,
-            Trailers
-        };
+    /// Where the next header line falls: a block's status line, one of its headers, or a trailer.
+    enum class Expecting
+    {
+        StatusLine,
+        Headers,
+        Trailers
+    };
 
-        Expecting m_expecting {Expecting::StatusLine};
-        bool m_informational {false};
-        bool m_bodyless {false};
-        size_t m_codings {0};
-        bool m_refused {false};
-        std::string m_refusalNote;
+    Expecting m_expecting {Expecting::StatusLine};
+    bool m_informational {false};
+    bool m_bodyless {false};
+    size_t m_codings {0};
+    bool m_refused {false};
+    std::string m_refusalNote;
 };
 
 #endif // _HC_CONTENT_CODING_GUARD_HPP

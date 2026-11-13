@@ -18,7 +18,8 @@
 
 /* fim_limits_init tests */
 
-static void test_fim_limits_init_success(void **state) {
+static void test_fim_limits_init_success(void** state)
+{
     (void)state;
     fim_limits_t fim;
 
@@ -32,7 +33,8 @@ static void test_fim_limits_init_success(void **state) {
     assert_int_equal(fim.registry_value, DEFAULT_FIM_REGISTRY_VALUE_LIMIT);
 }
 
-static void test_fim_limits_init_null(void **state) {
+static void test_fim_limits_init_null(void** state)
+{
     (void)state;
 
     /* Should not crash when passed NULL */
@@ -41,7 +43,8 @@ static void test_fim_limits_init_null(void **state) {
 
 /* syscollector_limits_init tests */
 
-static void test_syscollector_limits_init_success(void **state) {
+static void test_syscollector_limits_init_success(void** state)
+{
     (void)state;
     syscollector_limits_t syscollector;
 
@@ -65,7 +68,8 @@ static void test_syscollector_limits_init_success(void **state) {
     assert_int_equal(syscollector.browser_extensions, DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT);
 }
 
-static void test_syscollector_limits_init_null(void **state) {
+static void test_syscollector_limits_init_null(void** state)
+{
     (void)state;
 
     /* Should not crash when passed NULL */
@@ -74,7 +78,8 @@ static void test_syscollector_limits_init_null(void **state) {
 
 /* sca_limits_init tests */
 
-static void test_sca_limits_init_success(void **state) {
+static void test_sca_limits_init_success(void** state)
+{
     (void)state;
     sca_limits_t sca;
 
@@ -86,7 +91,8 @@ static void test_sca_limits_init_success(void **state) {
     assert_int_equal(sca.checks, DEFAULT_SCA_CHECKS_LIMIT);
 }
 
-static void test_sca_limits_init_null(void **state) {
+static void test_sca_limits_init_null(void** state)
+{
     (void)state;
 
     /* Should not crash when passed NULL */
@@ -95,7 +101,8 @@ static void test_sca_limits_init_null(void **state) {
 
 /* module_limits_init tests */
 
-static void test_module_limits_init_success(void **state) {
+static void test_module_limits_init_success(void** state)
+{
     (void)state;
     module_limits_t limits;
 
@@ -131,7 +138,8 @@ static void test_module_limits_init_success(void **state) {
     assert_false(limits.limits_received);
 }
 
-static void test_module_limits_init_null(void **state) {
+static void test_module_limits_init_null(void** state)
+{
     (void)state;
 
     /* Should not crash when passed NULL */
@@ -140,7 +148,8 @@ static void test_module_limits_init_null(void **state) {
 
 /* module_limits_reset tests */
 
-static void test_module_limits_reset_success(void **state) {
+static void test_module_limits_reset_success(void** state)
+{
     (void)state;
     module_limits_t limits;
 
@@ -187,14 +196,16 @@ static void test_module_limits_reset_success(void **state) {
     assert_false(limits.limits_received);
 }
 
-static void test_module_limits_reset_null(void **state) {
+static void test_module_limits_reset_null(void** state)
+{
     (void)state;
 
     /* Should not crash when passed NULL */
     module_limits_reset(NULL);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         /* fim_limits_init tests */
         cmocka_unit_test(test_fim_limits_init_success),

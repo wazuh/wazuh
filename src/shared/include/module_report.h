@@ -39,7 +39,7 @@
  * @param body Destination object.
  * @param section Source object. Consumed by this call.
  */
-void module_report_merge(cJSON *body, cJSON *section);
+void module_report_merge(cJSON* body, cJSON* section);
 
 /**
  * @brief Store a module's body in a report under its own name.
@@ -51,7 +51,7 @@ void module_report_merge(cJSON *body, cJSON *section);
  * @param module Module name as the manager knows it, e.g. "fim".
  * @param body Module body. Consumed by this call.
  */
-void module_report_add(cJSON *report, const char *module, cJSON *body);
+void module_report_add(cJSON* report, const char* module, cJSON* body);
 
 /* What a report shows instead of a credential's value. The same text the
  * server API masks configuration secrets with, so a masked value reads the
@@ -75,8 +75,7 @@ void module_report_add(cJSON *report, const char *module, cJSON *body);
  * @param secret Credential value. Copied only when unmasked.
  * @param unmasked true reports the value itself instead of the mask.
  */
-void module_report_add_secret(cJSON *object, const char *key,
-                              const char *secret, bool unmasked);
+void module_report_add_secret(cJSON* object, const char* key, const char* secret, bool unmasked);
 
 /**
  * @brief Serialize a report into the "ok <json>" reply a dispatcher returns.
@@ -85,6 +84,6 @@ void module_report_add_secret(cJSON *object, const char *key,
  * @param output Receives the allocated reply.
  * @return Length of *output.
  */
-size_t module_report_reply(cJSON *report, char **output);
+size_t module_report_reply(cJSON* report, char** output);
 
 #endif /* MODULE_REPORT_H */

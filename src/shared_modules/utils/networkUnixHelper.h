@@ -36,39 +36,32 @@ namespace Utils
 
     class NetworkUnixHelper final
     {
-        public:
-            static void getNetworks(std::unique_ptr<ifaddrs, IfAddressSmartDeleter>& interfacesAddress, std::map<std::string, std::vector<ifaddrs*>>& networkInterfaces)
+    public:
+        static void getNetworks(std::unique_ptr<ifaddrs, IfAddressSmartDeleter>& interfacesAddress,
+                                std::map<std::string, std::vector<ifaddrs*>>& networkInterfaces)
+        {
+            struct ifaddrs* ifaddr {nullptr};
+            const auto ret {getifaddrs(&ifaddr)};
+
+            if (ret != -1)
             {
-                struct ifaddrs* ifaddr
-                {
-                    nullptr
-                };
-                const auto ret{getifaddrs(&ifaddr)};
+                interfacesAddress.reset(ifaddr);
 
-                if (ret != -1)
+                for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
                 {
-                    interfacesAddress.reset(ifaddr);
-
-                    for (auto ifa = ifaddr; ifa; ifa = ifa->ifa_next)
+                    if (ifa->ifa_name)
                     {
-                        if (ifa->ifa_name)
-                        {
-                            networkInterfaces[substrOnFirstOccurrence(ifa->ifa_name, ":")].push_back(ifa);
-                        }
+                        networkInterfaces[substrOnFirstOccurrence(ifa->ifa_name, ":")].push_back(ifa);
                     }
                 }
-                else
-                {
-                    throw std::system_error
-                    {
-                        ret,
-                        std::system_category(),
-                        "Error reading networks"
-                    };
-                }
             }
+            else
+            {
+                throw std::system_error {ret, std::system_category(), "Error reading networks"};
+            }
+        }
     };
-}
+} // namespace Utils
 
 #pragma GCC diagnostic pop
 

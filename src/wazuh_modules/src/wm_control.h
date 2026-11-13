@@ -17,12 +17,13 @@
 
 extern const wm_context WM_CONTROL_CONTEXT;
 
-typedef struct wm_control_t {
-    unsigned int enabled:1;
-    unsigned int run_on_start:1;
+typedef struct wm_control_t
+{
+    unsigned int enabled : 1;
+    unsigned int run_on_start : 1;
 } wm_control_t;
 
-wmodule *wm_control_read();
+wmodule* wm_control_read();
 
 /**
  * @brief Render untrusted control-socket input for a log line
@@ -37,7 +38,7 @@ wmodule *wm_control_read();
  * @param dst_size Size of @p dst
  * @return const char* @p dst, or "" when @p dst is unusable
  */
-const char *wm_control_log_input(const char *input, char *dst, size_t dst_size);
+const char* wm_control_log_input(const char* input, char* dst, size_t dst_size);
 
 /**
  * @brief Dispatch control commands and execute corresponding actions
@@ -50,7 +51,7 @@ const char *wm_control_log_input(const char *input, char *dst, size_t dst_size);
  * @param output Pointer to string that will contain the response message
  * @return size_t Length of the output string
  */
-size_t wm_control_dispatch(char *command, char **output);
+size_t wm_control_dispatch(char* command, char** output);
 
 /**
  * @brief Check if systemd is available as the init system
@@ -66,7 +67,7 @@ bool wm_control_check_systemd();
  * @param service Service name to check (e.g. "wazuh-manager", "wazuh-agent")
  * @return true if service is active, false otherwise
  */
-bool wm_control_wait_for_service_active(const char *service);
+bool wm_control_wait_for_service_active(const char* service);
 
 /**
  * @brief Get the control binary path used by the direct-exec fallback
@@ -77,7 +78,7 @@ bool wm_control_wait_for_service_active(const char *service);
  *
  * @return const char* Relative path to the control binary
  */
-const char *wm_control_get_bin(void);
+const char* wm_control_get_bin(void);
 
 /**
  * @brief Execute restart or reload action on a Wazuh service
@@ -90,7 +91,7 @@ const char *wm_control_get_bin(void);
  * @param output Pointer to string that will contain the response message
  * @return size_t Length of the output string
  */
-size_t wm_control_execute_action(const char *action, const char *service, char **output);
+size_t wm_control_execute_action(const char* action, const char* service, char** output);
 
 #endif
 #endif

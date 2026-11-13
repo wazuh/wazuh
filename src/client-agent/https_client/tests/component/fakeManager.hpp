@@ -139,420 +139,415 @@ struct CaBundleOptions
  */
 class FakeManager final
 {
-    public:
-        /// settingsFlipAfter > 0: after that many notifies the served startup
-        /// body (and the settings_hash reported by notify) switches to v2, so
-        /// a client detects the change and refreshes its startup data.
-        /// configBlob non-empty: /download serves it (chunked octet-stream)
-        /// and every notify reports agent.config_hash = SHA-256(configBlob), so a
-        /// client whose local hash differs downloads it. Those notifies also
-        /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
-        /// serves nothing else, so the client must relay the token verbatim.
-        /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
-        /// 413, so the client must split and resend smaller (#37835).
-        /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
-        /// notifies the server verifies ONLY against rotatedKeyHex, so the old
-        /// key starts getting 401 (#37828 re-enrollment).
-        /// statefulHoldFile set: /stateful does not answer while that path
-        /// exists, so a test can hold one session open and watch the other
-        /// endpoints carry on. The server forks and shares no memory with the
-        /// test, so the file is the release signal (#37836 isolation).
-        /// vdFeedOffset > 0: every notify additionally reports top-level
-        /// "vd_feed_offset":N (issue #38204), so a real client detects the
-        /// offset and issues a real /scan/vd request over the wire.
-        /// scanVdRejectFirstNAttempts > 0: the first that many /scan/vd
-        /// requests are answered 409 with {"error":"version_mismatch",
-        /// "current_version":vdFeedOffset} (simulating a load-balanced hit on
-        /// a manager node still on an older feed); subsequent attempts get 200.
-        /// enrollPassword empty (default): /enroll accepts any request whose
-        /// protocol-version header is present, no signature required (open
-        /// mode, #38465 Q3). Non-empty: /enroll additionally requires an
-        /// `Authorization: Bearer <wazuh-enroll+jwt>` header that verifies with the
-        /// manager's own shared JwtEnrollTokenVerifier against the HKDF key of
-        /// this password (jwt/enrollKeyDerivation.hpp -- the same construction
-        /// remoted's PasswordKeySource runs; the frozen KAT lives in
-        /// enrollSigner_test.cpp and jwt_vectors.json).
-        /// enrollForcedStatus non-zero: /enroll always answers that status
-        /// with a generic error body instead of running the real flow, so a
-        /// test can drive the 400/401/403/409/500/503 mapping in
-        /// w_enrollment_process_response() without needing five fake servers.
-        /// caBundle: the CA-rotation surface (#39321) -- what notify advertises
-        /// and what /cacerts serves. Defaults leave both routes exactly as the
-        /// bootstrap suite has always seen them.
-        /// download: how /download answers a config request that offered zstd
-        /// (#38514, fakeDownloadReply.hpp). The default answers plain, as before.
-        /// Every /download records the Accept-Encoding it carried, for
-        /// GET /peek/download-accept-encoding.
-        FakeManager(uint16_t port,
-                    const std::string& keyHex,
-                    bool tls = false,
-                    int settingsFlipAfter = 0,
-                    std::string configBlob = {},
-                    size_t statelessMaxBody = 0,
-                    int rotateKeyAfterNotifies = 0,
-                    std::string rotatedKeyHex = {},
-                    std::string statefulHoldFile = {},
-                    uint64_t vdFeedOffset = 0,
-                    int scanVdRejectFirstNAttempts = 0,
-                    std::string enrollPassword = {},
-                    int enrollForcedStatus = 0,
-                    CaBundleOptions caBundle = {},
-                    DownloadOptions download = {})
-            : m_port(port)
-            , m_keyHex(keyHex)
-            , m_tls(tls)
-            , m_settingsFlipAfter(settingsFlipAfter)
-            , m_configBlob(std::move(configBlob))
-            , m_statelessMaxBody(statelessMaxBody)
-            , m_rotateKeyAfterNotifies(rotateKeyAfterNotifies)
-            , m_rotatedKeyHex(std::move(rotatedKeyHex))
-            , m_statefulHoldFile(std::move(statefulHoldFile))
-            , m_vdFeedOffset(vdFeedOffset)
-            , m_scanVdRejectFirstNAttempts(scanVdRejectFirstNAttempts)
-            , m_enrollPassword(std::move(enrollPassword))
-            , m_enrollForcedStatus(enrollForcedStatus)
-            , m_caBundle(caBundle)
-            , m_download(download)
+public:
+    /// settingsFlipAfter > 0: after that many notifies the served startup
+    /// body (and the settings_hash reported by notify) switches to v2, so
+    /// a client detects the change and refreshes its startup data.
+    /// configBlob non-empty: /download serves it (chunked octet-stream)
+    /// and every notify reports agent.config_hash = SHA-256(configBlob), so a
+    /// client whose local hash differs downloads it. Those notifies also
+    /// carry agent.config_token = FAKE_MANAGER_CONFIG_TOKEN, and /download
+    /// serves nothing else, so the client must relay the token verbatim.
+    /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
+    /// 413, so the client must split and resend smaller (#37835).
+    /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
+    /// notifies the server verifies ONLY against rotatedKeyHex, so the old
+    /// key starts getting 401 (#37828 re-enrollment).
+    /// statefulHoldFile set: /stateful does not answer while that path
+    /// exists, so a test can hold one session open and watch the other
+    /// endpoints carry on. The server forks and shares no memory with the
+    /// test, so the file is the release signal (#37836 isolation).
+    /// vdFeedOffset > 0: every notify additionally reports top-level
+    /// "vd_feed_offset":N (issue #38204), so a real client detects the
+    /// offset and issues a real /scan/vd request over the wire.
+    /// scanVdRejectFirstNAttempts > 0: the first that many /scan/vd
+    /// requests are answered 409 with {"error":"version_mismatch",
+    /// "current_version":vdFeedOffset} (simulating a load-balanced hit on
+    /// a manager node still on an older feed); subsequent attempts get 200.
+    /// enrollPassword empty (default): /enroll accepts any request whose
+    /// protocol-version header is present, no signature required (open
+    /// mode, #38465 Q3). Non-empty: /enroll additionally requires an
+    /// `Authorization: Bearer <wazuh-enroll+jwt>` header that verifies with the
+    /// manager's own shared JwtEnrollTokenVerifier against the HKDF key of
+    /// this password (jwt/enrollKeyDerivation.hpp -- the same construction
+    /// remoted's PasswordKeySource runs; the frozen KAT lives in
+    /// enrollSigner_test.cpp and jwt_vectors.json).
+    /// enrollForcedStatus non-zero: /enroll always answers that status
+    /// with a generic error body instead of running the real flow, so a
+    /// test can drive the 400/401/403/409/500/503 mapping in
+    /// w_enrollment_process_response() without needing five fake servers.
+    /// caBundle: the CA-rotation surface (#39321) -- what notify advertises
+    /// and what /cacerts serves. Defaults leave both routes exactly as the
+    /// bootstrap suite has always seen them.
+    /// download: how /download answers a config request that offered zstd
+    /// (#38514, fakeDownloadReply.hpp). The default answers plain, as before.
+    /// Every /download records the Accept-Encoding it carried, for
+    /// GET /peek/download-accept-encoding.
+    FakeManager(uint16_t port,
+                const std::string& keyHex,
+                bool tls = false,
+                int settingsFlipAfter = 0,
+                std::string configBlob = {},
+                size_t statelessMaxBody = 0,
+                int rotateKeyAfterNotifies = 0,
+                std::string rotatedKeyHex = {},
+                std::string statefulHoldFile = {},
+                uint64_t vdFeedOffset = 0,
+                int scanVdRejectFirstNAttempts = 0,
+                std::string enrollPassword = {},
+                int enrollForcedStatus = 0,
+                CaBundleOptions caBundle = {},
+                DownloadOptions download = {})
+        : m_port(port)
+        , m_keyHex(keyHex)
+        , m_tls(tls)
+        , m_settingsFlipAfter(settingsFlipAfter)
+        , m_configBlob(std::move(configBlob))
+        , m_statelessMaxBody(statelessMaxBody)
+        , m_rotateKeyAfterNotifies(rotateKeyAfterNotifies)
+        , m_rotatedKeyHex(std::move(rotatedKeyHex))
+        , m_statefulHoldFile(std::move(statefulHoldFile))
+        , m_vdFeedOffset(vdFeedOffset)
+        , m_scanVdRejectFirstNAttempts(scanVdRejectFirstNAttempts)
+        , m_enrollPassword(std::move(enrollPassword))
+        , m_enrollForcedStatus(enrollForcedStatus)
+        , m_caBundle(caBundle)
+        , m_download(download)
+    {
+        // Generated BEFORE fork(), deliberately: the server runs in a child
+        // process that shares no memory with the test, so a certificate made
+        // inside runServer() could never be read back here. Minting it in the
+        // parent means the child inherits these exact bytes through fork() and
+        // cacertsPem()/cacertsPin() answer for what the route actually serves --
+        // which is what lets a test mint a token carrying the matching pin.
+        m_cacertsPem = makeCacertsPem(m_caBundle.bundleCertificates);
+
+        // The listener's own certificate is minted here too, and for the same reason:
+        // #39321's refresh travels over a VERIFIED connection, so a test driving it has
+        // to hold the anchor to write into ca_path. Generating it inside runServer()
+        // would leave those bytes in a process this one cannot read. It is CA:TRUE with
+        // SAN IP:127.0.0.1 so it can act as its own trust anchor under HC_VERIFY_FULL;
+        // every other suite runs HC_VERIFY_NONE and never looks at either.
+        if (m_tls)
         {
-            // Generated BEFORE fork(), deliberately: the server runs in a child
-            // process that shares no memory with the test, so a certificate made
-            // inside runServer() could never be read back here. Minting it in the
-            // parent means the child inherits these exact bytes through fork() and
-            // cacertsPem()/cacertsPin() answer for what the route actually serves --
-            // which is what lets a test mint a token carrying the matching pin.
-            m_cacertsPem = makeCacertsPem(m_caBundle.bundleCertificates);
-
-            // The listener's own certificate is minted here too, and for the same reason:
-            // #39321's refresh travels over a VERIFIED connection, so a test driving it has
-            // to hold the anchor to write into ca_path. Generating it inside runServer()
-            // would leave those bytes in a process this one cannot read. It is CA:TRUE with
-            // SAN IP:127.0.0.1 so it can act as its own trust anchor under HC_VERIFY_FULL;
-            // every other suite runs HC_VERIFY_NONE and never looks at either.
-            if (m_tls)
-            {
-                EVP_PKEY* pkey = nullptr;
-                X509* cert = nullptr;
-                makeSelfSigned(&pkey, &cert);
-                m_tlsCertPem = pemEncodeCert(cert);
-                m_tlsKeyPem = pemEncodePrivateKey(pkey);
-                X509_free(cert);
-                EVP_PKEY_free(pkey);
-            }
-
-            m_pid = fork();
-
-            if (m_pid == 0)
-            {
-                runServer();
-                _exit(0);
-            }
-
-            waitUntilReady();
+            EVP_PKEY* pkey = nullptr;
+            X509* cert = nullptr;
+            makeSelfSigned(&pkey, &cert);
+            m_tlsCertPem = pemEncodeCert(cert);
+            m_tlsKeyPem = pemEncodePrivateKey(pkey);
+            X509_free(cert);
+            EVP_PKEY_free(pkey);
         }
 
-        ~FakeManager()
+        m_pid = fork();
+
+        if (m_pid == 0)
         {
-            if (m_pid > 0)
-            {
-                kill(m_pid, SIGTERM);
-                waitpid(m_pid, nullptr, 0);
-            }
+            runServer();
+            _exit(0);
         }
 
-        FakeManager(const FakeManager&) = delete;
-        FakeManager& operator=(const FakeManager&) = delete;
+        waitUntilReady();
+    }
 
-        /// The exact PEM the GET /cacerts route serves. Readable in the test
-        /// process because it is minted before fork() (see the constructor).
-        const std::string& cacertsPem() const
+    ~FakeManager()
+    {
+        if (m_pid > 0)
         {
-            return m_cacertsPem;
+            kill(m_pid, SIGTERM);
+            waitpid(m_pid, nullptr, 0);
+        }
+    }
+
+    FakeManager(const FakeManager&) = delete;
+    FakeManager& operator=(const FakeManager&) = delete;
+
+    /// The exact PEM the GET /cacerts route serves. Readable in the test
+    /// process because it is minted before fork() (see the constructor).
+    const std::string& cacertsPem() const
+    {
+        return m_cacertsPem;
+    }
+
+    /// The listener's own certificate, PEM encoded -- CA:TRUE, so writing it to a file
+    /// and pointing ca_path at it is all an HC_VERIFY_FULL client needs to trust this
+    /// server. Empty when the manager was built without TLS.
+    const std::string& tlsCaPem() const
+    {
+        return m_tlsCertPem;
+    }
+
+    /// That certificate's SPKI pin -- 43 characters of unpadded base64url,
+    /// the form an enrollment token's `pin` field carries. This is how a
+    /// pin-compare test gets a pin that is genuinely expected to match,
+    /// without hardcoding a value for a certificate generated at run time.
+    std::string cacertsPin() const
+    {
+        const auto digest = spkiSha256FromPem(m_cacertsPem);
+        return digest ? spkiPinBase64Url(*digest) : std::string {};
+    }
+
+private:
+    /// Authenticates one agent request exactly as the manager does: the SHARED
+    /// wazuh-agent+jwt verifier (shared_modules/utils/jwt/) over the `Authorization:
+    /// Bearer` header, keyed with the 32 bytes keyHex decodes to. Using the manager's own
+    /// verifier is what makes this suite the C++<->C++ interoperability proof: a token the
+    /// agent mints here IS what remoted accepts. The target plays no part (identity only).
+    static bool verifyBearer(const std::string& keyHex, const std::string& /*target*/, const httplib::Request& request)
+    {
+        if (request.get_header_value("protocol-version") != "1")
+        {
+            return false;
         }
 
-        /// The listener's own certificate, PEM encoded -- CA:TRUE, so writing it to a file
-        /// and pointing ca_path at it is all an HC_VERIFY_FULL client needs to trust this
-        /// server. Empty when the manager was built without TLS.
-        const std::string& tlsCaPem() const
+        const auto auth = request.get_header_value("Authorization");
+        const std::string prefix = "Bearer ";
+
+        if (auth.rfind(prefix, 0) != 0)
         {
-            return m_tlsCertPem;
+            return false;
         }
 
-        /// That certificate's SPKI pin -- 43 characters of unpadded base64url,
-        /// the form an enrollment token's `pin` field carries. This is how a
-        /// pin-compare test gets a pin that is genuinely expected to match,
-        /// without hardcoding a value for a certificate generated at run time.
-        std::string cacertsPin() const
+        const auto key = jwt_profile::v1::JwtKeyDecoder::decode(keyHex);
+
+        if (!key)
         {
-            const auto digest = spkiSha256FromPem(m_cacertsPem);
-            return digest ? spkiPinBase64Url(*digest) : std::string {};
+            return false;
         }
 
-    private:
-        /// Authenticates one agent request exactly as the manager does: the SHARED
-        /// wazuh-agent+jwt verifier (shared_modules/utils/jwt/) over the `Authorization:
-        /// Bearer` header, keyed with the 32 bytes keyHex decodes to. Using the manager's own
-        /// verifier is what makes this suite the C++<->C++ interoperability proof: a token the
-        /// agent mints here IS what remoted accepts. The target plays no part (identity only).
-        static bool verifyBearer(const std::string& keyHex, const std::string& /*target*/, const httplib::Request& request)
+        const auto result = jwt_profile::v1::JwtRequestTokenVerifier::verify(
+            auth.substr(prefix.size()), *key, jwt_profile::v1::TimePolicy {}, std::chrono::system_clock::now());
+        return result.ok();
+    }
+
+    template<typename ServerT>
+    void registerEndpoints(ServerT& server)
+    {
+        const std::string keyHex = m_keyHex;
+        const int settingsFlipAfter = m_settingsFlipAfter;
+        const std::string configBlob = m_configBlob;
+        const size_t statelessMaxBody = m_statelessMaxBody;
+        const std::string holdFile = m_statefulHoldFile;
+        const uint64_t vdFeedOffset = m_vdFeedOffset;
+        const int scanVdRejectFirstNAttempts = m_scanVdRejectFirstNAttempts;
+        const CaBundleOptions caBundle = m_caBundle;
+        const DownloadOptions download = m_download;
+        const std::string configHash =
+            configBlob.empty() ? std::string {} : sha256Hex(configBlob.data(), configBlob.size());
+        auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
+        auto lastSession = std::make_shared<std::string>();
+        auto notifyCount = std::make_shared<std::atomic<int>>(0);
+
+        // The key every endpoint verifies against: after the configured
+        // notify count the server rotates to the new key, so requests
+        // minted with the old key start getting 401 (#37828).
+        const int rotateAfter = m_rotateKeyAfterNotifies;
+        const std::string rotatedKey = m_rotatedKeyHex;
+        const auto verify =
+            [keyHex, rotatedKey, rotateAfter, notifyCount](const std::string& target, const httplib::Request& request)
         {
-            if (request.get_header_value("protocol-version") != "1")
-            {
-                return false;
-            }
+            const bool rotated = rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
+            return verifyBearer(rotated ? rotatedKey : keyHex, target, request);
+        };
+        // #39040/#39064: a 5.0 manager names the authentication failure class on every 401,
+        // and the agent's auth gate escalates to re-enrollment on `unknown_agent` alone -- a
+        // bodyless 401 reads as Unclassified, which means "retry and keep the identity". A test
+        // that rotates the key is modelling a manager that no longer holds this identity's
+        // credential, so its refusals have to say so or the re-enrollment path is unreachable.
+        // Rotation is what arms this: with none configured the body stays empty and every other
+        // test sees the same bodyless 401 it always did.
+        std::string authFailBody;
 
-            const auto auth = request.get_header_value("Authorization");
-            const std::string prefix = "Bearer ";
-
-            if (auth.rfind(prefix, 0) != 0)
-            {
-                return false;
-            }
-
-            const auto key = jwt_profile::v1::JwtKeyDecoder::decode(keyHex);
-
-            if (!key)
-            {
-                return false;
-            }
-
-            const auto result = jwt_profile::v1::JwtRequestTokenVerifier::verify(
-                                    auth.substr(prefix.size()), *key, jwt_profile::v1::TimePolicy {}, std::chrono::system_clock::now());
-            return result.ok();
+        if (rotateAfter > 0 && !rotatedKey.empty())
+        {
+            authFailBody = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
         }
 
-        template<typename ServerT>
-        void registerEndpoints(ServerT& server)
+        const auto refuseAuth = [authFailBody](httplib::Response& response)
         {
-            const std::string keyHex = m_keyHex;
-            const int settingsFlipAfter = m_settingsFlipAfter;
-            const std::string configBlob = m_configBlob;
-            const size_t statelessMaxBody = m_statelessMaxBody;
-            const std::string holdFile = m_statefulHoldFile;
-            const uint64_t vdFeedOffset = m_vdFeedOffset;
-            const int scanVdRejectFirstNAttempts = m_scanVdRejectFirstNAttempts;
-            const CaBundleOptions caBundle = m_caBundle;
-            const DownloadOptions download = m_download;
-            const std::string configHash =
-                configBlob.empty() ? std::string {} :
-                sha256Hex(configBlob.data(), configBlob.size());
-            auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
-            auto lastSession = std::make_shared<std::string>();
-            auto notifyCount = std::make_shared<std::atomic<int>>(0);
+            response.status = 401;
 
-            // The key every endpoint verifies against: after the configured
-            // notify count the server rotates to the new key, so requests
-            // minted with the old key start getting 401 (#37828).
-            const int rotateAfter = m_rotateKeyAfterNotifies;
-            const std::string rotatedKey = m_rotatedKeyHex;
-            const auto verify =
-                [keyHex, rotatedKey, rotateAfter, notifyCount](const std::string & target, const httplib::Request & request)
+            if (!authFailBody.empty())
             {
-                const bool rotated = rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
-                return verifyBearer(rotated ? rotatedKey : keyHex, target, request);
-            };
-            // #39040/#39064: a 5.0 manager names the authentication failure class on every 401,
-            // and the agent's auth gate escalates to re-enrollment on `unknown_agent` alone -- a
-            // bodyless 401 reads as Unclassified, which means "retry and keep the identity". A test
-            // that rotates the key is modelling a manager that no longer holds this identity's
-            // credential, so its refusals have to say so or the re-enrollment path is unreachable.
-            // Rotation is what arms this: with none configured the body stays empty and every other
-            // test sees the same bodyless 401 it always did.
-            std::string authFailBody;
-
-            if (rotateAfter > 0 && !rotatedKey.empty())
-            {
-                authFailBody = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
+                response.set_content(authFailBody, "application/json");
             }
+        };
+        // Accumulates accepted /stateless bodies so the fork parent can
+        // read them back via GET /peek/stateless (fork servers share no
+        // memory; a peek endpoint is the observability channel).
+        auto acceptedEvents = std::make_shared<std::string>();
+        auto acceptedMutex = std::make_shared<std::mutex>();
 
-            const auto refuseAuth = [authFailBody](httplib::Response & response)
-            {
-                response.status = 401;
-
-                if (!authFailBody.empty())
-                {
-                    response.set_content(authFailBody, "application/json");
-                }
-            };
-            // Accumulates accepted /stateless bodies so the fork parent can
-            // read them back via GET /peek/stateless (fork servers share no
-            // memory; a peek endpoint is the observability channel).
-            auto acceptedEvents = std::make_shared<std::string>();
-            auto acceptedMutex = std::make_shared<std::mutex>();
-
-            server.Post("/stateless",
-                        [verify, refuseAuth, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
-                            const httplib::Request & request, httplib::Response & response)
-            {
-                if (!verify("/stateless", request))
-                {
-                    refuseAuth(response);
-                    return;
-                }
-
-                if (request.has_header("X-Arm-Backpressure") && backpressureArmed->exchange(false))
-                {
-                    response.status = 503;
-                    response.set_header("Retry-After", "1");
-                    return;
-                }
-
-                if (statelessMaxBody > 0 && request.body.size() > statelessMaxBody)
-                {
-                    response.status = 413; // Payload too large: the client must split + resend.
-                    return;
-                }
-
-                {
-                    std::lock_guard<std::mutex> lock(*acceptedMutex);
-                    *acceptedEvents += request.body; // Record the accepted batch.
-                }
-
-                response.status = 200;
-                response.set_content(request.body, "text/plain"); // Echo for body assertions.
-            });
-
-            server.Get("/peek/stateless",
-                       [acceptedEvents, acceptedMutex](const httplib::Request&, httplib::Response & response)
-            {
-                std::lock_guard<std::mutex> lock(*acceptedMutex);
-                response.status = 200;
-                response.set_content(*acceptedEvents, "text/plain");
-            });
-
-            // Same channel for the control plane: how many notifies landed.
-            server.Get("/peek/notifies",
-                       [notifyCount](const httplib::Request&, httplib::Response & response)
-            {
-                response.status = 200;
-                response.set_content(std::to_string(notifyCount->load()), "text/plain");
-            });
-
-            // /stats and /config: verify + store the last body so the fork
-            // parent can assert on it via GET /peek/{stats,config}.
-            auto lastStats = std::make_shared<std::string>();
-            auto lastConfig = std::make_shared<std::string>();
-            // How many /config POSTs landed -- same idea as notifyCount above, so a test can
-            // assert an actual forced report was delivered under contention, not just that the
-            // last one it happened to check looks right.
-            auto configCount = std::make_shared<std::atomic<int>>(0);
-
-            for (const auto& kind :
+        server.Post("/stateless",
+                    [verify, refuseAuth, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
+                        const httplib::Request& request, httplib::Response& response)
                     {
-                        std::string {"stats"}, std::string {"config"}
-                    })
+                        if (!verify("/stateless", request))
+                        {
+                            refuseAuth(response);
+                            return;
+                        }
+
+                        if (request.has_header("X-Arm-Backpressure") && backpressureArmed->exchange(false))
+                        {
+                            response.status = 503;
+                            response.set_header("Retry-After", "1");
+                            return;
+                        }
+
+                        if (statelessMaxBody > 0 && request.body.size() > statelessMaxBody)
+                        {
+                            response.status = 413; // Payload too large: the client must split + resend.
+                            return;
+                        }
+
+                        {
+                            std::lock_guard<std::mutex> lock(*acceptedMutex);
+                            *acceptedEvents += request.body; // Record the accepted batch.
+                        }
+
+                        response.status = 200;
+                        response.set_content(request.body, "text/plain"); // Echo for body assertions.
+                    });
+
+        server.Get("/peek/stateless",
+                   [acceptedEvents, acceptedMutex](const httplib::Request&, httplib::Response& response)
+                   {
+                       std::lock_guard<std::mutex> lock(*acceptedMutex);
+                       response.status = 200;
+                       response.set_content(*acceptedEvents, "text/plain");
+                   });
+
+        // Same channel for the control plane: how many notifies landed.
+        server.Get("/peek/notifies",
+                   [notifyCount](const httplib::Request&, httplib::Response& response)
+                   {
+                       response.status = 200;
+                       response.set_content(std::to_string(notifyCount->load()), "text/plain");
+                   });
+
+        // /stats and /config: verify + store the last body so the fork
+        // parent can assert on it via GET /peek/{stats,config}.
+        auto lastStats = std::make_shared<std::string>();
+        auto lastConfig = std::make_shared<std::string>();
+        // How many /config POSTs landed -- same idea as notifyCount above, so a test can
+        // assert an actual forced report was delivered under contention, not just that the
+        // last one it happened to check looks right.
+        auto configCount = std::make_shared<std::atomic<int>>(0);
+
+        for (const auto& kind : {std::string {"stats"}, std::string {"config"}})
+        {
+            auto store = kind == "stats" ? lastStats : lastConfig;
+            server.Post("/" + kind,
+                        [verify, refuseAuth, kind, store, acceptedMutex, configCount](const httplib::Request& request,
+                                                                                      httplib::Response& response)
+                        {
+                            if (!verify("/" + kind, request))
+                            {
+                                refuseAuth(response);
+                                return;
+                            }
+
+                            {
+                                std::lock_guard<std::mutex> lock(*acceptedMutex);
+                                *store = request.body;
+                            }
+
+                            if (kind == "config")
+                            {
+                                configCount->fetch_add(1);
+                            }
+
+                            response.set_content("{}", "application/json");
+                        });
+
+            server.Get("/peek/" + kind,
+                       [store, acceptedMutex](const httplib::Request&, httplib::Response& response)
+                       {
+                           std::lock_guard<std::mutex> lock(*acceptedMutex);
+                           response.status = store->empty() ? 204 : 200;
+                           response.set_content(*store, "text/plain");
+                       });
+        }
+
+        server.Get("/peek/config_count",
+                   [configCount](const httplib::Request&, httplib::Response& response)
+                   {
+                       response.status = 200;
+                       response.set_content(std::to_string(configCount->load()), "text/plain");
+                   });
+
+        // Size of the session as the manager would see it. Agent builds compile the fake
+        // against cpp-httplib 0.10.9 (http-request's EXTERNAL_DEPS_VERSION=19 default), which
+        // knows nothing about zstd and hands a `Content-Encoding: zstd` body over untouched;
+        // a cpp-httplib >= 0.20 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
+        // runs. Inflate here whenever the body is still a zstd frame so the compression test
+        // proves the same thing -- wire bytes back to the full session -- under both.
+        const auto statefulBytes = [](const httplib::Request& request) -> std::size_t
+        {
+            const auto& body = request.body;
+            const bool zstdFrame = body.size() >= 4 && static_cast<unsigned char>(body[0]) == 0x28 &&
+                                   static_cast<unsigned char>(body[1]) == 0xB5 &&
+                                   static_cast<unsigned char>(body[2]) == 0x2F &&
+                                   static_cast<unsigned char>(body[3]) == 0xFD;
+
+            if (request.get_header_value("Content-Encoding") != "zstd" || !zstdFrame)
             {
-                auto store = kind == "stats" ? lastStats : lastConfig;
-                server.Post(
-                    "/" + kind,
-                    [verify, refuseAuth, kind, store, acceptedMutex, configCount](const httplib::Request & request,
-                                                                                  httplib::Response & response)
-                {
-                    if (!verify("/" + kind, request))
-                    {
-                        refuseAuth(response);
-                        return;
-                    }
-
-                    {
-                        std::lock_guard<std::mutex> lock(*acceptedMutex);
-                        *store = request.body;
-                    }
-
-                    if (kind == "config")
-                    {
-                        configCount->fetch_add(1);
-                    }
-
-                    response.set_content("{}", "application/json");
-                });
-
-                server.Get("/peek/" + kind,
-                           [store, acceptedMutex](const httplib::Request&, httplib::Response & response)
-                {
-                    std::lock_guard<std::mutex> lock(*acceptedMutex);
-                    response.status = store->empty() ? 204 : 200;
-                    response.set_content(*store, "text/plain");
-                });
+                return body.size();
             }
 
-            server.Get("/peek/config_count",
-                       [configCount](const httplib::Request&, httplib::Response & response)
+            const auto expected = ZSTD_getFrameContentSize(body.data(), body.size());
+
+            if (expected == ZSTD_CONTENTSIZE_ERROR || expected == ZSTD_CONTENTSIZE_UNKNOWN)
             {
-                response.status = 200;
-                response.set_content(std::to_string(configCount->load()), "text/plain");
-            });
+                return 0;
+            }
 
-            // Size of the session as the manager would see it. Agent builds compile the fake
-            // against cpp-httplib 0.10.9 (http-request's EXTERNAL_DEPS_VERSION=19 default), which
-            // knows nothing about zstd and hands a `Content-Encoding: zstd` body over untouched;
-            // a cpp-httplib >= 0.20 (+CPPHTTPLIB_ZSTD_SUPPORT) inflates it before the handler
-            // runs. Inflate here whenever the body is still a zstd frame so the compression test
-            // proves the same thing -- wire bytes back to the full session -- under both.
-            const auto statefulBytes = [](const httplib::Request & request) -> std::size_t
-            {
-                const auto& body = request.body;
-                const bool zstdFrame = body.size() >= 4 && static_cast<unsigned char>(body[0]) == 0x28 &&
-                static_cast<unsigned char>(body[1]) == 0xB5 &&
-                static_cast<unsigned char>(body[2]) == 0x2F &&
-                static_cast<unsigned char>(body[3]) == 0xFD;
+            std::vector<char> inflated(static_cast<std::size_t>(expected));
+            const auto produced = ZSTD_decompress(inflated.data(), inflated.size(), body.data(), body.size());
+            return ZSTD_isError(produced) ? 0 : produced;
+        };
 
-                if (request.get_header_value("Content-Encoding") != "zstd" || !zstdFrame)
-                {
-                    return body.size();
-                }
+        server.Post("/stateful",
+                    [verify, refuseAuth, lastSession, holdFile, statefulBytes](const httplib::Request& request,
+                                                                               httplib::Response& response)
+                    {
+                        if (!verify("/stateful", request))
+                        {
+                            refuseAuth(response);
+                            return;
+                        }
 
-                const auto expected = ZSTD_getFrameContentSize(body.data(), body.size());
+                        // Sit on the response until the test removes the file, with a
+                        // hard stop so a broken test cannot wedge the run. The cap sits
+                        // well above the test's own deadlines even when valgrind
+                        // stretches them tenfold, so it only fires on a real hang.
+                        for (int waited = 0;
+                             !holdFile.empty() && waited < 120000 && access(holdFile.c_str(), F_OK) == 0;
+                             waited += 20)
+                        {
+                            usleep(20 * 1000);
+                        }
 
-                if (expected == ZSTD_CONTENTSIZE_ERROR || expected == ZSTD_CONTENTSIZE_UNKNOWN)
-                {
-                    return 0;
-                }
+                        const auto session = request.get_header_value("X-Session-Id");
+                        const bool cached = (*lastSession == session);
+                        *lastSession = session;
+                        response.status = 200;
+                        response.set_content(std::string {"{\"sessionId\":\""} + session +
+                                                 "\",\"cached\":" + (cached ? "true" : "false") +
+                                                 ",\"bytes\":" + std::to_string(statefulBytes(request)) + "}",
+                                             "application/json");
+                    });
 
-                std::vector<char> inflated(static_cast<std::size_t>(expected));
-                const auto produced = ZSTD_decompress(inflated.data(), inflated.size(), body.data(), body.size());
-                return ZSTD_isError(produced) ? 0 : produced;
-            };
+        // The Accept-Encoding of the last /download, "<absent>" when it carried none, so a test can
+        // check the config fetcher offers zstd and the WPK fetcher doesn't (#38514).
+        auto downloadAcceptEncoding = std::make_shared<std::string>();
+        auto downloadMutex = std::make_shared<std::mutex>();
 
-            server.Post("/stateful",
-                        [verify, refuseAuth, lastSession, holdFile, statefulBytes](const httplib::Request & request,
-                                                                                   httplib::Response & response)
-            {
-                if (!verify("/stateful", request))
-                {
-                    refuseAuth(response);
-                    return;
-                }
-
-                // Sit on the response until the test removes the file, with a
-                // hard stop so a broken test cannot wedge the run. The cap sits
-                // well above the test's own deadlines even when valgrind
-                // stretches them tenfold, so it only fires on a real hang.
-                for (int waited = 0;
-                        !holdFile.empty() && waited < 120000 && access(holdFile.c_str(), F_OK) == 0;
-                        waited += 20)
-                {
-                    usleep(20 * 1000);
-                }
-
-                const auto session = request.get_header_value("X-Session-Id");
-                const bool cached = (*lastSession == session);
-                *lastSession = session;
-                response.status = 200;
-                response.set_content(std::string {"{\"sessionId\":\""} + session +
-                                     "\",\"cached\":" + (cached ? "true" : "false") +
-                                     ",\"bytes\":" + std::to_string(statefulBytes(request)) + "}",
-                                     "application/json");
-            });
-
-            // The Accept-Encoding of the last /download, "<absent>" when it carried none, so a test can
-            // check the config fetcher offers zstd and the WPK fetcher doesn't (#38514).
-            auto downloadAcceptEncoding = std::make_shared<std::string>();
-            auto downloadMutex = std::make_shared<std::mutex>();
-
-            server.Post(
-                "/download",
-                [verify, refuseAuth, configBlob, download, downloadAcceptEncoding,
-                         downloadMutex](const httplib::Request & request, httplib::Response & response)
+        server.Post(
+            "/download",
+            [verify, refuseAuth, configBlob, download, downloadAcceptEncoding, downloadMutex](
+                const httplib::Request& request, httplib::Response& response)
             {
                 if (!verify("/download", request))
                 {
@@ -578,8 +573,8 @@ class FakeManager final
                 // the real one resolves a resource_id it minted. An agent that derived the
                 // selector itself instead of relaying config_token gets a 404 here, so the
                 // E2E download tests fail rather than silently pass on a lucky guess.
-                if (request.body.find(std::string {R"("resource_id":")"} +
-                                      FAKE_MANAGER_CONFIG_TOKEN + R"(")") == std::string::npos)
+                if (request.body.find(std::string {R"("resource_id":")"} + FAKE_MANAGER_CONFIG_TOKEN + R"(")") ==
+                    std::string::npos)
                 {
                     response.status = 404;
                     return;
@@ -592,7 +587,7 @@ class FakeManager final
                 }
 
                 const auto body = std::make_shared<const DownloadBody>(
-                                      shapeDownloadBody(configBlob, download.reply, offersZstd(acceptEncoding)));
+                    shapeDownloadBody(configBlob, download.reply, offersZstd(acceptEncoding)));
 
                 if (!body->contentEncoding.empty())
                 {
@@ -603,208 +598,210 @@ class FakeManager final
                 // decode + stream-to-file path is exercised for real.
                 response.status = 200;
                 response.set_chunked_content_provider("application/octet-stream",
-                                                      [body](size_t offset, httplib::DataSink & sink)
-                {
-                    constexpr size_t CHUNK = 16 * 1024;
-                    const size_t remaining = body->bytes.size() - offset;
-                    const size_t count = remaining < CHUNK ? remaining : CHUNK;
+                                                      [body](size_t offset, httplib::DataSink& sink)
+                                                      {
+                                                          constexpr size_t CHUNK = 16 * 1024;
+                                                          const size_t remaining = body->bytes.size() - offset;
+                                                          const size_t count = remaining < CHUNK ? remaining : CHUNK;
 
-                    if (count > 0)
-                    {
-                        sink.write(body->bytes.data() + offset, count);
-                    }
+                                                          if (count > 0)
+                                                          {
+                                                              sink.write(body->bytes.data() + offset, count);
+                                                          }
 
-                    if (offset + count >= body->bytes.size())
+                                                          if (offset + count >= body->bytes.size())
+                                                          {
+                                                              // A false return drops the connection without the
+                                                              // terminating chunk, which is how #40900's manager ends a
+                                                              // stream whose source failed.
+                                                              if (!body->terminated)
+                                                              {
+                                                                  return false;
+                                                              }
+
+                                                              sink.done();
+                                                          }
+
+                                                          return true;
+                                                      });
+            });
+
+        server.Get("/peek/download-accept-encoding",
+                   [downloadAcceptEncoding, downloadMutex](const httplib::Request&, httplib::Response& response)
+                   {
+                       std::lock_guard<std::mutex> lock(*downloadMutex);
+                       response.status = downloadAcceptEncoding->empty() ? 204 : 200;
+                       response.set_content(*downloadAcceptEncoding, "text/plain");
+                   });
+
+        // Records every /control request TYPE the fork child actually saw
+        // (not the full body -- just "startup"/"notify"/"shutdown"/
+        // "unknown"), so the fork parent can assert on the conversation
+        // shape via GET /peek/control (fork servers share no memory; this
+        // is the same observability idiom as acceptedEvents/peek/stateless
+        // above). Used to directly (not just by source reading) confirm
+        // whether a graceful stop actually sends {"type":"shutdown"}.
+        auto controlTypes = std::make_shared<std::string>();
+        auto controlMutex = std::make_shared<std::mutex>();
+        // The Content-Type each /control request advertised, so a test can
+        // confirm the per-endpoint header survives the real curl path (the
+        // unit test only proves CurlPerformer emits it). Same peek idiom.
+        auto controlContentTypes = std::make_shared<std::string>();
+        // The last Notify body, so a test can confirm the real host block
+        // (including host.ip from the live connection) over the curl path.
+        auto lastNotifyBody = std::make_shared<std::string>();
+
+        server.Post("/control",
+                    [verify,
+                     refuseAuth,
+                     settingsFlipAfter,
+                     notifyCount,
+                     configHash,
+                     controlTypes,
+                     controlContentTypes,
+                     lastNotifyBody,
+                     controlMutex,
+                     vdFeedOffset,
+                     caBundle](const httplib::Request& request, httplib::Response& response)
                     {
-                        // A false return drops the connection without the terminating chunk,
-                        // which is how #40900's manager ends a stream whose source failed.
-                        if (!body->terminated)
+                        if (!verify("/control", request))
                         {
-                            return false;
+                            refuseAuth(response);
+                            return;
                         }
 
-                        sink.done();
-                    }
+                        {
+                            std::lock_guard<std::mutex> lock(*controlMutex);
+                            *controlContentTypes += request.get_header_value("Content-Type");
+                            *controlContentTypes += ";";
+                        }
 
-                    return true;
-                });
-            });
+                        if (request.has_header("X-Reject-Version"))
+                        {
+                            response.status = 409;
+                            return;
+                        }
 
-            server.Get("/peek/download-accept-encoding",
-                       [downloadAcceptEncoding, downloadMutex](const httplib::Request&, httplib::Response & response)
-            {
-                std::lock_guard<std::mutex> lock(*downloadMutex);
-                response.status = downloadAcceptEncoding->empty() ? 204 : 200;
-                response.set_content(*downloadAcceptEncoding, "text/plain");
-            });
+                        {
+                            std::lock_guard<std::mutex> lock(*controlMutex);
+                            const char* type = "unknown";
 
-            // Records every /control request TYPE the fork child actually saw
-            // (not the full body -- just "startup"/"notify"/"shutdown"/
-            // "unknown"), so the fork parent can assert on the conversation
-            // shape via GET /peek/control (fork servers share no memory; this
-            // is the same observability idiom as acceptedEvents/peek/stateless
-            // above). Used to directly (not just by source reading) confirm
-            // whether a graceful stop actually sends {"type":"shutdown"}.
-            auto controlTypes = std::make_shared<std::string>();
-            auto controlMutex = std::make_shared<std::mutex>();
-            // The Content-Type each /control request advertised, so a test can
-            // confirm the per-endpoint header survives the real curl path (the
-            // unit test only proves CurlPerformer emits it). Same peek idiom.
-            auto controlContentTypes = std::make_shared<std::string>();
-            // The last Notify body, so a test can confirm the real host block
-            // (including host.ip from the live connection) over the curl path.
-            auto lastNotifyBody = std::make_shared<std::string>();
+                            if (request.body.find("\"type\":\"startup\"") != std::string::npos)
+                            {
+                                type = "startup";
+                            }
+                            else if (request.body.find("\"type\":\"notify\"") != std::string::npos)
+                            {
+                                type = "notify";
+                            }
+                            else if (request.body.find("\"type\":\"shutdown\"") != std::string::npos)
+                            {
+                                type = "shutdown";
+                            }
 
-            server.Post(
-                "/control",
-                [verify, refuseAuth,
-                         settingsFlipAfter,
-                         notifyCount,
-                         configHash,
-                         controlTypes,
-                         controlContentTypes,
-                         lastNotifyBody,
-                         controlMutex,
-                         vdFeedOffset,
-                         caBundle](const httplib::Request & request, httplib::Response & response)
-            {
-                if (!verify("/control", request))
-                {
-                    refuseAuth(response);
-                    return;
-                }
+                            *controlTypes += type;
+                            *controlTypes += ";";
+                        }
 
-                {
-                    std::lock_guard<std::mutex> lock(*controlMutex);
-                    *controlContentTypes += request.get_header_value("Content-Type");
-                    *controlContentTypes += ";";
-                }
+                        // #37733 5.1: startup answers the handshake metadata (v1 or
+                        // v2 after the settings flip); notify reports agent.groups
+                        // and the settings_hash of the CURRENT startup body; response
+                        // answers a plain ok.
+                        static const std::string startupV1 = R"({"limits":{"eps":0},"cluster":{"name":"fake"},)"
+                                                             R"("agent":{"groups":["default"]}})";
+                        static const std::string startupV2 = R"({"limits":{"eps":100},"cluster":{"name":"fake"},)"
+                                                             R"("agent":{"groups":["default"]}})";
+                        const bool flipped = settingsFlipAfter > 0 && notifyCount->load() >= settingsFlipAfter;
+                        const std::string& startupBody = flipped ? startupV2 : startupV1;
+                        response.status = 200;
 
-                if (request.has_header("X-Reject-Version"))
-                {
-                    response.status = 409;
-                    return;
-                }
+                        if (request.body.find("\"type\":\"startup\"") != std::string::npos)
+                        {
+                            response.set_content(startupBody, "application/json");
+                            return;
+                        }
 
-                {
-                    std::lock_guard<std::mutex> lock(*controlMutex);
-                    const char* type = "unknown";
+                        if (request.body.find("\"type\":\"notify\"") != std::string::npos)
+                        {
+                            notifyCount->fetch_add(1);
+                            {
+                                std::lock_guard<std::mutex> lock(*controlMutex);
+                                *lastNotifyBody = request.body;
+                            }
+                            const std::string agent = configHash.empty()
+                                                          ? std::string {R"({"groups":["default"]})"}
+                                                          : R"({"groups":["default"],"config_token":")" +
+                                                                std::string {FAKE_MANAGER_CONFIG_TOKEN} +
+                                                                R"(","config_hash":")" + configHash + R"("})";
 
-                    if (request.body.find("\"type\":\"startup\"") != std::string::npos)
-                    {
-                        type = "startup";
-                    }
-                    else if (request.body.find("\"type\":\"notify\"") != std::string::npos)
-                    {
-                        type = "notify";
-                    }
-                    else if (request.body.find("\"type\":\"shutdown\"") != std::string::npos)
-                    {
-                        type = "shutdown";
-                    }
+                            const std::string vdFeedOffsetField =
+                                vdFeedOffset > 0 ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset)
+                                                 : std::string {};
+                            // Top-level, beside settings_hash rather than nested under agent -- where
+                            // #39321 rule 3 puts it, and where ControlStream reads it from.
+                            const std::string caGenerationField =
+                                caBundle.advertisedGeneration > 0
+                                    ? R"(,"ca_generation":)" + std::to_string(caBundle.advertisedGeneration)
+                                    : std::string {};
+                            response.set_content(R"({"agent":)" + agent + R"(,"settings_hash":")" +
+                                                     fakeManagerSettingsHash(startupBody) + R"(")" + vdFeedOffsetField +
+                                                     caGenerationField + "}",
+                                                 "application/json");
+                            return;
+                        }
 
-                    *controlTypes += type;
-                    *controlTypes += ";";
-                }
+                        if (request.body.find("\"type\":\"shutdown\"") != std::string::npos)
+                        {
+                            response.set_content("{}", "application/json"); // Disconnect ack.
+                            return;
+                        }
 
-                // #37733 5.1: startup answers the handshake metadata (v1 or
-                // v2 after the settings flip); notify reports agent.groups
-                // and the settings_hash of the CURRENT startup body; response
-                // answers a plain ok.
-                static const std::string startupV1 = R"({"limits":{"eps":0},"cluster":{"name":"fake"},)"
-                                                     R"("agent":{"groups":["default"]}})";
-                static const std::string startupV2 = R"({"limits":{"eps":100},"cluster":{"name":"fake"},)"
-                                                     R"("agent":{"groups":["default"]}})";
-                const bool flipped = settingsFlipAfter > 0 && notifyCount->load() >= settingsFlipAfter;
-                const std::string& startupBody = flipped ? startupV2 : startupV1;
-                response.status = 200;
+                        // Unknown /control type (the response leg is gone): 400.
+                        response.status = 400;
+                        response.set_content(R"({"error":"unknown control type"})", "application/json");
+                    });
 
-                if (request.body.find("\"type\":\"startup\"") != std::string::npos)
-                {
-                    response.set_content(startupBody, "application/json");
-                    return;
-                }
+        server.Get("/peek/control",
+                   [controlTypes, controlMutex](const httplib::Request&, httplib::Response& response)
+                   {
+                       std::lock_guard<std::mutex> lock(*controlMutex);
+                       response.status = 200;
+                       response.set_content(*controlTypes, "text/plain");
+                   });
 
-                if (request.body.find("\"type\":\"notify\"") != std::string::npos)
-                {
-                    notifyCount->fetch_add(1);
-                    {
-                        std::lock_guard<std::mutex> lock(*controlMutex);
-                        *lastNotifyBody = request.body;
-                    }
-                    const std::string agent = configHash.empty()
-                                              ? std::string {R"({"groups":["default"]})"}
-                                              :
-                                              R"({"groups":["default"],"config_token":")" +
-                                              std::string {FAKE_MANAGER_CONFIG_TOKEN} +
-                                              R"(","config_hash":")" + configHash + R"("})";
+        server.Get("/peek/control-content-type",
+                   [controlContentTypes, controlMutex](const httplib::Request&, httplib::Response& response)
+                   {
+                       std::lock_guard<std::mutex> lock(*controlMutex);
+                       response.status = 200;
+                       response.set_content(*controlContentTypes, "text/plain");
+                   });
 
-                    const std::string vdFeedOffsetField =
-                        vdFeedOffset > 0 ? R"(,"vd_feed_offset":)" + std::to_string(vdFeedOffset) : std::string {};
-                    // Top-level, beside settings_hash rather than nested under agent -- where
-                    // #39321 rule 3 puts it, and where ControlStream reads it from.
-                    const std::string caGenerationField =
-                        caBundle.advertisedGeneration > 0
-                        ? R"(,"ca_generation":)" + std::to_string(caBundle.advertisedGeneration)
-                        : std::string {};
-                    response.set_content(R"({"agent":)" + agent + R"(,"settings_hash":")" +
-                                         fakeManagerSettingsHash(startupBody) + R"(")" + vdFeedOffsetField +
-                                         caGenerationField + "}",
-                                         "application/json");
-                    return;
-                }
+        server.Get("/peek/last-notify",
+                   [lastNotifyBody, controlMutex](const httplib::Request&, httplib::Response& response)
+                   {
+                       std::lock_guard<std::mutex> lock(*controlMutex);
+                       response.status = 200;
+                       response.set_content(*lastNotifyBody, "text/plain");
+                   });
 
-                if (request.body.find("\"type\":\"shutdown\"") != std::string::npos)
-                {
-                    response.set_content("{}", "application/json"); // Disconnect ack.
-                    return;
-                }
+        // POST /scan/vd (issue #38204): the manager-side contract this
+        // workspace's agent-side code is built against (manager itself out
+        // of scope here -- see plan.md). Rejects the first
+        // scanVdRejectFirstNAttempts attempts with 409 + current_version =
+        // vdFeedOffset+1 (simulating a load-balanced hit on a node ALREADY
+        // ahead of the one that answered notify -- genuinely higher, so a
+        // real client's RescanRequester advances its offset and retries
+        // rather than giving up), then accepts. Records every accepted
+        // body's bytes via /peek/scan-vd, same peek idiom as /peek/last-notify.
+        auto scanVdAttempts = std::make_shared<std::atomic<int>>(0);
+        auto lastScanVdBody = std::make_shared<std::string>();
+        auto scanVdMutex = std::make_shared<std::mutex>();
 
-                // Unknown /control type (the response leg is gone): 400.
-                response.status = 400;
-                response.set_content(R"({"error":"unknown control type"})", "application/json");
-            });
-
-            server.Get("/peek/control",
-                       [controlTypes, controlMutex](const httplib::Request&, httplib::Response & response)
-            {
-                std::lock_guard<std::mutex> lock(*controlMutex);
-                response.status = 200;
-                response.set_content(*controlTypes, "text/plain");
-            });
-
-            server.Get("/peek/control-content-type",
-                       [controlContentTypes, controlMutex](const httplib::Request&, httplib::Response & response)
-            {
-                std::lock_guard<std::mutex> lock(*controlMutex);
-                response.status = 200;
-                response.set_content(*controlContentTypes, "text/plain");
-            });
-
-            server.Get("/peek/last-notify",
-                       [lastNotifyBody, controlMutex](const httplib::Request&, httplib::Response & response)
-            {
-                std::lock_guard<std::mutex> lock(*controlMutex);
-                response.status = 200;
-                response.set_content(*lastNotifyBody, "text/plain");
-            });
-
-            // POST /scan/vd (issue #38204): the manager-side contract this
-            // workspace's agent-side code is built against (manager itself out
-            // of scope here -- see plan.md). Rejects the first
-            // scanVdRejectFirstNAttempts attempts with 409 + current_version =
-            // vdFeedOffset+1 (simulating a load-balanced hit on a node ALREADY
-            // ahead of the one that answered notify -- genuinely higher, so a
-            // real client's RescanRequester advances its offset and retries
-            // rather than giving up), then accepts. Records every accepted
-            // body's bytes via /peek/scan-vd, same peek idiom as /peek/last-notify.
-            auto scanVdAttempts = std::make_shared<std::atomic<int>>(0);
-            auto lastScanVdBody = std::make_shared<std::string>();
-            auto scanVdMutex = std::make_shared<std::mutex>();
-
-            server.Post("/scan/vd",
-                        [verify, refuseAuth, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts, lastScanVdBody, scanVdMutex](
-                            const httplib::Request & request, httplib::Response & response)
+        server.Post(
+            "/scan/vd",
+            [verify, refuseAuth, vdFeedOffset, scanVdRejectFirstNAttempts, scanVdAttempts, lastScanVdBody, scanVdMutex](
+                const httplib::Request& request, httplib::Response& response)
             {
                 if (!verify("/scan/vd", request))
                 {
@@ -823,7 +820,7 @@ class FakeManager final
                 {
                     response.status = 409;
                     response.set_content(R"({"error":"version_mismatch","current_version":)" +
-                                         std::to_string(vdFeedOffset + 1) + "}",
+                                             std::to_string(vdFeedOffset + 1) + "}",
                                          "application/json");
                     return;
                 }
@@ -832,62 +829,62 @@ class FakeManager final
                 response.set_content("{}", "application/json");
             });
 
-            server.Get("/peek/scan-vd",
-                       [lastScanVdBody, scanVdMutex](const httplib::Request&, httplib::Response & response)
+        server.Get("/peek/scan-vd",
+                   [lastScanVdBody, scanVdMutex](const httplib::Request&, httplib::Response& response)
+                   {
+                       std::lock_guard<std::mutex> lock(*scanVdMutex);
+                       response.status = 200;
+                       response.set_content(*lastScanVdBody, "text/plain");
+                   });
+
+        server.Get("/peek/scan-vd-attempts",
+                   [scanVdAttempts](const httplib::Request&, httplib::Response& response)
+                   {
+                       response.status = 200;
+                       response.set_content(std::to_string(scanVdAttempts->load()), "text/plain");
+                   });
+
+        // POST /enroll (#38465): the agent-side contract this workspace's
+        // agent-side code is built against (manager itself, #38438, out of
+        // scope here -- see plan.md). Records the last body via
+        // /peek/enroll, same peek idiom as the other endpoints.
+        const std::string enrollPassword = m_enrollPassword;
+        const int enrollForcedStatus = m_enrollForcedStatus;
+        auto lastEnrollBody = std::make_shared<std::string>();
+        auto enrollMutex = std::make_shared<std::mutex>();
+        auto verifyEnroll = [enrollPassword](const httplib::Request& request)
+        {
+            if (enrollPassword.empty())
             {
-                std::lock_guard<std::mutex> lock(*scanVdMutex);
-                response.status = 200;
-                response.set_content(*lastScanVdBody, "text/plain");
-            });
+                return true; // Open mode: no signature expected.
+            }
 
-            server.Get("/peek/scan-vd-attempts",
-                       [scanVdAttempts](const httplib::Request&, httplib::Response & response)
+            const auto auth = request.get_header_value("Authorization");
+            const std::string prefix = "Bearer ";
+
+            if (auth.rfind(prefix, 0) != 0)
             {
-                response.status = 200;
-                response.set_content(std::to_string(scanVdAttempts->load()), "text/plain");
-            });
+                return false;
+            }
 
-            // POST /enroll (#38465): the agent-side contract this workspace's
-            // agent-side code is built against (manager itself, #38438, out of
-            // scope here -- see plan.md). Records the last body via
-            // /peek/enroll, same peek idiom as the other endpoints.
-            const std::string enrollPassword = m_enrollPassword;
-            const int enrollForcedStatus = m_enrollForcedStatus;
-            auto lastEnrollBody = std::make_shared<std::string>();
-            auto enrollMutex = std::make_shared<std::mutex>();
-            auto verifyEnroll = [enrollPassword](const httplib::Request & request)
+            const auto key = jwt_profile::v1::enroll::deriveEnrollKey(enrollPassword);
+
+            if (!key)
             {
-                if (enrollPassword.empty())
-                {
-                    return true; // Open mode: no signature expected.
-                }
+                return false; // LCOV_EXCL_LINE: HKDF cannot fail for a non-empty password.
+            }
 
-                const auto auth = request.get_header_value("Authorization");
-                const std::string prefix = "Bearer ";
+            return jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verify(auth.substr(prefix.size()),
+                                                                           *key,
+                                                                           jwt_profile::v1::TimePolicy {},
+                                                                           std::chrono::system_clock::now()) ==
+                   jwt_profile::v1::VerifyError::None;
+        };
 
-                if (auth.rfind(prefix, 0) != 0)
-                {
-                    return false;
-                }
-
-                const auto key = jwt_profile::v1::enroll::deriveEnrollKey(enrollPassword);
-
-                if (!key)
-                {
-                    return false; // LCOV_EXCL_LINE: HKDF cannot fail for a non-empty password.
-                }
-
-                return jwt_profile::v1::enroll::JwtEnrollTokenVerifier::verify(auth.substr(prefix.size()),
-                                                                               *key,
-                                                                               jwt_profile::v1::TimePolicy {},
-                                                                               std::chrono::system_clock::now()) ==
-                       jwt_profile::v1::VerifyError::None;
-            };
-
-            server.Post(
-                "/enroll",
-                [verifyEnroll, enrollForcedStatus, lastEnrollBody, enrollMutex](const httplib::Request & request,
-                                                                                httplib::Response & response)
+        server.Post(
+            "/enroll",
+            [verifyEnroll, enrollForcedStatus, lastEnrollBody, enrollMutex](const httplib::Request& request,
+                                                                            httplib::Response& response)
             {
                 {
                     std::lock_guard<std::mutex> lock(*enrollMutex);
@@ -947,241 +944,240 @@ class FakeManager final
                 response.set_content(body.dump(), "application/json");
             });
 
-            server.Get("/peek/enroll",
-                       [lastEnrollBody, enrollMutex](const httplib::Request&, httplib::Response & response)
-            {
-                std::lock_guard<std::mutex> lock(*enrollMutex);
-                response.status = 200;
-                response.set_content(*lastEnrollBody, "text/plain");
-            });
+        server.Get("/peek/enroll",
+                   [lastEnrollBody, enrollMutex](const httplib::Request&, httplib::Response& response)
+                   {
+                       std::lock_guard<std::mutex> lock(*enrollMutex);
+                       response.status = 200;
+                       response.set_content(*lastEnrollBody, "text/plain");
+                   });
 
-            // GET /cacerts: the unverified-fetch leg of the enrollment-token bootstrap.
-            // Serves m_cacertsPem, minted in the constructor before fork() and so
-            // readable by the test through cacertsPem()/cacertsPin(). It is
-            // deliberately NOT the TLS listener's own certificate: a test asserting on
-            // this body proves the client received exactly the bytes this route served,
-            // not something it could have derived from the handshake it rode in on.
-            //
-            // This fake manager never models global_prefix for any route; prefix-folding
-            // is the client's job (prefixedTarget(), see cacertsClient.hpp), covered at
-            // the unit level, not here.
-            //
-            // Under #39321 this route is also the refresh path, so it additionally stamps
-            // Wazuh-CA-Generation and can be made to fail: caBundle.forcedStatus drives the
-            // 404/503/429 cases, optionally only for the first few attempts so a test can
-            // watch the agent come back and succeed.
-            auto cacertsAttempts = std::make_shared<std::atomic<int>>(0);
-            server.Get("/cacerts",
-                       [pem = m_cacertsPem, caBundle, cacertsAttempts](const httplib::Request&,
-                                                                       httplib::Response & response)
-            {
-                const int attempt = cacertsAttempts->fetch_add(1) + 1;
-                const bool forced = caBundle.forcedStatus != 0 &&
-                                    (caBundle.forcedStatusFirstNAttempts == 0 ||
-                                     attempt <= caBundle.forcedStatusFirstNAttempts);
+        // GET /cacerts: the unverified-fetch leg of the enrollment-token bootstrap.
+        // Serves m_cacertsPem, minted in the constructor before fork() and so
+        // readable by the test through cacertsPem()/cacertsPin(). It is
+        // deliberately NOT the TLS listener's own certificate: a test asserting on
+        // this body proves the client received exactly the bytes this route served,
+        // not something it could have derived from the handshake it rode in on.
+        //
+        // This fake manager never models global_prefix for any route; prefix-folding
+        // is the client's job (prefixedTarget(), see cacertsClient.hpp), covered at
+        // the unit level, not here.
+        //
+        // Under #39321 this route is also the refresh path, so it additionally stamps
+        // Wazuh-CA-Generation and can be made to fail: caBundle.forcedStatus drives the
+        // 404/503/429 cases, optionally only for the first few attempts so a test can
+        // watch the agent come back and succeed.
+        auto cacertsAttempts = std::make_shared<std::atomic<int>>(0);
+        server.Get("/cacerts",
+                   [pem = m_cacertsPem, caBundle, cacertsAttempts](const httplib::Request&, httplib::Response& response)
+                   {
+                       const int attempt = cacertsAttempts->fetch_add(1) + 1;
+                       const bool forced =
+                           caBundle.forcedStatus != 0 &&
+                           (caBundle.forcedStatusFirstNAttempts == 0 || attempt <= caBundle.forcedStatusFirstNAttempts);
 
-                if (forced)
-                {
-                    response.status = caBundle.forcedStatus;
+                       if (forced)
+                       {
+                           response.status = caBundle.forcedStatus;
 
-                    if (caBundle.retryAfterSeconds > 0)
-                    {
-                        response.set_header("Retry-After", std::to_string(caBundle.retryAfterSeconds));
-                    }
+                           if (caBundle.retryAfterSeconds > 0)
+                           {
+                               response.set_header("Retry-After", std::to_string(caBundle.retryAfterSeconds));
+                           }
 
-                    response.set_content(R"({"error":"cacerts unavailable"})", "application/json");
-                    return;
-                }
+                           response.set_content(R"({"error":"cacerts unavailable"})", "application/json");
+                           return;
+                       }
 
-                if (caBundle.servedGeneration > 0)
-                {
-                    response.set_header("Wazuh-CA-Generation", std::to_string(caBundle.servedGeneration));
-                }
+                       if (caBundle.servedGeneration > 0)
+                       {
+                           response.set_header("Wazuh-CA-Generation", std::to_string(caBundle.servedGeneration));
+                       }
 
-                response.status = 200;
-                response.set_content(pem, "application/x-pem-file");
-            });
+                       response.status = 200;
+                       response.set_content(pem, "application/x-pem-file");
+                   });
 
-            // How many times the route was actually reached. The server is a forked child,
-            // so counting on this side and reading it back over HTTP is the only way the
-            // test can tell "refused and retried" from "never asked again".
-            server.Get("/peek/cacerts",
-                       [cacertsAttempts](const httplib::Request&, httplib::Response & response)
-            {
-                response.status = 200;
-                response.set_content(std::to_string(cacertsAttempts->load()), "text/plain");
-            });
+        // How many times the route was actually reached. The server is a forked child,
+        // so counting on this side and reading it back over HTTP is the only way the
+        // test can tell "refused and retried" from "never asked again".
+        server.Get("/peek/cacerts",
+                   [cacertsAttempts](const httplib::Request&, httplib::Response& response)
+                   {
+                       response.status = 200;
+                       response.set_content(std::to_string(cacertsAttempts->load()), "text/plain");
+                   });
+    }
+
+    /// Mints what GET /cacerts serves and returns it as PEM. A count of 0 keeps the
+    /// historical single certificate; anything higher concatenates that many, which is
+    /// the shape a real rotation publishes -- the outgoing anchor beside the incoming
+    /// one, so agents on either side of the changeover still verify.
+    static std::string makeCacertsPem(int certificates)
+    {
+        std::string pem;
+
+        for (int index = 0; index < std::max(1, certificates); index++)
+        {
+            EVP_PKEY* pkey = nullptr;
+            X509* cert = nullptr;
+            makeSelfSigned(&pkey, &cert);
+            pem += pemEncodeCert(cert);
+            X509_free(cert);
+            EVP_PKEY_free(pkey);
         }
 
-        /// Mints what GET /cacerts serves and returns it as PEM. A count of 0 keeps the
-        /// historical single certificate; anything higher concatenates that many, which is
-        /// the shape a real rotation publishes -- the outgoing anchor beside the incoming
-        /// one, so agents on either side of the changeover still verify.
-        static std::string makeCacertsPem(int certificates)
-        {
-            std::string pem;
+        return pem;
+    }
 
-            for (int index = 0; index < std::max(1, certificates); index++)
+    static std::string pemEncodeCert(X509* cert)
+    {
+        BIO* bio = BIO_new(BIO_s_mem());
+        PEM_write_bio_X509(bio, cert);
+        char* data = nullptr;
+        const long len = BIO_get_mem_data(bio, &data);
+        std::string pem(data, static_cast<size_t>(len));
+        BIO_free(bio);
+        return pem;
+    }
+
+    static std::string pemEncodePrivateKey(EVP_PKEY* pkey)
+    {
+        BIO* bio = BIO_new(BIO_s_mem());
+        PEM_write_bio_PrivateKey(bio, pkey, nullptr, nullptr, 0, nullptr, nullptr);
+        char* data = nullptr;
+        const long len = BIO_get_mem_data(bio, &data);
+        std::string pem(data, static_cast<size_t>(len));
+        BIO_free(bio);
+        return pem;
+    }
+
+    static void addExtension(X509* cert, int nid, const char* value)
+    {
+        X509V3_CTX ctx;
+        X509V3_set_ctx_nodb(&ctx);
+        X509V3_set_ctx(&ctx, cert, cert, nullptr, nullptr, 0);
+
+        if (X509_EXTENSION* ext = X509V3_EXT_conf_nid(nullptr, &ctx, nid, value); ext != nullptr)
+        {
+            X509_add_ext(cert, ext, -1);
+            X509_EXTENSION_free(ext);
+        }
+    }
+
+    // Self-signed cert + key generated in-process (no CLI, no files). Most of the suite
+    // runs HC_VERIFY_NONE and needs only that the cert exist; CA:TRUE and SAN
+    // IP:127.0.0.1 are here so the #39321 refresh suite can verify against it for real.
+    static void makeSelfSigned(EVP_PKEY** keyOut, X509** certOut)
+    {
+        EVP_PKEY* pkey = EVP_RSA_gen(2048);
+        X509* cert = X509_new();
+        ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
+        X509_gmtime_adj(X509_get_notBefore(cert), 0);
+        X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
+        X509_set_pubkey(cert, pkey);
+        X509_NAME* name = X509_get_subject_name(cert);
+        X509_NAME_add_entry_by_txt(
+            name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
+        X509_set_issuer_name(cert, name);
+        addExtension(cert, NID_basic_constraints, "critical,CA:TRUE");
+        addExtension(cert, NID_subject_alt_name, "IP:127.0.0.1");
+        X509_sign(cert, pkey, EVP_sha256());
+        *keyOut = pkey;
+        *certOut = cert;
+    }
+
+    static X509* pemDecodeCert(const std::string& pem)
+    {
+        BIO* bio = BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size()));
+        X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+        BIO_free(bio);
+        return cert;
+    }
+
+    static EVP_PKEY* pemDecodePrivateKey(const std::string& pem)
+    {
+        BIO* bio = BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size()));
+        EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
+        BIO_free(bio);
+        return pkey;
+    }
+
+    void runServer()
+    {
+        if (m_tls)
+        {
+            // Decoded from the bytes the parent minted, so tlsCaPem() really is the
+            // anchor for what this listener presents.
+            X509* cert = pemDecodeCert(m_tlsCertPem);
+            EVP_PKEY* pkey = pemDecodePrivateKey(m_tlsKeyPem);
+            httplib::SSLServer server {cert, pkey};
+            registerEndpoints(server);
+            server.listen("127.0.0.1", m_port);
+            X509_free(cert);
+            EVP_PKEY_free(pkey);
+            return;
+        }
+
+        httplib::Server server;
+        registerEndpoints(server);
+        server.listen("127.0.0.1", m_port);
+    }
+
+    void waitUntilReady()
+    {
+        const char* scheme = m_tls ? "https" : "http";
+        const std::string base = std::string {scheme} + "://127.0.0.1:" + std::to_string(m_port);
+        httplib::Client probe {base};
+        probe.enable_server_certificate_verification(false);
+
+        for (int attempt = 0; attempt < 6000; attempt++)
+        {
+            if (auto result = probe.Post("/control"))
             {
-                EVP_PKEY* pkey = nullptr;
-                X509* cert = nullptr;
-                makeSelfSigned(&pkey, &cert);
-                pem += pemEncodeCert(cert);
-                X509_free(cert);
-                EVP_PKEY_free(pkey);
+                return; // Any HTTP reply means the listener is up.
             }
 
-            return pem;
-        }
-
-        static std::string pemEncodeCert(X509* cert)
-        {
-            BIO* bio = BIO_new(BIO_s_mem());
-            PEM_write_bio_X509(bio, cert);
-            char* data = nullptr;
-            const long len = BIO_get_mem_data(bio, &data);
-            std::string pem(data, static_cast<size_t>(len));
-            BIO_free(bio);
-            return pem;
-        }
-
-        static std::string pemEncodePrivateKey(EVP_PKEY* pkey)
-        {
-            BIO* bio = BIO_new(BIO_s_mem());
-            PEM_write_bio_PrivateKey(bio, pkey, nullptr, nullptr, 0, nullptr, nullptr);
-            char* data = nullptr;
-            const long len = BIO_get_mem_data(bio, &data);
-            std::string pem(data, static_cast<size_t>(len));
-            BIO_free(bio);
-            return pem;
-        }
-
-        static void addExtension(X509* cert, int nid, const char* value)
-        {
-            X509V3_CTX ctx;
-            X509V3_set_ctx_nodb(&ctx);
-            X509V3_set_ctx(&ctx, cert, cert, nullptr, nullptr, 0);
-
-            if (X509_EXTENSION* ext = X509V3_EXT_conf_nid(nullptr, &ctx, nid, value); ext != nullptr)
+            // The child exits as soon as listen() fails, which means something in this binary
+            // already holds the port. Fail now and name it: probing a server that is gone used
+            // to cost 300s and then read as the code under test hanging.
+            if (waitpid(m_pid, nullptr, WNOHANG) == m_pid)
             {
-                X509_add_ext(cert, ext, -1);
-                X509_EXTENSION_free(ext);
-            }
-        }
-
-        // Self-signed cert + key generated in-process (no CLI, no files). Most of the suite
-        // runs HC_VERIFY_NONE and needs only that the cert exist; CA:TRUE and SAN
-        // IP:127.0.0.1 are here so the #39321 refresh suite can verify against it for real.
-        static void makeSelfSigned(EVP_PKEY** keyOut, X509** certOut)
-        {
-            EVP_PKEY* pkey = EVP_RSA_gen(2048);
-            X509* cert = X509_new();
-            ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
-            X509_gmtime_adj(X509_get_notBefore(cert), 0);
-            X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
-            X509_set_pubkey(cert, pkey);
-            X509_NAME* name = X509_get_subject_name(cert);
-            X509_NAME_add_entry_by_txt(
-                name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
-            X509_set_issuer_name(cert, name);
-            addExtension(cert, NID_basic_constraints, "critical,CA:TRUE");
-            addExtension(cert, NID_subject_alt_name, "IP:127.0.0.1");
-            X509_sign(cert, pkey, EVP_sha256());
-            *keyOut = pkey;
-            *certOut = cert;
-        }
-
-        static X509* pemDecodeCert(const std::string& pem)
-        {
-            BIO* bio = BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size()));
-            X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
-            BIO_free(bio);
-            return cert;
-        }
-
-        static EVP_PKEY* pemDecodePrivateKey(const std::string& pem)
-        {
-            BIO* bio = BIO_new_mem_buf(pem.data(), static_cast<int>(pem.size()));
-            EVP_PKEY* pkey = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
-            BIO_free(bio);
-            return pkey;
-        }
-
-        void runServer()
-        {
-            if (m_tls)
-            {
-                // Decoded from the bytes the parent minted, so tlsCaPem() really is the
-                // anchor for what this listener presents.
-                X509* cert = pemDecodeCert(m_tlsCertPem);
-                EVP_PKEY* pkey = pemDecodePrivateKey(m_tlsKeyPem);
-                httplib::SSLServer server {cert, pkey};
-                registerEndpoints(server);
-                server.listen("127.0.0.1", m_port);
-                X509_free(cert);
-                EVP_PKEY_free(pkey);
+                m_pid = -1; // Reaped: the destructor must not signal a pid that may be reused.
+                ADD_FAILURE() << "FakeManager: the server for " << base << " exited before it was ready; is port "
+                              << m_port << " already taken?";
                 return;
             }
 
-            httplib::Server server;
-            registerEndpoints(server);
-            server.listen("127.0.0.1", m_port);
+            usleep(50 * 1000);
         }
 
-        void waitUntilReady()
-        {
-            const char* scheme = m_tls ? "https" : "http";
-            const std::string base = std::string {scheme} + "://127.0.0.1:" + std::to_string(m_port);
-            httplib::Client probe {base};
-            probe.enable_server_certificate_verification(false);
+        ADD_FAILURE() << "FakeManager: nothing answered on " << base << " after 300s and the server is still running";
+    }
 
-            for (int attempt = 0; attempt < 6000; attempt++)
-            {
-                if (auto result = probe.Post("/control"))
-                {
-                    return; // Any HTTP reply means the listener is up.
-                }
-
-                // The child exits as soon as listen() fails, which means something in this binary
-                // already holds the port. Fail now and name it: probing a server that is gone used
-                // to cost 300s and then read as the code under test hanging.
-                if (waitpid(m_pid, nullptr, WNOHANG) == m_pid)
-                {
-                    m_pid = -1; // Reaped: the destructor must not signal a pid that may be reused.
-                    ADD_FAILURE() << "FakeManager: the server for " << base
-                                  << " exited before it was ready; is port " << m_port << " already taken?";
-                    return;
-                }
-
-                usleep(50 * 1000);
-            }
-
-            ADD_FAILURE() << "FakeManager: nothing answered on " << base << " after 300s and the server is still running";
-        }
-
-        pid_t m_pid {-1};
-        uint16_t m_port;
-        std::string m_keyHex;
-        bool m_tls {false};
-        int m_settingsFlipAfter {0};
-        std::string m_configBlob;
-        size_t m_statelessMaxBody {0};
-        int m_rotateKeyAfterNotifies {0};
-        std::string m_rotatedKeyHex;
-        std::string m_statefulHoldFile;
-        uint64_t m_vdFeedOffset {0};
-        int m_scanVdRejectFirstNAttempts {0};
-        std::string m_enrollPassword;
-        int m_enrollForcedStatus {0};
-        CaBundleOptions m_caBundle {};
-        DownloadOptions m_download {};
-        /// The certificate GET /cacerts serves, minted before fork() so both
-        /// processes hold the same bytes. See the constructor.
-        std::string m_cacertsPem;
-        /// The TLS listener's own certificate and key, minted before fork() for the same
-        /// reason. Empty unless this manager speaks TLS.
-        std::string m_tlsCertPem;
-        std::string m_tlsKeyPem;
+    pid_t m_pid {-1};
+    uint16_t m_port;
+    std::string m_keyHex;
+    bool m_tls {false};
+    int m_settingsFlipAfter {0};
+    std::string m_configBlob;
+    size_t m_statelessMaxBody {0};
+    int m_rotateKeyAfterNotifies {0};
+    std::string m_rotatedKeyHex;
+    std::string m_statefulHoldFile;
+    uint64_t m_vdFeedOffset {0};
+    int m_scanVdRejectFirstNAttempts {0};
+    std::string m_enrollPassword;
+    int m_enrollForcedStatus {0};
+    CaBundleOptions m_caBundle {};
+    DownloadOptions m_download {};
+    /// The certificate GET /cacerts serves, minted before fork() so both
+    /// processes hold the same bytes. See the constructor.
+    std::string m_cacertsPem;
+    /// The TLS listener's own certificate and key, minted before fork() for the same
+    /// reason. Empty unless this manager speaks TLS.
+    std::string m_tlsCertPem;
+    std::string m_tlsKeyPem;
 };
 
 /// The Accept-Encoding a TLS FakeManager saw on its last /download: "<absent>" for none,

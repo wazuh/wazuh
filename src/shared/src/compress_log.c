@@ -12,11 +12,10 @@
 #include "log_rotate.h"
 #include "zlib.h"
 
-
 /* gzip a log file */
-void OS_CompressLog(const char *logfile)
+void OS_CompressLog(const char* logfile)
 {
-    FILE *log;
+    FILE* log;
     gzFile zlog;
 
     char logfileGZ[OS_FLSIZE + 1];
@@ -36,25 +35,30 @@ void OS_CompressLog(const char *logfile)
 
     /* Read log file */
     log = wfopen(logfile, "r");
-    if (!log) {
+    if (!log)
+    {
         /* Do not warn in here, since the alert file may not exist */
         return;
     }
 
     /* Open compressed file */
     zlog = gzopen(logfileGZ, "w");
-    if (!zlog) {
+    if (!zlog)
+    {
         fclose(log);
         merror(FOPEN_ERROR, logfileGZ, errno, strerror(errno));
         return;
     }
 
-    for (;;) {
-        len = (int) fread(buf, 1, OS_MAXSTR, log);
-        if (len <= 0) {
+    for (;;)
+    {
+        len = (int)fread(buf, 1, OS_MAXSTR, log);
+        if (len <= 0)
+        {
             break;
         }
-        if (gzwrite(zlog, buf, (unsigned)len) != len) {
+        if (gzwrite(zlog, buf, (unsigned)len) != len)
+        {
             merror("Compression error: %s", gzerror(zlog, &err));
         }
     }
@@ -63,7 +67,7 @@ void OS_CompressLog(const char *logfile)
     gzclose(zlog);
 
     /* Remove uncompressed file */
-    if ( unlink(logfile) == -1)
+    if (unlink(logfile) == -1)
         merror("Unable to delete '%s' due to '%s'", logfile, strerror(errno));
 
     return;

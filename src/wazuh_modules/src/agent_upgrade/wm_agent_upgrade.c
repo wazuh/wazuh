@@ -26,41 +26,41 @@
  * Module main function. It won't return
  * */
 #ifdef WIN32
-STATIC DWORD WINAPI wm_agent_upgrade_main(void *arg);
+STATIC DWORD WINAPI wm_agent_upgrade_main(void* arg);
 #else
 STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
 #endif
 STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
-STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
+STATIC cJSON* wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 STATIC void wm_agent_upgrade_stop(wm_agent_upgrade* upgrade_config);
 
 /* JSON keys for agent upgrade socket protocol */
-const char *upgrade_json_keys[] = {
-    [WM_UPGRADE_COMMAND] = "command",
-    [WM_UPGRADE_PARAMETERS] = "parameters",
-    [WM_UPGRADE_AGENTS] = "agents",
-    [WM_UPGRADE_ERROR] = "error",
-    [WM_UPGRADE_DATA] = "data",
-    [WM_UPGRADE_ERROR_MESSAGE] = "message",
-    [WM_UPGRADE_AGENT_ID] = "agent"
-};
+const char* upgrade_json_keys[] = {[WM_UPGRADE_COMMAND] = "command",
+                                   [WM_UPGRADE_PARAMETERS] = "parameters",
+                                   [WM_UPGRADE_AGENTS] = "agents",
+                                   [WM_UPGRADE_ERROR] = "error",
+                                   [WM_UPGRADE_DATA] = "data",
+                                   [WM_UPGRADE_ERROR_MESSAGE] = "message",
+                                   [WM_UPGRADE_AGENT_ID] = "agent"};
 
 /* Context definition */
 const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     .name = AGENT_UPGRADE_WM_NAME,
     .start = (wm_routine)wm_agent_upgrade_main,
-    .destroy = (void(*)(void *))wm_agent_upgrade_destroy,
-    .dump = (cJSON * (*)(const void *))wm_agent_upgrade_dump,
+    .destroy = (void (*)(void*))wm_agent_upgrade_destroy,
+    .dump = (cJSON * (*)(const void*)) wm_agent_upgrade_dump,
     .sync = NULL,
-    .stop = (void(*)(void *))wm_agent_upgrade_stop,
+    .stop = (void (*)(void*))wm_agent_upgrade_stop,
     .query = NULL,
 };
 
 #ifdef WIN32
-STATIC DWORD WINAPI wm_agent_upgrade_main(void *arg) {
-    wm_agent_upgrade* upgrade_config = (wm_agent_upgrade *)arg;
+STATIC DWORD WINAPI wm_agent_upgrade_main(void* arg)
+{
+    wm_agent_upgrade* upgrade_config = (wm_agent_upgrade*)arg;
 #else
-STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
+STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config)
+{
 #endif
     wm_agent_upgrade_start_agent_module(&upgrade_config->agent_config, upgrade_config->enabled);
 
@@ -71,30 +71,35 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 #endif
 }
 
-STATIC void wm_agent_upgrade_stop(wm_agent_upgrade* upgrade_config) {
+STATIC void wm_agent_upgrade_stop(wm_agent_upgrade* upgrade_config)
+{
     (void)upgrade_config;
 }
 
-STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
+STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config)
+{
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
     os_free(upgrade_config);
 }
 
-STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
-    cJSON *root = cJSON_CreateObject();
-    cJSON *wm_info = cJSON_CreateObject();
+STATIC cJSON* wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config)
+{
+    cJSON* root = cJSON_CreateObject();
+    cJSON* wm_info = cJSON_CreateObject();
 
     /* No manager branch: this module is agent-only now. JSON booleans rather than "yes"/"no",
      * matching the types the rest of getconfig moved to. */
     cJSON_AddBoolToObject(wm_info, "enabled", upgrade_config->enabled ? 1 : 0);
     cJSON_AddBoolToObject(wm_info, "ca_verification", upgrade_config->agent_config.enable_ca_verification ? 1 : 0);
-    if (wcom_ca_store) {
-        cJSON *calist = cJSON_CreateArray();
-        for (int i=0; wcom_ca_store[i]; i++) {
-            cJSON_AddItemToArray(calist,cJSON_CreateString(wcom_ca_store[i]));
+    if (wcom_ca_store)
+    {
+        cJSON* calist = cJSON_CreateArray();
+        for (int i = 0; wcom_ca_store[i]; i++)
+        {
+            cJSON_AddItemToArray(calist, cJSON_CreateString(wcom_ca_store[i]));
         }
-        cJSON_AddItemToObject(wm_info,"ca_store",calist);
+        cJSON_AddItemToObject(wm_info, "ca_store", calist);
     }
-    cJSON_AddItemToObject(root,"agent-upgrade",wm_info);
+    cJSON_AddItemToObject(root, "agent-upgrade", wm_info);
     return root;
 }

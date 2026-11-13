@@ -13,7 +13,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_auth_remove_agent(__attribute__((unused)) int sock, const char *id, __attribute__((unused)) int json_format) {
+int __wrap_auth_remove_agent(__attribute__((unused)) int sock, const char* id, __attribute__((unused)) int json_format)
+{
     check_expected(id);
     return mock();
 }

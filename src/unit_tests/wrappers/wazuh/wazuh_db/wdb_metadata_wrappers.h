@@ -12,6 +12,6 @@
 
 #include "wdb.h"
 
-int __wrap_wdb_user_version_get(wdb_t *wdb, int *version);
+int __wrap_wdb_user_version_get(wdb_t* wdb, int* version);
 
 #endif

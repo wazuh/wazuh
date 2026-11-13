@@ -11,15 +11,15 @@
 #include "shared.h"
 #include "logcollector.h"
 
-
 /* Read Output of commands */
-void *read_fullcommand(logreader *lf, int *rc, int drop_it) {
-   size_t n = 0;
+void* read_fullcommand(logreader* lf, int* rc, int drop_it)
+{
+    size_t n = 0;
     size_t cmd_size = 0;
-    char *p;
+    char* p;
     char str[OS_MAXSTR + 1];
     char strfinal[OS_MAXSTR + 1];
-    FILE *cmd_output;
+    FILE* cmd_output;
 
     str[OS_MAXSTR] = '\0';
     strfinal[OS_MAXSTR] = '\0';
@@ -28,26 +28,25 @@ void *read_fullcommand(logreader *lf, int *rc, int drop_it) {
     mdebug2("Running full command '%s'", lf->command);
 
     cmd_output = popen(lf->command, "r");
-    if (!cmd_output) {
-        merror("Unable to execute command: '%s'.",
-               lf->command);
+    if (!cmd_output)
+    {
+        merror("Unable to execute command: '%s'.", lf->command);
 
         lf->command = NULL;
         return (NULL);
     }
 
-    snprintf(str, 256, "wazuh: output: '%s':\n",
-             (NULL != lf->alias)
-             ? lf->alias
-             : lf->command);
+    snprintf(str, 256, "wazuh: output: '%s':\n", (NULL != lf->alias) ? lf->alias : lf->command);
     cmd_size = strlen(str);
 
     n = fread(str + cmd_size, 1, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output);
-    if (n > 0) {
+    if (n > 0)
+    {
         str[cmd_size + n] = '\0';
 
         /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
+        if ((p = strrchr(str, '\n')) != NULL)
+        {
             *p = '\0';
         }
 
@@ -56,13 +55,16 @@ void *read_fullcommand(logreader *lf, int *rc, int drop_it) {
         /* Remove empty lines */
         n = 0;
         p = str;
-        while (*p != '\0') {
-            if (p[0] == '\r') {
+        while (*p != '\0')
+        {
+            if (p[0] == '\r')
+            {
                 p++;
                 continue;
             }
 
-            if (p[0] == '\n' && p[1] == '\n') {
+            if (p[0] == '\n' && p[1] == '\n')
+            {
                 p++;
             }
             strfinal[n] = *p;
@@ -72,9 +74,11 @@ void *read_fullcommand(logreader *lf, int *rc, int drop_it) {
         strfinal[n] = '\0';
 
         /* Check ignore and restrict log regex, if configured. */
-        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, strfinal)) {
+        if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, strfinal))
+        {
             /* Send message to queue */
-            w_msg_hash_queues_push(strfinal, lf->alias ? lf->alias : lf->command, strlen(strfinal) + 1, lf->log_target, LOCALFILE_MQ);
+            w_msg_hash_queues_push(
+                strfinal, lf->alias ? lf->alias : lf->command, strlen(strfinal) + 1, lf->log_target, LOCALFILE_MQ);
         }
     }
 

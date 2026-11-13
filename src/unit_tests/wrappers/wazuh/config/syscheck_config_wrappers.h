@@ -7,10 +7,9 @@
  * Foundation
  */
 
-
 #ifndef SYSCHECK_CONFIG_WRAPPERS
 #define SYSCHECK_CONFIG_WRAPPERS
 
-char **__wrap_expand_wildcards(const char *path);
+char** __wrap_expand_wildcards(const char* path);
 
 #endif // SYSCHECK_CONFIG_WRAPPERS

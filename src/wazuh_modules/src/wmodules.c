@@ -24,30 +24,32 @@
 size_t syscom_dispatch(char* command, size_t command_len, char** output);
 #endif
 
-wmodule *wmodules = NULL;   // Config: linked list of all modules.
-int wm_task_nice = 0;       // Nice value for tasks.
-static gid_t wm_gid;               // Group ID.
-int wm_max_eps;             // Maximum events per second
-int wm_kill_timeout;        // Time for a process to quit before killing it
-int wm_socket_timeout;      // Longest a local client can stay silent, or not read the reply
-int wm_unmask_credentials;  // Module dumps report credentials in clear, not masked
+wmodule* wmodules = NULL;  // Config: linked list of all modules.
+int wm_task_nice = 0;      // Nice value for tasks.
+static gid_t wm_gid;       // Group ID.
+int wm_max_eps;            // Maximum events per second
+int wm_kill_timeout;       // Time for a process to quit before killing it
+int wm_socket_timeout;     // Longest a local client can stay silent, or not read the reply
+int wm_unmask_credentials; // Module dumps report credentials in clear, not masked
 int wm_debug_level;
 #ifndef CLIENT
 // Manager configuration (/etc/wazuh-manager/wazuh-manager.conf), -c overrides it.
-const char *wm_config_path = WAZUHCONF;
+const char* wm_config_path = WAZUHCONF;
 #endif
 volatile sig_atomic_t wm_shutdown_requested = 0;
 
-char *wm_resolve_config_path(const char *path, const char *cwd) {
-    char *resolved = NULL;
+char* wm_resolve_config_path(const char* path, const char* cwd)
+{
+    char* resolved = NULL;
 
-    if (path[0] == '/' || cwd == NULL || cwd[0] == '\0') {
+    if (path[0] == '/' || cwd == NULL || cwd[0] == '\0')
+    {
         os_strdup(path, resolved);
         return resolved;
     }
 
     const size_t cwd_len = strlen(cwd);
-    const char *separator = cwd[cwd_len - 1] == '/' ? "" : "/";
+    const char* separator = cwd[cwd_len - 1] == '/' ? "" : "/";
     const size_t size = cwd_len + strlen(separator) + strlen(path) + 1;
 
     os_malloc(size, resolved);
@@ -55,38 +57,45 @@ char *wm_resolve_config_path(const char *path, const char *cwd) {
     return resolved;
 }
 
-void wm_sleep_interruptible(int seconds) {
-    for (int i = 0; i < seconds && !wm_shutdown_requested; i++) {
+void wm_sleep_interruptible(int seconds)
+{
+    for (int i = 0; i < seconds && !wm_shutdown_requested; i++)
+    {
         sleep(1);
     }
 }
 
-void wm_sleep_until_interruptible(time_t abs_time) {
-    while (time(NULL) < abs_time && !wm_shutdown_requested) {
+void wm_sleep_until_interruptible(time_t abs_time)
+{
+    while (time(NULL) < abs_time && !wm_shutdown_requested)
+    {
         sleep(1);
     }
 }
 
-int wm_select_interruptible(int sock, fd_set *fdset) {
+int wm_select_interruptible(int sock, fd_set* fdset)
+{
     struct timeval tv;
     int r;
-    while (!wm_shutdown_requested) {
+    while (!wm_shutdown_requested)
+    {
         FD_ZERO(fdset);
         FD_SET(sock, fdset);
-        tv = (struct timeval){ .tv_sec = 1, .tv_usec = 0 };
+        tv = (struct timeval) {.tv_sec = 1, .tv_usec = 0};
         r = select(sock + 1, fdset, NULL, NULL, &tv);
-        if (r > 0) return r;
-        if (r < 0 && errno != EINTR) return r;
+        if (r > 0)
+            return r;
+        if (r < 0 && errno != EINTR)
+            return r;
     }
     return 0;
 }
-
 
 /**
  * List of modules that will be initialized by default
  * last position should be NULL
  * */
-static const void *default_modules[] = {
+static const void* default_modules[] = {
 #ifndef CLIENT
     wm_task_manager_read,
 #else
@@ -94,8 +103,7 @@ static const void *default_modules[] = {
     wm_agent_info_read,
 #endif
 
-    NULL
-};
+    NULL};
 
 /**
  * Initializes the default wmodules (will be enabled even if the wodle section for that module)
@@ -105,7 +113,7 @@ static const void *default_modules[] = {
  * @retval OS_SUCCESS if all reading methods are executed successfully
  * @retval OS_INVALID if there is an error
  * */
-static int wm_initialize_default_modules(wmodule **wmodules);
+static int wm_initialize_default_modules(wmodule** wmodules);
 
 // Read XML configuration and internal options
 
@@ -119,7 +127,8 @@ void wm_setGroupID(const gid_t gid)
     wm_gid = gid;
 }
 
-int wm_config() {
+int wm_config()
+{
 
 #ifdef CLIENT
     int agent_cfg = 0;
@@ -141,15 +150,16 @@ int wm_config() {
     wm_socket_timeout = getDefine_Int_default("wazuh_modules", "socket_timeout", 1, 60, 1);
     wm_unmask_credentials = getDefine_Int_default("wazuh_modules", "unmask_credentials", 0, 1, 0);
 
-    if(wm_initialize_default_modules(&wmodules) < 0) {
+    if (wm_initialize_default_modules(&wmodules) < 0)
+    {
         return OS_INVALID;
     }
-
 
 #ifdef CLIENT
     // Read configuration: ossec.conf
 
-    if (ReadConfig(CWMODULE, WAZUHCONF, &wmodules, &agent_cfg) < 0) {
+    if (ReadConfig(CWMODULE, WAZUHCONF, &wmodules, &agent_cfg) < 0)
+    {
         return -1;
     }
 
@@ -167,43 +177,42 @@ int wm_config() {
     // section -- along with `global` and `remote`, which its recurring work and its delivery gates
     // need and which it reads for itself.
 
-    if (w_mconf_load(wm_config_path) < 0) {
+    if (w_mconf_load(wm_config_path) < 0)
+    {
         return OS_INVALID;
     }
 
-    static const char *manager_sections[] = { "vulnerability-detection", "indexer", "task-manager" };
+    static const char* manager_sections[] = {"vulnerability-detection", "indexer", "task-manager"};
     // Set when a reader answers with a positive value: it read its section, but another one it also needs
     // was refused and it fell back to its defaults. The daemon still starts; `-t` fails on it (main.c).
     bool degraded = false;
 
-    for (size_t i = 0; i < sizeof(manager_sections) / sizeof(manager_sections[0]); i++) {
-        cJSON *section = w_mconf_section(manager_sections[i]);
+    for (size_t i = 0; i < sizeof(manager_sections) / sizeof(manager_sections[0]); i++)
+    {
+        cJSON* section = w_mconf_section(manager_sections[i]);
         int rc;
 
-        switch (i) {
-        case 0:
-            rc = Read_Vulnerability_Detection_JSON(section, &wmodules);
-            break;
-        case 1:
-            rc = Read_Indexer_JSON(section);
-            break;
-        default:
-            rc = wm_task_manager_read_json(section, wm_find_module(WM_TASK_MANAGER_CONTEXT.name));
-            break;
+        switch (i)
+        {
+            case 0: rc = Read_Vulnerability_Detection_JSON(section, &wmodules); break;
+            case 1: rc = Read_Indexer_JSON(section); break;
+            default: rc = wm_task_manager_read_json(section, wm_find_module(WM_TASK_MANAGER_CONTEXT.name)); break;
         }
 
         cJSON_Delete(section);
 
-        if (rc < 0) {
+        if (rc < 0)
+        {
             return OS_INVALID;
         }
 
-        if (rc > 0) {
+        if (rc > 0)
+        {
             degraded = true;
         }
     }
 
-    wmodule *module;
+    wmodule* module;
 
     // No content_manager module: it is a library, not a module. Its only job here was to install a
     // log function into the shared object, which the vulnerability scanner -- the only thing in
@@ -227,13 +236,14 @@ int wm_config() {
 #endif
 
 #if defined(__linux__) || defined(__MACH__) || defined(FreeBSD) || defined(OpenBSD)
-    wmodule * control_module;
+    wmodule* control_module;
     control_module = wm_control_read();
     wm_add(control_module);
 #endif
 
 #ifndef CLIENT
-    if (degraded) {
+    if (degraded)
+    {
         return 1;
     }
 #endif
@@ -243,37 +253,48 @@ int wm_config() {
 
 // Add module to the global list
 
-void wm_add(wmodule *module) {
-    wmodule *current;
+void wm_add(wmodule* module)
+{
+    wmodule* current;
 
-    if (wmodules) {
+    if (wmodules)
+    {
         for (current = wmodules; current->next; current = current->next);
         current->next = module;
-    } else
+    }
+    else
         wmodules = module;
 }
 
 // Check general configuration
 
-int wm_check() {
-    wmodule *i = wmodules;
-    wmodule *j;
-    wmodule *next;
-    wmodule *prev = wmodules;
+int wm_check()
+{
+    wmodule* i = wmodules;
+    wmodule* j;
+    wmodule* next;
+    wmodule* prev = wmodules;
 
     // Discard empty configurations
 
-    while (i) {
-        if (i->context) {
+    while (i)
+    {
+        if (i->context)
+        {
             prev = i;
             i = i->next;
-        } else {
+        }
+        else
+        {
             next = i->next;
             free(i);
 
-            if (i == wmodules) {
+            if (i == wmodules)
+            {
                 wmodules = next;
-            } else {
+            }
+            else
+            {
                 prev->next = next;
             }
 
@@ -283,29 +304,37 @@ int wm_check() {
 
     // Check that a configuration exists
 
-    if (!wmodules) {
+    if (!wmodules)
+    {
         return -1;
     }
 
     // Get the last module of the same type
 
 #ifndef __clang_analyzer__
-    for (i = wmodules->next; i; i = i->next) {
-        for (j = prev = wmodules; j != i; j = next) {
+    for (i = wmodules->next; i; i = i->next)
+    {
+        for (j = prev = wmodules; j != i; j = next)
+        {
             next = j->next;
 
-            if (i->tag && j->tag && !strcmp(i->tag, j->tag)) {
+            if (i->tag && j->tag && !strcmp(i->tag, j->tag))
+            {
 
                 mdebug1("Deleting repeated module '%s'.", j->tag);
 
-                if (j == wmodules) {
+                if (j == wmodules)
+                {
                     wmodules = prev = next;
-                } else {
+                }
+                else
+                {
                     prev->next = next;
                 }
                 wm_module_free(j);
-
-            } else {
+            }
+            else
+            {
                 prev = j;
             }
         }
@@ -317,24 +346,27 @@ int wm_check() {
 
 // Destroy configuration data
 
-void wm_destroy() {
+void wm_destroy()
+{
     wm_free(wmodules);
 }
 
 // Load or save the running state
 
-int wm_state_io(const char * tag, int op, void *state, size_t size) {
-    char path[PATH_MAX] = { '\0' };
+int wm_state_io(const char* tag, int op, void* state, size_t size)
+{
+    char path[PATH_MAX] = {'\0'};
     size_t nmemb;
-    FILE *file;
+    FILE* file;
 
-    #ifdef WIN32
+#ifdef WIN32
     snprintf(path, PATH_MAX, "%s\\%s", WM_DIR_WIN, tag);
-    #else
+#else
     snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, tag);
-    #endif
+#endif
 
-    if (!(file = wfopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
+    if (!(file = wfopen(path, op == WM_IO_WRITE ? "wb" : "rb")))
+    {
         return -1;
     }
     w_file_cloexec(file);
@@ -345,27 +377,32 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     return nmemb - 1;
 }
 
-char* wm_read_http_header_element(char *header, char *regex) {
-    char *element = NULL;
+char* wm_read_http_header_element(char* header, char* regex)
+{
+    char* element = NULL;
     OSRegex os_regex;
 
-    if (!header || !regex) {
+    if (!header || !regex)
+    {
         merror("Missing parameters.");
         return NULL;
     }
 
-    if (!OSRegex_Compile(regex, &os_regex, OS_RETURN_SUBSTRING)) {
+    if (!OSRegex_Compile(regex, &os_regex, OS_RETURN_SUBSTRING))
+    {
         mwarn("Cannot compile regex.");
         return NULL;
     }
 
-    if (!OSRegex_Execute(header, &os_regex)) {
+    if (!OSRegex_Execute(header, &os_regex))
+    {
         mdebug1("No match regex.");
         OSRegex_FreePattern(&os_regex);
         return NULL;
     }
 
-    if (!os_regex.d_sub_strings[0]) {
+    if (!os_regex.d_sub_strings[0])
+    {
         mdebug1("No element was captured.");
         OSRegex_FreePattern(&os_regex);
         return NULL;
@@ -374,37 +411,46 @@ char* wm_read_http_header_element(char *header, char *regex) {
     os_strdup(os_regex.d_sub_strings[0], element);
 
     // Trim at \r or \n to prevent matching across HTTP header boundaries
-    char *cr = strchr(element, '\r');
-    char *lf = strchr(element, '\n');
-    if (cr) *cr = '\0';
-    if (lf) *lf = '\0';
+    char* cr = strchr(element, '\r');
+    char* lf = strchr(element, '\n');
+    if (cr)
+        *cr = '\0';
+    if (lf)
+        *lf = '\0';
 
     OSRegex_FreePattern(&os_regex);
     return element;
 }
 
-bool wm_url_is_allowed(const char *url, const char *host) {
-    if (!url || strncasecmp(url, "https://", 8)) {
+bool wm_url_is_allowed(const char* url, const char* host)
+{
+    if (!url || strncasecmp(url, "https://", 8))
+    {
         return false;
     }
 
-    if (!host) {
+    if (!host)
+    {
         return true;
     }
 
     size_t host_len = strlen(host);
 
-    if (strncasecmp(url + 8, host, host_len)) {
+    if (strncasecmp(url + 8, host, host_len))
+    {
         return false;
     }
 
-    const char *end = url + 8 + host_len;
+    const char* end = url + 8 + host_len;
 
-    if (*end == ':') {
-        if (!isdigit((unsigned char)*++end)) {
+    if (*end == ':')
+    {
+        if (!isdigit((unsigned char)*++end))
+        {
             return false;
         }
-        while (isdigit((unsigned char)*end)) {
+        while (isdigit((unsigned char)*end))
+        {
             end++;
         }
     }
@@ -412,46 +458,51 @@ bool wm_url_is_allowed(const char *url, const char *host) {
     return (*end == '/') || (*end == '?') || (*end == '#') || (*end == '\0');
 }
 
-void wm_free(wmodule * config) {
-    wmodule *cur_module;
-    wmodule *next_module;
+void wm_free(wmodule* config)
+{
+    wmodule* cur_module;
+    wmodule* next_module;
 
-    for (cur_module = config; cur_module; cur_module = next_module) {
+    for (cur_module = config; cur_module; cur_module = next_module)
+    {
         next_module = cur_module->next;
 
         wm_module_free(cur_module);
     }
 }
 
-
-void wm_module_free(wmodule * config){
+void wm_module_free(wmodule* config)
+{
     if (config->context && config->context->destroy)
-            config->context->destroy(config->data);
+        config->context->destroy(config->data);
 
     free(config->tag);
     free(config);
 }
 
-
 // Get read data
-cJSON *getModulesConfig(void) {
+cJSON* getModulesConfig(void)
+{
 
-    wmodule *cur_module;
+    wmodule* cur_module;
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *wm_mod = cJSON_CreateArray();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* wm_mod = cJSON_CreateArray();
 
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (cur_module->context->dump) {
-            cJSON * item = cur_module->context->dump(cur_module->data);
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next)
+    {
+        if (cur_module->context->dump)
+        {
+            cJSON* item = cur_module->context->dump(cur_module->data);
 
-            if (item) {
+            if (item)
+            {
                 cJSON_AddItemToArray(wm_mod, item);
             }
         }
     }
 
-    cJSON_AddItemToObject(root,"wmodules",wm_mod);
+    cJSON_AddItemToObject(root, "wmodules", wm_mod);
 
     return root;
 }
@@ -467,36 +518,44 @@ cJSON *getModulesConfig(void) {
  * @param name Module name.
  * @return true if the frame header names the module.
  */
-static bool wm_sync_frame_targets(const char * frame, const char * name) {
+static bool wm_sync_frame_targets(const char* frame, const char* name)
+{
     static const char VD_SYNC_HEADER[] = "_vd" SYNC_HEADER;
     const size_t name_len = strlen(name);
 
-    if (strncmp(frame, name, name_len) != 0) {
+    if (strncmp(frame, name, name_len) != 0)
+    {
         return false;
     }
 
     frame += name_len;
 
-    return strncmp(frame, SYNC_HEADER, strlen(SYNC_HEADER)) == 0
-           || strncmp(frame, VD_SYNC_HEADER, strlen(VD_SYNC_HEADER)) == 0;
+    return strncmp(frame, SYNC_HEADER, strlen(SYNC_HEADER)) == 0 ||
+           strncmp(frame, VD_SYNC_HEADER, strlen(VD_SYNC_HEADER)) == 0;
 }
 
 // sync data
-int modulesSync(char* args, size_t length) {
+int modulesSync(char* args, size_t length)
+{
     int ret = -1;
-    wmodule *cur_module = NULL;
+    wmodule* cur_module = NULL;
     int retry = 0;
 
-    do {
-        if (retry > 0) {
+    do
+    {
+        if (retry > 0)
+        {
             usleep(retry * WM_MAX_WAIT);
             mdebug1("WModules is not ready. Retry %d", retry);
         }
 
-        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            if (wm_sync_frame_targets(args, cur_module->context->name)) {
+        for (cur_module = wmodules; cur_module; cur_module = cur_module->next)
+        {
+            if (wm_sync_frame_targets(args, cur_module->context->name))
+            {
                 ret = 0;
-                if (cur_module->context->sync != NULL) {
+                if (cur_module->context->sync != NULL)
+                {
                     ret = cur_module->context->sync(args, length);
                 }
                 break;
@@ -507,19 +566,25 @@ int modulesSync(char* args, size_t length) {
 
         // Stop retrying if the agent is shutting down: the target module is being torn down on
         // purpose, so further attempts would only delay shutdown while always failing.
-        if (retry > WM_MAX_ATTEMPTS || wm_shutdown_requested) {
+        if (retry > WM_MAX_ATTEMPTS || wm_shutdown_requested)
+        {
             break;
         }
     } while (ret != 0);
 
-    if (ret) {
-        if (wm_shutdown_requested) {
+    if (ret)
+    {
+        if (wm_shutdown_requested)
+        {
             // Expected during agent shutdown/restart: a sync command reached a module that was already
             // stopping. Report it as a debug breadcrumb instead of an error.
             mdebug1("At modulesSync(): skipping sync for module '%s' (%d): the agent is shutting down.",
-                    cur_module ? cur_module->tag : "", ret);
-        } else {
-            merror("At modulesSync(): Unable to sync module '%s': (%d)", cur_module ? cur_module->tag : "",  ret);
+                    cur_module ? cur_module->tag : "",
+                    ret);
+        }
+        else
+        {
+            merror("At modulesSync(): Unable to sync module '%s': (%d)", cur_module ? cur_module->tag : "", ret);
         }
     }
     return ret;
@@ -527,9 +592,12 @@ int modulesSync(char* args, size_t length) {
 
 // Find a module
 
-wmodule * wm_find_module(const char * name) {
-    for (wmodule * module = wmodules; module != NULL; module = module->next) {
-        if (strcmp(module->context->name, name) == 0) {
+wmodule* wm_find_module(const char* name)
+{
+    for (wmodule* module = wmodules; module != NULL; module = module->next)
+    {
+        if (strcmp(module->context->name, name) == 0)
+        {
             return module;
         }
     }
@@ -539,24 +607,28 @@ wmodule * wm_find_module(const char * name) {
 
 // Run a query in a module
 
-size_t wm_module_query(char * query, char ** output) {
-    char * module_name = query;
-    char * args = strchr(query, ' ');
+size_t wm_module_query(char* query, char** output)
+{
+    char* module_name = query;
+    char* args = strchr(query, ' ');
 
-    if (args == NULL) {
+    if (args == NULL)
+    {
         os_strdup("err {\"error\":1,\"message\":\"Module query needs arguments\"}", *output);
         return strlen(*output);
     }
 
     *args++ = '\0';
 
-    wmodule * module = wm_find_module(module_name);
-    if (module == NULL) {
+    wmodule* module = wm_find_module(module_name);
+    if (module == NULL)
+    {
         os_strdup("err {\"error\":2,\"message\":\"Module not found or not configured\"}", *output);
         return strlen(*output);
     }
 
-    if (module->context->query == NULL) {
+    if (module->context->query == NULL)
+    {
         os_strdup("err {\"error\":3,\"message\":\"This module does not support queries\"}", *output);
         return strlen(*output);
     }
@@ -566,48 +638,66 @@ size_t wm_module_query(char * query, char ** output) {
 
 // Query module with JSON format
 // Internal implementation that accepts module_name directly
-static size_t wm_module_query_json_internal(const char* module_name, const char* json_command, char** output) {
-    cJSON *json_obj = NULL;
-    cJSON *command_item = NULL;
+static size_t wm_module_query_json_internal(const char* module_name, const char* json_command, char** output)
+{
+    cJSON* json_obj = NULL;
+    cJSON* command_item = NULL;
     char error_msg[512];
 
-    if (!module_name || !json_command || !output) {
+    if (!module_name || !json_command || !output)
+    {
         return 0;
     }
 
     // Parse JSON command
     json_obj = cJSON_Parse(json_command);
-    if (!json_obj) {
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+    if (!json_obj)
+    {
+        snprintf(error_msg,
+                 sizeof(error_msg),
+                 "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_JSON,
+                 MQ_MSG_INVALID_JSON);
         os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     // Validate command field exists
     command_item = cJSON_GetObjectItem(json_obj, "command");
-    if (!command_item || !cJSON_IsString(command_item)) {
+    if (!command_item || !cJSON_IsString(command_item))
+    {
         cJSON_Delete(json_obj);
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        snprintf(error_msg,
+                 sizeof(error_msg),
+                 "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_INVALID_PARAMS,
+                 MQ_MSG_INVALID_PARAMS);
         os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
     // Find the module
-    wmodule * module = wm_find_module(module_name);
-    if (module == NULL) {
+    wmodule* module = wm_find_module(module_name);
+    if (module == NULL)
+    {
         cJSON_Delete(json_obj);
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_MODULE_NOT_FOUND, MQ_MSG_MODULE_NOT_FOUND);
+        snprintf(error_msg,
+                 sizeof(error_msg),
+                 "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_FOUND,
+                 MQ_MSG_MODULE_NOT_FOUND);
         os_strdup(error_msg, *output);
         return strlen(*output);
     }
 
-    if (module->context->query == NULL) {
+    if (module->context->query == NULL)
+    {
         cJSON_Delete(json_obj);
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"%s\"}",
-                 MQ_ERR_MODULE_NOT_SUPPORTED, MQ_MSG_MODULE_NOT_SUPPORTED);
+        snprintf(error_msg,
+                 sizeof(error_msg),
+                 "{\"error\":%d,\"message\":\"%s\"}",
+                 MQ_ERR_MODULE_NOT_SUPPORTED,
+                 MQ_MSG_MODULE_NOT_SUPPORTED);
         os_strdup(error_msg, *output);
         return strlen(*output);
     }
@@ -618,7 +708,8 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
     // verb, which has no such allow-list), pass the JSON command directly (it already
     // contains all needed fields).
     if (strcmp(module_name, SCA_WM_NAME) == 0 || strcmp(module_name, SYSCOLLECTOR_WM_NAME) == 0 ||
-            strcmp(module_name, AGENT_INFO_WM_NAME) == 0) {
+        strcmp(module_name, AGENT_INFO_WM_NAME) == 0)
+    {
         // Pass the original JSON directly - no need to reconstruct
         // Cast to non-const as required by the query function signature
         size_t result = module->context->query(module->data, (char*)json_command, output);
@@ -630,51 +721,66 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
 }
 
 // New external interface that accepts module_name as parameter
-size_t wm_module_query_json_ex(const char* module_name, const char* json_command, char** output) {
+size_t wm_module_query_json_ex(const char* module_name, const char* json_command, char** output)
+{
     return wm_module_query_json_internal(module_name, json_command, output);
 }
 
 // Query FIM module directly via syscom socket with JSON format
-size_t wm_fim_query_json(const char* command, char** response) {
+size_t wm_fim_query_json(const char* command, char** response)
+{
     char error_msg[512];
 
-    if (!command || !response) {
+    if (!command || !response)
+    {
         return 0;
     }
 
     // Use the command directly as JSON (it's already in the new format)
-    char *json_string = strdup(command);
+    char* json_string = strdup(command);
 
 #ifndef WIN32
     int sock;
-    char *response_buffer = NULL;
+    char* response_buffer = NULL;
     ssize_t recv_length;
 
     // Connect to syscheck syscom socket
     mdebug1("WM_FIM_QUERY_JSON: Attempting to connect to socket: %s", SYS_LOCAL_SOCK);
-    if ((sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR)) < 0) {
+    if ((sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR)) < 0)
+    {
         // This is a transport helper: the connection failure is returned to the caller as a
         // structured JSON error (see the switch below), and the caller (agent-info) is the one
         // that contextualizes it (e.g. FIM unavailable during shutdown -> ECONNREFUSED/errno 111).
         // During shutdown syscheck is stopped first, so this is expected and kept at debug to avoid
         // a spurious ERROR; during normal operation a dead syscheck is a genuine fault worth ERROR.
-        if (wm_shutdown_requested) {
+        if (wm_shutdown_requested)
+        {
             mdebug1("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
-        } else {
+        }
+        else
+        {
             merror("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
         }
 
-        switch (errno) {
+        switch (errno)
+        {
             case ECONNREFUSED:
-                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck module refused connection. The component might be disabled\"}",
+                snprintf(error_msg,
+                         sizeof(error_msg),
+                         "{\"error\":%d,\"message\":\"Syscheck module refused connection. The component might be "
+                         "disabled\"}",
                          MQ_ERR_MODULE_NOT_RUNNING);
                 break;
             case ENOENT:
-                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck socket not found. The component might not be running\"}",
+                snprintf(error_msg,
+                         sizeof(error_msg),
+                         "{\"error\":%d,\"message\":\"Syscheck socket not found. The component might not be running\"}",
                          MQ_ERR_MODULE_NOT_RUNNING);
                 break;
             default:
-                snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not connect to syscheck socket\"}",
+                snprintf(error_msg,
+                         sizeof(error_msg),
+                         "{\"error\":%d,\"message\":\"Could not connect to syscheck socket\"}",
                          MQ_ERR_MODULE_NOT_RUNNING);
         }
         os_strdup(error_msg, *response);
@@ -685,16 +791,22 @@ size_t wm_fim_query_json(const char* command, char** response) {
     mdebug1("WM_FIM_QUERY_JSON: Sending JSON command: %s", json_string);
 
     // Send the JSON query to syscheck
-    if (OS_SendSecureTCP(sock, strlen(json_string), json_string) < 0) {
+    if (OS_SendSecureTCP(sock, strlen(json_string), json_string) < 0)
+    {
         // Transport-level failure returned to the caller as a JSON error; debug during shutdown
         // (expected race), ERROR otherwise (genuine fault).
-        if (wm_shutdown_requested) {
+        if (wm_shutdown_requested)
+        {
             mdebug1("WM_FIM_QUERY_JSON: Failed to send command");
-        } else {
+        }
+        else
+        {
             merror("WM_FIM_QUERY_JSON: Failed to send command");
         }
         close(sock);
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not send query to syscheck\"}",
+        snprintf(error_msg,
+                 sizeof(error_msg),
+                 "{\"error\":%d,\"message\":\"Could not send query to syscheck\"}",
                  MQ_ERR_INTERNAL);
         os_strdup(error_msg, *response);
         os_free(json_string);
@@ -706,25 +818,32 @@ size_t wm_fim_query_json(const char* command, char** response) {
 
     // Receive response from syscheck
     recv_length = OS_RecvSecureTCP(sock, response_buffer, OS_MAXSTR);
-    switch (recv_length) {
+    switch (recv_length)
+    {
         case OS_SOCKTERR:
             close(sock);
             os_free(response_buffer);
-            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Response from syscheck too large\"}",
+            snprintf(error_msg,
+                     sizeof(error_msg),
+                     "{\"error\":%d,\"message\":\"Response from syscheck too large\"}",
                      MQ_ERR_INTERNAL);
             os_strdup(error_msg, *response);
             break;
         case -1:
             close(sock);
             os_free(response_buffer);
-            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Error receiving response from syscheck\"}",
+            snprintf(error_msg,
+                     sizeof(error_msg),
+                     "{\"error\":%d,\"message\":\"Error receiving response from syscheck\"}",
                      MQ_ERR_INTERNAL);
             os_strdup(error_msg, *response);
             break;
         case 0:
             close(sock);
             os_free(response_buffer);
-            snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Empty response from syscheck\"}",
+            snprintf(error_msg,
+                     sizeof(error_msg),
+                     "{\"error\":%d,\"message\":\"Empty response from syscheck\"}",
                      MQ_ERR_INTERNAL);
             os_strdup(error_msg, *response);
             break;
@@ -737,9 +856,10 @@ size_t wm_fim_query_json(const char* command, char** response) {
     // On Windows, use the syscom_dispatch function directly
     size_t response_len = syscom_dispatch(json_string, strlen(json_string), response);
 
-    if (response_len == 0 || !(*response)) {
-        snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"No response from syscom\"}",
-                 MQ_ERR_INTERNAL);
+    if (response_len == 0 || !(*response))
+    {
+        snprintf(
+            error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"No response from syscom\"}", MQ_ERR_INTERNAL);
         os_strdup(error_msg, *response);
     }
 #endif
@@ -748,25 +868,27 @@ size_t wm_fim_query_json(const char* command, char** response) {
     return strlen(*response);
 }
 
-cJSON *getModulesInternalOptions(void) {
+cJSON* getModulesInternalOptions(void)
+{
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* internals = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(internals,"wazuh_modules.task_nice",wm_task_nice);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.max_eps",wm_max_eps);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.kill_timeout",wm_kill_timeout);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.socket_timeout",wm_socket_timeout);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.unmask_credentials",wm_unmask_credentials);
-    cJSON_AddNumberToObject(internals,"wazuh_modules.debug",wm_debug_level);
+    cJSON_AddNumberToObject(internals, "wazuh_modules.task_nice", wm_task_nice);
+    cJSON_AddNumberToObject(internals, "wazuh_modules.max_eps", wm_max_eps);
+    cJSON_AddNumberToObject(internals, "wazuh_modules.kill_timeout", wm_kill_timeout);
+    cJSON_AddNumberToObject(internals, "wazuh_modules.socket_timeout", wm_socket_timeout);
+    cJSON_AddNumberToObject(internals, "wazuh_modules.unmask_credentials", wm_unmask_credentials);
+    cJSON_AddNumberToObject(internals, "wazuh_modules.debug", wm_debug_level);
 
-    cJSON_AddItemToObject(root,"internal_options",internals);
+    cJSON_AddItemToObject(root, "internal_options", internals);
 
     return root;
 }
 
 // Send message to a queue waiting for a specific delay
-int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
+int wm_sendmsg(int usec, int queue, const char* message, const char* locmsg, char loc)
+{
 
 #ifdef WIN32
     int msec = usec / 1000;
@@ -776,7 +898,8 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 
-    if (SendMSG(queue, message, locmsg, loc) < 0) {
+    if (SendMSG(queue, message, locmsg, loc) < 0)
+    {
         mdebug1("Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }
@@ -785,7 +908,8 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 }
 
 // Send message to a queue waiting for a specific delay
-int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, char loc, bool (*fn_prd)()) {
+int wm_sendmsg_ex(int usec, int queue, const char* message, const char* locmsg, char loc, bool (*fn_prd)())
+{
 
 #ifdef WIN32
     int msec = usec / 1000;
@@ -795,7 +919,8 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
     select(0, NULL, NULL, NULL, &timeout);
 #endif
 
-    if (SendMSGPredicated(queue, message, locmsg, loc, fn_prd) < 0) {
+    if (SendMSGPredicated(queue, message, locmsg, loc, fn_prd) < 0)
+    {
         mdebug1("Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }
@@ -809,25 +934,29 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
      1 if the binary matches with the specified digest, 0 if not.
     -1 invalid parameters.
 */
-int wm_validate_command(const char *command, const char *digest, crypto_type ctype) {
+int wm_validate_command(const char* command, const char* digest, crypto_type ctype)
+{
 
     os_md5 md5_binary;
     os_sha1 sha1_binary;
     os_sha256 sha256_binary;
     int match = 0;
 
-    if (command == NULL || digest == NULL) {
+    if (command == NULL || digest == NULL)
+    {
         return -1;
     }
 
-    switch (ctype) {
+    switch (ctype)
+    {
 
         case MD5SUM:
             // Get binary MD5
             OS_MD5_File(command, md5_binary, OS_BINARY);
             // Compare MD5 sums
             mdebug2("Comparing MD5 hash: '%s' | '%s'", md5_binary, digest);
-            if (strcasecmp(md5_binary, digest) == 0) {
+            if (strcasecmp(md5_binary, digest) == 0)
+            {
                 match = 1;
             }
             break;
@@ -837,7 +966,8 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
             OS_SHA1_File(command, sha1_binary, OS_BINARY);
             // Compare SHA1 sums
             mdebug2("Comparing SHA1 hash: '%s' | '%s'", sha1_binary, digest);
-            if (strcasecmp(sha1_binary, digest) == 0) {
+            if (strcasecmp(sha1_binary, digest) == 0)
+            {
                 match = 1;
             }
             break;
@@ -847,7 +977,8 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
             OS_SHA256_File(command, sha256_binary, OS_BINARY);
             // Compare SHA256 sums
             mdebug2("Comparing SHA256 hash: '%s' | '%s'", sha256_binary, digest);
-            if (strcasecmp(sha256_binary, digest) == 0) {
+            if (strcasecmp(sha256_binary, digest) == 0)
+            {
                 match = 1;
             }
     }
@@ -855,24 +986,31 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
     return match;
 }
 
-static int wm_initialize_default_modules(wmodule **wmodules) {
-    wmodule *cur_wmodule = *wmodules;
-    int i=0;
-    while (default_modules[i]) {
-        if(!cur_wmodule) {
+static int wm_initialize_default_modules(wmodule** wmodules)
+{
+    wmodule* cur_wmodule = *wmodules;
+    int i = 0;
+    while (default_modules[i])
+    {
+        if (!cur_wmodule)
+        {
             *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
-        } else {
+        }
+        else
+        {
             os_calloc(1, sizeof(wmodule), cur_wmodule->next);
             cur_wmodule = cur_wmodule->next;
-            if (!cur_wmodule) {
+            if (!cur_wmodule)
+            {
                 merror(MEM_ERROR, errno, strerror(errno));
                 return (OS_INVALID);
             }
         }
         // Point to read function
-        int (*function_ptr)(const OS_XML *xml, xml_node **nodes, wmodule *module) = default_modules[i];
+        int (*function_ptr)(const OS_XML* xml, xml_node** nodes, wmodule* module) = default_modules[i];
 
-        if(function_ptr(NULL, NULL, cur_wmodule) == OS_INVALID) {
+        if (function_ptr(NULL, NULL, cur_wmodule) == OS_INVALID)
+        {
             return OS_INVALID;
         }
         i++;

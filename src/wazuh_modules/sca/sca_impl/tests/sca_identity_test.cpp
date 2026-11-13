@@ -38,163 +38,166 @@ namespace
 {
     constexpr auto SYNCED_AGENT_ID_KEY {"synced_agent_id"};
     constexpr auto FIRST_SYNC_COMPLETED_KEY {"first_sync_completed"};
-}
+} // namespace
 
 class SCAIdentityTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            m_logOutput.clear();
+protected:
+    void SetUp() override
+    {
+        m_logOutput.clear();
 
-            // The provider is a file, and other test binaries in this tree write it too.
-            // Own directory per binary: the provider is a file at a path relative to the working
-            // directory, and other SCA test binaries in this tree write the same one, so sharing
-            // it makes both flaky under a parallel ctest.
-            std::filesystem::create_directories("sca_identity_test/var/run");
-            std::filesystem::current_path("sca_identity_test");
-            metadata_provider_reset();
+        // The provider is a file, and other test binaries in this tree write it too.
+        // Own directory per binary: the provider is a file at a path relative to the working
+        // directory, and other SCA test binaries in this tree write the same one, so sharing
+        // it makes both flaky under a parallel ctest.
+        std::filesystem::create_directories("sca_identity_test/var/run");
+        std::filesystem::current_path("sca_identity_test");
+        metadata_provider_reset();
 
-            // Locked: the shutdown cases log from the test thread and a woken worker at once.
-            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string & log)
+        // Locked: the shutdown cases log from the test thread and a woken worker at once.
+        LoggingHelper::setLogCallback(
+            [this](const modules_log_level_t /* level */, const std::string& log)
             {
                 std::lock_guard<std::mutex> lock(m_logMutex);
                 m_logOutput += log + "\n";
             });
 
-            m_mockDBSync = std::make_shared<MockDBSync>();
-            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
-            m_mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+        m_mockDBSync = std::make_shared<MockDBSync>();
+        m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+        m_mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
 
-            EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+        EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
 
-            m_sca = std::make_shared<SCAMock>(m_mockDBSync, m_mockFileSystem);
-            m_sca->setSyncProtocol(m_mockSyncProtocol);
-            // As once Run() is past its initialization, which is when the sync thread may act.
-            m_sca->setRunInitializedForTest(true);
-            // syncModule() answers immediately unless the module is paused -- that is how
-            // agent-info drives a coordinated sync, and it is the state these cases exercise.
-            m_sca->pause();
+        m_sca = std::make_shared<SCAMock>(m_mockDBSync, m_mockFileSystem);
+        m_sca->setSyncProtocol(m_mockSyncProtocol);
+        // As once Run() is past its initialization, which is when the sync thread may act.
+        m_sca->setRunInitializedForTest(true);
+        // syncModule() answers immediately unless the module is paused -- that is how
+        // agent-info drives a coordinated sync, and it is the state these cases exercise.
+        m_sca->pause();
+    }
+
+    void TearDown() override
+    {
+        metadata_provider_reset();
+        std::filesystem::current_path("..");
+        m_sca.reset();
+        m_mockDBSync.reset();
+        m_mockFileSystem.reset();
+        m_mockSyncProtocol.reset();
+    }
+
+    /// Makes check_integrity due, with a 1h interval and the mock protocol, and counts in
+    /// @p stamps every time the check is stamped. updateMetadataValue() reads the whole
+    /// sca_metadata table, unfiltered, right before it writes the new check time: the only such
+    /// read, so counting it tells whether the check was stamped. Every other read finds nothing,
+    /// so a recovery resends an empty snapshot.
+    void prepareDueIntegrityCheck(int& stamps)
+    {
+        try
+        {
+            m_sca->initSyncProtocol("sca", ":memory:", std::chrono::seconds(3600));
+        }
+        catch (const std::exception&)
+        {
+            // Only the interval is needed; the protocol is the mock below.
         }
 
-        void TearDown() override
-        {
-            metadata_provider_reset();
-            std::filesystem::current_path("..");
-            m_sca.reset();
-            m_mockDBSync.reset();
-            m_mockFileSystem.reset();
-            m_mockSyncProtocol.reset();
-        }
+        m_sca->setSyncProtocol(m_mockSyncProtocol);
 
-        /// Makes check_integrity due, with a 1h interval and the mock protocol, and counts in
-        /// @p stamps every time the check is stamped. updateMetadataValue() reads the whole
-        /// sca_metadata table, unfiltered, right before it writes the new check time: the only such
-        /// read, so counting it tells whether the check was stamped. Every other read finds nothing,
-        /// so a recovery resends an empty snapshot.
-        void prepareDueIntegrityCheck(int& stamps)
-        {
-            try
-            {
-                m_sca->initSyncProtocol("sca", ":memory:", std::chrono::seconds(3600));
-            }
-            catch (const std::exception&)
-            {
-                // Only the interval is needed; the protocol is the mock below.
-            }
-
-            m_sca->setSyncProtocol(m_mockSyncProtocol);
-
-            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-            .WillRepeatedly(::testing::Invoke([&stamps](const nlohmann::json & query,
-                                                        std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-            {
-                const auto text = query.dump();
-
-                if (text.find("last_integrity_check") != std::string::npos)
-                {
-                    callback(SELECTED, nlohmann::json {{"value", 1}});
-                }
-                else if (text.find("sca_metadata") != std::string::npos && text.find("WHERE") == std::string::npos)
-                {
-                    ++stamps;
-                }
-            }));
-        }
-
-        /// Publishes an agent id, the way agentd does after enrolling.
-        static void publishAgentId(const char* agentId)
-        {
-            agent_metadata_t metadata = {};
-            strncpy(metadata.agent_id, agentId, sizeof(metadata.agent_id) - 1);
-            strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
-            metadata_provider_update(&metadata);
-        }
-
-        /// Answers sca_metadata lookups per key, since the real getMetadataValue() filters in
-        /// SQL and a mock that ignores the query would hand every key the same row.
-        void expectMetadata(int64_t syncedAgentId, int64_t firstSyncCompleted)
-        {
-            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+        EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
             .WillRepeatedly(::testing::Invoke(
-                                [syncedAgentId, firstSyncCompleted](const nlohmann::json & query,
-                                                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-            {
-                const auto queryText = query.dump();
+                [&stamps](const nlohmann::json& query,
+                          std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+                {
+                    const auto text = query.dump();
 
-                if (queryText.find(SYNCED_AGENT_ID_KEY) != std::string::npos)
-                {
-                    if (syncedAgentId != 0)
+                    if (text.find("last_integrity_check") != std::string::npos)
                     {
-                        callback(SELECTED, nlohmann::json {{"value", syncedAgentId}});
+                        callback(SELECTED, nlohmann::json {{"value", 1}});
                     }
-                }
-                else if (queryText.find(FIRST_SYNC_COMPLETED_KEY) != std::string::npos)
-                {
-                    if (firstSyncCompleted != 0)
+                    else if (text.find("sca_metadata") != std::string::npos && text.find("WHERE") == std::string::npos)
                     {
-                        callback(SELECTED, nlohmann::json {{"value", firstSyncCompleted}});
+                        ++stamps;
                     }
-                }
-            }));
+                }));
+    }
+
+    /// Publishes an agent id, the way agentd does after enrolling.
+    static void publishAgentId(const char* agentId)
+    {
+        agent_metadata_t metadata = {};
+        strncpy(metadata.agent_id, agentId, sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+        metadata_provider_update(&metadata);
+    }
+
+    /// Answers sca_metadata lookups per key, since the real getMetadataValue() filters in
+    /// SQL and a mock that ignores the query would hand every key the same row.
+    void expectMetadata(int64_t syncedAgentId, int64_t firstSyncCompleted)
+    {
+        EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+            .WillRepeatedly(::testing::Invoke(
+                [syncedAgentId,
+                 firstSyncCompleted](const nlohmann::json& query,
+                                     std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+                {
+                    const auto queryText = query.dump();
+
+                    if (queryText.find(SYNCED_AGENT_ID_KEY) != std::string::npos)
+                    {
+                        if (syncedAgentId != 0)
+                        {
+                            callback(SELECTED, nlohmann::json {{"value", syncedAgentId}});
+                        }
+                    }
+                    else if (queryText.find(FIRST_SYNC_COMPLETED_KEY) != std::string::npos)
+                    {
+                        if (firstSyncCompleted != 0)
+                        {
+                            callback(SELECTED, nlohmann::json {{"value", firstSyncCompleted}});
+                        }
+                    }
+                }));
+    }
+
+    /// Waits for a flush started on another thread. On a timeout, stops the module so the
+    /// waiting flush returns: a failed assertion must fail the test, not hang it in ~future.
+    bool finished(std::future<int>& flush)
+    {
+        if (flush.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
+        {
+            return true;
         }
 
-        /// Waits for a flush started on another thread. On a timeout, stops the module so the
-        /// waiting flush returns: a failed assertion must fail the test, not hang it in ~future.
-        bool finished(std::future<int>& flush)
-        {
-            if (flush.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
-            {
-                return true;
-            }
+        m_sca->quiesce();
+        return false;
+    }
 
+    /// Same for a DataClean started on another thread. Its retry wait is woken without the
+    /// mutex it waits on, so quiesce() is repeated until it returns.
+    bool finished(std::future<bool>& dataClean)
+    {
+        if (dataClean.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < 50 && dataClean.wait_for(std::chrono::milliseconds(100)) != std::future_status::ready; ++i)
+        {
             m_sca->quiesce();
-            return false;
         }
 
-        /// Same for a DataClean started on another thread. Its retry wait is woken without the
-        /// mutex it waits on, so quiesce() is repeated until it returns.
-        bool finished(std::future<bool>& dataClean)
-        {
-            if (dataClean.wait_for(std::chrono::seconds(5)) == std::future_status::ready)
-            {
-                return true;
-            }
+        return false;
+    }
 
-            for (int i = 0; i < 50 && dataClean.wait_for(std::chrono::milliseconds(100)) != std::future_status::ready; ++i)
-            {
-                m_sca->quiesce();
-            }
-
-            return false;
-        }
-
-        std::shared_ptr<MockDBSync> m_mockDBSync;
-        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
-        std::shared_ptr<MockAgentSyncProtocol> m_mockSyncProtocol;
-        std::shared_ptr<SCAMock> m_sca;
-        std::string m_logOutput;
-        std::mutex m_logMutex;
+    std::shared_ptr<MockDBSync> m_mockDBSync;
+    std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+    std::shared_ptr<MockAgentSyncProtocol> m_mockSyncProtocol;
+    std::shared_ptr<SCAMock> m_sca;
+    std::string m_logOutput;
+    std::mutex m_logMutex;
 };
 
 // The marker has never been recorded -- every agent on its first cycle after an upgrade. It must
@@ -208,7 +211,7 @@ TEST_F(SCAIdentityTest, MarkerAbsentIsAdoptedWithoutResyncing)
     // A resync would have to clear the manager's index first.
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
     m_sca->syncModule(Mode::DELTA);
 
@@ -226,7 +229,7 @@ TEST_F(SCAIdentityTest, UnchangedIdIsANoOp)
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
     m_sca->syncModule(Mode::DELTA);
 
@@ -242,7 +245,7 @@ TEST_F(SCAIdentityTest, UnknownIdIsANoOp)
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
     m_sca->syncModule(Mode::DELTA);
 
@@ -257,9 +260,9 @@ TEST_F(SCAIdentityTest, ChangedIdClearsTheIndexAndResends)
     expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
+        .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
 
     m_sca->syncModule(Mode::DELTA);
 
@@ -275,10 +278,10 @@ TEST_F(SCAIdentityTest, FailedDataCleanRecordsNothing)
     expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
 
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
+        .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
 
     m_sca->syncModule(Mode::DELTA);
 
@@ -352,11 +355,12 @@ TEST_F(SCAIdentityTest, SyncSkipsWhileAFlushSends)
     bool syncedDuringFlush = true;
 
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([this, &syncedDuringFlush](auto&& ...)
-    {
-        syncedDuringFlush = m_sca->syncModule(Mode::DELTA);
-        return SyncModuleResult {true, {}};
-    }));
+        .WillOnce(::testing::Invoke(
+            [this, &syncedDuringFlush](auto&&...)
+            {
+                syncedDuringFlush = m_sca->syncModule(Mode::DELTA);
+                return SyncModuleResult {true, {}};
+            }));
 
     EXPECT_EQ(m_sca->callExecuteFlushSync(), 0);
 
@@ -371,7 +375,7 @@ TEST_F(SCAIdentityTest, FlushWaitsForASyncInProgressThenSends)
     expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
 
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
     m_sca->setSyncInProgress(true);
 
@@ -411,8 +415,8 @@ TEST_F(SCAIdentityTest, FlushClearsItsFlagWhenTheSessionThrows)
     expectMetadata(/* syncedAgentId */ 7, /* firstSyncCompleted */ 123456);
 
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Throw(std::runtime_error("session failed")))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Throw(std::runtime_error("session failed")))
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
     EXPECT_THROW(m_sca->callExecuteFlushSync(), std::runtime_error);
     EXPECT_TRUE(m_sca->syncModule(Mode::DELTA));
@@ -445,9 +449,9 @@ TEST_F(SCAIdentityTest, ResendWaitsForRunToInitialize)
     m_sca->setRunInitializedForTest(false);
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
+        .WillRepeatedly(::testing::Return(SyncModuleResult {true, {}}));
 
     auto sync = std::async(std::launch::async, [this] { return m_sca->syncModule(Mode::DELTA); });
 
@@ -496,7 +500,7 @@ TEST_F(SCAIdentityTest, FailedResendSendsNoDelta)
     expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
 
     EXPECT_FALSE(m_sca->syncModule(Mode::DELTA));
@@ -518,7 +522,7 @@ TEST_F(SCAIdentityTest, FailedResendCountsAsAResyncAttempt)
     expectMetadata(/* syncedAgentId */ 1, /* firstSyncCompleted */ 123456);
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {false, {}}));
 
     EXPECT_EQ(queryResyncAttempts(*m_sca), 0);
     EXPECT_FALSE(m_sca->syncModule(Mode::DELTA));
@@ -577,14 +581,14 @@ TEST_F(SCAIdentityTest, IntegrityCheckStandsBackFromAFlush)
     m_sca->setSyncProtocol(m_mockSyncProtocol);
 
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json & query,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        if (query.dump().find("last_integrity_check") != std::string::npos)
-        {
-            callback(SELECTED, nlohmann::json {{"value", 1}});
-        }
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json& query, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                if (query.dump().find("last_integrity_check") != std::string::npos)
+                {
+                    callback(SELECTED, nlohmann::json {{"value", 1}});
+                }
+            }));
 
     EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
@@ -603,7 +607,7 @@ TEST_F(SCAIdentityTest, IntegrityCheckStandsBackFromAFlush)
 TEST_F(SCAIdentityTest, FlushWaitsForARecoveryThenSends)
 {
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
     m_sca->setRecoveryInProgressForTest(true);
 
@@ -642,14 +646,15 @@ TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanFreesTheFlushBetweenAttempts)
 
     std::promise<void> firstAttempt;
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([this, &firstAttempt](auto&& ...)
-    {
-        EXPECT_TRUE(m_sca->recoveryInProgressForTest());
-        firstAttempt.set_value();
-        return SyncModuleResult {false, {}};
-    }));
+        .WillOnce(::testing::Invoke(
+            [this, &firstAttempt](auto&&...)
+            {
+                EXPECT_TRUE(m_sca->recoveryInProgressForTest());
+                firstAttempt.set_value();
+                return SyncModuleResult {false, {}};
+            }));
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, {}}));
 
     auto dataClean = std::async(std::launch::async, [this] { return m_sca->callHandleAllPoliciesRemoved(); });
     firstAttempt.get_future().wait();
@@ -681,19 +686,16 @@ TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanWaitsForAFlush)
 
     std::atomic<bool> flushSending {true};
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([&flushSending](auto&& ...)
-    {
-        EXPECT_FALSE(flushSending.load());
-        return SyncModuleResult {true, {}};
-    }));
-    EXPECT_CALL(*m_mockSyncProtocol, deleteDatabase()).WillOnce(::testing::Invoke([this]()
-    {
-        EXPECT_TRUE(m_sca->recoveryInProgressForTest());
-    }));
-    EXPECT_CALL(*m_mockDBSync, closeAndDeleteDatabase()).WillOnce(::testing::Invoke([this]()
-    {
-        EXPECT_TRUE(m_sca->recoveryInProgressForTest());
-    }));
+        .WillOnce(::testing::Invoke(
+            [&flushSending](auto&&...)
+            {
+                EXPECT_FALSE(flushSending.load());
+                return SyncModuleResult {true, {}};
+            }));
+    EXPECT_CALL(*m_mockSyncProtocol, deleteDatabase())
+        .WillOnce(::testing::Invoke([this]() { EXPECT_TRUE(m_sca->recoveryInProgressForTest()); }));
+    EXPECT_CALL(*m_mockDBSync, closeAndDeleteDatabase())
+        .WillOnce(::testing::Invoke([this]() { EXPECT_TRUE(m_sca->recoveryInProgressForTest()); }));
 
     m_sca->setFlushInProgressForTest(true);
     auto dataClean = std::async(std::launch::async, [this] { return m_sca->callHandleAllPoliciesRemoved(); });
@@ -717,11 +719,12 @@ TEST_F(SCAIdentityTest, AllPoliciesRemovedDataCleanWaitsForARecovery)
 
     std::atomic<bool> recoveryRunning {true};
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Invoke([&recoveryRunning](auto&& ...)
-    {
-        EXPECT_FALSE(recoveryRunning.load());
-        return SyncModuleResult {true, {}};
-    }));
+        .WillOnce(::testing::Invoke(
+            [&recoveryRunning](auto&&...)
+            {
+                EXPECT_FALSE(recoveryRunning.load());
+                return SyncModuleResult {true, {}};
+            }));
     EXPECT_CALL(*m_mockSyncProtocol, deleteDatabase());
     EXPECT_CALL(*m_mockDBSync, closeAndDeleteDatabase());
 
@@ -753,14 +756,14 @@ TEST_F(SCAIdentityTest, IntegrityCheckStandsBackFromADataClean)
     m_sca->setSyncProtocol(m_mockSyncProtocol);
 
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json & query,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        if (query.dump().find("last_integrity_check") != std::string::npos)
-        {
-            callback(SELECTED, nlohmann::json {{"value", 1}});
-        }
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json& query, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                if (query.dump().find("last_integrity_check") != std::string::npos)
+                {
+                    callback(SELECTED, nlohmann::json {{"value", 1}});
+                }
+            }));
 
     EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).Times(0);
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
@@ -785,7 +788,8 @@ TEST_F(SCAIdentityTest, IntegrityCheckNotPerformedIsReportedNotPassed)
     IntegrityCheckResult notChecked;
     notChecked.failureReason = "Failed to communicate with the manager.";
     notChecked.managerNotReady = true;
-    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(notChecked));
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(notChecked));
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
 
     const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
@@ -793,9 +797,11 @@ TEST_F(SCAIdentityTest, IntegrityCheckNotPerformedIsReportedNotPassed)
     EXPECT_EQ(response["error"], 1);
     EXPECT_EQ(response["message"], "Integrity check could not be performed: Failed to communicate with the manager.");
     EXPECT_EQ(response["data"]["recovery_performed"], false);
-    EXPECT_NE(m_logOutput.find("Integrity check could not be performed for wazuh-states-sca (Failed to communicate with "
-                               "the manager); it will be checked again in the next integrity_interval (1h)."),
-              std::string::npos) << m_logOutput;
+    EXPECT_NE(
+        m_logOutput.find("Integrity check could not be performed for wazuh-states-sca (Failed to communicate with "
+                         "the manager); it will be checked again in the next integrity_interval (1h)."),
+        std::string::npos)
+        << m_logOutput;
     EXPECT_EQ(stamps, 1);
 }
 
@@ -810,16 +816,19 @@ TEST_F(SCAIdentityTest, IntegrityCheckNotPerformedAfterAMismatchSaysSo)
     notChecked.failureReason = "Failed to communicate with the manager.";
     notChecked.managerNotReady = true;
     notChecked.mismatchUnconfirmed = true;
-    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(notChecked));
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(notChecked));
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
 
     const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
 
     EXPECT_EQ(response["error"], 1);
-    EXPECT_NE(m_logOutput.find("Integrity check could not be performed for wazuh-states-sca (Failed to communicate with "
-                               "the manager, after a checksum mismatch reported by the manager); it will be checked "
-                               "again in the next integrity_interval (1h)."),
-              std::string::npos) << m_logOutput;
+    EXPECT_NE(
+        m_logOutput.find("Integrity check could not be performed for wazuh-states-sca (Failed to communicate with "
+                         "the manager, after a checksum mismatch reported by the manager); it will be checked "
+                         "again in the next integrity_interval (1h)."),
+        std::string::npos)
+        << m_logOutput;
     EXPECT_EQ(stamps, 1);
 }
 
@@ -832,17 +841,19 @@ TEST_F(SCAIdentityTest, RecoveryStoppedAfterQueueingIsStamped)
 
     IntegrityCheckResult mismatch;
     mismatch.status = IntegrityCheckStatus::MISMATCH;
-    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(mismatch));
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(mismatch));
     EXPECT_CALL(*m_mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(::testing::Return(SyncModuleResult{true, "", false, false, 0u}));
+        .WillOnce(::testing::Return(SyncModuleResult {true, "", false, false, 0u}));
     EXPECT_CALL(*m_mockSyncProtocol, stop()).Times(::testing::AnyNumber());
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(Mode::DELTA, ::testing::_))
-    .WillOnce(::testing::Invoke([this](Mode, Option)
-    {
-        m_sca->quiesce();
-        return SyncModuleResult{false, "Module is stopping.", true, false, 0u};
-    }));
+        .WillOnce(::testing::Invoke(
+            [this](Mode, Option)
+            {
+                m_sca->quiesce();
+                return SyncModuleResult {false, "Module is stopping.", true, false, 0u};
+            }));
 
     const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
 
@@ -860,15 +871,17 @@ TEST_F(SCAIdentityTest, RecoveryStoppedBeforeQueueingIsNotStamped)
 
     IntegrityCheckResult mismatch;
     mismatch.status = IntegrityCheckStatus::MISMATCH;
-    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_)).WillOnce(::testing::Return(mismatch));
+    EXPECT_CALL(*m_mockSyncProtocol, requiresFullSync(::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(mismatch));
     EXPECT_CALL(*m_mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
     EXPECT_CALL(*m_mockSyncProtocol, stop()).Times(::testing::AnyNumber());
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(::testing::Invoke([this](const std::vector<std::string>&, Option, bool)
-    {
-        m_sca->quiesce();
-        return SyncModuleResult{false, "Module is stopping.", true, false, 0u};
-    }));
+        .WillOnce(::testing::Invoke(
+            [this](const std::vector<std::string>&, Option, bool)
+            {
+                m_sca->quiesce();
+                return SyncModuleResult {false, "Module is stopping.", true, false, 0u};
+            }));
     EXPECT_CALL(*m_mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
 
     const auto response = nlohmann::json::parse(m_sca->query(R"({"command":"check_integrity"})"));
@@ -895,6 +908,6 @@ TEST_F(SCAIdentityTest, IntegrityCheckInterruptedByStopIsNotStamped)
 
     EXPECT_EQ(response["error"], 1);
     EXPECT_NE(m_logOutput.find("a checksum mismatch reported by the manager was not confirmed"), std::string::npos)
-            << m_logOutput;
+        << m_logOutput;
     EXPECT_EQ(stamps, 0);
 }

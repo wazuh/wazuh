@@ -58,22 +58,21 @@ someuser ALL=(ALL) /dir/bin/apt update, \
 class SudoersProviderTest : public ::testing::Test
 {
 
-    protected:
+protected:
+    SudoersProviderTest() = default;
+    virtual ~SudoersProviderTest() = default;
 
-        SudoersProviderTest() = default;
-        virtual ~SudoersProviderTest() = default;
+    void SetUp() override
+    {
+        std::ofstream outputFile(SUDOERS_FILE_PATH);
+        outputFile << SUDOERS_FILE_CONTENT;
+        outputFile.close();
+    };
 
-        void SetUp() override
-        {
-            std::ofstream outputFile(SUDOERS_FILE_PATH);
-            outputFile << SUDOERS_FILE_CONTENT;
-            outputFile.close();
-        };
-
-        void TearDown() override
-        {
-            std::remove(SUDOERS_FILE_PATH.c_str());
-        };
+    void TearDown() override
+    {
+        std::remove(SUDOERS_FILE_PATH.c_str());
+    };
 };
 
 TEST_F(SudoersProviderTest, WrongFileNameReturnsEmptyArray)
@@ -96,7 +95,8 @@ TEST_F(SudoersProviderTest, CollectReturnsExpectedJson)
     auto filePath = SUDOERS_FILE_PATH.c_str();
     EXPECT_EQ(result[0]["header"], "Defaults");
     EXPECT_EQ(result[0]["source"], filePath);
-    EXPECT_EQ(result[0]["rule_details"], R"(secure_path="/dir/local/sbin:/dir/local/bin:/dir/sbin:/dir/bin:/sbin:/bin:/snap/bin")");
+    EXPECT_EQ(result[0]["rule_details"],
+              R"(secure_path="/dir/local/sbin:/dir/local/bin:/dir/sbin:/dir/bin:/sbin:/bin:/snap/bin")");
 
     EXPECT_EQ(result[1]["header"], "%sudo");
     EXPECT_EQ(result[1]["source"], filePath);
@@ -104,7 +104,9 @@ TEST_F(SudoersProviderTest, CollectReturnsExpectedJson)
 
     EXPECT_EQ(result[2]["header"], "someuser");
     EXPECT_EQ(result[2]["source"], filePath);
-    EXPECT_EQ(result[2]["rule_details"], "ALL=(ALL) /dir/bin/apt update, /dir/bin/apt upgrade, /dir/bin/apt install somepackage, /dir/bin/systemctl restart someservice");
+    EXPECT_EQ(result[2]["rule_details"],
+              "ALL=(ALL) /dir/bin/apt update, /dir/bin/apt upgrade, /dir/bin/apt install somepackage, "
+              "/dir/bin/systemctl restart someservice");
 
     EXPECT_EQ(result[3]["header"], "@includedir");
     EXPECT_EQ(result[3]["source"], filePath);
@@ -128,22 +130,21 @@ root, backup ALL=(ALL) ALL
 class SudoersRolesTest : public ::testing::Test
 {
 
-    protected:
+protected:
+    SudoersRolesTest() = default;
+    virtual ~SudoersRolesTest() = default;
 
-        SudoersRolesTest() = default;
-        virtual ~SudoersRolesTest() = default;
+    void SetUp() override
+    {
+        std::ofstream outputFile(ROLES_FILE_PATH);
+        outputFile << ROLES_FILE_CONTENT;
+        outputFile.close();
+    };
 
-        void SetUp() override
-        {
-            std::ofstream outputFile(ROLES_FILE_PATH);
-            outputFile << ROLES_FILE_CONTENT;
-            outputFile.close();
-        };
-
-        void TearDown() override
-        {
-            std::remove(ROLES_FILE_PATH.c_str());
-        };
+    void TearDown() override
+    {
+        std::remove(ROLES_FILE_PATH.c_str());
+    };
 };
 
 TEST_F(SudoersRolesTest, UserNamedInARuleIsASudoer)
@@ -405,46 +406,46 @@ TEST(SudoersIsUserSudoerTest, SeveralAliasesOnOneLineAreAllRead)
 TEST(SudoersIsUserSudoerTest, EmptyInputsGrantNothing)
 {
     EXPECT_FALSE(SudoersProvider::isUserSudoer(R"([])"_json, "root", {}));
-    EXPECT_FALSE(SudoersProvider::isUserSudoer(R"([{"header": "root", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}])"_json, "", {}));
+    EXPECT_FALSE(SudoersProvider::isUserSudoer(
+        R"([{"header": "root", "rule_details": "ALL=(ALL) ALL", "source": "/etc/sudoers"}])"_json, "", {}));
 }
 
 // Regression for genSudoersFile() joining enumerateDir()'s bare basenames with the
 // includedir before recursing.
 class SudoersIncludeDirTest : public ::testing::Test
 {
-    protected:
+protected:
+    SudoersIncludeDirTest() = default;
+    virtual ~SudoersIncludeDirTest() = default;
 
-        SudoersIncludeDirTest() = default;
-        virtual ~SudoersIncludeDirTest() = default;
+    void SetUp() override
+    {
+        m_tempDir = std::filesystem::temp_directory_path() / "sudoers_includedir_test";
+        m_includeDir = m_tempDir / "sudoers.d";
+        std::filesystem::remove_all(m_tempDir);
+        std::filesystem::create_directories(m_includeDir);
 
-        void SetUp() override
-        {
-            m_tempDir = std::filesystem::temp_directory_path() / "sudoers_includedir_test";
-            m_includeDir = m_tempDir / "sudoers.d";
-            std::filesystem::remove_all(m_tempDir);
-            std::filesystem::create_directories(m_includeDir);
+        m_mainFile = (m_tempDir / "sudoers").string();
+        m_dropInFile = (m_includeDir / "bobby-test-39165").string();
 
-            m_mainFile = (m_tempDir / "sudoers").string();
-            m_dropInFile = (m_includeDir / "bobby-test-39165").string();
+        std::ofstream mainOut(m_mainFile);
+        mainOut << "#includedir " << m_includeDir.string() << "\n";
+        mainOut.close();
 
-            std::ofstream mainOut(m_mainFile);
-            mainOut << "#includedir " << m_includeDir.string() << "\n";
-            mainOut.close();
+        std::ofstream dropInOut(m_dropInFile);
+        dropInOut << "bobby ALL=(ALL) ALL\n";
+        dropInOut.close();
+    };
 
-            std::ofstream dropInOut(m_dropInFile);
-            dropInOut << "bobby ALL=(ALL) ALL\n";
-            dropInOut.close();
-        };
+    void TearDown() override
+    {
+        std::filesystem::remove_all(m_tempDir);
+    };
 
-        void TearDown() override
-        {
-            std::filesystem::remove_all(m_tempDir);
-        };
-
-        std::filesystem::path m_tempDir;
-        std::filesystem::path m_includeDir;
-        std::string m_mainFile;
-        std::string m_dropInFile;
+    std::filesystem::path m_tempDir;
+    std::filesystem::path m_includeDir;
+    std::string m_mainFile;
+    std::string m_dropInFile;
 };
 
 TEST_F(SudoersIncludeDirTest, DropInFileIsReadFromItsActualIncludeDir)
@@ -454,10 +455,10 @@ TEST_F(SudoersIncludeDirTest, DropInFileIsReadFromItsActualIncludeDir)
 
     ASSERT_TRUE(result.is_array());
 
-    const auto dropInEntry = std::find_if(result.begin(), result.end(), [this](const nlohmann::json & entry)
-    {
-        return entry.value("header", "") == "bobby";
-    });
+    const auto dropInEntry =
+        std::find_if(result.begin(),
+                     result.end(),
+                     [this](const nlohmann::json& entry) { return entry.value("header", "") == "bobby"; });
 
     ASSERT_NE(dropInEntry, result.end());
     EXPECT_EQ((*dropInEntry)["source"], m_dropInFile);

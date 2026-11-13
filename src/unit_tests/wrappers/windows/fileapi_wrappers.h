@@ -7,22 +7,21 @@
  * Foundation
  */
 
-
 #ifndef FILEAPI_WRAPPERS_H
 #define FILEAPI_WRAPPERS_H
 
 #include <windows.h>
 
-#define FindFirstVolumeW wrap_FindFirstVolumeW
+#define FindFirstVolumeW                 wrap_FindFirstVolumeW
 #define GetVolumePathNamesForVolumeNameW wrap_GetVolumePathNamesForVolumeNameW
-#define FindVolumeClose wrap_FindVolumeClose
-#define QueryDosDeviceW wrap_QueryDosDeviceW
-#define FindNextVolumeW wrap_FindNextVolumeW
-#define QueryDosDeviceA wrap_QueryDosDeviceA
-#undef  CreateFile
-#define CreateFile      wrap_CreateFile
-#undef  GetFileTime
-#define GetFileTime      wrap_GetFileTime
+#define FindVolumeClose                  wrap_FindVolumeClose
+#define QueryDosDeviceW                  wrap_QueryDosDeviceW
+#define FindNextVolumeW                  wrap_FindNextVolumeW
+#define QueryDosDeviceA                  wrap_QueryDosDeviceA
+#undef CreateFile
+#define CreateFile wrap_CreateFile
+#undef GetFileTime
+#define GetFileTime        wrap_GetFileTime
 #define GetFileAttributesA wrap_GetFileAttributesA
 #undef FindFirstFileW
 #define FindFirstFileW wrap_FindFirstFile
@@ -46,29 +45,19 @@ WINBOOL wrap_GetVolumePathNamesForVolumeNameW(LPCWSTR lpszVolumeName,
                                               DWORD cchBufferLength,
                                               PDWORD lpcchReturnLength);
 
-HANDLE wrap_FindFirstVolumeW(LPWSTR lpszVolumeName,
-                             DWORD cchBufferLength);
+HANDLE wrap_FindFirstVolumeW(LPWSTR lpszVolumeName, DWORD cchBufferLength);
 
 WINBOOL wrap_FindVolumeClose(HANDLE hFindVolume);
 
-DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName,
-                           LPWSTR lpTargetPath,
-                           DWORD ucchMax);
+DWORD wrap_QueryDosDeviceW(LPCWSTR lpDeviceName, LPWSTR lpTargetPath, DWORD ucchMax);
 
-DWORD wrap_QueryDosDeviceA(LPCSTR lpDeviceName,
-                           LPSTR lpTargetPath,
-                           DWORD ucchMax);
+DWORD wrap_QueryDosDeviceA(LPCSTR lpDeviceName, LPSTR lpTargetPath, DWORD ucchMax);
 
-WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
-                             LPWSTR lpszVolumeName,
-                             DWORD cchBufferLength);
+WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume, LPWSTR lpszVolumeName, DWORD cchBufferLength);
 
-BOOL wrap_GetFileTime(HANDLE     hFile,
-                      LPFILETIME lpCreationTime,
-                      LPFILETIME lpLastAccessTime,
-                      LPFILETIME lpLastWriteTime);
+BOOL wrap_GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime);
 
-HANDLE wrap_FindFirstFile(LPCWSTR lpFileName,  LPWIN32_FIND_DATAW lpFindFileData);
+HANDLE wrap_FindFirstFile(LPCWSTR lpFileName, LPWIN32_FIND_DATAW lpFindFileData);
 
 BOOL wrap_FindNextFile(HANDLE hFindFile, LPWIN32_FIND_DATAW lpFindFileData);
 

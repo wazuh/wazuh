@@ -23,8 +23,9 @@
 #include "mconf-config.h"
 #include "../../wrappers/common.h"
 
-static void test_read_json_reports_unreadable_sections(void **state) {
-    (void) state;
+static void test_read_json_reports_unreadable_sections(void** state)
+{
+    (void)state;
     wm_task_manager data;
     wmodule module;
 
@@ -34,9 +35,11 @@ static void test_read_json_reports_unreadable_sections(void **state) {
 
     /* Nothing loaded: neither `global` nor `remote` can be read. */
     w_mconf_free();
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "Cannot read the global configuration; the agent disconnection sweep will use its default window.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "Cannot read the remote configuration; the agent upgrade delivery checks will be skipped.");
 
     assert_int_equal(wm_task_manager_read_json(NULL, &module), 1);
@@ -45,11 +48,12 @@ static void test_read_json_reports_unreadable_sections(void **state) {
 }
 
 /* cJSON saturates valueint at INT_MAX: a larger value must be refused, not clamped. */
-static void test_read_json_refuses_integer_above_int_max(void **state) {
-    (void) state;
+static void test_read_json_refuses_integer_above_int_max(void** state)
+{
+    (void)state;
     wm_task_manager data;
     wmodule module;
-    cJSON *section = cJSON_Parse("{\"task_ttl\": 3000000000, \"cleanup_interval\": 2147483647, "
+    cJSON* section = cJSON_Parse("{\"task_ttl\": 3000000000, \"cleanup_interval\": 2147483647, "
                                  "\"max_payload_bytes\": 65536}");
 
     assert_non_null(section);
@@ -58,11 +62,14 @@ static void test_read_json_refuses_integer_above_int_max(void **state) {
     module.data = &data;
 
     w_mconf_free();
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "Cannot read the global configuration; the agent disconnection sweep will use its default window.");
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
                   "Cannot read the remote configuration; the agent upgrade delivery checks will be skipped.");
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__merror,
+                  formatted_msg,
                   "Invalid value for element 'task_ttl': 3000000000 is out of range (0 to 2147483647); "
                   "the value is refused.");
 
@@ -74,8 +81,9 @@ static void test_read_json_refuses_integer_above_int_max(void **state) {
     cJSON_Delete(section);
 }
 
-static void test_read_json_without_module_reads_nothing(void **state) {
-    (void) state;
+static void test_read_json_without_module_reads_nothing(void** state)
+{
+    (void)state;
     wmodule module;
 
     memset(&module, 0, sizeof(module));
@@ -83,7 +91,8 @@ static void test_read_json_without_module_reads_nothing(void **state) {
     assert_int_equal(wm_task_manager_read_json(NULL, &module), 0);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_read_json_reports_unreadable_sections),
         cmocka_unit_test(test_read_json_refuses_integer_above_int_max),

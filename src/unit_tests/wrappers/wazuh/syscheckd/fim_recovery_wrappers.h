@@ -22,15 +22,15 @@ typedef struct _OSList OSList;
  * @brief Wrapper for fim_recovery_persist_table_and_resync
  */
 bool __wrap_fim_recovery_persist_table_and_resync(char* table_name,
-                                                   AgentSyncProtocolHandle* handle,
-                                                   const OSList* directories_list,
-                                                   const char* retry_note);
+                                                  AgentSyncProtocolHandle* handle,
+                                                  const OSList* directories_list,
+                                                  const char* retry_note);
 
 /**
  * @brief Wrapper for fim_recovery_check_if_full_sync_required
  */
 IntegrityCheckResult_t __wrap_fim_recovery_check_if_full_sync_required(char* table_name,
-                                                                        AgentSyncProtocolHandle* handle);
+                                                                       AgentSyncProtocolHandle* handle);
 
 /**
  * @brief Wrapper for fim_recovery_integrity_interval_has_elapsed

@@ -15,13 +15,13 @@
 
 class FileItemTest : public testing::Test
 {
-    protected:
-        FileItemTest() = default;
-        virtual ~FileItemTest() = default;
+protected:
+    FileItemTest() = default;
+    virtual ~FileItemTest() = default;
 
-        void SetUp() override;
-        void TearDown() override;
-        fim_entry* fimEntryTest;
+    void SetUp() override;
+    void TearDown() override;
+    fim_entry* fimEntryTest;
 };
 
 #endif //_FILEITEM_TEST_H

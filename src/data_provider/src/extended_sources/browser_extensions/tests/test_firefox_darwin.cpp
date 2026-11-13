@@ -18,12 +18,11 @@
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
-    public:
-        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
-        MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD(std::string, getUserId, (std::string), (override));
+public:
+    MOCK_METHOD(std::string, getApplicationsPath, (), (override));
+    MOCK_METHOD(std::string, getHomePath, (), (override));
+    MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
-
 
 // The fixture files must belong to the profile owner, so the owner reported is whoever owns the checkout
 static std::string fixtureOwner(const std::string& path)
@@ -38,7 +37,8 @@ TEST(FirefoxAddonsTests, NumberOfExtensions)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson = firefoxAddonsProvider.collect();
@@ -51,7 +51,8 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
     std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "darwin").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
+    EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user")))
+        .WillRepeatedly(::testing::Return(fixtureOwner(mockHomePath)));
 
     FirefoxAddonsProvider firefoxAddonsProvider(mockAddonsWrapper);
     nlohmann::json extensionsJson = firefoxAddonsProvider.collect();

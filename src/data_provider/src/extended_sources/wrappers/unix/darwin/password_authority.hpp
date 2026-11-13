@@ -39,11 +39,7 @@ namespace od
     ///         is empty when the authority carries no readable list.
     inline nlohmann::json parseAuthenticationAuthority(const std::vector<std::string>& authorities)
     {
-        nlohmann::json passwordData
-        {
-            {"password_status", PASSWORD_STATUS_NOT_SET},
-            {"password_hash_algorithm", ""}
-        };
+        nlohmann::json passwordData {{"password_status", PASSWORD_STATUS_NOT_SET}, {"password_hash_algorithm", ""}};
 
         for (const auto& authority : authorities)
         {
@@ -54,21 +50,20 @@ namespace od
 
             passwordData["password_status"] = PASSWORD_STATUS_ACTIVE;
 
-            const auto listStart { authority.find(HASH_LIST_TAG) };
+            const auto listStart {authority.find(HASH_LIST_TAG)};
 
             if (listStart != std::string::npos)
             {
-                const auto algorithmsStart { listStart + std::strlen(HASH_LIST_TAG) };
-                const auto algorithmsEnd { authority.find('>', algorithmsStart) };
+                const auto algorithmsStart {listStart + std::strlen(HASH_LIST_TAG)};
+                const auto algorithmsEnd {authority.find('>', algorithmsStart)};
 
                 if (algorithmsEnd != std::string::npos)
                 {
                     // The list is ordered by preference, so the first entry is the algorithm in use.
-                    const auto algorithms { authority.substr(algorithmsStart, algorithmsEnd - algorithmsStart) };
-                    const auto separator { algorithms.find(',') };
-                    passwordData["password_hash_algorithm"] = separator == std::string::npos
-                                                              ? algorithms
-                                                              : algorithms.substr(0, separator);
+                    const auto algorithms {authority.substr(algorithmsStart, algorithmsEnd - algorithmsStart)};
+                    const auto separator {algorithms.find(',')};
+                    passwordData["password_hash_algorithm"] =
+                        separator == std::string::npos ? algorithms : algorithms.substr(0, separator);
                 }
             }
 

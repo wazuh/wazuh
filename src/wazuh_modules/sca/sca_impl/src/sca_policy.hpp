@@ -21,33 +21,33 @@ struct Check
 
 class SCAPolicy : public ISCAPolicy
 {
-    public:
-        /// @brief Constructor
-        explicit SCAPolicy(std::string id, Check requirements, std::vector<Check> checks);
+public:
+    /// @brief Constructor
+    explicit SCAPolicy(std::string id, Check requirements, std::vector<Check> checks);
 
-        /// @brief Move constructor
-        SCAPolicy(SCAPolicy&& other) noexcept;
+    /// @brief Move constructor
+    SCAPolicy(SCAPolicy&& other) noexcept;
 
-        /// @copydoc ISCAPolicy::Run
-        void Run(std::function<void(const CheckResult&)> reportCheckResult) override;
+    /// @copydoc ISCAPolicy::Run
+    void Run(std::function<void(const CheckResult&)> reportCheckResult) override;
 
-        /// @copydoc ISCAPolicy::Stop
-        void Stop() override;
+    /// @copydoc ISCAPolicy::Stop
+    void Stop() override;
 
-        /// @copydoc ISCAPolicy::GetId
-        const std::string& GetId() const override
-        {
-            return m_id;
-        }
+    /// @copydoc ISCAPolicy::GetId
+    const std::string& GetId() const override
+    {
+        return m_id;
+    }
 
-    private:
-        /// @brief Runs the policy checks
-        /// @param reportCheckResult Function to report check result
-        void Scan(const std::function<void(const CheckResult&)>& reportCheckResult);
+private:
+    /// @brief Runs the policy checks
+    /// @param reportCheckResult Function to report check result
+    void Scan(const std::function<void(const CheckResult&)>& reportCheckResult);
 
-        std::string m_id;
-        Check m_requirements;
-        std::vector<Check> m_checks;
-        std::atomic<bool> m_keepRunning {true};
-        std::atomic<bool> m_scanInProgress {false};
+    std::string m_id;
+    Check m_requirements;
+    std::vector<Check> m_checks;
+    std::atomic<bool> m_keepRunning {true};
+    std::atomic<bool> m_scanInProgress {false};
 };

@@ -11,9 +11,8 @@
 #ifndef VALIDATE_H
 #define VALIDATE_H
 
-
 /* Run-time definitions */
-int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
+int getDefine_Int(const char* high_name, const char* low_name, int min, int max) __attribute__((nonnull));
 
 /**
  * @brief Get an integer definition with a fallback default value.
@@ -28,8 +27,8 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
  * @param default_val Value returned when the option is not found in any file.
  * @return The option value, or @p default_val when absent.
  */
-int getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val) __attribute__((nonnull(1, 2)));
-
+int getDefine_Int_default(const char* high_name, const char* low_name, int min, int max, int default_val)
+    __attribute__((nonnull(1, 2)));
 
 /**
  * @brief Check if IP_address is present at that_ip
@@ -38,8 +37,7 @@ int getDefine_Int_default(const char *high_name, const char *low_name, int min, 
  * @param that_ip Struct os_ip to check.
  * @return Returns 1 on success or 0 on failure.
  */
-int OS_IPFound(const char *ip_address, const os_ip *that_ip) __attribute__((nonnull));
-
+int OS_IPFound(const char* ip_address, const os_ip* that_ip) __attribute__((nonnull));
 
 /**
  * @brief Check if IP_address is present at that_ip
@@ -48,8 +46,7 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip) __attribute__((nonn
  * @param list_of_ips List of os_ip struct to check.
  * @return Returns 1 on success or 0 on failure.
  */
-int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips);// __attribute__((nonnull));
-
+int OS_IPFoundList(const char* ip_address, os_ip** list_of_ips); // __attribute__((nonnull));
 
 /**
  * @brief Validate if an IP address is in the right format
@@ -58,8 +55,7 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips);// __attribute__
  * @param final_ip [out] Struct os_ip with the given IP address.
  * @return Returns 0 if doesn't match or 1 if it does (or 2 if it has a CIDR).
  */
-int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
-
+int OS_IsValidIP(const char* ip_address, os_ip* final_ip);
 
 /**
  * @brief Check if an IPv4 address is embedded in an IPv6 address and resolve it.
@@ -68,8 +64,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
  * @param size Size of the address buffer.
  * @return Returns 0 if doesn't match or 1 if it does.
  */
-int OS_GetIPv4FromIPv6(char *ip_address, size_t size);
-
+int OS_GetIPv4FromIPv6(char* ip_address, size_t size);
 
 /**
  * @brief Expand IPv6 to its full representation.
@@ -78,8 +73,7 @@ int OS_GetIPv4FromIPv6(char *ip_address, size_t size);
  * @param size Size of the address buffer.
  * @return Returns 0 on success or -1 on failure.
  */
-int OS_ExpandIPv6(char *ip_address, size_t size);
-
+int OS_ExpandIPv6(char* ip_address, size_t size);
 
 /**
  * @brief Validate if a time is in an acceptable format.
@@ -94,8 +88,7 @@ int OS_ExpandIPv6(char *ip_address, size_t size);
  * @param time_str Time to be validated.
  * @return Returns 0 if doesn't match or a valid string in success.
  */
-char *OS_IsValidTime(const char *time_str);
-
+char* OS_IsValidTime(const char* time_str);
 
 /**
  * @brief Validate if a time is in an acceptable format, but only accepts a unique time, not a range.
@@ -103,8 +96,7 @@ char *OS_IsValidTime(const char *time_str);
  * @param time_str Time to be validated.
  * @return Returns 0 if doesn't match or a valid string in success.
  */
-char *OS_IsValidUniqueTime(const char *time_str) __attribute__((nonnull));
-
+char* OS_IsValidUniqueTime(const char* time_str) __attribute__((nonnull));
 
 /**
  * @brief Checks if time is the same or has passed a specified one.
@@ -113,8 +105,7 @@ char *OS_IsValidUniqueTime(const char *time_str) __attribute__((nonnull));
  * @param ossec_time Time interval.
  * @return Returns 1 on success or 0 on failure.
  */
-int OS_IsAfterTime(const char *time_str, const char *ossec_time) __attribute__((nonnull));
-
+int OS_IsAfterTime(const char* time_str, const char* ossec_time) __attribute__((nonnull));
 
 /**
  * @brief Checks if time is the same or has passed a specified one.
@@ -125,8 +116,7 @@ int OS_IsAfterTime(const char *time_str, const char *ossec_time) __attribute__((
  * @param day_str Day to be validated.
  * @return Returns 0 if doesn't match or a valid string in success.
  */
-char *OS_IsValidDay(const char *day_str);
-
+char* OS_IsValidDay(const char* day_str);
 
 /**
  * @brief Check if the specified week day is in the range.
@@ -135,8 +125,7 @@ char *OS_IsValidDay(const char *day_str);
  * @param ossec_day Interval.
  * @return Returns 1 on success or 0 on failure.
  */
-int OS_IsonDay(int week_day, const char *ossec_day) __attribute__((nonnull));
-
+int OS_IsonDay(int week_day, const char* ossec_day) __attribute__((nonnull));
 
 /**
  * @brief Convert a CIDR into string: aaa.bbb.ccc.ddd[/ee]
@@ -146,8 +135,7 @@ int OS_IsonDay(int week_day, const char *ossec_day) __attribute__((nonnull));
  * @param size [in] Size of the allocated string.
  * @return Returns 0 on success or -1 on failure.
  */
-int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size);
-
+int OS_CIDRtoStr(const os_ip* ip, char* string, size_t size);
 
 /**
  * @brief Validate the day of the week set and retrieve its corresponding integer value.
@@ -155,8 +143,7 @@ int OS_CIDRtoStr(const os_ip * ip, char * string, size_t size);
  * @param day_str Day of the week.
  * @return Return day of the week. If not found, -1 is returned.
  */
-int w_validate_wday(const char * day_str);
-
+int w_validate_wday(const char* day_str);
 
 /**
  * @brief Validate a given time.
@@ -165,8 +152,7 @@ int w_validate_wday(const char * day_str);
  * @param time_str Time to be validated.
  * @return Returns NULL on error or a valid string in success.
  */
-char * w_validate_time(const char * time_str);
-
+char* w_validate_time(const char* time_str);
 
 /**
  * @brief Validate if the specified interval is multiple of weeks or days.
@@ -177,20 +163,17 @@ char * w_validate_time(const char * time_str);
  */
 int w_validate_interval(int interval, int force);
 
-
 /**
  * @brief Convert to bytes
  *
  * @param content string to validate
  * @return number of bytes on success, otherwise -1
  */
-long long w_validate_bytes(const char *content);
-
+long long w_validate_bytes(const char* content);
 
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
 #define isSingleHost(x) ((x->is_ipv6) ? false : (x->ipv4->netmask == 0xFFFFFFFF))
-
 
 #endif /* VALIDATE_H */

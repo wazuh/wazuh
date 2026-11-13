@@ -22,46 +22,46 @@ using namespace testing;
 
 class FileIOUtilsTest : public ::testing::Test
 {
-    protected:
-        void TearDown() override
-        {
-            mockFileIO.reset();
-            mockFileIOWrapper.reset();
-            fakeStream.reset();
-        }
+protected:
+    void TearDown() override
+    {
+        mockFileIO.reset();
+        mockFileIOWrapper.reset();
+        fakeStream.reset();
+    }
 
-        void SetUp() override
-        {
-            mockFileIOWrapper = std::make_shared<MockFileIOWrapper>();
-            mockFileIO = std::make_shared<file_io::FileIOUtils>(mockFileIOWrapper);
-            fakeStream = std::make_unique<std::ifstream>();
-        }
+    void SetUp() override
+    {
+        mockFileIOWrapper = std::make_shared<MockFileIOWrapper>();
+        mockFileIO = std::make_shared<file_io::FileIOUtils>(mockFileIOWrapper);
+        fakeStream = std::make_unique<std::ifstream>();
+    }
 
-    public:
-        std::shared_ptr<MockFileIOWrapper> mockFileIOWrapper;
-        std::shared_ptr<file_io::FileIOUtils> mockFileIO;
-        std::unique_ptr<std::ifstream> fakeStream;
+public:
+    std::shared_ptr<MockFileIOWrapper> mockFileIOWrapper;
+    std::shared_ptr<file_io::FileIOUtils> mockFileIO;
+    std::unique_ptr<std::ifstream> fakeStream;
 
-        const std::string filePath = "fakepath.txt";
+    const std::string filePath = "fakepath.txt";
 };
 
 TEST_F(FileIOUtilsTest, ReadLineByLine_CallsCallbackForEachLine)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
-    .WillOnce(testing::Return(ByMove(std::move(fakeStream))));
+        .WillOnce(testing::Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(testing::_)).WillOnce(testing::Return(true));
     EXPECT_CALL(*mockFileIOWrapper, get_line(testing::_, testing::_))
-    .WillOnce(testing::DoAll(testing::SetArgReferee<1>("line1"), testing::Return(true)))
-    .WillOnce(testing::DoAll(testing::SetArgReferee<1>("line2"), testing::Return(true)))
-    .WillOnce(testing::Return(false));
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>("line1"), testing::Return(true)))
+        .WillOnce(testing::DoAll(testing::SetArgReferee<1>("line2"), testing::Return(true)))
+        .WillOnce(testing::Return(false));
 
     std::vector<std::string> collected;
     mockFileIO->readLineByLine(filePath,
-                               [&](const std::string & line)
-    {
-        collected.push_back(line);
-        return true;
-    });
+                               [&](const std::string& line)
+                               {
+                                   collected.push_back(line);
+                                   return true;
+                               });
 
     EXPECT_EQ(collected, (std::vector<std::string> {"line1", "line2"}));
 }
@@ -69,46 +69,38 @@ TEST_F(FileIOUtilsTest, ReadLineByLine_CallsCallbackForEachLine)
 TEST_F(FileIOUtilsTest, ReadLineByLine_CreateIfstreamFails_ThrowsException)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
-    .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
+        .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
 
     EXPECT_THROW(
-    {
-        mockFileIO->readLineByLine(filePath, [](const std::string& /*line*/)
-        {
-            return true;
-        }); },
-    std::runtime_error);
+        { mockFileIO->readLineByLine(filePath, [](const std::string& /*line*/) { return true; }); },
+        std::runtime_error);
 }
 
 TEST_F(FileIOUtilsTest, ReadLineByLine_FileNotOpen_ThrowsException)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
-    .WillOnce(Return(ByMove(std::move(fakeStream))));
+        .WillOnce(Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(_)).WillOnce(Return(false));
 
     EXPECT_THROW(
-    {
-        mockFileIO->readLineByLine(filePath, [](const std::string& /*line*/)
-        {
-            return true;
-        }); },
-    std::runtime_error);
+        { mockFileIO->readLineByLine(filePath, [](const std::string& /*line*/) { return true; }); },
+        std::runtime_error);
 }
 
 TEST_F(FileIOUtilsTest, ReadLineByLine_EmptyFile_NoCallbackCalled)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
-    .WillOnce(Return(ByMove(std::move(fakeStream))));
+        .WillOnce(Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(_)).WillOnce(Return(true));
     EXPECT_CALL(*mockFileIOWrapper, get_line(_, _)).WillOnce(Return(false));
 
     bool callbackCalled = false;
     mockFileIO->readLineByLine(filePath,
                                [&](const std::string& /*line*/)
-    {
-        callbackCalled = true;
-        return true;
-    });
+                               {
+                                   callbackCalled = true;
+                                   return true;
+                               });
 
     EXPECT_FALSE(callbackCalled);
 }
@@ -116,7 +108,7 @@ TEST_F(FileIOUtilsTest, ReadLineByLine_EmptyFile_NoCallbackCalled)
 TEST_F(FileIOUtilsTest, GetFileContent_CreateIfstreamFails_ReturnsEmptyString)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
-    .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
+        .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
 
     const std::string content = mockFileIO->getFileContent(filePath);
     EXPECT_EQ(content, "");
@@ -125,7 +117,7 @@ TEST_F(FileIOUtilsTest, GetFileContent_CreateIfstreamFails_ReturnsEmptyString)
 TEST_F(FileIOUtilsTest, GetFileContent_FileNotOpen_ReturnsEmptyString)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, std::ios_base::in))
-    .WillOnce(Return(ByMove(std::move(fakeStream))));
+        .WillOnce(Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(testing::_)).WillOnce(Return(false));
     const std::string content = mockFileIO->getFileContent(filePath);
     EXPECT_EQ(content, "");
@@ -136,7 +128,7 @@ TEST_F(FileIOUtilsTest, GetFileContent_FileIsOpen_ReturnsContent)
     const std::string fakeData = "fakepath content";
 
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, testing::_))
-    .WillOnce(Return(ByMove(std::move(fakeStream))));
+        .WillOnce(Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(testing::_)).WillOnce(Return(true));
 
     const std::istringstream iss(fakeData);
@@ -150,7 +142,7 @@ TEST_F(FileIOUtilsTest, GetFileContent_FileIsOpen_ReturnsContent)
 TEST_F(FileIOUtilsTest, GetBinaryContent_FileIsNotOpen_ReturnsEmptyVector)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, testing::_))
-    .WillOnce(Return(ByMove(std::move(fakeStream))));
+        .WillOnce(Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(testing::_)).WillOnce(Return(false));
 
     const std::vector<char> content = mockFileIO->getBinaryContent(filePath);
@@ -160,7 +152,7 @@ TEST_F(FileIOUtilsTest, GetBinaryContent_FileIsNotOpen_ReturnsEmptyVector)
 TEST_F(FileIOUtilsTest, GetBinaryContent_CreateIfstreamFails_ReturnsEmptyVector)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, testing::_))
-    .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
+        .WillOnce(Return(ByMove(std::unique_ptr<std::ifstream>(nullptr))));
 
     const std::vector<char> content = mockFileIO->getBinaryContent(filePath);
     EXPECT_EQ(content.size(), 0);
@@ -169,7 +161,7 @@ TEST_F(FileIOUtilsTest, GetBinaryContent_CreateIfstreamFails_ReturnsEmptyVector)
 TEST_F(FileIOUtilsTest, GetBinaryContent_FileIsOpen_BufferIsNull_ReturnsEmptyVector)
 {
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, testing::_))
-    .WillOnce(Return(ByMove(std::move(fakeStream))));
+        .WillOnce(Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(testing::_)).WillOnce(Return(true));
     EXPECT_CALL(*mockFileIOWrapper, get_rdbuf(testing::_)).WillOnce(Return(nullptr));
 
@@ -185,7 +177,7 @@ TEST_F(FileIOUtilsTest, GetBinaryContent_FileIsOpen_BufferIsNotNull_ReturnsConte
     std::streambuf* fakeBuf = iss.rdbuf();
 
     EXPECT_CALL(*mockFileIOWrapper, create_ifstream(filePath, testing::_))
-    .WillOnce(Return(ByMove(std::move(fakeStream))));
+        .WillOnce(Return(ByMove(std::move(fakeStream))));
     EXPECT_CALL(*mockFileIOWrapper, is_open(testing::_)).WillOnce(Return(true));
     EXPECT_CALL(*mockFileIOWrapper, get_rdbuf(testing::_)).WillOnce(Return(fakeBuf));
 
@@ -196,30 +188,30 @@ TEST_F(FileIOUtilsTest, GetBinaryContent_FileIsOpen_BufferIsNotNull_ReturnsConte
 // These use real files: the type checks are made by the operating system on the opened file
 class RegularFileContentTest : public ::testing::Test
 {
-    protected:
-        std::filesystem::path m_dir;
-        file_io::FileIOUtils m_fileIO;
+protected:
+    std::filesystem::path m_dir;
+    file_io::FileIOUtils m_fileIO;
 
-        void SetUp() override
-        {
-            const auto suffix {std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())};
-            m_dir = std::filesystem::temp_directory_path() / ("regular_file_content_test_" + suffix);
-            std::filesystem::create_directory(m_dir);
-        }
+    void SetUp() override
+    {
+        const auto suffix {std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())};
+        m_dir = std::filesystem::temp_directory_path() / ("regular_file_content_test_" + suffix);
+        std::filesystem::create_directory(m_dir);
+    }
 
-        void TearDown() override
-        {
-            std::error_code ec;
-            std::filesystem::remove_all(m_dir, ec);
-        }
+    void TearDown() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all(m_dir, ec);
+    }
 
-        std::filesystem::path writeFile(const std::string& name, const std::string& content) const
-        {
-            const auto path {m_dir / name};
-            std::ofstream file(path, std::ios::binary);
-            file << content;
-            return path;
-        }
+    std::filesystem::path writeFile(const std::string& name, const std::string& content) const
+    {
+        const auto path {m_dir / name};
+        std::ofstream file(path, std::ios::binary);
+        file << content;
+        return path;
+    }
 };
 
 TEST_F(RegularFileContentTest, RegularFileIsRead)
@@ -256,11 +248,9 @@ TEST_F(RegularFileContentTest, DirectoryIsNotRegular)
     EXPECT_EQ(m_fileIO.getRegularFileContent(m_dir, false, content), RegularFileStatus::NotRegular);
 }
 
-
 TEST_F(RegularFileContentTest, LinesAreSplitAsGetlineSplitsThem)
 {
-    const std::vector<std::pair<std::string, std::vector<std::string>>> cases
-    {
+    const std::vector<std::pair<std::string, std::vector<std::string>>> cases {
         {"a\n\nb\nlast", {"a", "", "b", "last"}},
         {"x\n", {"x"}},
         {"\n", {""}},
@@ -274,12 +264,12 @@ TEST_F(RegularFileContentTest, LinesAreSplitAsGetlineSplitsThem)
 
         EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
                                                      false,
-                                                     [&lines](const std::string & line)
-        {
-            lines.push_back(line);
-            return true;
-        }),
-        RegularFileStatus::Read);
+                                                     [&lines](const std::string& line)
+                                                     {
+                                                         lines.push_back(line);
+                                                         return true;
+                                                     }),
+                  RegularFileStatus::Read);
         EXPECT_EQ(lines, expected) << text;
     }
 }
@@ -292,12 +282,12 @@ TEST_F(RegularFileContentTest, LineLongerThanAReadChunkIsKeptWhole)
 
     EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
                                                  true,
-                                                 [&lines](const std::string & line)
-    {
-        lines.push_back(line);
-        return true;
-    }),
-    RegularFileStatus::Read);
+                                                 [&lines](const std::string& line)
+                                                 {
+                                                     lines.push_back(line);
+                                                     return true;
+                                                 }),
+              RegularFileStatus::Read);
     EXPECT_EQ(lines, (std::vector<std::string> {longLine, "end"}));
 }
 
@@ -317,21 +307,18 @@ TEST_F(RegularFileContentTest, LineByLineStopsWhenTheCallbackAsks)
     EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
                                                  false,
                                                  [&calls](const std::string&)
-    {
-        ++calls;
-        return false;
-    }),
-    RegularFileStatus::Read);
+                                                 {
+                                                     ++calls;
+                                                     return false;
+                                                 }),
+              RegularFileStatus::Read);
     EXPECT_EQ(calls, 1);
 }
 
 TEST_F(RegularFileContentTest, LineByLineOfAMissingFileFailsToOpen)
 {
-    EXPECT_EQ(m_fileIO.readRegularFileLineByLine(m_dir / "missing", true, [](const std::string&)
-    {
-        return true;
-    }),
-    RegularFileStatus::OpenFailed);
+    EXPECT_EQ(m_fileIO.readRegularFileLineByLine(m_dir / "missing", true, [](const std::string&) { return true; }),
+              RegularFileStatus::OpenFailed);
 }
 #ifdef _WIN32
 TEST_F(RegularFileContentTest, LineEndingsAreConvertedAsInTextMode)
@@ -350,12 +337,12 @@ TEST_F(RegularFileContentTest, LineByLineConvertsLineEndingsAsInTextMode)
 
     EXPECT_EQ(m_fileIO.readRegularFileLineByLine(path,
                                                  false,
-                                                 [&lines](const std::string & line)
-    {
-        lines.push_back(line);
-        return true;
-    }),
-    RegularFileStatus::Read);
+                                                 [&lines](const std::string& line)
+                                                 {
+                                                     lines.push_back(line);
+                                                     return true;
+                                                 }),
+              RegularFileStatus::Read);
     EXPECT_EQ(lines, (std::vector<std::string> {"line1", "line2"}));
 }
 #else
@@ -404,10 +391,10 @@ TEST_F(RegularFileContentTest, NamedPipeIsRejectedWithoutBlocking)
     {
         auto result {std::async(std::launch::async,
                                 [this, path = path, follow = follow]
-        {
-            std::string content;
-            return m_fileIO.getRegularFileContent(path, follow, content);
-        })};
+                                {
+                                    std::string content;
+                                    return m_fileIO.getRegularFileContent(path, follow, content);
+                                })};
 
         if (result.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
         {
@@ -436,10 +423,7 @@ TEST_F(RegularFileContentTest, LineByLineRejectsNamedPipesAndLinks)
         return true;
     };
 
-    auto result {std::async(std::launch::async, [&]
-        {
-            return m_fileIO.readRegularFileLineByLine(pipe, true, count);
-        })};
+    auto result {std::async(std::launch::async, [&] { return m_fileIO.readRegularFileLineByLine(pipe, true, count); })};
 
     if (result.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
     {
@@ -459,20 +443,17 @@ TEST_F(RegularFileContentTest, ExceptionWhileReadingClosesTheFile)
 {
     const auto openDescriptors = []
     {
-        return std::distance(std::filesystem::directory_iterator("/proc/self/fd"), std::filesystem::directory_iterator {});
+        return std::distance(std::filesystem::directory_iterator("/proc/self/fd"),
+                             std::filesystem::directory_iterator {});
     };
     const auto path {writeFile("throws", "line\n")};
     const auto before {openDescriptors()};
 
     for (int i = 0; i < 50; ++i)
     {
-        EXPECT_THROW(m_fileIO.readRegularFileLineByLine(path,
-                                                        false,
-                                                        [](const std::string&) -> bool
-        {
-            throw std::runtime_error("callback failure");
-        }),
-        std::runtime_error);
+        EXPECT_THROW(m_fileIO.readRegularFileLineByLine(
+                         path, false, [](const std::string&) -> bool { throw std::runtime_error("callback failure"); }),
+                     std::runtime_error);
     }
 
     EXPECT_EQ(openDescriptors(), before);

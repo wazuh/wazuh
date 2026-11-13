@@ -11,13 +11,13 @@
 #include "shared.h"
 #include "logcollector.h"
 
-
 /* Read Output of commands */
-void *read_command(logreader *lf, int *rc, int drop_it) {
+void* read_command(logreader* lf, int* rc, int drop_it)
+{
     size_t cmd_size = 0;
-    char *p;
+    char* p;
     char str[OS_MAXSTR + 1];
-    FILE *cmd_output;
+    FILE* cmd_output;
     int lines = 0;
 
     str[OS_MAXSTR] = '\0';
@@ -26,48 +26,53 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
     mdebug2("Running command '%s'", lf->command);
 
     cmd_output = popen(lf->command, "r");
-    if (!cmd_output) {
-        merror("Unable to execute command: '%s'.",
-               lf->command);
+    if (!cmd_output)
+    {
+        merror("Unable to execute command: '%s'.", lf->command);
 
         lf->command = NULL;
         return (NULL);
     }
 
-    snprintf(str, 256, "wazuh: output: '%s': ",
-             (NULL != lf->alias)
-             ? lf->alias
-             : lf->command);
+    snprintf(str, 256, "wazuh: output: '%s': ", (NULL != lf->alias) ? lf->alias : lf->command);
     cmd_size = strlen(str);
 
-    while (can_read() && (!maximum_lines || lines < maximum_lines) && fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output)) {
+    while (can_read() && (!maximum_lines || lines < maximum_lines) &&
+           fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output))
+    {
 
         lines++;
         /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
+        if ((p = strrchr(str, '\n')) != NULL)
+        {
             *p = '\0';
         }
 
         /* Remove empty lines */
 #ifdef WIN32
-        if (str[0] == '\r' && str[1] == '\0') {
+        if (str[0] == '\r' && str[1] == '\0')
+        {
             continue;
         }
 #endif
-        if (str[0] == '\0') {
+        if (str[0] == '\0')
+        {
             continue;
         }
 
         /* Check ignore and restrict log regex, if configured. */
-        if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str)) {
+        if (check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, str))
+        {
             continue;
         }
 
         mdebug2("Reading command message: '%s'", str);
 
         /* Send message to queue */
-        if (drop_it == 0) {
-            w_msg_hash_queues_push(str, lf->alias ? lf->alias : lf->command, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
+        if (drop_it == 0)
+        {
+            w_msg_hash_queues_push(
+                str, lf->alias ? lf->alias : lf->command, strlen(str) + 1, lf->log_target, LOCALFILE_MQ);
         }
 
         continue;

@@ -18,19 +18,22 @@
 
 /* Reader of the `global` section of the effective document (mconf-config.h). The schema already
  * fixed the types and filled the defaults; only the value rules it cannot express are re-checked. */
-int Read_Global_JSON(const struct cJSON *global, void *configp)
+int Read_Global_JSON(const struct cJSON* global, void* configp)
 {
-    _Config *Config = (_Config *)configp;
-    const cJSON *item = NULL;
+    _Config* Config = (_Config*)configp;
+    const cJSON* item = NULL;
 
-    if (Config == NULL || global == NULL) {
+    if (Config == NULL || global == NULL)
+    {
         return (0);
     }
 
-    if (item = cJSON_GetObjectItem(global, "agents_disconnection_time"), item != NULL) {
+    if (item = cJSON_GetObjectItem(global, "agents_disconnection_time"), item != NULL)
+    {
         long time = w_mconf_json_time(item);
 
-        if (time < 1) {
+        if (time < 1)
+        {
             w_mconf_json_invalid("agents_disconnection_time", item);
             return (OS_INVALID);
         }

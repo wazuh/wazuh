@@ -34,6 +34,6 @@
  * @return 0 when the file's bytes are gone (an already-empty file included), 1 otherwise, having
  *         logged why.
  */
-int w_shred_file_in_place(const char *path);
+int w_shred_file_in_place(const char* path);
 
 #endif /* SHRED_FILE_H */

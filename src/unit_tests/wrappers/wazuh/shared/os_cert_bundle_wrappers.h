@@ -14,6 +14,6 @@ const char* __wrap_os_find_ca_bundle(const char* const* candidates);
 
 /// Convenience: arrange for the next os_find_ca_bundle() call to return `path`
 /// (pass NULL to simulate "no OS CA bundle found").
-void expect_os_find_ca_bundle(const char *path);
+void expect_os_find_ca_bundle(const char* path);
 
 #endif

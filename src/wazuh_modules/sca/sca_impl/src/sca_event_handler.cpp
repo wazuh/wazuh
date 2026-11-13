@@ -18,8 +18,7 @@
 #include "schemaValidator.hpp"
 
 /// @brief Map of stateless operations
-static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
-{
+static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP {
     // LCOV_EXCL_START
     {MODIFIED, "modified"},
     {DELETED, "deleted"},
@@ -28,8 +27,7 @@ static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
 };
 
 /// @brief Map of stateful operations
-static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
-{
+static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP {
     // LCOV_EXCL_START
     {MODIFIED, OPERATION_MODIFY},
     {DELETED, OPERATION_DELETE},
@@ -37,12 +35,14 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
     // LCOV_EXCL_STOP
 };
 
-SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
-                                 std::function<int(const std::string&)> pushStatelessMessage,
-                                 std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage,
-                                 std::shared_ptr<SCASyncManager> syncManager,
-                                 bool allowStatefulMessages,
-                                 bool allowStatelessMessages)
+SCAEventHandler::SCAEventHandler(
+    std::shared_ptr<IDBSync> dBSync,
+    std::function<int(const std::string&)> pushStatelessMessage,
+    std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)>
+        pushStatefulMessage,
+    std::shared_ptr<SCASyncManager> syncManager,
+    bool allowStatefulMessages,
+    bool allowStatelessMessages)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
     , m_dBSync(std::move(dBSync))
@@ -64,7 +64,7 @@ void SCAEventHandler::ReportPoliciesDelta(
         m_syncManager->prepareBatchAllowedIds();
     }
 
-    const auto extractCheckData = [](const nlohmann::json & event)
+    const auto extractCheckData = [](const nlohmann::json& event)
     {
         nlohmann::json checkData;
 
@@ -83,7 +83,7 @@ void SCAEventHandler::ReportPoliciesDelta(
         return checkData;
     };
 
-    const auto extractCheckId = [](const nlohmann::json & checkData)
+    const auto extractCheckId = [](const nlohmann::json& checkData)
     {
         if (checkData.contains("id"))
         {
@@ -134,11 +134,7 @@ void SCAEventHandler::ReportPoliciesDelta(
             const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
 
             const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                              processedStatefulEvent,
-                                              "policy/check event",
-                                              checkDataForDelete,
-                                              &failedChecks
-                                          );
+                processedStatefulEvent, "policy/check event", checkDataForDelete, &failedChecks);
 
             if (validationPassed && shouldPushStateful)
             {
@@ -222,8 +218,9 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     // Check if the check exists in DB (may have been deleted due to validation failure)
     if (checkData.empty() || !checkData.contains("id"))
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG,
-                                         "Check " + checkId + " not found in DB (may have been deleted due to validation failure), skipping report");
+        LoggingHelper::getInstance().log(
+            LOG_DEBUG,
+            "Check " + checkId + " not found in DB (may have been deleted due to validation failure), skipping report");
         return;
     }
 
@@ -253,14 +250,12 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     // List to accumulate checks that fail validation for deferred deletion
     std::vector<nlohmann::json> failedChecks;
 
-    const auto callback = [&, this](ReturnTypeCallback result, const nlohmann::json & rowData)
+    const auto callback = [&, this](ReturnTypeCallback result, const nlohmann::json& rowData)
     {
         if (result == MODIFIED)
         {
-            const nlohmann::json event =
-            {
-                {"policy", policyData}, {"check", rowData}, {"result", result}, {"collector", "check"}
-            };
+            const nlohmann::json event = {
+                {"policy", policyData}, {"check", rowData}, {"result", result}, {"collector", "check"}};
 
             bool shouldPushStateful = true;
 
@@ -285,12 +280,8 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
             {
                 const auto [stateful, operation, version] = ProcessStateful(event);
 
-                const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                                  stateful,
-                                                  "checkId: " + checkId,
-                                                  dataForDelete,
-                                                  &failedChecks
-                                              );
+                const bool validationPassed =
+                    ValidateAndHandleStatefulMessage(stateful, "checkId: " + checkId, dataForDelete, &failedChecks);
 
                 if (validationPassed && shouldPushStateful)
                 {
@@ -307,7 +298,8 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to update check result: " + rowData.dump()); // LCOV_EXCL_LINE
+            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                             "Failed to update check result: " + rowData.dump()); // LCOV_EXCL_LINE
         }
     };
 
@@ -349,10 +341,8 @@ SCAEventHandler::ProcessEvents(const std::unordered_map<std::string, nlohmann::j
                     continue;
                 }
 
-                const nlohmann::json event =
-                {
-                    {"policy", policyData}, {"check", checkData}, {"result", policyResult}, {"collector", "policy"}
-                };
+                const nlohmann::json event = {
+                    {"policy", policyData}, {"check", checkData}, {"result", policyResult}, {"collector", "policy"}};
                 events.push_back(event);
             }
         }
@@ -383,10 +373,8 @@ SCAEventHandler::ProcessEvents(const std::unordered_map<std::string, nlohmann::j
                 policyData = GetPolicyById(policyId);
             }
 
-            const nlohmann::json event =
-            {
-                {"policy", policyData}, {"check", checkData}, {"result", checkResult}, {"collector", "check"}
-            };
+            const nlohmann::json event = {
+                {"policy", policyData}, {"check", checkData}, {"result", checkResult}, {"collector", "check"}};
             events.push_back(event);
         }
     }
@@ -410,26 +398,26 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
 
     const std::string filter = "WHERE policy_id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
-                       .table("sca_check")
-                       .columnList({"checksum",
-                                    "id",
-                                    "policy_id",
-                                    "name",
-                                    "description",
-                                    "rationale",
-                                    "remediation",
-                                    "refs",
-                                    "result",
-                                    "reason",
-                                    "condition",
-                                    "compliance",
-                                    "mitre",
-                                    "rules",
-                                    "version"})
-                       .rowFilter(filter)
-                       .build();
+                           .table("sca_check")
+                           .columnList({"checksum",
+                                        "id",
+                                        "policy_id",
+                                        "name",
+                                        "description",
+                                        "rationale",
+                                        "remediation",
+                                        "refs",
+                                        "result",
+                                        "reason",
+                                        "condition",
+                                        "compliance",
+                                        "mitre",
+                                        "rules",
+                                        "version"})
+                           .rowFilter(filter)
+                           .build();
 
-    const auto callback = [&checks](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    const auto callback = [&checks](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
     {
         if (returnTypeCallback == SELECTED)
         {
@@ -454,12 +442,12 @@ nlohmann::json SCAEventHandler::GetPolicyById(const std::string& policyId) const
 
     const std::string filter = "WHERE id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
-                       .table("sca_policy")
-                       .columnList({"id", "name", "description", "file", "refs"})
-                       .rowFilter(filter)
-                       .build();
+                           .table("sca_policy")
+                           .columnList({"id", "name", "description", "file", "refs"})
+                           .rowFilter(filter)
+                           .build();
 
-    const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
     {
         if (returnTypeCallback == SELECTED)
         {
@@ -484,26 +472,26 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
 
     const std::string filter = "WHERE id = '" + policyCheckId + "'";
     auto selectQuery = SelectQuery::builder()
-                       .table("sca_check")
-                       .columnList({"checksum",
-                                    "id",
-                                    "policy_id",
-                                    "name",
-                                    "description",
-                                    "rationale",
-                                    "remediation",
-                                    "refs",
-                                    "result",
-                                    "reason",
-                                    "condition",
-                                    "compliance",
-                                    "mitre",
-                                    "rules",
-                                    "version"})
-                       .rowFilter(filter)
-                       .build();
+                           .table("sca_check")
+                           .columnList({"checksum",
+                                        "id",
+                                        "policy_id",
+                                        "name",
+                                        "description",
+                                        "rationale",
+                                        "remediation",
+                                        "refs",
+                                        "result",
+                                        "reason",
+                                        "condition",
+                                        "compliance",
+                                        "mitre",
+                                        "rules",
+                                        "version"})
+                           .rowFilter(filter)
+                           .build();
 
-    const auto callback = [&check](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
+    const auto callback = [&check](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
     {
         if (returnTypeCallback == SELECTED)
         {
@@ -516,7 +504,8 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
     return check;
 }
 
-std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::ProcessStateful(const nlohmann::json& event) const
+std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t>
+SCAEventHandler::ProcessStateful(const nlohmann::json& event) const
 {
     nlohmann::json check;
     nlohmann::json policy;
@@ -538,9 +527,7 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
 
             const auto resultIt = check.find("result");
 
-            if (resultIt != check.end() &&
-                    resultIt->is_string() &&
-                    resultIt->get<std::string>() == "Not run")
+            if (resultIt != check.end() && resultIt->is_string() && resultIt->get<std::string>() == "Not run")
             {
                 return {{}, SELECTED, 0};
             }
@@ -605,8 +592,7 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
 
 nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) const
 {
-    if (event.contains("result") &&
-            static_cast<ReturnTypeCallback>(event["result"]) == DELETED)
+    if (event.contains("result") && static_cast<ReturnTypeCallback>(event["result"]) == DELETED)
     {
         return {};
     }
@@ -641,9 +627,7 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
             {
                 const auto resultIt = check.find("result");
 
-                if (resultIt != check.end() &&
-                        resultIt->is_string() &&
-                        resultIt->get<std::string>() == "Not run")
+                if (resultIt != check.end() && resultIt->is_string() && resultIt->get<std::string>() == "Not run")
                 {
                     return {};
                 }
@@ -663,9 +647,8 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 {
                     const auto oldResultIt = old.find("result");
                     const bool resultChanged = oldResultIt != old.end();
-                    const bool oldResultIsNotRun = resultChanged &&
-                                                   oldResultIt->is_string() &&
-                                                   oldResultIt->get<std::string>() == "Not run";
+                    const bool oldResultIsNotRun =
+                        resultChanged && oldResultIt->is_string() && oldResultIt->get<std::string>() == "Not run";
 
                     if (!resultChanged || oldResultIsNotRun)
                     {
@@ -751,24 +734,15 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         NormalizeCheck(check);
         NormalizePolicy(policy);
 
-        jsonEvent =
-        {
-            {"collector", event.at("collector")},
-            {"module", "sca"},
-            {
-                "data", {
-                    {
-                        "event", {
-                            {"changed_fields", changedFields},
-                            {"created", Utils::getCurrentISO8601()},
-                            {"type", STATELESS_OPERATION_MAP.at(event["result"])}
-                        }
-                    },
-                    {"check", check},
-                    {"policy", policy}
-                }
-            }
-        };
+        jsonEvent = {{"collector", event.at("collector")},
+                     {"module", "sca"},
+                     {"data",
+                      {{"event",
+                        {{"changed_fields", changedFields},
+                         {"created", Utils::getCurrentISO8601()},
+                         {"type", STATELESS_OPERATION_MAP.at(event["result"])}}},
+                       {"check", check},
+                       {"policy", policy}}}};
     }
     catch (const std::exception& e)
     {
@@ -801,7 +775,8 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallba
         throw std::runtime_error("PushStatefulMessage function not set, cannot send message.");
     }
 
-    m_pushStatefulMessage(CalculateHashId(event), OPERATION_STATES_MAP.at(operation), SCA_SYNC_INDEX, event.dump(), version);
+    m_pushStatefulMessage(
+        CalculateHashId(event), OPERATION_STATES_MAP.at(operation), SCA_SYNC_INDEX, event.dump(), version);
 
     LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + event.dump());
 }
@@ -994,7 +969,8 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
     {
         // No validator for this index: be restrictive and discard the message.
         LoggingHelper::getInstance().log(LOG_WARNING,
-                                         "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+                                         "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) +
+                                             ". Discarding message.");
         return false;
     }
 
@@ -1022,7 +998,8 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
     if (!checkData.empty() && failedChecks)
     {
         // Deferred deletion: accumulate for batch deletion with transaction
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Marking SCA check for deferred deletion due to validation failure");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Marking SCA check for deferred deletion due to validation failure");
         failedChecks->push_back(checkData);
     }
 
@@ -1039,17 +1016,12 @@ void SCAEventHandler::DeleteFailedChecksFromDB(const std::vector<nlohmann::json>
     // LCOV_EXCL_START
     try
     {
-        DBSyncTxn deleteTxn(m_dBSync->handle(),
-                            nlohmann::json::array(),
-                            0, 1,
-        [](ReturnTypeCallback, const nlohmann::json&) {});
+        DBSyncTxn deleteTxn(
+            m_dBSync->handle(), nlohmann::json::array(), 0, 1, [](ReturnTypeCallback, const nlohmann::json&) {});
 
         for (const auto& failedCheck : failedChecks)
         {
-            auto deleteQuery = DeleteQuery::builder()
-                               .table("sca_check")
-                               .data(failedCheck)
-                               .build();
+            auto deleteQuery = DeleteQuery::builder().table("sca_check").data(failedCheck).build();
 
             m_dBSync->deleteRows(deleteQuery.query());
         }
@@ -1057,8 +1029,9 @@ void SCAEventHandler::DeleteFailedChecksFromDB(const std::vector<nlohmann::json>
         // Finalize transaction to commit changes
         deleteTxn.getDeletedRows([](ReturnTypeCallback, const nlohmann::json&) {});
 
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Deleted " + std::to_string(failedChecks.size()) +
-                                         " SCA check(s) from DBSync due to validation failure");
+        LoggingHelper::getInstance().log(LOG_DEBUG,
+                                         "Deleted " + std::to_string(failedChecks.size()) +
+                                             " SCA check(s) from DBSync due to validation failure");
     }
     catch (const std::exception& e)
     {
@@ -1144,22 +1117,13 @@ void SCAEventHandler::ProcessSyncedChecks(const std::vector<std::string>& checkI
             continue;
         }
 
-        const nlohmann::json event =
-        {
-            {"policy", policyData},
-            {"check", checkData},
-            {"result", result},
-            {"collector", "sync"}
-        };
+        const nlohmann::json event = {
+            {"policy", policyData}, {"check", checkData}, {"result", result}, {"collector", "sync"}};
 
         const auto [stateful, operation, version] = ProcessStateful(event);
 
         const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                          stateful,
-                                          "sync " + actionLabel + " checkId: " + checkId,
-                                          checkData,
-                                          failedChecks
-                                      );
+            stateful, "sync " + actionLabel + " checkId: " + checkId, checkData, failedChecks);
 
         if (validationPassed)
         {

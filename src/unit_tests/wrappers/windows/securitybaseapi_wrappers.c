@@ -13,23 +13,26 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-WINBOOL wrap_IsValidSid(__UNUSED_PARAM(PSID pSid)) {
+WINBOOL wrap_IsValidSid(__UNUSED_PARAM(PSID pSid))
+{
     return mock();
 }
 
 WINBOOL wrap_GetSecurityDescriptorDacl(__UNUSED_PARAM(PSECURITY_DESCRIPTOR pSecurityDescriptor),
                                        LPBOOL lpbDaclPresent,
-                                       PACL *pDacl,
-                                       __UNUSED_PARAM(LPBOOL lpbDaclDefaulted)) {
+                                       PACL* pDacl,
+                                       __UNUSED_PARAM(LPBOOL lpbDaclDefaulted))
+{
     *lpbDaclPresent = mock();
 
-    if(*lpbDaclPresent == TRUE)
+    if (*lpbDaclPresent == TRUE)
         *pDacl = mock_type(PACL);
 
     return mock();
 }
 
-void expect_GetSecurityDescriptorDacl_call(int fDaclPresent, PACL *pDacl, int ret_value) {
+void expect_GetSecurityDescriptorDacl_call(int fDaclPresent, PACL* pDacl, int ret_value)
+{
     will_return(wrap_GetSecurityDescriptorDacl, fDaclPresent);
     will_return(wrap_GetSecurityDescriptorDacl, pDacl);
     will_return(wrap_GetSecurityDescriptorDacl, ret_value);
@@ -38,28 +41,30 @@ void expect_GetSecurityDescriptorDacl_call(int fDaclPresent, PACL *pDacl, int re
 WINBOOL wrap_GetAclInformation(__UNUSED_PARAM(PACL pAcl),
                                LPVOID pAclInformation,
                                DWORD nAclInformationLength,
-                               __UNUSED_PARAM(ACL_INFORMATION_CLASS dwAclInformationClass)) {
+                               __UNUSED_PARAM(ACL_INFORMATION_CLASS dwAclInformationClass))
+{
     LPVOID acl_information = mock_type(LPVOID);
 
-    if(acl_information != NULL)
+    if (acl_information != NULL)
         memcpy(pAclInformation, acl_information, nAclInformationLength);
 
     return mock();
 }
 
-void expect_GetAclInformation_call(LPVOID pAclInformation, int ret_value) {
+void expect_GetAclInformation_call(LPVOID pAclInformation, int ret_value)
+{
     will_return(wrap_GetAclInformation, pAclInformation);
     will_return(wrap_GetAclInformation, ret_value);
 }
 
-WINBOOL wrap_GetAce(__UNUSED_PARAM(PACL pAcl),
-                    __UNUSED_PARAM(DWORD dwAceIndex),
-                    LPVOID *pAce) {
+WINBOOL wrap_GetAce(__UNUSED_PARAM(PACL pAcl), __UNUSED_PARAM(DWORD dwAceIndex), LPVOID* pAce)
+{
     *pAce = mock_type(LPVOID);
     return mock();
 }
 
-void expect_GetAce_call(LPVOID *pAce, int ret_value) {
+void expect_GetAce_call(LPVOID* pAce, int ret_value)
+{
     will_return(wrap_GetAce, pAce);
     will_return(wrap_GetAce, ret_value);
 }
@@ -69,7 +74,8 @@ WINBOOL wrap_AdjustTokenPrivileges(HANDLE TokenHandle,
                                    __UNUSED_PARAM(PTOKEN_PRIVILEGES NewState),
                                    __UNUSED_PARAM(DWORD BufferLength),
                                    __UNUSED_PARAM(PTOKEN_PRIVILEGES PreviousState),
-                                   __UNUSED_PARAM(PDWORD ReturnLength)) {
+                                   __UNUSED_PARAM(PDWORD ReturnLength))
+{
     check_expected(TokenHandle);
     check_expected(DisableAllPrivileges);
     return mock();
@@ -85,15 +91,15 @@ WINBOOL wrap_AllocateAndInitializeSid(PSID_IDENTIFIER_AUTHORITY pIdentifierAutho
                                       __UNUSED_PARAM(DWORD nSubAuthority5),
                                       __UNUSED_PARAM(DWORD nSubAuthority6),
                                       __UNUSED_PARAM(DWORD nSubAuthority7),
-                                      __UNUSED_PARAM(PSID *pSid)) {
+                                      __UNUSED_PARAM(PSID* pSid))
+{
     check_expected(pIdentifierAuthority);
     check_expected(nSubAuthorityCount);
     return mock();
 }
 
-WINBOOL wrap_InitializeAcl(PACL pAcl,
-                           DWORD nAclLength,
-                           DWORD dwAclRevision) {
+WINBOOL wrap_InitializeAcl(PACL pAcl, DWORD nAclLength, DWORD dwAclRevision)
+{
     check_expected(pAcl);
     check_expected(nAclLength);
     check_expected(dwAclRevision);
@@ -102,7 +108,8 @@ WINBOOL wrap_InitializeAcl(PACL pAcl,
 
 WINBOOL wrap_CopySid(__UNUSED_PARAM(DWORD nDestinationSidLength),
                      __UNUSED_PARAM(PSID pDestinationSid),
-                     __UNUSED_PARAM(PSID pSourceSid)) {
+                     __UNUSED_PARAM(PSID pSourceSid))
+{
     return mock();
 }
 
@@ -110,18 +117,19 @@ WINBOOL wrap_AddAce(PACL pAcl,
                     __UNUSED_PARAM(DWORD dwAceRevision),
                     __UNUSED_PARAM(DWORD dwStartingAceIndex),
                     __UNUSED_PARAM(LPVOID pAceList),
-                    __UNUSED_PARAM(DWORD nAceListLength)) {
+                    __UNUSED_PARAM(DWORD nAceListLength))
+{
     check_expected(pAcl);
     return mock();
 }
 
-WINBOOL wrap_EqualSid(__UNUSED_PARAM(PSID pSid1),
-                      __UNUSED_PARAM(PSID pSid2)) {
+WINBOOL wrap_EqualSid(__UNUSED_PARAM(PSID pSid1), __UNUSED_PARAM(PSID pSid2))
+{
     return mock();
 }
 
-BOOL wrap_DeleteAce(PACL  pAcl,
-                    DWORD dwAceIndex){
+BOOL wrap_DeleteAce(PACL pAcl, DWORD dwAceIndex)
+{
     check_expected(pAcl);
     check_expected(dwAceIndex);
     return mock();

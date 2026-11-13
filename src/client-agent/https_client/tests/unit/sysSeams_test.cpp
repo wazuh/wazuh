@@ -42,19 +42,19 @@ TEST(SkewCorrectedClockTest, AppliedOffsetShiftsWallSecondsOnly)
 {
     class FixedClock final : public IClock
     {
-        public:
-            std::time_t wallSeconds() const override
-            {
-                return 1700000000;
-            }
+    public:
+        std::time_t wallSeconds() const override
+        {
+            return 1700000000;
+        }
 
-            std::chrono::steady_clock::time_point steadyNow() const override
-            {
-                return m_steady;
-            }
+        std::chrono::steady_clock::time_point steadyNow() const override
+        {
+            return m_steady;
+        }
 
-        private:
-            std::chrono::steady_clock::time_point m_steady {std::chrono::steady_clock::now()};
+    private:
+        std::chrono::steady_clock::time_point m_steady {std::chrono::steady_clock::now()};
     };
 
     FixedClock base;
@@ -74,16 +74,16 @@ TEST(SkewCorrectedClockTest, EachCorrectionLandsExactlyOnItsOwnTargetRegardlessO
     // reproducing the double-apply bug this design replaces).
     class FixedClock final : public IClock
     {
-        public:
-            std::time_t wallSeconds() const override
-            {
-                return 1700000000;
-            }
+    public:
+        std::time_t wallSeconds() const override
+        {
+            return 1700000000;
+        }
 
-            std::chrono::steady_clock::time_point steadyNow() const override
-            {
-                return {};
-            }
+        std::chrono::steady_clock::time_point steadyNow() const override
+        {
+            return {};
+        }
     };
 
     FixedClock base;
@@ -110,16 +110,16 @@ TEST(SkewCorrectedClockTest, ConcurrentCorrectionsToTheSameServerTimeConverge)
     // converging, overcorrecting the clock the wrong way.
     class FixedClock final : public IClock
     {
-        public:
-            std::time_t wallSeconds() const override
-            {
-                return 1700000000;
-            }
+    public:
+        std::time_t wallSeconds() const override
+        {
+            return 1700000000;
+        }
 
-            std::chrono::steady_clock::time_point steadyNow() const override
-            {
-                return {};
-            }
+        std::chrono::steady_clock::time_point steadyNow() const override
+        {
+            return {};
+        }
     };
 
     FixedClock base;
@@ -143,21 +143,21 @@ TEST(SkewCorrectedClockTest, ConcurrentCorrectionsToTheSameServerTimeConverge)
     {
         workers.emplace_back(
             [&]
-        {
-            readyCount.fetch_add(1, std::memory_order_relaxed);
-
-            while (!go.load(std::memory_order_acquire))
             {
-                // Spin until every worker is ready. The yield keeps this a
-                // barrier rather than a busy-wait: under Valgrind every thread
-                // shares one virtual CPU, and a spin that never yields holds
-                // its whole scheduling quantum, which turns this barrier into
-                // a multi-minute near-livelock.
-                std::this_thread::yield();
-            }
+                readyCount.fetch_add(1, std::memory_order_relaxed);
 
-            clock.correctToServerTime(serverTime);
-        });
+                while (!go.load(std::memory_order_acquire))
+                {
+                    // Spin until every worker is ready. The yield keeps this a
+                    // barrier rather than a busy-wait: under Valgrind every thread
+                    // shares one virtual CPU, and a spin that never yields holds
+                    // its whole scheduling quantum, which turns this barrier into
+                    // a multi-minute near-livelock.
+                    std::this_thread::yield();
+                }
+
+                clock.correctToServerTime(serverTime);
+            });
     }
 
     while (readyCount.load(std::memory_order_relaxed) < workerCount)
@@ -200,46 +200,46 @@ TEST(SkewCorrectedClockTest, TheReadAndCommitAreOneCriticalSectionNotJustTheFina
     // (near-identical) delta, overcorrecting by roughly double.
     class BlockingClock final : public IClock
     {
-        public:
-            std::time_t wallSeconds() const override
+    public:
+        std::time_t wallSeconds() const override
+        {
+            m_readStarted.store(true, std::memory_order_release);
+
+            while (m_hold.load(std::memory_order_acquire))
             {
-                m_readStarted.store(true, std::memory_order_release);
-
-                while (m_hold.load(std::memory_order_acquire))
-                {
-                    // Spin until the test releases this read. Yielding is what
-                    // lets the other caller actually get scheduled and prove it
-                    // is blocked on the mutex -- and keeps this from stalling
-                    // for minutes under Valgrind's single virtual CPU.
-                    std::this_thread::yield();
-                }
-
-                return m_value;
+                // Spin until the test releases this read. Yielding is what
+                // lets the other caller actually get scheduled and prove it
+                // is blocked on the mutex -- and keeps this from stalling
+                // for minutes under Valgrind's single virtual CPU.
+                std::this_thread::yield();
             }
 
-            std::chrono::steady_clock::time_point steadyNow() const override
-            {
-                return {};
-            }
+            return m_value;
+        }
 
-            void waitUntilReadStarted() const
-            {
-                while (!m_readStarted.load(std::memory_order_acquire))
-                {
-                    // Spin until wallSeconds() has been entered.
-                    std::this_thread::yield();
-                }
-            }
+        std::chrono::steady_clock::time_point steadyNow() const override
+        {
+            return {};
+        }
 
-            void release()
+        void waitUntilReadStarted() const
+        {
+            while (!m_readStarted.load(std::memory_order_acquire))
             {
-                m_hold.store(false, std::memory_order_release);
+                // Spin until wallSeconds() has been entered.
+                std::this_thread::yield();
             }
+        }
 
-        private:
-            std::time_t m_value {1700000000};
-            mutable std::atomic<bool> m_hold {true};
-            mutable std::atomic<bool> m_readStarted {false};
+        void release()
+        {
+            m_hold.store(false, std::memory_order_release);
+        }
+
+    private:
+        std::time_t m_value {1700000000};
+        mutable std::atomic<bool> m_hold {true};
+        mutable std::atomic<bool> m_readStarted {false};
     };
 
     BlockingClock base;
@@ -251,10 +251,10 @@ TEST(SkewCorrectedClockTest, TheReadAndCommitAreOneCriticalSectionNotJustTheFina
     std::atomic<bool> secondDone {false};
     std::thread second(
         [&]
-    {
-        clock.correctToServerTime(1700000000 - 200);
-        secondDone.store(true, std::memory_order_release);
-    });
+        {
+            clock.correctToServerTime(1700000000 - 200);
+            secondDone.store(true, std::memory_order_release);
+        });
 
     // `second` must be unable to make any progress -- not even its own raw
     // read -- while `first`'s critical section is still open. A generous
@@ -316,17 +316,17 @@ TEST(Mt19937RandomTest, ConcurrentCallsRemainInUnitInterval)
     {
         workers.emplace_back(
             [&]
-        {
-            for (int sample = 0; sample < 10000; sample++)
             {
-                const double value = random.uniform01();
-
-                if (value < 0.0 || value >= 1.0)
+                for (int sample = 0; sample < 10000; sample++)
                 {
-                    valid = false;
+                    const double value = random.uniform01();
+
+                    if (value < 0.0 || value >= 1.0)
+                    {
+                        valid = false;
+                    }
                 }
-            }
-        });
+            });
     }
 
     for (auto& worker : workers)

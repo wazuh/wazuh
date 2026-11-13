@@ -37,13 +37,13 @@ namespace
             }
         }
     };
-}
+} // namespace
 
 void ProcpsWrapper::scanProcesses(int flags, const ProcCallback& callback)
 {
     std::lock_guard<std::mutex> lock(g_procpsMutex);
 
-    std::unique_ptr<PROCTAB, ProcTabDeleter> proctab{openproc(flags)};
+    std::unique_ptr<PROCTAB, ProcTabDeleter> proctab {openproc(flags)};
 
     if (!proctab)
     {
@@ -52,7 +52,7 @@ void ProcpsWrapper::scanProcesses(int flags, const ProcCallback& callback)
 
     while (auto* raw = readproc(proctab.get(), nullptr))
     {
-        std::unique_ptr<proc_t, ProcDeleter> process{raw};
+        std::unique_ptr<proc_t, ProcDeleter> process {raw};
         callback(process.get());
     }
 }

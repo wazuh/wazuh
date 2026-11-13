@@ -15,16 +15,17 @@
  * @param queue Queue where the node will be appended
  * @param node  Node that will be appended
  * */
-static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_node_t *node);
+static void linked_queue_append_node(w_linked_queue_t* queue, w_linked_queue_node_t* node);
 
 /**
  * Unlinks the last node of the queue
  * @param queue to be modified
  * */
-static void linked_queue_pop_node(w_linked_queue_t *queue);
+static void linked_queue_pop_node(w_linked_queue_t* queue);
 
-w_linked_queue_t *linked_queue_init() {
-    w_linked_queue_t *queue;
+w_linked_queue_t* linked_queue_init()
+{
+    w_linked_queue_t* queue;
     os_calloc(1, sizeof(w_linked_queue_t), queue);
     queue->elements = 0;
     queue->first = NULL;
@@ -34,16 +35,19 @@ w_linked_queue_t *linked_queue_init() {
     return queue;
 }
 
-void linked_queue_free(w_linked_queue_t *queue) {
-    if (queue) {
+void linked_queue_free(w_linked_queue_t* queue)
+{
+    if (queue)
+    {
         w_mutex_destroy(&queue->mutex);
         w_cond_destroy(&queue->available);
         os_free(queue);
     }
 }
 
-w_linked_queue_node_t *linked_queue_push(w_linked_queue_t * queue, void * data) {
-    w_linked_queue_node_t *node;
+w_linked_queue_node_t* linked_queue_push(w_linked_queue_t* queue, void* data)
+{
+    w_linked_queue_node_t* node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
     node->next = NULL;
@@ -51,8 +55,9 @@ w_linked_queue_node_t *linked_queue_push(w_linked_queue_t * queue, void * data) 
     return node;
 }
 
-w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t * queue, void * data) {
-    w_linked_queue_node_t *node;
+w_linked_queue_node_t* linked_queue_push_ex(w_linked_queue_t* queue, void* data)
+{
+    w_linked_queue_node_t* node;
     os_calloc(1, sizeof(w_linked_queue_node_t), node);
     node->data = data;
     node->next = NULL;
@@ -63,44 +68,57 @@ w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t * queue, void * dat
     return node;
 }
 
-void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node) {
+void linked_queue_unlink_and_push_node(w_linked_queue_t* queue, w_linked_queue_node_t* node)
+{
     w_mutex_lock(&queue->mutex);
-    if (node->next) {
+    if (node->next)
+    {
         node->next->prev = node->prev;
-    } else {
+    }
+    else
+    {
         // Already at the correct spot
-        w_mutex_unlock(&queue->mutex); 
+        w_mutex_unlock(&queue->mutex);
         return;
     }
-    if (node->prev) {
+    if (node->prev)
+    {
         node->prev->next = node->next;
-    } else {
+    }
+    else
+    {
         queue->first = node->next;
     }
     node->prev = NULL;
     node->next = NULL;
     queue->elements--;
     linked_queue_append_node(queue, node);
-    w_mutex_unlock(&queue->mutex); 
+    w_mutex_unlock(&queue->mutex);
 }
 
-void * linked_queue_pop(w_linked_queue_t * queue) {
-    void * data;
+void* linked_queue_pop(w_linked_queue_t* queue)
+{
+    void* data;
 
-    if (!queue->first) {
-       data = NULL;
-    } else {
+    if (!queue->first)
+    {
+        data = NULL;
+    }
+    else
+    {
         data = queue->first->data;
         linked_queue_pop_node(queue);
     }
     return data;
 }
 
-void * linked_queue_pop_ex(w_linked_queue_t * queue) {
-    void * data;
+void* linked_queue_pop_ex(w_linked_queue_t* queue)
+{
+    void* data;
 
     w_mutex_lock(&queue->mutex);
-    while (data = linked_queue_pop(queue), !data) {
+    while (data = linked_queue_pop(queue), !data)
+    {
         w_cond_wait(&queue->available, &queue->mutex);
     }
     w_mutex_unlock(&queue->mutex);
@@ -108,14 +126,18 @@ void * linked_queue_pop_ex(w_linked_queue_t * queue) {
     return data;
 }
 
-static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_node_t *node) {
-    if (!queue->first) {
+static void linked_queue_append_node(w_linked_queue_t* queue, w_linked_queue_node_t* node)
+{
+    if (!queue->first)
+    {
         // First node, will be both first and last
         queue->first = node;
         queue->last = node;
         node->prev = NULL;
         node->next = NULL;
-    } else {
+    }
+    else
+    {
         queue->last->next = node;
         node->prev = queue->last;
         node->next = NULL;
@@ -124,12 +146,16 @@ static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_nod
     queue->elements++;
 }
 
-static void linked_queue_pop_node(w_linked_queue_t *queue) {
-    w_linked_queue_node_t *tmp = queue->first;
+static void linked_queue_pop_node(w_linked_queue_t* queue)
+{
+    w_linked_queue_node_t* tmp = queue->first;
     queue->first = queue->first->next;
-    if (queue->first) {
+    if (queue->first)
+    {
         queue->first->prev = NULL;
-    } else {
+    }
+    else
+    {
         // Also clean last node
         queue->last = NULL;
     }

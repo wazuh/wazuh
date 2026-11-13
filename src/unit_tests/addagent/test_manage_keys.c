@@ -20,31 +20,33 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 
 #define CLIENT_KEYS_FILENAME "tmp/client.keysXXXXXX"
-#define KEY_ENCODED "MDEzIHVidW50dTIyYWdlbnQgYW55IDVmMjIwMmI2MmVkNTJjYTY3ZWIwZGMyZmRmZDZmODlmNmNlMDllZjNjNTY3NTk2ZTNhMTU3MzEzNmI3NjNkYmY="
+#define KEY_ENCODED                                                                                                    \
+    "MDEzIHVidW50dTIyYWdlbnQgYW55IDVmMjIwMmI2MmVkNTJjYTY3ZWIwZGMyZmRmZDZmODlmNmNlMDllZjNjNTY3NTk2ZTNhMTU3MzEzNmI3NjNk" \
+    "YmY="
 #define KEY_DECODED_SUCCESSFUL "013 ubuntu22agent any 5f2202b62ed52ca67eb0dc2fdfd6f89f6ce09ef3c567596e3a1573136b763dbf"
-#define KEY_DECODED_INVALID "013-invalidformat-any 5f2202b62ed52ca67eb0dc2fdfd6f89f6ce09ef3c567596e3a1573136b763dbf"
+#define KEY_DECODED_INVALID    "013-invalidformat-any 5f2202b62ed52ca67eb0dc2fdfd6f89f6ce09ef3c567596e3a1573136b763dbf"
 
 char shost[512];
 
-static int test_setup(void **state) {
-    (void) state;
+static int test_setup(void** state)
+{
+    (void)state;
     test_mode = 1;
     return OS_SUCCESS;
 }
 
-static int test_teardown(void **state) {
-    (void) state;
+static int test_teardown(void** state)
+{
+    (void)state;
     test_mode = 0;
     return OS_SUCCESS;
 }
 
-void test_k_import_successful(void **state) {
-    (void) state;
+void test_k_import_successful(void** state)
+{
+    (void)state;
 
-    expect_decode_base64(
-        KEY_ENCODED,
-        KEY_DECODED_SUCCESSFUL
-    );
+    expect_decode_base64(KEY_ENCODED, KEY_DECODED_SUCCESSFUL);
 
     expect_mkstemp_ex(CLIENT_KEYS_FILENAME, 0);
 
@@ -70,13 +72,11 @@ void test_k_import_successful(void **state) {
     assert_int_equal(retval, 1);
 }
 
-void test_k_import_keyinvalid(void **state) {
-    (void) state;
+void test_k_import_keyinvalid(void** state)
+{
+    (void)state;
 
-    expect_decode_base64(
-        KEY_ENCODED,
-        KEY_DECODED_INVALID
-    );
+    expect_decode_base64(KEY_ENCODED, KEY_DECODED_INVALID);
 
     expect_value(__wrap_fgets, __stream, stdin);
     will_return(__wrap_fgets, "\r\n");
@@ -85,7 +85,8 @@ void test_k_import_keyinvalid(void **state) {
     assert_int_equal(retval, 0);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         // Skipped because it will be deleted by https://github.com/wazuh/wazuh/issues/30924
         // cmocka_unit_test_setup_teardown(test_k_import_successful, NULL, NULL),

@@ -11,13 +11,15 @@
 #ifndef SYSCHECKC_H
 #define SYSCHECKC_H
 
-typedef enum fim_event_mode {
+typedef enum fim_event_mode
+{
     FIM_SCHEDULED,
     FIM_REALTIME,
     FIM_WHODATA
 } fim_event_mode;
 
-typedef enum fdb_stmt {
+typedef enum fdb_stmt
+{
     // Files
     FIMDB_STMT_REPLACE_ENTRY,
     FIMDB_STMT_GET_PATH,
@@ -34,7 +36,7 @@ typedef enum fdb_stmt {
     FIMDB_STMT_GET_COUNT_PATH,
     FIMDB_STMT_GET_COUNT_INODE,
     FIMDB_STMT_GET_PATH_FROM_PATTERN,
-    // Registries
+// Registries
 #ifdef WIN32
     FIMDB_STMT_REPLACE_REG_DATA,
     FIMDB_STMT_REPLACE_REG_KEY,
@@ -76,44 +78,44 @@ typedef enum fdb_stmt {
 #define WIN_WHODATA 1
 #endif
 
-#define MAX_DIR_SIZE    64
-#define MAX_DIR_ENTRY   128
-#define SYSCHECK_WAIT   1
-#define MAX_FILE_LIMIT  INT_MAX
-#define MIN_COMP_ESTIM  0.4         // Minimum value to be taken by syscheck.comp_estimation_perc
+#define MAX_DIR_SIZE   64
+#define MAX_DIR_ENTRY  128
+#define SYSCHECK_WAIT  1
+#define MAX_FILE_LIMIT INT_MAX
+#define MIN_COMP_ESTIM 0.4 // Minimum value to be taken by syscheck.comp_estimation_perc
 
 /* Checking options */
-#define CHECK_SIZE          00000001
-#define CHECK_PERM          00000002
-#define CHECK_OWNER         00000004
-#define CHECK_GROUP         00000010
-#define CHECK_MTIME         00000020
-#define CHECK_INODE         00000040
-#define CHECK_MD5SUM        00000100
-#define CHECK_SHA1SUM       00000200
-#define CHECK_SHA256SUM     00000400
+#define CHECK_SIZE      00000001
+#define CHECK_PERM      00000002
+#define CHECK_OWNER     00000004
+#define CHECK_GROUP     00000010
+#define CHECK_MTIME     00000020
+#define CHECK_INODE     00000040
+#define CHECK_MD5SUM    00000100
+#define CHECK_SHA1SUM   00000200
+#define CHECK_SHA256SUM 00000400
 // 0001000 0002000 0004000 Reserved for future hash functions
-#define CHECK_ATTRS         00010000
-#define CHECK_SEECHANGES    00020000
-#define CHECK_FOLLOW        00040000
-#define REALTIME_ACTIVE     00100000
-#define WHODATA_ACTIVE      00200000
-#define SCHEDULED_ACTIVE    00400000
-#define CHECK_TYPE          01000000
-#define CHECK_DEVICE        02000000
-#define EBPF_PROVIDER       00000000
-#define AUDIT_PROVIDER      00000001
+#define CHECK_ATTRS      00010000
+#define CHECK_SEECHANGES 00020000
+#define CHECK_FOLLOW     00040000
+#define REALTIME_ACTIVE  00100000
+#define WHODATA_ACTIVE   00200000
+#define SCHEDULED_ACTIVE 00400000
+#define CHECK_TYPE       01000000
+#define CHECK_DEVICE     02000000
+#define EBPF_PROVIDER    00000000
+#define AUDIT_PROVIDER   00000001
 
 #ifdef WIN32
-#define REGISTRY_CHECK_ALL                                                                                  \
-    (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_PERM | \
+#define REGISTRY_CHECK_ALL                                                                                             \
+    (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_PERM |            \
      CHECK_MTIME | CHECK_TYPE)
 #define CHECK_SUM (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM)
 #endif
 
-#define ARCH_32BIT          0
-#define ARCH_64BIT          1
-#define ARCH_BOTH           2
+#define ARCH_32BIT 0
+#define ARCH_64BIT 1
+#define ARCH_BOTH  2
 
 #ifdef WIN32
 /* Whodata  states */
@@ -127,18 +129,18 @@ typedef enum fdb_stmt {
 #define WD_CHECK_WHODATA    0x0000002
 #define WD_CHECK_REALTIME   0x0000004
 #define WD_IGNORE_REST      0x0000008
-#define PATH_SEP '\\'
+#define PATH_SEP            '\\'
 #else
 #define PATH_SEP '/'
 #endif
 
-#define SK_CONF_UNPARSED    -2
-#define SK_CONF_UNDEFINED   -1
+#define SK_CONF_UNPARSED  -2
+#define SK_CONF_UNDEFINED -1
 
-#define FIM_DB_MEMORY       1
-#define FIM_DB_DISK         0
+#define FIM_DB_MEMORY 1
+#define FIM_DB_DISK   0
 
-//Max allowed value for recursion
+// Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
 #ifdef WIN32
 #define MAX_REGISTRY_DEPTH 512
@@ -155,42 +157,49 @@ typedef enum fdb_stmt {
 /// Used to interact with the AgentSyncProtocol instance from C code.
 typedef struct AgentSyncProtocol AgentSyncProtocolHandle;
 
-
 #ifdef WIN32
 typedef struct whodata_dir_status whodata_dir_status;
 #endif
 
 #ifndef WIN32
-typedef struct _rtfim {
-    unsigned int queue_overflow:1;
-    OSHash *dirtb;
+typedef struct _rtfim
+{
+    unsigned int queue_overflow : 1;
+    OSHash* dirtb;
     int fd;
 } rtfim;
 
 #else
 
-typedef struct _rtfim {
-    unsigned int queue_overflow:1;
-    OSHash *dirtb;
+typedef struct _rtfim
+{
+    unsigned int queue_overflow : 1;
+    OSHash* dirtb;
     HANDLE evt;
 } rtfim;
 
-typedef struct _win32rtfim {
+typedef struct _win32rtfim
+{
     HANDLE h;
     OVERLAPPED overlap;
 
-    char *dir;
+    char* dir;
     TCHAR buffer[65536];
     unsigned int watch_status;
 } win32rtfim;
 
 #endif
 
-typedef enum fim_type {FIM_TYPE_FILE, FIM_TYPE_REGISTRY} fim_type;
+typedef enum fim_type
+{
+    FIM_TYPE_FILE,
+    FIM_TYPE_REGISTRY
+} fim_type;
 
 #ifdef WIN32
 
-typedef struct whodata_dir_status {
+typedef struct whodata_dir_status
+{
     int status;
     char object_type;
     SYSTEMTIME last_check;
@@ -198,53 +207,56 @@ typedef struct whodata_dir_status {
 
 typedef ULARGE_INTEGER whodata_directory;
 
-typedef struct whodata {
-    OSHash *fd;          // Open file descriptors
-    OSHash *directories; // Directories checked by whodata mode
+typedef struct whodata
+{
+    OSHash* fd;          // Open file descriptors
+    OSHash* directories; // Directories checked by whodata mode
     int interval_scan;   // Time interval between scans of the checking thread
-    char **device;        // Hard disk devices
-    char **drive;         // Drive letter
+    char** device;       // Hard disk devices
+    char** drive;        // Drive letter
 } whodata;
 
 #endif /* End WIN32*/
 
-typedef struct _directory_s {
-    char *path;
+typedef struct _directory_s
+{
+    char* path;
     int options;
     int diff_size_limit; /* Apply the file size limit option in a specific directory */
-    char *symbolic_links;
-    OSMatch *filerestrict;
+    char* symbolic_links;
+    OSMatch* filerestrict;
     int recursion_level;
-    char *tag; /* array of tags for each directory */
+    char* tag; /* array of tags for each directory */
 #ifdef WIN32
     // Windows specific fields
     whodata_dir_status dirs_status; // Status list
 #endif
-    unsigned int is_wildcard:1; // 1 if it is a wildcard, 0 if it is a directory
-    unsigned int is_expanded:1; // Indicates if the wilcard has been expanded in this scan
-    bool symlink_warned;        // True after the one-time symlink warning has been issued
+    unsigned int is_wildcard : 1; // 1 if it is a wildcard, 0 if it is a directory
+    unsigned int is_expanded : 1; // Indicates if the wilcard has been expanded in this scan
+    bool symlink_warned;          // True after the one-time symlink warning has been issued
 } directory_t;
 
-typedef struct whodata_evt {
-    char *user_id;
-    char *user_name;
-    char *process_name;
-    char *path;
+typedef struct whodata_evt
+{
+    char* user_id;
+    char* user_name;
+    char* process_name;
+    char* path;
 #ifndef WIN32
-    char *group_id;  // Linux
-    char *group_name;  // Linux
-    char *audit_uid;  // Linux
-    char *audit_name;  // Linux
-    char *audit_gid;  // Linux
-    char *audit_group_name;  // Linux
-    char *effective_uid;  // Linux
-    char *effective_name;  // Linux
-    char *inode;  // Linux
-    char *dev;  // Linux
-    char *parent_name; // Linux
-    char *parent_cwd;
+    char* group_id;         // Linux
+    char* group_name;       // Linux
+    char* audit_uid;        // Linux
+    char* audit_name;       // Linux
+    char* audit_gid;        // Linux
+    char* audit_group_name; // Linux
+    char* effective_uid;    // Linux
+    char* effective_name;   // Linux
+    char* inode;            // Linux
+    char* dev;              // Linux
+    char* parent_name;      // Linux
+    char* parent_cwd;
     int ppid;  // Linux
-    char *cwd; // Linux
+    char* cwd; // Linux
     unsigned int process_id;
 #else
     unsigned __int64 process_id;
@@ -255,43 +267,47 @@ typedef struct whodata_evt {
 
 #ifdef WIN32
 
-typedef struct _registry_s {
-    char *entry;
+typedef struct _registry_s
+{
+    char* entry;
     int arch;
     int opts;
     int recursion_level;
     int diff_size_limit;
-    OSMatch *restrict_key;
-    OSMatch *restrict_value;
-    char *tag;
-    unsigned int wildcard;          // 1-based position in registry_wildcards of the pattern that added it, 0 if explicit
-    unsigned int is_expanded:1;     // Indicates if the entry has been expanded in this scan
-    unsigned int expand_status:2;   // Patterns only: FIM_REG_EXPAND_* flags of their last expansion
+    OSMatch* restrict_key;
+    OSMatch* restrict_value;
+    char* tag;
+    unsigned int wildcard;        // 1-based position in registry_wildcards of the pattern that added it, 0 if explicit
+    unsigned int is_expanded : 1; // Indicates if the entry has been expanded in this scan
+    unsigned int expand_status : 2; // Patterns only: FIM_REG_EXPAND_* flags of their last expansion
 } registry_t;
 
-typedef struct registry_ignore {
-    char *entry;
+typedef struct registry_ignore
+{
+    char* entry;
     int arch;
 } registry_ignore;
 
-typedef struct registry_ignore_regex {
-    OSMatch *regex;
+typedef struct registry_ignore_regex
+{
+    OSMatch* regex;
     int arch;
 } registry_ignore_regex;
 
 #endif
 
-typedef struct fim_file_data {
+typedef struct fim_file_data
+{
 #ifdef WIN32
-    cJSON * perm_json;
+    cJSON* perm_json;
 #endif
-    char * path;
-    char * permissions;
-    char * attributes;
-    char * uid;
-    char * gid;
-    char * owner;
-    char * group;
+    char* path;
+    char* permissions;
+    char* attributes;
+    char* uid;
+    char* gid;
+    char* owner;
+    char* group;
     time_t mtime;
     unsigned long long int size;
     unsigned long long int inode;
@@ -309,7 +325,8 @@ typedef struct fim_file_data {
     bool sync;
 } fim_file_data;
 
-typedef struct fim_registry_key {
+typedef struct fim_registry_key
+{
     char* path;
 #ifdef WIN32
     cJSON* perm_json;
@@ -331,7 +348,8 @@ typedef struct fim_registry_key {
     bool sync;
 } fim_registry_key;
 
-typedef struct fim_registry_value_data {
+typedef struct fim_registry_value_data
+{
     char* path;
     char* value;
     unsigned int type;
@@ -350,21 +368,24 @@ typedef struct fim_registry_value_data {
     bool sync;
 } fim_registry_value_data;
 
-typedef struct fim_entry {
+typedef struct fim_entry
+{
     fim_type type;
-    union {
-        struct {
-            char *path;
-            fim_file_data *data;
+    union
+    {
+        struct
+        {
+            char* path;
+            fim_file_data* data;
         } file_entry;
-        struct {
-            fim_registry_key *key;
-            fim_registry_value_data *value;
+        struct
+        {
+            fim_registry_key* key;
+            fim_registry_value_data* value;
         } registry_entry;
     };
 
 } fim_entry;
-
 
 typedef struct fdb_transaction_t
 {
@@ -372,104 +393,108 @@ typedef struct fdb_transaction_t
     time_t interval;
 } fdb_transaction_t;
 
-typedef struct fdb_t {
-    sqlite3 *db;
-    sqlite3_stmt *stmt[FIMDB_STMT_SIZE];
+typedef struct fdb_t
+{
+    sqlite3* db;
+    sqlite3_stmt* stmt[FIMDB_STMT_SIZE];
     fdb_transaction_t transaction;
     volatile bool full;
     pthread_mutex_t mutex;
 } fdb_t;
 
-typedef struct _config {
-    int rootcheck;                                     /* set to 0 when rootcheck is disabled */
-    int disabled;                                      /* is syscheck disabled? */
-    int max_depth;                                     /* max level of recursivity allowed */
-    size_t file_max_size;                              /* max file size for calculating hashes */
+typedef struct _config
+{
+    int rootcheck;        /* set to 0 when rootcheck is disabled */
+    int disabled;         /* is syscheck disabled? */
+    int max_depth;        /* max level of recursivity allowed */
+    size_t file_max_size; /* max file size for calculating hashes */
 
     fs_set skip_fs;
-    int rt_delay;                                      /* Delay before real-time dispatching (ms) */
+    int rt_delay; /* Delay before real-time dispatching (ms) */
 
-    int time;                                          /* frequency (secs) for syscheck to run */
-    int queue;                                         /* file descriptor of socket to write to queue */
-    unsigned int restart_audit:1;                      /* Allow Syscheck restart Auditd */
-    unsigned int enable_whodata:1;                     /* At least one directory configured with whodata */
-    unsigned int whodata_provider:1;                   /* Select the whodata provider */
-    unsigned int enable_synchronization:1;             /* Enable database synchronization */
-    unsigned int realtime_change:1;                    /* Variable to activate the change to realtime from a whodata monitoring*/
+    int time;                                /* frequency (secs) for syscheck to run */
+    int queue;                               /* file descriptor of socket to write to queue */
+    unsigned int restart_audit : 1;          /* Allow Syscheck restart Auditd */
+    unsigned int enable_whodata : 1;         /* At least one directory configured with whodata */
+    unsigned int whodata_provider : 1;       /* Select the whodata provider */
+    unsigned int enable_synchronization : 1; /* Enable database synchronization */
+    unsigned int realtime_change : 1;        /* Variable to activate the change to realtime from a whodata monitoring*/
 
-    OSList *directories;                               /* List of directories to be monitored */
-    OSList *wildcards;                                 /* List of wildcards to be monitored */
+    OSList* directories; /* List of directories to be monitored */
+    OSList* wildcards;   /* List of wildcards to be monitored */
 
-    char *scan_day;                                    /* run syscheck on this day */
-    char *scan_time;                                   /* run syscheck at this time */
+    char* scan_day;  /* run syscheck on this day */
+    char* scan_time; /* run syscheck at this time */
 
-    unsigned int file_limit_enabled;                   /* Enable FIM file entry max limits */
-    int file_entry_limit;                              /* maximum number of files to monitor */
+    unsigned int file_limit_enabled; /* Enable FIM file entry max limits */
+    int file_entry_limit;            /* maximum number of files to monitor */
 
-    char **ignore;                                     /* list of files/dirs to ignore */
-    OSMatch **ignore_regex;                            /* regex of files/dirs to ignore */
+    char** ignore;          /* list of files/dirs to ignore */
+    OSMatch** ignore_regex; /* regex of files/dirs to ignore */
 
-    int disk_quota_enabled;                            /* Enable diff disk quota limit */
-    int disk_quota_limit;                              /* Controls the increase of the size of the queue/diff/local folder (in KB) */
-    int file_size_enabled;                             /* Enable diff file size limit */
-    int file_size_limit;                               /* Avoids generating a backup from a file bigger than this limit (in KB) */
-    float diff_folder_size;                            /* Save size of queue/diff/local folder */
-    float comp_estimation_perc;                        /* Estimation of the percentage of compression each file will have */
-    uint16_t disk_quota_full_msg;                      /* Specify if the full disk_quota message can be written (Once per scan) */
+    int disk_quota_enabled;       /* Enable diff disk quota limit */
+    int disk_quota_limit;         /* Controls the increase of the size of the queue/diff/local folder (in KB) */
+    int file_size_enabled;        /* Enable diff file size limit */
+    int file_size_limit;          /* Avoids generating a backup from a file bigger than this limit (in KB) */
+    float diff_folder_size;       /* Save size of queue/diff/local folder */
+    float comp_estimation_perc;   /* Estimation of the percentage of compression each file will have */
+    uint16_t disk_quota_full_msg; /* Specify if the full disk_quota message can be written (Once per scan) */
 
-    unsigned int max_files_per_second;                 /* Max number of files read per second. */
+    unsigned int max_files_per_second; /* Max number of files read per second. */
 
-    char **nodiff;                                     /* list of files/dirs to never output diff */
-    OSMatch **nodiff_regex;                            /* regex of files/dirs to never output diff */
+    char** nodiff;          /* list of files/dirs to never output diff */
+    OSMatch** nodiff_regex; /* regex of files/dirs to never output diff */
 
-    uint32_t sync_interval;                            /* Synchronization interval */
-    int sync_flush_batch_size;                         /* Persistent sync queue: max buffered events before an immediate flush */
-    int sync_flush_interval_ms;                        /* Persistent sync queue: max time to wait before flushing a non-full buffer (ms) */
-    int sync_wal_autocheckpoint_pages;                 /* Persistent sync queue: WAL auto-checkpoint threshold (SQLite pages) */
-    int sync_cache_size_kib;                           /* Persistent sync queue: SQLite page cache size (KiB) */
-    uint32_t integrity_interval;                       /* Integrity check interval */
-    int max_eps;                                       /* Maximum events per second. */
-    unsigned int notify_first_scan;                    /* Notify the first scan */
+    uint32_t sync_interval;     /* Synchronization interval */
+    int sync_flush_batch_size;  /* Persistent sync queue: max buffered events before an immediate flush */
+    int sync_flush_interval_ms; /* Persistent sync queue: max time to wait before flushing a non-full buffer (ms) */
+    int sync_wal_autocheckpoint_pages; /* Persistent sync queue: WAL auto-checkpoint threshold (SQLite pages) */
+    int sync_cache_size_kib;           /* Persistent sync queue: SQLite page cache size (KiB) */
+    uint32_t integrity_interval;       /* Integrity check interval */
+    int max_eps;                       /* Maximum events per second. */
+    unsigned int notify_first_scan;    /* Notify the first scan */
 
     /* Windows only registry checking */
 #ifdef WIN32
-    unsigned int registry_limit_enabled;               /* Enable FIM registry entry max limits */
-    int db_entry_registry_limit;                       /* maximum number of registries to monitor */
-    registry_ignore *key_ignore;                       /* List of registry keys to ignore */
-    registry_ignore_regex *key_ignore_regex;           /* Regex of registry keys to ignore */
-    registry_ignore *value_ignore;                     /* List of registry values to ignore*/
-    registry_ignore_regex *value_ignore_regex;         /* Regex of registry values to ignore */
-    registry_t *registry;                              /* array of registry entries to be scanned */
-    registry_t *registry_wildcards;                    /* array of registry wildcard patterns */
-    pthread_rwlock_t registry_lock;                    /* Protects the registry array while wildcards are expanded */
-    unsigned int max_fd_win_rt;                        /* Maximum number of descriptors in realtime */
-    whodata wdata;                                     /* Whodata struct */
-    registry_t *registry_nodiff;                       /* list of values/registries to never output diff */
-    registry_ignore_regex *registry_nodiff_regex;      /* regex of values/registries to never output diff */
+    unsigned int registry_limit_enabled;          /* Enable FIM registry entry max limits */
+    int db_entry_registry_limit;                  /* maximum number of registries to monitor */
+    registry_ignore* key_ignore;                  /* List of registry keys to ignore */
+    registry_ignore_regex* key_ignore_regex;      /* Regex of registry keys to ignore */
+    registry_ignore* value_ignore;                /* List of registry values to ignore*/
+    registry_ignore_regex* value_ignore_regex;    /* Regex of registry values to ignore */
+    registry_t* registry;                         /* array of registry entries to be scanned */
+    registry_t* registry_wildcards;               /* array of registry wildcard patterns */
+    pthread_rwlock_t registry_lock;               /* Protects the registry array while wildcards are expanded */
+    unsigned int max_fd_win_rt;                   /* Maximum number of descriptors in realtime */
+    whodata wdata;                                /* Whodata struct */
+    registry_t* registry_nodiff;                  /* list of values/registries to never output diff */
+    registry_ignore_regex* registry_nodiff_regex; /* regex of values/registries to never output diff */
 #endif
-    int max_audit_entries;                             /* Maximum entries for Audit (whodata) */
-    char **audit_key;                                  /* Listen audit keys */
-    int audit_healthcheck;                             /* Startup health-check for whodata */
+    int max_audit_entries; /* Maximum entries for Audit (whodata) */
+    char** audit_key;      /* Listen audit keys */
+    int audit_healthcheck; /* Startup health-check for whodata */
     int sym_checker_interval;
 
     pthread_rwlock_t directories_lock;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
 #ifdef WIN32
-    pthread_mutex_t fim_registry_scan_mutex;           /* Used to prevent registry scans during the synchronization process */
+    pthread_mutex_t fim_registry_scan_mutex; /* Used to prevent registry scans during the synchronization process */
 #else
     pthread_mutex_t fim_symlink_mutex;
-    unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
-#endif // WIN32
-    atomic_int_t fim_pause_requested;                  /* Flag to indicate scans should be paused (0=false, 1=true) */
-    atomic_int_t fim_pausing_is_allowed;               /* Flag to indicate fim_run_integrity acknowledged pause (0=false, 1=true) */
-    atomic_int_t fim_first_sync_completed;             /* Flag (0=false, 1=true): the first post-start FIM sync iteration finished. Read by the IPC thread to report first_sync_completed in is_pause_completed. */
-    rtfim *realtime;
-    fdb_t *database;
+    unsigned int queue_size; /* Linux Audit message queue size for whodata */
+#endif                                   // WIN32
+    atomic_int_t fim_pause_requested;    /* Flag to indicate scans should be paused (0=false, 1=true) */
+    atomic_int_t fim_pausing_is_allowed; /* Flag to indicate fim_run_integrity acknowledged pause (0=false, 1=true) */
+    atomic_int_t
+        fim_first_sync_completed; /* Flag (0=false, 1=true): the first post-start FIM sync iteration finished. Read by
+                                     the IPC thread to report first_sync_completed in is_pause_completed. */
+    rtfim* realtime;
+    fdb_t* database;
 
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
 
-    AgentSyncProtocolHandle *sync_handle;
+    AgentSyncProtocolHandle* sync_handle;
     int file_limit;
     int registry_key_limit;
     int registry_value_limit;
@@ -520,7 +545,6 @@ static inline int syscheck_directories_lock_is_ready(void)
     return __atomic_load_n(&syscheck_directories_lock_ready, __ATOMIC_ACQUIRE);
 }
 
-
 /**
  * @brief Initializes the default configuration for syscheck.
  *
@@ -528,7 +552,7 @@ static inline int syscheck_directories_lock_is_ready(void)
  * @retval OS_SUCCESS if the default configuration was loaded successfully.
  * @retval OS_INVALID if there is a problem allocating resources.
  */
-int initialize_syscheck_configuration(syscheck_config *syscheck);
+int initialize_syscheck_configuration(syscheck_config* syscheck);
 
 /**
  * @brief Converts the value written in the configuration to a determined data unit in KB
@@ -537,7 +561,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck);
  *
  * @return Read value on success, -1 on failure
  */
-int read_data_unit(const char *content);
+int read_data_unit(const char* content);
 
 /**
  * @brief Read diff configuration
@@ -548,7 +572,7 @@ int read_data_unit(const char *content);
  * @param syscheck Syscheck configuration structure
  * @param node XML node to continue reading the configuration file
  */
-void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
+void parse_diff(const OS_XML* xml, syscheck_config* syscheck, XML_NODE node);
 
 /**
  * @brief Change sysnative directory to system32.
@@ -568,11 +592,11 @@ void fim_adjust_path(char** path);
  * @param diff_size_limit Maximum size to calculate diff for files in the directory
  * @param is_wildcard Boolean that indicates if this is a wildcard or not
  */
-directory_t *fim_create_directory(const char *path,
+directory_t* fim_create_directory(const char* path,
                                   int options,
-                                  const char *filerestrict,
+                                  const char* filerestrict,
                                   int recursion_level,
-                                  const char *tag,
+                                  const char* tag,
                                   int diff_size_limit,
                                   unsigned int is_wildcard);
 
@@ -582,15 +606,14 @@ directory_t *fim_create_directory(const char *path,
  * @param config_list directory_t OSList from the syscheck configuration, passed by reference
  * @param config_object directory_t object to be inserted
  */
-void fim_insert_directory(OSList *config_list,
-                          directory_t *config_object);
+void fim_insert_directory(OSList* config_list, directory_t* config_object);
 
 /**
  * @brief Copies a given directory_t object and returns a reference to the copy.
  *
  * @param _dir directory_t object to be copied
  */
-directory_t *fim_copy_directory(const directory_t *_dir);
+directory_t* fim_copy_directory(const directory_t* _dir);
 
 /**
  * @brief Creates a deep copy of an OSList containing directory_t objects.
@@ -601,14 +624,14 @@ directory_t *fim_copy_directory(const directory_t *_dir);
  * @param source Source OSList to be copied (must contain directory_t objects)
  * @return Pointer to the newly created OSList copy, or NULL on error
  */
-OSList *fim_copy_directory_list(const OSList *source);
+OSList* fim_copy_directory_list(const OSList* source);
 
 /**
  * @brief Expands wildcards in the given path
  *
  * @param path Path to be expanded
  */
-char **expand_wildcards(const char *path);
+char** expand_wildcards(const char* path);
 
 #ifdef WIN32
 /**
@@ -625,13 +648,13 @@ char **expand_wildcards(const char *path);
  * @param diff_size Maximum size to calculate diff for files in the directory
  * @return Pointer to the added entry, valid until the registry array is modified again
  */
-registry_t *dump_syscheck_registry(syscheck_config *syscheck,
-                                   char *entry,
+registry_t* dump_syscheck_registry(syscheck_config* syscheck,
+                                   char* entry,
                                    int opts,
-                                   const char *restrict_key,
-                                   const char *restrict_value,
+                                   const char* restrict_key,
+                                   const char* restrict_value,
                                    int recursion_level,
-                                   const char *tag,
+                                   const char* tag,
                                    int arch,
                                    int diff_size);
 
@@ -646,21 +669,21 @@ registry_t *dump_syscheck_registry(syscheck_config *syscheck,
  * @param count Number of keys
  * @return Pointer to the first added entry, valid until the registry array is modified again
  */
-registry_t *append_syscheck_registry(syscheck_config *syscheck, const registry_t *pattern, char **keys, int count);
+registry_t* append_syscheck_registry(syscheck_config* syscheck, const registry_t* pattern, char** keys, int count);
 
 /**
  * @brief Frees the members of a registry_t structure
  *
  * @param entry The registry entry whose members will be free'd
  */
-void free_registry_entry(registry_t *entry);
+void free_registry_entry(registry_t* entry);
 
 /**
  * @brief Frees a NULL-entry terminated array of registry_t structures
  *
  * @param registry The array to be free'd, it can be NULL
  */
-void free_registry_array(registry_t *registry);
+void free_registry_array(registry_t* registry);
 #endif
 
 /**
@@ -671,21 +694,21 @@ void free_registry_array(registry_t *registry);
  * @param [in] opts The bit mask of the options
  * @return A text version of the directory check option bits
  */
-char *syscheck_opts2str(char *buf, int buflen, int opts);
+char* syscheck_opts2str(char* buf, int buflen, int opts);
 
 /**
  * @brief Frees the memory of a syscheck configuration structure
  *
  * @param [out] config The syscheck configuration to free
  */
-void Free_Syscheck(syscheck_config *config);
+void Free_Syscheck(syscheck_config* config);
 
 /**
  * @brief Frees the memory of a directory_t structure
  *
  * @param dir The directory to be free'd
  */
-void free_directory(directory_t *dir);
+void free_directory(directory_t* dir);
 
 /**
  * @brief Logs the real time engine status

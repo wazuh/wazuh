@@ -38,9 +38,8 @@ namespace
     /// Built through the JSON library rather than concatenated, so a value
     /// carrying a quote, a backslash or a newline cannot escape the string it
     /// sits in -- controlStream.cpp builds its payloads the same way.
-    std::string buildHeaderLine(const std::string& agentId,
-                                const std::function<std::string()>& collectHost,
-                                HeaderLineTrim& trim)
+    std::string
+    buildHeaderLine(const std::string& agentId, const std::function<std::string()>& collectHost, HeaderLineTrim& trim)
     {
         trim = HeaderLineTrim::None;
         nlohmann::json extra;
@@ -149,7 +148,7 @@ StatelessStream::SubmissionResult StatelessStream::submit(const uint8_t* frame, 
 
     const bool isFlushDue = m_accumulator.flushDue(0, eventBudget);
     publishLevelLocked(!accepted);
-    return SubmissionResult {accepted, accepted&& !wasFlushDue&& isFlushDue};
+    return SubmissionResult {accepted, accepted && !wasFlushDue && isFlushDue};
 }
 
 std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
@@ -415,7 +414,7 @@ void StatelessStream::refreshHeaderLineLocked()
                          HTTPS_HEADER_LINE_JSON_MAX_BYTES,
                          static_cast<unsigned long long>(decision.total),
                          m_headerTrim == HeaderLineTrim::Groups ? "without the agent groups"
-                         : "with only the agent id");
+                                                                : "with only the agent id");
         }
     }
 }

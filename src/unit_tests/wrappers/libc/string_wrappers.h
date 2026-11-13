@@ -7,12 +7,11 @@
  * Foundation
  */
 
-
 #ifndef STRING_WRAPPERS_H
 #define STRING_WRAPPERS_H
 
 #include <string.h>
 
-char *__wrap_strerror (int __errnum);
+char* __wrap_strerror(int __errnum);
 
 #endif

@@ -17,19 +17,16 @@
 
 class MockSQLiteFactory : public ISQLiteFactory
 {
-    public:
-        MOCK_METHOD(std::shared_ptr<SQLite::IConnection>,
-                    createConnection,
-                    (const std::string& path),
-                    (override));
-        MOCK_METHOD(std::unique_ptr<SQLite::ITransaction>,
-                    createTransaction,
-                    (std::shared_ptr<SQLite::IConnection>& connection),
-                    (override));
-        MOCK_METHOD(std::unique_ptr<SQLite::IStatement>,
-                    createStatement,
-                    (std::shared_ptr<SQLite::IConnection>& connection,
-                     const std::string& query), (override));
+public:
+    MOCK_METHOD(std::shared_ptr<SQLite::IConnection>, createConnection, (const std::string& path), (override));
+    MOCK_METHOD(std::unique_ptr<SQLite::ITransaction>,
+                createTransaction,
+                (std::shared_ptr<SQLite::IConnection> & connection),
+                (override));
+    MOCK_METHOD(std::unique_ptr<SQLite::IStatement>,
+                createStatement,
+                (std::shared_ptr<SQLite::IConnection> & connection, const std::string& query),
+                (override));
 };
 
 #endif //_MOCKSQLITEFACTORY_TEST_H

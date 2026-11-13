@@ -49,20 +49,25 @@
  * @brief Append a slot to the active ring (O(1)).
  * @pre ring_mu must be held.
  */
-static inline void ring_append(w_rr_queue_t *sched, w_rr_agent_slot_t *s) {
+static inline void ring_append(w_rr_queue_t* sched, w_rr_agent_slot_t* s)
+{
     // pre: ring_mu held
-    if (!sched->ring_head) {
+    if (!sched->ring_head)
+    {
         s->next = s; // single-node cycle
-        sched->ring_head   = s;
-        sched->ring_tail   = s;
-        sched->cursor      = s;
-        sched->prev_cursor = s;      // valid: single node
-    } else {
+        sched->ring_head = s;
+        sched->ring_tail = s;
+        sched->cursor = s;
+        sched->prev_cursor = s; // valid: single node
+    }
+    else
+    {
         s->next = sched->ring_head;
         sched->ring_tail->next = s;
         sched->ring_tail = s;
         // if cursor is at head, its previous is now the new tail
-        if (sched->cursor == sched->ring_head) {
+        if (sched->cursor == sched->ring_head)
+        {
             sched->prev_cursor = sched->ring_tail;
         }
     }
@@ -74,10 +79,13 @@ static inline void ring_append(w_rr_queue_t *sched, w_rr_agent_slot_t *s) {
  * @brief Remove a node from the ring given its predecessor (O(1)).
  * @pre ring_mu must be held.
  */
-static inline void ring_remove_node(w_rr_queue_t *sched, w_rr_agent_slot_t *node, w_rr_agent_slot_t *prev) {
-    if (!sched->ring_head || !node || !prev) return;
+static inline void ring_remove_node(w_rr_queue_t* sched, w_rr_agent_slot_t* node, w_rr_agent_slot_t* prev)
+{
+    if (!sched->ring_head || !node || !prev)
+        return;
 
-    if (node == prev) {
+    if (node == prev)
+    {
         // only element
         sched->ring_head = sched->ring_tail = NULL;
         sched->cursor = sched->prev_cursor = NULL;
@@ -88,25 +96,32 @@ static inline void ring_remove_node(w_rr_queue_t *sched, w_rr_agent_slot_t *node
     }
 
     prev->next = node->next;
-    if (node == sched->ring_head)  sched->ring_head  = node->next;
-    if (node == sched->ring_tail)  sched->ring_tail  = prev;
-    if (sched->cursor == node)     sched->cursor     = node->next;
-    if (sched->prev_cursor == node) sched->prev_cursor = prev;
+    if (node == sched->ring_head)
+        sched->ring_head = node->next;
+    if (node == sched->ring_tail)
+        sched->ring_tail = prev;
+    if (sched->cursor == node)
+        sched->cursor = node->next;
+    if (sched->prev_cursor == node)
+        sched->prev_cursor = prev;
 
     node->in_ring = 0;
     node->next = NULL;
-    if (sched->ring_slots) sched->ring_slots--;
+    if (sched->ring_slots)
+        sched->ring_slots--;
 }
 
 /**
  * @brief Return the number of slots currently in the ring.
  * @note Takes and releases ring_mu internally.
  */
-size_t batch_queue_ring_size(const w_rr_queue_t *sched) {
-    if (!sched) return 0;
-    w_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
+size_t batch_queue_ring_size(const w_rr_queue_t* sched)
+{
+    if (!sched)
+        return 0;
+    w_mutex_lock((pthread_mutex_t*)&sched->ring_mu);
     size_t n = sched->ring_slots;
-    w_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
+    w_mutex_unlock((pthread_mutex_t*)&sched->ring_mu);
     return n;
 }
 
@@ -121,10 +136,12 @@ size_t batch_queue_ring_size(const w_rr_queue_t *sched) {
  * @param out_first Output: first node of the stolen chain (or NULL).
  * @return Number of elements stolen.
  */
-static size_t steal_chain(w_linked_queue_t *q, w_linked_queue_node_t **out_first) {
-    if (!q || !out_first) return 0;
+static size_t steal_chain(w_linked_queue_t* q, w_linked_queue_node_t** out_first)
+{
+    if (!q || !out_first)
+        return 0;
     w_mutex_lock(&q->mutex);
-    w_linked_queue_node_t *first = q->first;
+    w_linked_queue_node_t* first = q->first;
     size_t cnt = q->elements;
     q->first = q->last = NULL;
     q->elements = 0;
@@ -139,14 +156,25 @@ static size_t steal_chain(w_linked_queue_t *q, w_linked_queue_node_t **out_first
  * @brief Allocate and initialize a slot for a given agent key.
  * @return New slot pointer or NULL on failure.
  */
-static w_rr_agent_slot_t *make_slot(const char *agent_key) {
-    w_rr_agent_slot_t *s;
+static w_rr_agent_slot_t* make_slot(const char* agent_key)
+{
+    w_rr_agent_slot_t* s;
     os_calloc(1, sizeof(*s), s);
-    if (!s) return NULL;
-    os_strdup(agent_key, s->key);                 // slot owns its key
-    if (!s->key) { os_free(s); return NULL; }
+    if (!s)
+        return NULL;
+    os_strdup(agent_key, s->key); // slot owns its key
+    if (!s->key)
+    {
+        os_free(s);
+        return NULL;
+    }
     s->q = linked_queue_init();
-    if (!s->q) { os_free(s->key); os_free(s); return NULL; }
+    if (!s->q)
+    {
+        os_free(s->key);
+        os_free(s);
+        return NULL;
+    }
     s->in_ring = 0;
     s->next = NULL;
     return s;
@@ -162,28 +190,38 @@ static w_rr_agent_slot_t *make_slot(const char *agent_key) {
  * @param get_bytes_snap Snapshotted get_item_bytes callback (may be NULL). Same
  *                       rationale: avoids a data race with the setter.
  */
-static void free_slot(w_rr_queue_t *sched, w_rr_agent_slot_t *s, int adjust_global,
-                      void (*dispose_snap)(void *),
-                      size_t (*get_bytes_snap)(const void *)) {
-    if (!s) return;
-    w_linked_queue_node_t *chain = NULL;
+static void free_slot(w_rr_queue_t* sched,
+                      w_rr_agent_slot_t* s,
+                      int adjust_global,
+                      void (*dispose_snap)(void*),
+                      size_t (*get_bytes_snap)(const void*))
+{
+    if (!s)
+        return;
+    w_linked_queue_node_t* chain = NULL;
     size_t n = steal_chain(s->q, &chain);
 
     size_t freed_bytes = 0;
-    while (chain) {
-        w_linked_queue_node_t *nx = chain->next;
-        if (adjust_global && get_bytes_snap && chain->data) {
+    while (chain)
+    {
+        w_linked_queue_node_t* nx = chain->next;
+        if (adjust_global && get_bytes_snap && chain->data)
+        {
             freed_bytes += get_bytes_snap(chain->data);
         }
-        if (dispose_snap) dispose_snap(chain->data);
+        if (dispose_snap)
+            dispose_snap(chain->data);
         os_free(chain);
         chain = nx;
     }
-    if (adjust_global) {
-        if (n) {
+    if (adjust_global)
+    {
+        if (n)
+        {
             atomic_fetch_sub_explicit(&sched->items_global, n, memory_order_relaxed);
         }
-        if (freed_bytes) {
+        if (freed_bytes)
+        {
             atomic_fetch_sub_explicit(&sched->bytes_global, freed_bytes, memory_order_relaxed);
         }
     }
@@ -200,15 +238,21 @@ static void free_slot(w_rr_queue_t *sched, w_rr_agent_slot_t *s, int adjust_glob
  * @param max_items_global Optional soft cap for total enqueued items (>0 to enable).
  * @return Initialized scheduler or NULL on error.
  */
-w_rr_queue_t *batch_queue_init(size_t max_items_global) {
-    w_rr_queue_t *q;
+w_rr_queue_t* batch_queue_init(size_t max_items_global)
+{
+    w_rr_queue_t* q;
     os_calloc(1, sizeof(*q), q);
-    if (!q) return NULL;
+    if (!q)
+        return NULL;
 
     q->ring_head = q->ring_tail = q->cursor = q->prev_cursor = NULL;
 
     // Embedded hashmap: initialize with a bootstrap capacity
-    if (hm_init(&q->agent_index, 64) != 0) { free(q); return NULL; }
+    if (hm_init(&q->agent_index, 64) != 0)
+    {
+        free(q);
+        return NULL;
+    }
 
     w_mutex_init(&q->ring_mu, NULL);
     w_cond_init(&q->any_available, NULL);
@@ -228,16 +272,19 @@ w_rr_queue_t *batch_queue_init(size_t max_items_global) {
  * @brief Destroy the scheduler and all agent slots/queues.
  * @note No producers/consumer should be active at this point.
  */
-void batch_queue_free(w_rr_queue_t *sched) {
-    if (!sched) return;
+void batch_queue_free(w_rr_queue_t* sched)
+{
+    if (!sched)
+        return;
 
     // For maximum safety, you may take ring_mu around the iteration.
     hm_iter_t it;
-    const char *k;
-    void *val;
+    const char* k;
+    void* val;
     hm_iter_init(&sched->agent_index, &it);
-    while (hm_iter_next(&it, &k, &val)) {
-        w_rr_agent_slot_t *slot = (w_rr_agent_slot_t*)val;
+    while (hm_iter_next(&it, &k, &val))
+    {
+        w_rr_agent_slot_t* slot = (w_rr_agent_slot_t*)val;
         // No need to touch the ring: we are shutting everything down.
         // adjust_global=0: no byte accounting needed; dispose/get_bytes callbacks
         // don't race here because batch_queue_free is called after all producers stop.
@@ -253,8 +300,10 @@ void batch_queue_free(w_rr_queue_t *sched) {
 /**
  * @brief Set a disposer callback to free item payloads on drop/free.
  */
-void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *)) {
-    if (!sched) return;
+void batch_queue_set_dispose(w_rr_queue_t* sched, void (*dispose)(void*))
+{
+    if (!sched)
+        return;
     w_mutex_lock(&sched->ring_mu);
     sched->dispose = dispose;
     w_mutex_unlock(&sched->ring_mu);
@@ -263,8 +312,10 @@ void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *)) {
 /**
  * @brief Set a per-agent queue size limit (0 = unlimited).
  */
-void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent) {
-    if (!sched) return;
+void batch_queue_set_agent_max(w_rr_queue_t* sched, size_t max_items_per_agent)
+{
+    if (!sched)
+        return;
     w_mutex_lock(&sched->ring_mu);
     sched->max_items_per_agent = max_items_per_agent;
     w_mutex_unlock(&sched->ring_mu);
@@ -273,8 +324,10 @@ void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent) 
 /**
  * @brief Set the global byte capacity limit (0 = unlimited).
  */
-void batch_queue_set_bytes_limit(w_rr_queue_t *sched, size_t max_bytes) {
-    if (!sched) return;
+void batch_queue_set_bytes_limit(w_rr_queue_t* sched, size_t max_bytes)
+{
+    if (!sched)
+        return;
     w_mutex_lock(&sched->ring_mu);
     sched->max_bytes_global = max_bytes;
     w_mutex_unlock(&sched->ring_mu);
@@ -283,8 +336,10 @@ void batch_queue_set_bytes_limit(w_rr_queue_t *sched, size_t max_bytes) {
 /**
  * @brief Set the callback used to measure the byte size of an item.
  */
-void batch_queue_set_get_item_bytes(w_rr_queue_t *sched, size_t (*get_bytes)(const void *)) {
-    if (!sched) return;
+void batch_queue_set_get_item_bytes(w_rr_queue_t* sched, size_t (*get_bytes)(const void*))
+{
+    if (!sched)
+        return;
     w_mutex_lock(&sched->ring_mu);
     sched->get_item_bytes = get_bytes;
     w_mutex_unlock(&sched->ring_mu);
@@ -315,14 +370,17 @@ void batch_queue_set_get_item_bytes(w_rr_queue_t *sched, size_t (*get_bytes)(con
  * 4) Push the item into the agent queue (respecting per-agent cap).
  * 5) If the queue transitioned empty→non-empty, (re)append to ring and signal.
  */
-int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *data) {
-    if (!sched || !agent_key || !data) return -EINVAL;
+int batch_queue_enqueue_ex(w_rr_queue_t* sched, const char* agent_key, void* data)
+{
+    if (!sched || !agent_key || !data)
+        return -EINVAL;
 
     // 0) Approximate item-count pre-check (lock-free).
     // max_items_global is written only at init and never modified again, so reading
     // it here without a lock is safe (no concurrent writer exists).
     size_t prev = atomic_fetch_add_explicit(&sched->items_global, 1, memory_order_relaxed);
-    if (sched->max_items_global && prev + 1 > sched->max_items_global) {
+    if (sched->max_items_global && prev + 1 > sched->max_items_global)
+    {
         atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
         return -ENOSPC;
     }
@@ -330,18 +388,23 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     w_mutex_lock(&sched->ring_mu);
 
     // 1) Lookup/create slot in the HASHMAP (protected by ring_mu)
-    void *val = NULL;
-    w_rr_agent_slot_t *slot = NULL;
-    if (hm_get(&sched->agent_index, agent_key, &val)) {
+    void* val = NULL;
+    w_rr_agent_slot_t* slot = NULL;
+    if (hm_get(&sched->agent_index, agent_key, &val))
+    {
         slot = (w_rr_agent_slot_t*)val;
-    } else {
+    }
+    else
+    {
         slot = make_slot(agent_key);
-        if (!slot) {
+        if (!slot)
+        {
             w_mutex_unlock(&sched->ring_mu);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
             return -ENOMEM;
         }
-        if (hm_put(&sched->agent_index, agent_key, slot) != 0) {
+        if (hm_put(&sched->agent_index, agent_key, slot) != 0)
+        {
             w_mutex_unlock(&sched->ring_mu);
             free_slot(sched, slot, /*adjust_global=*/0, NULL, NULL);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
@@ -356,7 +419,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     w_mutex_lock(&slot->q->mutex);
     const size_t max_per_agent = sched->max_items_per_agent;
     const size_t max_bytes = sched->max_bytes_global;
-    size_t (*const get_bytes)(const void *) = sched->get_item_bytes;
+    size_t (*const get_bytes)(const void*) = sched->get_item_bytes;
 
     // 3) Release ring_mu to reduce global contention
     w_mutex_unlock(&sched->ring_mu);
@@ -364,23 +427,29 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     // 3b) Byte accounting using snapshotted values — no data race.
     // slot->q->mutex is still held, which is fine.
     size_t item_bytes = 0;
-    if (get_bytes) {
+    if (get_bytes)
+    {
         item_bytes = get_bytes(data);
-        if (max_bytes) {
-            if (item_bytes > max_bytes) {
+        if (max_bytes)
+        {
+            if (item_bytes > max_bytes)
+            {
                 // Single oversized item can never fit.
                 w_mutex_unlock(&slot->q->mutex);
                 atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
                 return -ENOSPC;
             }
             size_t prev_bytes = atomic_fetch_add_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
-            if (prev_bytes >= max_bytes || item_bytes > max_bytes - prev_bytes) {
+            if (prev_bytes >= max_bytes || item_bytes > max_bytes - prev_bytes)
+            {
                 atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
                 w_mutex_unlock(&slot->q->mutex);
                 atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
                 return -ENOSPC;
             }
-        } else {
+        }
+        else
+        {
             // No limit configured — just track bytes for observability.
             atomic_fetch_add_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
         }
@@ -390,26 +459,34 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     int reject = 0;
     int need_ring_append = (slot->q->elements == 0);
 
-    if (max_per_agent && slot->q->elements >= max_per_agent) {
+    if (max_per_agent && slot->q->elements >= max_per_agent)
+    {
         reject = 1;
-    } else {
-        w_linked_queue_node_t *n;
+    }
+    else
+    {
+        w_linked_queue_node_t* n;
         os_malloc(sizeof(*n), n);
-        if (!n) {
+        if (!n)
+        {
             w_mutex_unlock(&slot->q->mutex);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
-            if (item_bytes) {
+            if (item_bytes)
+            {
                 atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
             }
             return -ENOMEM;
         }
         n->data = data;
         n->next = NULL;
-        if (slot->q->last) {
+        if (slot->q->last)
+        {
             n->prev = slot->q->last;
             slot->q->last->next = n;
             slot->q->last = n;
-        } else {
+        }
+        else
+        {
             // empty queue
             n->prev = NULL;
             slot->q->first = slot->q->last = n;
@@ -419,21 +496,26 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
 
     w_mutex_unlock(&slot->q->mutex);
 
-    if (reject) {
+    if (reject)
+    {
         atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
-        if (item_bytes) {
+        if (item_bytes)
+        {
             atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
         }
         return -ENOSPC;
     }
 
     // 5) If queue transitioned empty->non-empty, (re)insert into the ring and signal availability
-    if (need_ring_append) {
+    if (need_ring_append)
+    {
         w_mutex_lock(&sched->ring_mu);
-        void *val2 = NULL;
-        if (hm_get(&sched->agent_index, agent_key, &val2) && (w_rr_agent_slot_t *)val2 == slot) {
-            w_rr_agent_slot_t *current_slot = (w_rr_agent_slot_t *)val2;
-            if (!current_slot->in_ring) {
+        void* val2 = NULL;
+        if (hm_get(&sched->agent_index, agent_key, &val2) && (w_rr_agent_slot_t*)val2 == slot)
+        {
+            w_rr_agent_slot_t* current_slot = (w_rr_agent_slot_t*)val2;
+            if (!current_slot->in_ring)
+            {
                 ring_append(sched, current_slot);
                 w_cond_signal(&sched->any_available);
             }
@@ -452,58 +534,75 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
  * Snapshot-drain: detach the entire per-agent queue once (under its mutex),
  * release all locks, and process the detached chain without further locking.
  */
-size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
-                                 const struct timespec *abstime,
-                                 void (*consume)(void *data, void *user),
-                                 void *user,
-                                 const char **out_agent_key) {
-    if (!sched || !consume) return 0;
+size_t batch_queue_drain_next_ex(w_rr_queue_t* sched,
+                                 const struct timespec* abstime,
+                                 void (*consume)(void* data, void* user),
+                                 void* user,
+                                 const char** out_agent_key)
+{
+    if (!sched || !consume)
+        return 0;
 
     w_mutex_lock(&sched->ring_mu);
 
     // Wait until there is at least one active slot in the ring
-    while (!sched->cursor) {
-        if (abstime) {
+    while (!sched->cursor)
+    {
+        if (abstime)
+        {
             int r = pthread_cond_timedwait(&sched->any_available, &sched->ring_mu, abstime);
-            if (r == ETIMEDOUT) { w_mutex_unlock(&sched->ring_mu); return 0; }
-            if (r != 0)        { w_mutex_unlock(&sched->ring_mu); return 0; }
-        } else {
+            if (r == ETIMEDOUT)
+            {
+                w_mutex_unlock(&sched->ring_mu);
+                return 0;
+            }
+            if (r != 0)
+            {
+                w_mutex_unlock(&sched->ring_mu);
+                return 0;
+            }
+        }
+        else
+        {
             w_cond_wait(&sched->any_available, &sched->ring_mu);
         }
     }
 
     // Select next slot and advance RR cursor
-    w_rr_agent_slot_t *slot = sched->cursor;
-    w_rr_agent_slot_t *prev = sched->prev_cursor ? sched->prev_cursor : sched->ring_tail;
+    w_rr_agent_slot_t* slot = sched->cursor;
+    w_rr_agent_slot_t* prev = sched->prev_cursor ? sched->prev_cursor : sched->ring_tail;
 
-    sched->cursor      = slot->next;
-    sched->prev_cursor = prev;     // the new "previous" of the next cursor will be this slot
+    sched->cursor = slot->next;
+    sched->prev_cursor = prev; // the new "previous" of the next cursor will be this slot
 
     // Remove from ring for this turn
     ring_remove_node(sched, slot, prev);
-    if (out_agent_key) *out_agent_key = slot->key;
+    if (out_agent_key)
+        *out_agent_key = slot->key;
 
     // Queue handover: lock per-queue BEFORE releasing ring_mu (lock order respected).
     // Also snapshot get_item_bytes here, while ring_mu is still held, to avoid a
     // data race with batch_queue_set_get_item_bytes() which writes under ring_mu.
     w_mutex_lock(&slot->q->mutex);
-    size_t (*const get_bytes_snap)(const void *) = sched->get_item_bytes;
+    size_t (*const get_bytes_snap)(const void*) = sched->get_item_bytes;
     w_mutex_unlock(&sched->ring_mu);
 
     // Snapshot-detach the whole queue in O(1)
-    w_linked_queue_node_t *head = slot->q->first;
+    w_linked_queue_node_t* head = slot->q->first;
     slot->q->first = NULL;
-    slot->q->last  = NULL;
+    slot->q->last = NULL;
     slot->q->elements = 0;
     w_mutex_unlock(&slot->q->mutex);
 
     // Process detached chain without any locks
     size_t drained = 0;
     size_t drained_bytes = 0;
-    for (w_linked_queue_node_t *n = head; n; ) {
-        w_linked_queue_node_t *next = n->next;
+    for (w_linked_queue_node_t* n = head; n;)
+    {
+        w_linked_queue_node_t* next = n->next;
         drained++;
-        if (get_bytes_snap && n->data) {
+        if (get_bytes_snap && n->data)
+        {
             drained_bytes += get_bytes_snap(n->data);
         }
         consume(n->data, user);
@@ -512,10 +611,12 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
     }
 
     // Adjust global counters
-    if (drained) {
+    if (drained)
+    {
         atomic_fetch_sub_explicit(&sched->items_global, drained, memory_order_relaxed);
     }
-    if (drained_bytes) {
+    if (drained_bytes)
+    {
         atomic_fetch_sub_explicit(&sched->bytes_global, drained_bytes, memory_order_relaxed);
     }
 
@@ -530,42 +631,51 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
  * @brief Whether the scheduler has no ready agents in the ring.
  * @return 1 if empty; 0 otherwise.
  */
-int batch_queue_empty(const w_rr_queue_t *sched) {
-    if (!sched) return 1;
-    w_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
+int batch_queue_empty(const w_rr_queue_t* sched)
+{
+    if (!sched)
+        return 1;
+    w_mutex_lock((pthread_mutex_t*)&sched->ring_mu);
     int empty = (sched->cursor == NULL);
-    w_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
+    w_mutex_unlock((pthread_mutex_t*)&sched->ring_mu);
     return empty;
 }
 
 /**
  * @brief Total number of items enqueued across all agents (approximate).
  */
-size_t batch_queue_size(const w_rr_queue_t *sched) {
-    if (!sched) return 0;
+size_t batch_queue_size(const w_rr_queue_t* sched)
+{
+    if (!sched)
+        return 0;
     return atomic_load_explicit(&sched->items_global, memory_order_relaxed);
 }
 
 /**
  * @brief Total bytes enqueued across all agents (approximate).
  */
-size_t batch_queue_bytes(const w_rr_queue_t *sched) {
-    if (!sched) return 0;
+size_t batch_queue_bytes(const w_rr_queue_t* sched)
+{
+    if (!sched)
+        return 0;
     return atomic_load_explicit(&sched->bytes_global, memory_order_relaxed);
 }
 
 /**
  * @brief Current number of items queued for a specific agent.
  */
-size_t batch_queue_agent_size(w_rr_queue_t *sched, const char *agent_key) {
-    if (!sched || !agent_key) return 0;
+size_t batch_queue_agent_size(w_rr_queue_t* sched, const char* agent_key)
+{
+    if (!sched || !agent_key)
+        return 0;
     w_mutex_lock(&sched->ring_mu);
-    void *val = NULL;
-    if (!hm_get(&sched->agent_index, agent_key, &val)) {
+    void* val = NULL;
+    if (!hm_get(&sched->agent_index, agent_key, &val))
+    {
         w_mutex_unlock(&sched->ring_mu);
         return 0;
     }
-    w_rr_agent_slot_t *slot = (w_rr_agent_slot_t*)val;
+    w_rr_agent_slot_t* slot = (w_rr_agent_slot_t*)val;
     w_mutex_lock(&slot->q->mutex);
     size_t n = slot->q->elements;
     w_mutex_unlock(&slot->q->mutex);
@@ -577,12 +687,16 @@ size_t batch_queue_agent_size(w_rr_queue_t *sched, const char *agent_key) {
  * @brief Find the predecessor of a slot within the ring.
  * @note Used for rare operations such as forced drop.
  */
-static w_rr_agent_slot_t *ring_find_prev(w_rr_queue_t *sched, w_rr_agent_slot_t *slot) {
-    if (!sched->ring_head || !slot) return NULL;
-    w_rr_agent_slot_t *p = sched->ring_head;
-    do {
-        w_rr_agent_slot_t *nx = p->next;
-        if (nx == slot) return p;
+static w_rr_agent_slot_t* ring_find_prev(w_rr_queue_t* sched, w_rr_agent_slot_t* slot)
+{
+    if (!sched->ring_head || !slot)
+        return NULL;
+    w_rr_agent_slot_t* p = sched->ring_head;
+    do
+    {
+        w_rr_agent_slot_t* nx = p->next;
+        if (nx == slot)
+            return p;
         p = nx;
     } while (p && p != sched->ring_head);
     return NULL;
@@ -593,21 +707,26 @@ static w_rr_agent_slot_t *ring_find_prev(w_rr_queue_t *sched, w_rr_agent_slot_t 
  *        Frees the slot and its queued items (using `dispose` if set).
  * @return 1 if the agent was found and dropped; 0 if it did not exist.
  */
-int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
-    if (!sched || !agent_key) return 0;
+int batch_queue_drop_agent(w_rr_queue_t* sched, const char* agent_key)
+{
+    if (!sched || !agent_key)
+        return 0;
 
     w_mutex_lock(&sched->ring_mu);
 
-    void *val = NULL;
-    if (!hm_get(&sched->agent_index, agent_key, &val)) {
+    void* val = NULL;
+    if (!hm_get(&sched->agent_index, agent_key, &val))
+    {
         w_mutex_unlock(&sched->ring_mu);
         return 0;
     }
-    w_rr_agent_slot_t *slot = (w_rr_agent_slot_t*)val;
+    w_rr_agent_slot_t* slot = (w_rr_agent_slot_t*)val;
 
-    if (slot->in_ring) {
-        w_rr_agent_slot_t *prev = ring_find_prev(sched, slot);
-        if (!prev) {
+    if (slot->in_ring)
+    {
+        w_rr_agent_slot_t* prev = ring_find_prev(sched, slot);
+        if (!prev)
+        {
             // Should exist; for robustness, do not remove if not found
             w_mutex_unlock(&sched->ring_mu);
             return 0;
@@ -625,8 +744,8 @@ int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
     // Snapshot callbacks under ring_mu before releasing it. free_slot() will be
     // called outside the lock, so reading sched->dispose / sched->get_item_bytes
     // there without ring_mu would be a data race with their setters.
-    void (*const dispose_snap)(void *) = sched->dispose;
-    size_t (*const get_bytes_snap)(const void *) = sched->get_item_bytes;
+    void (*const dispose_snap)(void*) = sched->dispose;
+    size_t (*const get_bytes_snap)(const void*) = sched->get_item_bytes;
 
     w_mutex_unlock(&sched->ring_mu);
 

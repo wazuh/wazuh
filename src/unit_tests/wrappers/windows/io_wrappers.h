@@ -13,8 +13,8 @@
 #include <io.h>
 
 #undef _mktemp_s
-#define _mktemp_s  wrap_mktemp_s
+#define _mktemp_s wrap_mktemp_s
 
-char * wrap_mktemp_s(const char *path, ssize_t length);
+char* wrap_mktemp_s(const char* path, ssize_t length);
 
 #endif

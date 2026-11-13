@@ -63,7 +63,7 @@ namespace
     /// 60 s backoff cap this bounds a fleet to MAX_ADOPTION_ATTEMPTS requests per agent per
     /// hour, which is the load the ceiling was put there to cap in the first place.
     constexpr std::chrono::hours ABANDON_COOLDOWN {1};
-}
+} // namespace
 
 CaBundleFetcher::CaBundleFetcher(const ModuleConfig& config,
                                  IHttpPerformer& performer,
@@ -143,8 +143,10 @@ void CaBundleFetcher::tick(Waiter& waiter)
 
         // The cooldown is up. Cleared rather than merely retried once, so a publication that
         // installs on the next attempt goes back to being ordinary.
-        LOGFN_INFO(m_logFn, "Trying CA bundle publication %lld again after giving up on it; "
-                   "whatever refused it may no longer apply.", static_cast<long long>(target));
+        LOGFN_INFO(m_logFn,
+                   "Trying CA bundle publication %lld again after giving up on it; "
+                   "whatever refused it may no longer apply.",
+                   static_cast<long long>(target));
         m_abandoned = 0;
         m_abandonedAt.reset();
         m_attempts = 0;
@@ -158,8 +160,10 @@ void CaBundleFetcher::tick(Waiter& waiter)
     {
         const auto delay = jitterDelay();
         m_dueAt = now + delay;
-        LOGFN_DEBUG1(m_logFn, "CA bundle publication %lld is due; fetching in %lld ms.",
-                     static_cast<long long>(target), static_cast<long long>(delay.count()));
+        LOGFN_DEBUG1(m_logFn,
+                     "CA bundle publication %lld is due; fetching in %lld ms.",
+                     static_cast<long long>(target),
+                     static_cast<long long>(delay.count()));
         return;
     }
 
@@ -179,17 +183,22 @@ std::optional<std::string> CaBundleFetcher::vet(const HttpResponse& response, st
     {
         // 404 is a node with no bundle, 503 a node whose bundle does not sign the certificate it
         // is serving, 429 the rate limit. None is a reason to touch the trust store.
-        LOGFN_DEBUG1(m_logFn, "CA bundle refresh for publication %lld answered %ld; keeping the "
-                     "current trust store.", static_cast<long long>(target), response.httpCode);
+        LOGFN_DEBUG1(m_logFn,
+                     "CA bundle refresh for publication %lld answered %ld; keeping the "
+                     "current trust store.",
+                     static_cast<long long>(target),
+                     response.httpCode);
         return std::nullopt;
     }
 
     if (response.body.size() >= MAX_BUNDLE_BYTES)
     {
-        LOGFN_WARN(m_logFn, "CA bundle refresh for publication %lld returned a body that reached "
+        LOGFN_WARN(m_logFn,
+                   "CA bundle refresh for publication %lld returned a body that reached "
                    "this client's %zu-byte cap; the manager never publishes a bundle that large, "
                    "so it is not being installed.",
-                   static_cast<long long>(target), MAX_BUNDLE_BYTES);
+                   static_cast<long long>(target),
+                   MAX_BUNDLE_BYTES);
         return std::nullopt;
     }
 
@@ -197,8 +206,10 @@ std::optional<std::string> CaBundleFetcher::vet(const HttpResponse& response, st
     {
         // The node did not vouch for what it served: either it predates the feature, or its
         // bundle carries no valid publication. Adopting it would install content nothing names.
-        LOGFN_WARN(m_logFn, "CA bundle refresh for publication %lld came back without a "
-                   "publication of its own; not installing it.", static_cast<long long>(target));
+        LOGFN_WARN(m_logFn,
+                   "CA bundle refresh for publication %lld came back without a "
+                   "publication of its own; not installing it.",
+                   static_cast<long long>(target));
         return std::nullopt;
     }
 
@@ -207,16 +218,18 @@ std::optional<std::string> CaBundleFetcher::vet(const HttpResponse& response, st
         // A lagging node behind a load balancer, answering with a bundle other than the one just
         // advertised. Installing it would put content on disk that the publication being adopted
         // never named -- and could walk the agent backwards.
-        LOGFN_WARN(m_logFn, "CA bundle refresh expected publication %lld but the node served "
-                   "%lld; not installing it.", static_cast<long long>(target),
+        LOGFN_WARN(m_logFn,
+                   "CA bundle refresh expected publication %lld but the node served "
+                   "%lld; not installing it.",
+                   static_cast<long long>(target),
                    static_cast<long long>(response.caGeneration));
         return std::nullopt;
     }
 
     if (response.body.empty())
     {
-        LOGFN_WARN(m_logFn, "CA bundle refresh for publication %lld returned an empty body.",
-                   static_cast<long long>(target));
+        LOGFN_WARN(
+            m_logFn, "CA bundle refresh for publication %lld returned an empty body.", static_cast<long long>(target));
         return std::nullopt;
     }
 
@@ -290,7 +303,8 @@ void CaBundleFetcher::performRefresh(std::int64_t target, Waiter& waiter)
                    "CA bundle publication %lld could not be adopted in %d attempts; giving up on "
                    "it. The trust store is unchanged and the agent keeps using it; a later "
                    "publication will be tried.",
-                   static_cast<long long>(target), MAX_ADOPTION_ATTEMPTS);
+                   static_cast<long long>(target),
+                   MAX_ADOPTION_ATTEMPTS);
         m_abandoned = target;
         m_abandonedAt = m_clock.steadyNow();
         m_dueAt.reset();

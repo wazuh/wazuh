@@ -12,9 +12,7 @@
 
 void SysInfoParsersTest::SetUp() {};
 
-void SysInfoParsersTest::TearDown()
-{
-};
+void SysInfoParsersTest::TearDown() {};
 
 TEST_F(SysInfoParsersTest, BaseClass)
 {
@@ -27,8 +25,7 @@ TEST_F(SysInfoParsersTest, BaseClass)
 
 TEST_F(SysInfoParsersTest, UnixLinux)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Ubuntu"
         VERSION="20.04.1 LTS (Focal Fossa) "
@@ -42,11 +39,10 @@ TEST_F(SysInfoParsersTest, UnixLinux)
         PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
         VERSION_CODENAME=focal
         UBUNTU_CODENAME=focal
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("20.04.1 LTS (Focal Fossa)", output["os_version"]);
     EXPECT_EQ("Ubuntu", output["os_name"]);
@@ -58,8 +54,7 @@ TEST_F(SysInfoParsersTest, UnixLinux)
 
 TEST_F(SysInfoParsersTest, UnixCentos)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="CentOS Linux"
         VERSION="8 (Core) "
@@ -77,11 +72,10 @@ TEST_F(SysInfoParsersTest, UnixCentos)
         CENTOS_MANTISBT_PROJECT_VERSION="8"
         REDHAT_SUPPORT_PRODUCT="centos"
         REDHAT_SUPPORT_PRODUCT_VERSION="8"
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("8 (Core)", output["os_version"]);
     EXPECT_EQ("CentOS Linux", output["os_name"]);
@@ -91,8 +85,7 @@ TEST_F(SysInfoParsersTest, UnixCentos)
 
 TEST_F(SysInfoParsersTest, UnixArch)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Arch Linux"
         PRETTY_NAME="Arch Linux"
@@ -104,11 +97,10 @@ TEST_F(SysInfoParsersTest, UnixArch)
         SUPPORT_URL="https://bbs.archlinux.org/"
         BUG_REPORT_URL="https://bugs.archlinux.org/"
         LOGO=archlinux
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("Arch Linux", output["os_name"]);
     EXPECT_EQ("arch", output["os_platform"]);
@@ -116,8 +108,7 @@ TEST_F(SysInfoParsersTest, UnixArch)
 
 TEST_F(SysInfoParsersTest, UnixAlpine)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Alpine Linux"
         ID=alpine
@@ -125,11 +116,10 @@ TEST_F(SysInfoParsersTest, UnixAlpine)
         PRETTY_NAME="Alpine Linux v3.17"
         HOME_URL="https://alpinelinux.org/"
         BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("3.17.1", output["os_version"]);
     EXPECT_EQ("Alpine Linux", output["os_name"]);
@@ -141,8 +131,7 @@ TEST_F(SysInfoParsersTest, UnixAlpine)
 
 TEST_F(SysInfoParsersTest, UnixRhcosRhelVersion)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
@@ -158,11 +147,10 @@ TEST_F(SysInfoParsersTest, UnixRhcosRhelVersion)
         OPENSHIFT_VERSION="4.18"
         RHEL_VERSION=9.4
         OSTREE_VERSION="418.94.202602022246-0"
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("9.4", output["os_version"]);
     EXPECT_EQ("Red Hat Enterprise Linux CoreOS", output["os_name"]);
@@ -176,8 +164,7 @@ TEST_F(SysInfoParsersTest, UnixRhcosRhelVersion)
 
 TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionQuoted)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"os(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
@@ -198,11 +185,10 @@ TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionQuoted)
         OPENSHIFT_VERSION="4.12"
         RHEL_VERSION="8.6"
         OSTREE_VERSION="412.86.202308081039-0"
-        )os"
-    };
+        )os"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("8.6", output["os_version"]);
     EXPECT_EQ("rhcos", output["os_platform"]);
@@ -214,21 +200,19 @@ TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionQuoted)
 TEST_F(SysInfoParsersTest, UnixRhcosParsedTwice)
 {
     // The agent parses /etc/os-release and /usr/lib/os-release into the same object.
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
         VERSION="418.94.202602022246-0"
         VERSION_ID="4.18"
         RHEL_VERSION=9.4
-        )"
-    };
+        )"};
     nlohmann::json output;
-    const auto spParser{FactorySysOsParser::create("unix")};
-    std::stringstream etcInfo{UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
+    std::stringstream etcInfo {UNIX_RELEASE_FILE};
     EXPECT_TRUE(spParser->parseFile(etcInfo, output));
-    std::stringstream usrLibInfo{UNIX_RELEASE_FILE};
+    std::stringstream usrLibInfo {UNIX_RELEASE_FILE};
     EXPECT_TRUE(spParser->parseFile(usrLibInfo, output));
     EXPECT_EQ("9.4", output["os_version"]);
     EXPECT_EQ("rhcos", output["os_platform"]);
@@ -242,8 +226,7 @@ TEST_F(SysInfoParsersTest, UnixRhcosParsedTwice)
 TEST_F(SysInfoParsersTest, UnixRhcosHostOsReleaseOverContainerImage)
 {
     // Containerized agent: /etc/os-release comes from the RHCOS host, /usr/lib/os-release from the image.
-    constexpr auto HOST_RELEASE_FILE
-    {
+    constexpr auto HOST_RELEASE_FILE {
         R"(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
@@ -254,10 +237,8 @@ TEST_F(SysInfoParsersTest, UnixRhcosHostOsReleaseOverContainerImage)
         OPENSHIFT_VERSION="4.18"
         RHEL_VERSION=9.4
         OSTREE_VERSION="418.94.202602022246-0"
-        )"
-    };
-    constexpr auto IMAGE_RELEASE_FILE
-    {
+        )"};
+    constexpr auto IMAGE_RELEASE_FILE {
         R"os(
         PRETTY_NAME="Ubuntu 24.04.1 LTS"
         NAME="Ubuntu"
@@ -266,13 +247,12 @@ TEST_F(SysInfoParsersTest, UnixRhcosHostOsReleaseOverContainerImage)
         VERSION_CODENAME=noble
         ID=ubuntu
         ID_LIKE=debian
-        )os"
-    };
+        )os"};
     nlohmann::json output;
-    const auto spParser{FactorySysOsParser::create("unix")};
-    std::stringstream hostInfo{HOST_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
+    std::stringstream hostInfo {HOST_RELEASE_FILE};
     EXPECT_TRUE(spParser->parseFile(hostInfo, output));
-    std::stringstream imageInfo{IMAGE_RELEASE_FILE};
+    std::stringstream imageInfo {IMAGE_RELEASE_FILE};
     EXPECT_TRUE(spParser->parseFile(imageInfo, output));
     EXPECT_EQ("9.4", output["os_version"]);
     EXPECT_EQ("Red Hat Enterprise Linux CoreOS", output["os_name"]);
@@ -286,21 +266,19 @@ TEST_F(SysInfoParsersTest, UnixRhcosHostOsReleaseOverContainerImage)
 
 TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionMajorOnly)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
         VERSION="418.94.202602022246-0"
         VERSION_ID="4.18"
         RHEL_VERSION=9
-        )"
-    };
+        )"};
     nlohmann::json output;
-    const auto spParser{FactorySysOsParser::create("unix")};
-    std::stringstream etcInfo{UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
+    std::stringstream etcInfo {UNIX_RELEASE_FILE};
     EXPECT_TRUE(spParser->parseFile(etcInfo, output));
-    std::stringstream usrLibInfo{UNIX_RELEASE_FILE};
+    std::stringstream usrLibInfo {UNIX_RELEASE_FILE};
     EXPECT_TRUE(spParser->parseFile(usrLibInfo, output));
     EXPECT_EQ("9", output["os_version"]);
     EXPECT_EQ("9", output["os_major"]);
@@ -310,8 +288,7 @@ TEST_F(SysInfoParsersTest, UnixRhcosRhelVersionMajorOnly)
 
 TEST_F(SysInfoParsersTest, UnixRhcosOpenShift410)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"os(
         NAME="Red Hat Enterprise Linux CoreOS"
         VERSION="410.84.202210040010-0"
@@ -332,11 +309,10 @@ TEST_F(SysInfoParsersTest, UnixRhcosOpenShift410)
         OPENSHIFT_VERSION="4.10"
         RHEL_VERSION="8.4"
         OSTREE_VERSION='410.84.202210040010-0'
-        )os"
-    };
+        )os"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("8.4", output["os_version"]);
     EXPECT_EQ("rhcos", output["os_platform"]);
@@ -347,8 +323,7 @@ TEST_F(SysInfoParsersTest, UnixRhcosOpenShift410)
 
 TEST_F(SysInfoParsersTest, UnixRhcosWithoutRhelVersion)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
@@ -356,11 +331,10 @@ TEST_F(SysInfoParsersTest, UnixRhcosWithoutRhelVersion)
         VERSION_ID="4.18"
         PLATFORM_ID="platform:el9"
         OPENSHIFT_VERSION="4.18"
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("418.94.202602022246-0", output["os_version"]);
     EXPECT_EQ("rhcos", output["os_platform"]);
@@ -371,19 +345,17 @@ TEST_F(SysInfoParsersTest, UnixRhcosWithoutRhelVersion)
 
 TEST_F(SysInfoParsersTest, UnixRhcosInvalidRhelVersion)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
         VERSION="418.94.202602022246-0"
         VERSION_ID="4.18"
         RHEL_VERSION="unknown"
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("418.94.202602022246-0", output["os_version"]);
     EXPECT_EQ("418", output["os_major"]);
@@ -394,19 +366,17 @@ TEST_F(SysInfoParsersTest, UnixRhcosInvalidRhelVersion)
 
 TEST_F(SysInfoParsersTest, UnixRhcosEmptyRhelVersion)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"(
         NAME="Red Hat Enterprise Linux CoreOS"
         ID="rhcos"
         VERSION="418.94.202602022246-0"
         VERSION_ID="4.18"
         RHEL_VERSION=""
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("418.94.202602022246-0", output["os_version"]);
     EXPECT_EQ("418", output["os_major"]);
@@ -417,8 +387,7 @@ TEST_F(SysInfoParsersTest, UnixRhcosEmptyRhelVersion)
 
 TEST_F(SysInfoParsersTest, UnixRhelVersionIgnoredOnOtherPlatform)
 {
-    constexpr auto UNIX_RELEASE_FILE
-    {
+    constexpr auto UNIX_RELEASE_FILE {
         R"os(
         NAME="Red Hat Enterprise Linux"
         VERSION="9.6 (Plow)"
@@ -426,11 +395,10 @@ TEST_F(SysInfoParsersTest, UnixRhelVersionIgnoredOnOtherPlatform)
         ID_LIKE="fedora"
         VERSION_ID="9.6"
         RHEL_VERSION=8.10
-        )os"
-    };
+        )os"};
     nlohmann::json output;
-    std::stringstream info{UNIX_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {UNIX_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("9.6 (Plow)", output["os_version"]);
     EXPECT_EQ("rhel", output["os_platform"]);
@@ -439,19 +407,16 @@ TEST_F(SysInfoParsersTest, UnixRhelVersionIgnoredOnOtherPlatform)
     EXPECT_FALSE(output.contains("rhel_version"));
 }
 
-
 TEST_F(SysInfoParsersTest, Ubuntu)
 {
-    constexpr auto UBUNTU_RELEASE_FILE
-    {
+    constexpr auto UBUNTU_RELEASE_FILE {
         R"(DISTRIB_ID=Ubuntu
           DISTRIB_RELEASE=20.04
           DISTRIB_CODENAME=focal
-          DISTRIB_DESCRIPTION='Ubuntu 20.04.1 LTS')"
-    };
+          DISTRIB_DESCRIPTION='Ubuntu 20.04.1 LTS')"};
     nlohmann::json output;
-    std::stringstream info{UBUNTU_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("ubuntu")};
+    std::stringstream info {UBUNTU_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("ubuntu")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("20.04.1", output["os_version"]);
     EXPECT_EQ("Ubuntu", output["os_name"]);
@@ -463,13 +428,10 @@ TEST_F(SysInfoParsersTest, Ubuntu)
 
 TEST_F(SysInfoParsersTest, Centos)
 {
-    constexpr auto CENTOS_RELEASE_FILE
-    {
-        "CentOS Linux release 8.2.2004 (Core)"
-    };
+    constexpr auto CENTOS_RELEASE_FILE {"CentOS Linux release 8.2.2004 (Core)"};
     nlohmann::json output;
-    std::stringstream info{CENTOS_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("centos")};
+    std::stringstream info {CENTOS_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("8.2.2004 (Core)", output["os_version"]);
     EXPECT_EQ("Centos Linux", output["os_name"]);
@@ -482,31 +444,28 @@ TEST_F(SysInfoParsersTest, Centos)
 
 TEST_F(SysInfoParsersTest, CentosStream)
 {
-    constexpr auto CENTOS_STREAM_RELEASE_FILE
-    {
-        "NAME=\"CentOS Stream\"\n"
-        "VERSION=\"9\"\n"
-        "ID=\"centos\"\n"
-        "ID_LIKE=\"rhel fedora\"\n"
-        "VERSION_ID=\"9\"\n"
-        "PLATFORM_ID=\"platform:el9\"\n"
-        "PRETTY_NAME=\"CentOS Stream 9\"\n"
-        "ANSI_COLOR=\"0;31\"\n"
-        "LOGO=\"fedora-logo-icon\"\n"
-        "CPE_NAME=\"cpe:/o:centos:centos:9\"\n"
-        "HOME_URL=\"https://centos.org/\"\n"
-        "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
-        "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 9\"\n"
-        "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"
-    };
+    constexpr auto CENTOS_STREAM_RELEASE_FILE {"NAME=\"CentOS Stream\"\n"
+                                               "VERSION=\"9\"\n"
+                                               "ID=\"centos\"\n"
+                                               "ID_LIKE=\"rhel fedora\"\n"
+                                               "VERSION_ID=\"9\"\n"
+                                               "PLATFORM_ID=\"platform:el9\"\n"
+                                               "PRETTY_NAME=\"CentOS Stream 9\"\n"
+                                               "ANSI_COLOR=\"0;31\"\n"
+                                               "LOGO=\"fedora-logo-icon\"\n"
+                                               "CPE_NAME=\"cpe:/o:centos:centos:9\"\n"
+                                               "HOME_URL=\"https://centos.org/\"\n"
+                                               "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
+                                               "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 9\"\n"
+                                               "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"};
     nlohmann::json output;
-    std::stringstream info{CENTOS_STREAM_RELEASE_FILE};
-    const auto spParser1{FactorySysOsParser::create("unix")};
+    std::stringstream info {CENTOS_STREAM_RELEASE_FILE};
+    const auto spParser1 {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser1->parseFile(info, output));
     info.clear();
     info.seekg(0, std::ios::beg);
     info << CENTOS_STREAM_RELEASE_FILE;
-    const auto spParser2{FactorySysOsParser::create("centos")};
+    const auto spParser2 {FactorySysOsParser::create("centos")};
     EXPECT_FALSE(spParser2->parseFile(info, output));
     EXPECT_EQ("9", output["os_major"]);
     EXPECT_EQ("CentOS Stream", output["os_name"]);
@@ -516,34 +475,31 @@ TEST_F(SysInfoParsersTest, CentosStream)
 
 TEST_F(SysInfoParsersTest, CentosBased)
 {
-    constexpr auto ROCKY_LINUX_RELEASE_FILE
-    {
-        "NAME=\"Rocky Linux\"\n"
-        "VERSION=\"8.8 (Green Obsidian)\"\n"
-        "ID=\"rocky\"\n"
-        "ID_LIKE=\"rhel centos fedora\"\n"
-        "VERSION_ID=\"8.8\"\n"
-        "PLATFORM_ID=\"platform:el8\"\n"
-        "PRETTY_NAME=\"Rocky Linux 8.8 (Green Obsidian)\"\n"
-        "ANSI_COLOR=\"0;32\"\n"
-        "LOGO=\"fedora-logo-icon\"\n"
-        "CPE_NAME=\"cpe:/o:rocky:rocky:8:GA\"\n"
-        "HOME_URL=\"https://rockylinux.org/\"\n"
-        "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"\n"
-        "SUPPORT_END=\"2029-05-31\"\n"
-        "ROCKY_SUPPORT_PRODUCT=\"Rocky-Linux-8\"\n"
-        "ROCKY_SUPPORT_PRODUCT_VERSION=\"8.8\"\n"
-        "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
-        "REDHAT_SUPPORT_PRODUCT_VERSION=\"8.8\"\n"
-    };
+    constexpr auto ROCKY_LINUX_RELEASE_FILE {"NAME=\"Rocky Linux\"\n"
+                                             "VERSION=\"8.8 (Green Obsidian)\"\n"
+                                             "ID=\"rocky\"\n"
+                                             "ID_LIKE=\"rhel centos fedora\"\n"
+                                             "VERSION_ID=\"8.8\"\n"
+                                             "PLATFORM_ID=\"platform:el8\"\n"
+                                             "PRETTY_NAME=\"Rocky Linux 8.8 (Green Obsidian)\"\n"
+                                             "ANSI_COLOR=\"0;32\"\n"
+                                             "LOGO=\"fedora-logo-icon\"\n"
+                                             "CPE_NAME=\"cpe:/o:rocky:rocky:8:GA\"\n"
+                                             "HOME_URL=\"https://rockylinux.org/\"\n"
+                                             "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"\n"
+                                             "SUPPORT_END=\"2029-05-31\"\n"
+                                             "ROCKY_SUPPORT_PRODUCT=\"Rocky-Linux-8\"\n"
+                                             "ROCKY_SUPPORT_PRODUCT_VERSION=\"8.8\"\n"
+                                             "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
+                                             "REDHAT_SUPPORT_PRODUCT_VERSION=\"8.8\"\n"};
     nlohmann::json output;
-    std::stringstream info{ROCKY_LINUX_RELEASE_FILE};
-    const auto spParser1{FactorySysOsParser::create("unix")};
+    std::stringstream info {ROCKY_LINUX_RELEASE_FILE};
+    const auto spParser1 {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser1->parseFile(info, output));
     info.clear();
     info.seekg(0, std::ios::beg);
     info << ROCKY_LINUX_RELEASE_FILE;
-    const auto spParser2{FactorySysOsParser::create("centos")};
+    const auto spParser2 {FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser2->parseFile(info, output));
     EXPECT_EQ("Green Obsidian", output["os_codename"]);
     EXPECT_EQ("8", output["os_major"]);
@@ -555,13 +511,10 @@ TEST_F(SysInfoParsersTest, CentosBased)
 
 TEST_F(SysInfoParsersTest, Centos7)
 {
-    constexpr auto CENTOS_RELEASE_FILE
-    {
-        "CentOS Linux release 7.9.2009 (Core)"
-    };
+    constexpr auto CENTOS_RELEASE_FILE {"CentOS Linux release 7.9.2009 (Core)"};
     nlohmann::json output;
-    std::stringstream info{CENTOS_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("centos")};
+    std::stringstream info {CENTOS_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("7.9.2009 (Core)", output["os_version"]);
     EXPECT_EQ("Centos Linux", output["os_name"]);
@@ -574,30 +527,27 @@ TEST_F(SysInfoParsersTest, Centos7)
 
 TEST_F(SysInfoParsersTest, CentosStream8)
 {
-    constexpr auto CENTOS_STREAM_RELEASE_FILE
-    {
-        "NAME=\"CentOS Stream\"\n"
-        "VERSION=\"8\"\n"
-        "ID=\"centos\"\n"
-        "ID_LIKE=\"rhel fedora\"\n"
-        "VERSION_ID=\"8\"\n"
-        "PLATFORM_ID=\"platform:el8\"\n"
-        "PRETTY_NAME=\"CentOS Stream 8\"\n"
-        "ANSI_COLOR=\"0;31\"\n"
-        "CPE_NAME=\"cpe:/o:centos:centos:8\"\n"
-        "HOME_URL=\"https://centos.org/\"\n"
-        "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
-        "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 8\"\n"
-        "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"
-    };
+    constexpr auto CENTOS_STREAM_RELEASE_FILE {"NAME=\"CentOS Stream\"\n"
+                                               "VERSION=\"8\"\n"
+                                               "ID=\"centos\"\n"
+                                               "ID_LIKE=\"rhel fedora\"\n"
+                                               "VERSION_ID=\"8\"\n"
+                                               "PLATFORM_ID=\"platform:el8\"\n"
+                                               "PRETTY_NAME=\"CentOS Stream 8\"\n"
+                                               "ANSI_COLOR=\"0;31\"\n"
+                                               "CPE_NAME=\"cpe:/o:centos:centos:8\"\n"
+                                               "HOME_URL=\"https://centos.org/\"\n"
+                                               "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
+                                               "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 8\"\n"
+                                               "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"};
     nlohmann::json output;
-    std::stringstream info{CENTOS_STREAM_RELEASE_FILE};
-    const auto spParser1{FactorySysOsParser::create("unix")};
+    std::stringstream info {CENTOS_STREAM_RELEASE_FILE};
+    const auto spParser1 {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser1->parseFile(info, output));
     info.clear();
     info.seekg(0, std::ios::beg);
     info << CENTOS_STREAM_RELEASE_FILE;
-    const auto spParser2{FactorySysOsParser::create("centos")};
+    const auto spParser2 {FactorySysOsParser::create("centos")};
     EXPECT_FALSE(spParser2->parseFile(info, output));
     EXPECT_EQ("8", output["os_major"]);
     EXPECT_EQ("CentOS Stream", output["os_name"]);
@@ -607,30 +557,27 @@ TEST_F(SysInfoParsersTest, CentosStream8)
 
 TEST_F(SysInfoParsersTest, CentosStream10)
 {
-    constexpr auto CENTOS_STREAM_RELEASE_FILE
-    {
-        "NAME=\"CentOS Stream\"\n"
-        "VERSION=\"10 (Coughlan)\"\n"
-        "ID=\"centos\"\n"
-        "ID_LIKE=\"rhel fedora\"\n"
-        "VERSION_ID=\"10\"\n"
-        "PLATFORM_ID=\"platform:el10\"\n"
-        "PRETTY_NAME=\"CentOS Stream 10 (Coughlan)\"\n"
-        "ANSI_COLOR=\"0;31\"\n"
-        "CPE_NAME=\"cpe:/o:centos:centos:10\"\n"
-        "HOME_URL=\"https://centos.org/\"\n"
-        "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
-        "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 10\"\n"
-        "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"
-    };
+    constexpr auto CENTOS_STREAM_RELEASE_FILE {"NAME=\"CentOS Stream\"\n"
+                                               "VERSION=\"10 (Coughlan)\"\n"
+                                               "ID=\"centos\"\n"
+                                               "ID_LIKE=\"rhel fedora\"\n"
+                                               "VERSION_ID=\"10\"\n"
+                                               "PLATFORM_ID=\"platform:el10\"\n"
+                                               "PRETTY_NAME=\"CentOS Stream 10 (Coughlan)\"\n"
+                                               "ANSI_COLOR=\"0;31\"\n"
+                                               "CPE_NAME=\"cpe:/o:centos:centos:10\"\n"
+                                               "HOME_URL=\"https://centos.org/\"\n"
+                                               "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
+                                               "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 10\"\n"
+                                               "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"};
     nlohmann::json output;
-    std::stringstream info{CENTOS_STREAM_RELEASE_FILE};
-    const auto spParser1{FactorySysOsParser::create("unix")};
+    std::stringstream info {CENTOS_STREAM_RELEASE_FILE};
+    const auto spParser1 {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser1->parseFile(info, output));
     info.clear();
     info.seekg(0, std::ios::beg);
     info << CENTOS_STREAM_RELEASE_FILE;
-    const auto spParser2{FactorySysOsParser::create("centos")};
+    const auto spParser2 {FactorySysOsParser::create("centos")};
     EXPECT_FALSE(spParser2->parseFile(info, output));
     EXPECT_EQ("10", output["os_major"]);
     EXPECT_EQ("CentOS Stream", output["os_name"]);
@@ -641,34 +588,31 @@ TEST_F(SysInfoParsersTest, CentosStream10)
 
 TEST_F(SysInfoParsersTest, RockyLinux9)
 {
-    constexpr auto ROCKY_LINUX_RELEASE_FILE
-    {
-        "NAME=\"Rocky Linux\"\n"
-        "VERSION=\"9.3 (Blue Onyx)\"\n"
-        "ID=\"rocky\"\n"
-        "ID_LIKE=\"rhel centos fedora\"\n"
-        "VERSION_ID=\"9.3\"\n"
-        "PLATFORM_ID=\"platform:el9\"\n"
-        "PRETTY_NAME=\"Rocky Linux 9.3 (Blue Onyx)\"\n"
-        "ANSI_COLOR=\"0;32\"\n"
-        "LOGO=\"fedora-logo-icon\"\n"
-        "CPE_NAME=\"cpe:/o:rocky:rocky:9:GA\"\n"
-        "HOME_URL=\"https://rockylinux.org/\"\n"
-        "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"\n"
-        "SUPPORT_END=\"2032-05-31\"\n"
-        "ROCKY_SUPPORT_PRODUCT=\"Rocky-Linux-9\"\n"
-        "ROCKY_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"
-        "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
-        "REDHAT_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"
-    };
+    constexpr auto ROCKY_LINUX_RELEASE_FILE {"NAME=\"Rocky Linux\"\n"
+                                             "VERSION=\"9.3 (Blue Onyx)\"\n"
+                                             "ID=\"rocky\"\n"
+                                             "ID_LIKE=\"rhel centos fedora\"\n"
+                                             "VERSION_ID=\"9.3\"\n"
+                                             "PLATFORM_ID=\"platform:el9\"\n"
+                                             "PRETTY_NAME=\"Rocky Linux 9.3 (Blue Onyx)\"\n"
+                                             "ANSI_COLOR=\"0;32\"\n"
+                                             "LOGO=\"fedora-logo-icon\"\n"
+                                             "CPE_NAME=\"cpe:/o:rocky:rocky:9:GA\"\n"
+                                             "HOME_URL=\"https://rockylinux.org/\"\n"
+                                             "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"\n"
+                                             "SUPPORT_END=\"2032-05-31\"\n"
+                                             "ROCKY_SUPPORT_PRODUCT=\"Rocky-Linux-9\"\n"
+                                             "ROCKY_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"
+                                             "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
+                                             "REDHAT_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"};
     nlohmann::json output;
-    std::stringstream info{ROCKY_LINUX_RELEASE_FILE};
-    const auto spParser1{FactorySysOsParser::create("unix")};
+    std::stringstream info {ROCKY_LINUX_RELEASE_FILE};
+    const auto spParser1 {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser1->parseFile(info, output));
     info.clear();
     info.seekg(0, std::ios::beg);
     info << ROCKY_LINUX_RELEASE_FILE;
-    const auto spParser2{FactorySysOsParser::create("centos")};
+    const auto spParser2 {FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser2->parseFile(info, output));
     EXPECT_EQ("Blue Onyx", output["os_codename"]);
     EXPECT_EQ("9", output["os_major"]);
@@ -680,33 +624,30 @@ TEST_F(SysInfoParsersTest, RockyLinux9)
 
 TEST_F(SysInfoParsersTest, AlmaLinux8)
 {
-    constexpr auto ALMALINUX_RELEASE_FILE
-    {
-        "NAME=\"AlmaLinux\"\n"
-        "VERSION=\"8.9 (Midnight Oncilla)\"\n"
-        "ID=\"almalinux\"\n"
-        "ID_LIKE=\"rhel centos fedora\"\n"
-        "VERSION_ID=\"8.9\"\n"
-        "PLATFORM_ID=\"platform:el8\"\n"
-        "PRETTY_NAME=\"AlmaLinux 8.9 (Midnight Oncilla)\"\n"
-        "ANSI_COLOR=\"0;34\"\n"
-        "LOGO=\"fedora-logo-icon\"\n"
-        "CPE_NAME=\"cpe:/o:almalinux:almalinux:8::baseos\"\n"
-        "HOME_URL=\"https://almalinux.org/\"\n"
-        "BUG_REPORT_URL=\"https://bugs.almalinux.org/\"\n"
-        "ALMALINUX_MANTISBT_PROJECT=\"AlmaLinux-8\"\n"
-        "ALMALINUX_MANTISBT_PROJECT_VERSION=\"8.9\"\n"
-        "REDHAT_SUPPORT_PRODUCT=\"AlmaLinux\"\n"
-        "REDHAT_SUPPORT_PRODUCT_VERSION=\"8.9\"\n"
-    };
+    constexpr auto ALMALINUX_RELEASE_FILE {"NAME=\"AlmaLinux\"\n"
+                                           "VERSION=\"8.9 (Midnight Oncilla)\"\n"
+                                           "ID=\"almalinux\"\n"
+                                           "ID_LIKE=\"rhel centos fedora\"\n"
+                                           "VERSION_ID=\"8.9\"\n"
+                                           "PLATFORM_ID=\"platform:el8\"\n"
+                                           "PRETTY_NAME=\"AlmaLinux 8.9 (Midnight Oncilla)\"\n"
+                                           "ANSI_COLOR=\"0;34\"\n"
+                                           "LOGO=\"fedora-logo-icon\"\n"
+                                           "CPE_NAME=\"cpe:/o:almalinux:almalinux:8::baseos\"\n"
+                                           "HOME_URL=\"https://almalinux.org/\"\n"
+                                           "BUG_REPORT_URL=\"https://bugs.almalinux.org/\"\n"
+                                           "ALMALINUX_MANTISBT_PROJECT=\"AlmaLinux-8\"\n"
+                                           "ALMALINUX_MANTISBT_PROJECT_VERSION=\"8.9\"\n"
+                                           "REDHAT_SUPPORT_PRODUCT=\"AlmaLinux\"\n"
+                                           "REDHAT_SUPPORT_PRODUCT_VERSION=\"8.9\"\n"};
     nlohmann::json output;
-    std::stringstream info{ALMALINUX_RELEASE_FILE};
-    const auto spParser1{FactorySysOsParser::create("unix")};
+    std::stringstream info {ALMALINUX_RELEASE_FILE};
+    const auto spParser1 {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser1->parseFile(info, output));
     info.clear();
     info.seekg(0, std::ios::beg);
     info << ALMALINUX_RELEASE_FILE;
-    const auto spParser2{FactorySysOsParser::create("centos")};
+    const auto spParser2 {FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser2->parseFile(info, output));
     EXPECT_EQ("Midnight Oncilla", output["os_codename"]);
     EXPECT_EQ("8", output["os_major"]);
@@ -718,33 +659,30 @@ TEST_F(SysInfoParsersTest, AlmaLinux8)
 
 TEST_F(SysInfoParsersTest, AlmaLinux9)
 {
-    constexpr auto ALMALINUX_RELEASE_FILE
-    {
-        "NAME=\"AlmaLinux\"\n"
-        "VERSION=\"9.3 (Shamrock Pampas Cat)\"\n"
-        "ID=\"almalinux\"\n"
-        "ID_LIKE=\"rhel centos fedora\"\n"
-        "VERSION_ID=\"9.3\"\n"
-        "PLATFORM_ID=\"platform:el9\"\n"
-        "PRETTY_NAME=\"AlmaLinux 9.3 (Shamrock Pampas Cat)\"\n"
-        "ANSI_COLOR=\"0;34\"\n"
-        "LOGO=\"fedora-logo-icon\"\n"
-        "CPE_NAME=\"cpe:/o:almalinux:almalinux:9\"\n"
-        "HOME_URL=\"https://almalinux.org/\"\n"
-        "BUG_REPORT_URL=\"https://bugs.almalinux.org/\"\n"
-        "ALMALINUX_MANTISBT_PROJECT=\"AlmaLinux-9\"\n"
-        "ALMALINUX_MANTISBT_PROJECT_VERSION=\"9.3\"\n"
-        "REDHAT_SUPPORT_PRODUCT=\"AlmaLinux\"\n"
-        "REDHAT_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"
-    };
+    constexpr auto ALMALINUX_RELEASE_FILE {"NAME=\"AlmaLinux\"\n"
+                                           "VERSION=\"9.3 (Shamrock Pampas Cat)\"\n"
+                                           "ID=\"almalinux\"\n"
+                                           "ID_LIKE=\"rhel centos fedora\"\n"
+                                           "VERSION_ID=\"9.3\"\n"
+                                           "PLATFORM_ID=\"platform:el9\"\n"
+                                           "PRETTY_NAME=\"AlmaLinux 9.3 (Shamrock Pampas Cat)\"\n"
+                                           "ANSI_COLOR=\"0;34\"\n"
+                                           "LOGO=\"fedora-logo-icon\"\n"
+                                           "CPE_NAME=\"cpe:/o:almalinux:almalinux:9\"\n"
+                                           "HOME_URL=\"https://almalinux.org/\"\n"
+                                           "BUG_REPORT_URL=\"https://bugs.almalinux.org/\"\n"
+                                           "ALMALINUX_MANTISBT_PROJECT=\"AlmaLinux-9\"\n"
+                                           "ALMALINUX_MANTISBT_PROJECT_VERSION=\"9.3\"\n"
+                                           "REDHAT_SUPPORT_PRODUCT=\"AlmaLinux\"\n"
+                                           "REDHAT_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"};
     nlohmann::json output;
-    std::stringstream info{ALMALINUX_RELEASE_FILE};
-    const auto spParser1{FactorySysOsParser::create("unix")};
+    std::stringstream info {ALMALINUX_RELEASE_FILE};
+    const auto spParser1 {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser1->parseFile(info, output));
     info.clear();
     info.seekg(0, std::ios::beg);
     info << ALMALINUX_RELEASE_FILE;
-    const auto spParser2{FactorySysOsParser::create("centos")};
+    const auto spParser2 {FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser2->parseFile(info, output));
     EXPECT_EQ("Shamrock Pampas Cat", output["os_codename"]);
     EXPECT_EQ("9", output["os_major"]);
@@ -756,22 +694,19 @@ TEST_F(SysInfoParsersTest, AlmaLinux9)
 
 TEST_F(SysInfoParsersTest, OracleLinux8)
 {
-    constexpr auto ORACLE_RELEASE_FILE
-    {
-        "NAME=\"Oracle Linux Server\"\n"
-        "VERSION=\"8.9\"\n"
-        "ID=\"ol\"\n"
-        "ID_LIKE=\"fedora\"\n"
-        "VERSION_ID=\"8.9\"\n"
-        "PLATFORM_ID=\"platform:el8\"\n"
-        "PRETTY_NAME=\"Oracle Linux Server 8.9\"\n"
-        "ANSI_COLOR=\"0;31\"\n"
-        "HOME_URL=\"https://linux.oracle.com/\"\n"
-        "BUG_REPORT_URL=\"https://bugzilla.oracle.com/\"\n"
-    };
+    constexpr auto ORACLE_RELEASE_FILE {"NAME=\"Oracle Linux Server\"\n"
+                                        "VERSION=\"8.9\"\n"
+                                        "ID=\"ol\"\n"
+                                        "ID_LIKE=\"fedora\"\n"
+                                        "VERSION_ID=\"8.9\"\n"
+                                        "PLATFORM_ID=\"platform:el8\"\n"
+                                        "PRETTY_NAME=\"Oracle Linux Server 8.9\"\n"
+                                        "ANSI_COLOR=\"0;31\"\n"
+                                        "HOME_URL=\"https://linux.oracle.com/\"\n"
+                                        "BUG_REPORT_URL=\"https://bugzilla.oracle.com/\"\n"};
     nlohmann::json output;
-    std::stringstream info{ORACLE_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {ORACLE_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("8.9", output["os_version"]);
     EXPECT_EQ("Oracle Linux Server", output["os_name"]);
@@ -782,22 +717,19 @@ TEST_F(SysInfoParsersTest, OracleLinux8)
 
 TEST_F(SysInfoParsersTest, OracleLinux9)
 {
-    constexpr auto ORACLE_RELEASE_FILE
-    {
-        "NAME=\"Oracle Linux Server\"\n"
-        "VERSION=\"9.3\"\n"
-        "ID=\"ol\"\n"
-        "ID_LIKE=\"fedora\"\n"
-        "VERSION_ID=\"9.3\"\n"
-        "PLATFORM_ID=\"platform:el9\"\n"
-        "PRETTY_NAME=\"Oracle Linux Server 9.3\"\n"
-        "ANSI_COLOR=\"0;31\"\n"
-        "HOME_URL=\"https://linux.oracle.com/\"\n"
-        "BUG_REPORT_URL=\"https://bugzilla.oracle.com/\"\n"
-    };
+    constexpr auto ORACLE_RELEASE_FILE {"NAME=\"Oracle Linux Server\"\n"
+                                        "VERSION=\"9.3\"\n"
+                                        "ID=\"ol\"\n"
+                                        "ID_LIKE=\"fedora\"\n"
+                                        "VERSION_ID=\"9.3\"\n"
+                                        "PLATFORM_ID=\"platform:el9\"\n"
+                                        "PRETTY_NAME=\"Oracle Linux Server 9.3\"\n"
+                                        "ANSI_COLOR=\"0;31\"\n"
+                                        "HOME_URL=\"https://linux.oracle.com/\"\n"
+                                        "BUG_REPORT_URL=\"https://bugzilla.oracle.com/\"\n"};
     nlohmann::json output;
-    std::stringstream info{ORACLE_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("unix")};
+    std::stringstream info {ORACLE_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("unix")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("9.3", output["os_version"]);
     EXPECT_EQ("Oracle Linux Server", output["os_name"]);
@@ -808,12 +740,9 @@ TEST_F(SysInfoParsersTest, OracleLinux9)
 
 TEST_F(SysInfoParsersTest, BSDFreeBSD)
 {
-    constexpr auto FREE_BSD_UNAME
-    {
-        "12.1-STABLE"
-    };
+    constexpr auto FREE_BSD_UNAME {"12.1-STABLE"};
     nlohmann::json output;
-    const auto spParser{FactorySysOsParser::create("bsd")};
+    const auto spParser {FactorySysOsParser::create("bsd")};
     EXPECT_TRUE(spParser->parseUname(FREE_BSD_UNAME, output));
     EXPECT_EQ("12.1", output["os_version"]);
     EXPECT_EQ("BSD", output["os_name"]);
@@ -824,12 +753,9 @@ TEST_F(SysInfoParsersTest, BSDFreeBSD)
 
 TEST_F(SysInfoParsersTest, BSDOpenBSD)
 {
-    constexpr auto FREE_BSD_UNAME
-    {
-        "6.6"
-    };
+    constexpr auto FREE_BSD_UNAME {"6.6"};
     nlohmann::json output;
-    const auto spParser{FactorySysOsParser::create("bsd")};
+    const auto spParser {FactorySysOsParser::create("bsd")};
     EXPECT_TRUE(spParser->parseUname(FREE_BSD_UNAME, output));
     EXPECT_EQ("6.6", output["os_version"]);
     EXPECT_EQ("BSD", output["os_name"]);
@@ -840,13 +766,10 @@ TEST_F(SysInfoParsersTest, BSDOpenBSD)
 
 TEST_F(SysInfoParsersTest, RedHatCentos)
 {
-    constexpr auto REDHAT_RELEASE_FILE
-    {
-        "CentOS release 5.11 (Final)"
-    };
+    constexpr auto REDHAT_RELEASE_FILE {"CentOS release 5.11 (Final)"};
     nlohmann::json output;
-    std::stringstream info{REDHAT_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("rhel")};
+    std::stringstream info {REDHAT_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("rhel")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("5.11", output["os_version"]);
     EXPECT_EQ("CentOS", output["os_name"]);
@@ -858,13 +781,10 @@ TEST_F(SysInfoParsersTest, RedHatCentos)
 
 TEST_F(SysInfoParsersTest, RedHatFedora)
 {
-    constexpr auto REDHAT_RELEASE_FILE
-    {
-        "Fedora release 22 (Twenty Two)"
-    };
+    constexpr auto REDHAT_RELEASE_FILE {"Fedora release 22 (Twenty Two)"};
     nlohmann::json output;
-    std::stringstream info{REDHAT_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("rhel")};
+    std::stringstream info {REDHAT_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("rhel")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("22", output["os_version"]);
     EXPECT_EQ("Fedora", output["os_name"]);
@@ -875,13 +795,10 @@ TEST_F(SysInfoParsersTest, RedHatFedora)
 
 TEST_F(SysInfoParsersTest, RedHatServer)
 {
-    constexpr auto REDHAT_RELEASE_FILE
-    {
-        "Red Hat Enterprise Linux Server release 7.2 (Maipo)"
-    };
+    constexpr auto REDHAT_RELEASE_FILE {"Red Hat Enterprise Linux Server release 7.2 (Maipo)"};
     nlohmann::json output;
-    std::stringstream info{REDHAT_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("rhel")};
+    std::stringstream info {REDHAT_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("rhel")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("7.2", output["os_version"]);
     EXPECT_EQ("Red Hat Enterprise Linux Server", output["os_name"]);
@@ -893,13 +810,10 @@ TEST_F(SysInfoParsersTest, RedHatServer)
 
 TEST_F(SysInfoParsersTest, RedHatLinux)
 {
-    constexpr auto REDHAT_RELEASE_FILE
-    {
-        "Red Hat Enterprise Linux ES release 3 (Taroon Update 4)"
-    };
+    constexpr auto REDHAT_RELEASE_FILE {"Red Hat Enterprise Linux ES release 3 (Taroon Update 4)"};
     nlohmann::json output;
-    std::stringstream info{REDHAT_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("rhel")};
+    std::stringstream info {REDHAT_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("rhel")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("3", output["os_version"]);
     EXPECT_EQ("Red Hat Enterprise Linux ES", output["os_name"]);
@@ -910,13 +824,10 @@ TEST_F(SysInfoParsersTest, RedHatLinux)
 
 TEST_F(SysInfoParsersTest, Debian)
 {
-    constexpr auto DEBIAN_VERSION_FILE
-    {
-        "10.6"
-    };
+    constexpr auto DEBIAN_VERSION_FILE {"10.6"};
     nlohmann::json output;
-    std::stringstream info{DEBIAN_VERSION_FILE};
-    const auto spParser{FactorySysOsParser::create("debian")};
+    std::stringstream info {DEBIAN_VERSION_FILE};
+    const auto spParser {FactorySysOsParser::create("debian")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("10.6", output["os_version"]);
     EXPECT_EQ("Debian GNU/Linux", output["os_name"]);
@@ -927,13 +838,10 @@ TEST_F(SysInfoParsersTest, Debian)
 
 TEST_F(SysInfoParsersTest, Arch)
 {
-    constexpr auto ARCH_VERSION_FILE
-    {
-        "10.6"
-    };
+    constexpr auto ARCH_VERSION_FILE {"10.6"};
     nlohmann::json output;
-    std::stringstream info{ARCH_VERSION_FILE};
-    const auto spParser{FactorySysOsParser::create("arch")};
+    std::stringstream info {ARCH_VERSION_FILE};
+    const auto spParser {FactorySysOsParser::create("arch")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("10.6", output["os_version"]);
     EXPECT_EQ("Arch Linux", output["os_name"]);
@@ -944,13 +852,10 @@ TEST_F(SysInfoParsersTest, Arch)
 
 TEST_F(SysInfoParsersTest, Slackware)
 {
-    constexpr auto SLACKWARE_VERSION_FILE
-    {
-        "Slackware 14.1"
-    };
+    constexpr auto SLACKWARE_VERSION_FILE {"Slackware 14.1"};
     nlohmann::json output;
-    std::stringstream info{SLACKWARE_VERSION_FILE};
-    const auto spParser{FactorySysOsParser::create("slackware")};
+    std::stringstream info {SLACKWARE_VERSION_FILE};
+    const auto spParser {FactorySysOsParser::create("slackware")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("14.1", output["os_version"]);
     EXPECT_EQ("Slackware", output["os_name"]);
@@ -961,13 +866,10 @@ TEST_F(SysInfoParsersTest, Slackware)
 
 TEST_F(SysInfoParsersTest, Gentoo)
 {
-    constexpr auto GENTOO_VERSION_FILE
-    {
-        "Gentoo Base System release 2.6"
-    };
+    constexpr auto GENTOO_VERSION_FILE {"Gentoo Base System release 2.6"};
     nlohmann::json output;
-    std::stringstream info{GENTOO_VERSION_FILE};
-    const auto spParser{FactorySysOsParser::create("gentoo")};
+    std::stringstream info {GENTOO_VERSION_FILE};
+    const auto spParser {FactorySysOsParser::create("gentoo")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("2.6", output["os_version"]);
     EXPECT_EQ("Gentoo", output["os_name"]);
@@ -978,17 +880,15 @@ TEST_F(SysInfoParsersTest, Gentoo)
 
 TEST_F(SysInfoParsersTest, SuSE)
 {
-    constexpr auto OPENSUSE_VERSION_FILE
-    {
+    constexpr auto OPENSUSE_VERSION_FILE {
         R"(
         openSUSE 13.1 (x86_64)
         VERSION = 13.1
         CODENAME = Bottle
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{OPENSUSE_VERSION_FILE};
-    const auto spParser{FactorySysOsParser::create("suse")};
+    std::stringstream info {OPENSUSE_VERSION_FILE};
+    const auto spParser {FactorySysOsParser::create("suse")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("13.1", output["os_version"]);
     EXPECT_EQ("SuSE Linux", output["os_name"]);
@@ -1000,13 +900,10 @@ TEST_F(SysInfoParsersTest, SuSE)
 
 TEST_F(SysInfoParsersTest, Fedora)
 {
-    constexpr auto FEDORA_VERSION_FILE
-    {
-        "Fedora release 22 (Twenty Two)"
-    };
+    constexpr auto FEDORA_VERSION_FILE {"Fedora release 22 (Twenty Two)"};
     nlohmann::json output;
-    std::stringstream info{FEDORA_VERSION_FILE};
-    const auto spParser{FactorySysOsParser::create("fedora")};
+    std::stringstream info {FEDORA_VERSION_FILE};
+    const auto spParser {FactorySysOsParser::create("fedora")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("22", output["os_version"]);
     EXPECT_EQ("Fedora", output["os_name"]);
@@ -1017,15 +914,13 @@ TEST_F(SysInfoParsersTest, Fedora)
 
 TEST_F(SysInfoParsersTest, Alpine)
 {
-    constexpr auto ALPINE_RELEASE_FILE
-    {
+    constexpr auto ALPINE_RELEASE_FILE {
         R"(
         3.17.1
-        )"
-    };
+        )"};
     nlohmann::json output;
-    std::stringstream info{ALPINE_RELEASE_FILE};
-    const auto spParser{FactorySysOsParser::create("alpine")};
+    std::stringstream info {ALPINE_RELEASE_FILE};
+    const auto spParser {FactorySysOsParser::create("alpine")};
     EXPECT_TRUE(spParser->parseFile(info, output));
     EXPECT_EQ("3.17.1", output["os_version"]);
     EXPECT_EQ("Alpine Linux", output["os_name"]);
@@ -1042,16 +937,13 @@ TEST_F(SysInfoParsersTest, UknownPlatform)
 
 TEST_F(SysInfoParsersTest, MacOS)
 {
-    constexpr auto MACOS_SW_VERSION
-    {
+    constexpr auto MACOS_SW_VERSION {
         R"(
         ProductName:	Mac OS X
         ProductVersion:	10.14.6
         BuildVersion:	18G103
-        )"
-    };
-    constexpr auto MACOS_SYSTEM_PROFILER
-    {
+        )"};
+    constexpr auto MACOS_SYSTEM_PROFILER {
         R"(
         Software:
 
@@ -1066,12 +958,8 @@ TEST_F(SysInfoParsersTest, MacOS)
             Secure Virtual Memory: Enabled
             System Integrity Protection: Enabled
             Time since boot: 58 minutes
-        )"
-    };
-    constexpr auto MACOS_UNAME
-    {
-        "18.7.0"
-    };
+        )"};
+    constexpr auto MACOS_UNAME {"18.7.0"};
     nlohmann::json output;
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
@@ -1090,18 +978,13 @@ TEST_F(SysInfoParsersTest, MacOS)
 
 TEST_F(SysInfoParsersTest, MacOSTahoeCodename)
 {
-    constexpr auto MACOS_SW_VERSION
-    {
+    constexpr auto MACOS_SW_VERSION {
         R"(
         ProductName:	macOS
         ProductVersion:	26.5.1
         BuildVersion:	25F74
-        )"
-    };
-    constexpr auto MACOS_UNAME
-    {
-        "25.5.0"
-    };
+        )"};
+    constexpr auto MACOS_UNAME {"25.5.0"};
     nlohmann::json output;
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
@@ -1112,18 +995,13 @@ TEST_F(SysInfoParsersTest, MacOSTahoeCodename)
 
 TEST_F(SysInfoParsersTest, MacOSGoldenGateCodename)
 {
-    constexpr auto MACOS_SW_VERSION
-    {
+    constexpr auto MACOS_SW_VERSION {
         R"(
         ProductName:	macOS
         ProductVersion:	27.0.1
         BuildVersion:	26A434
-        )"
-    };
-    constexpr auto MACOS_UNAME
-    {
-        "27.0.0"
-    };
+        )"};
+    constexpr auto MACOS_UNAME {"27.0.0"};
     nlohmann::json output;
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
@@ -1134,18 +1012,13 @@ TEST_F(SysInfoParsersTest, MacOSGoldenGateCodename)
 
 TEST_F(SysInfoParsersTest, MacOSUnmappedCodenameIsEmpty)
 {
-    constexpr auto MACOS_SW_VERSION
-    {
+    constexpr auto MACOS_SW_VERSION {
         R"(
         ProductName:	macOS
         ProductVersion:	29.0
         BuildVersion:	28A100
-        )"
-    };
-    constexpr auto MACOS_UNAME
-    {
-        "28.0.0"
-    };
+        )"};
+    constexpr auto MACOS_UNAME {"28.0.0"};
     nlohmann::json output;
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
@@ -1156,16 +1029,13 @@ TEST_F(SysInfoParsersTest, MacOSUnmappedCodenameIsEmpty)
 
 TEST_F(SysInfoParsersTest, MacOSOsDefaultName)
 {
-    constexpr auto MACOS_SW_VERSION
-    {
+    constexpr auto MACOS_SW_VERSION {
         R"(
         ProductName:	Mac OS X
         ProductVersion:	10.14.6
         BuildVersion:	18G103
-        )"
-    };
-    constexpr auto MACOS_SYSTEM_PROFILER
-    {
+        )"};
+    constexpr auto MACOS_SYSTEM_PROFILER {
         R"(
         Software:
 
@@ -1180,12 +1050,8 @@ TEST_F(SysInfoParsersTest, MacOSOsDefaultName)
             Secure Virtual Memory: Enabled
             System Integrity Protection: Enabled
             Time since boot: 58 minutes
-        )"
-    };
-    constexpr auto MACOS_UNAME
-    {
-        "18.7.0"
-    };
+        )"};
+    constexpr auto MACOS_UNAME {"18.7.0"};
     nlohmann::json output;
     MacOsParser parser;
     EXPECT_TRUE(parser.parseSwVersion(MACOS_SW_VERSION, output));
@@ -1204,56 +1070,36 @@ TEST_F(SysInfoParsersTest, MacOSOsDefaultName)
 
 TEST_F(SysInfoParsersTest, SetOsFullJoinsNameAndVersion)
 {
-    nlohmann::json output
-    {
-        {"os_name", "Ubuntu"},
-        {"os_version", "22.04.3 LTS (Jammy Jellyfish)"}
-    };
+    nlohmann::json output {{"os_name", "Ubuntu"}, {"os_version", "22.04.3 LTS (Jammy Jellyfish)"}};
     setOsFull(output);
     EXPECT_EQ("Ubuntu 22.04.3 LTS (Jammy Jellyfish)", output["os_full"]);
 }
 
 TEST_F(SysInfoParsersTest, SetOsFullWithUnknownVersion)
 {
-    nlohmann::json output
-    {
-        {"os_name", "Linux"},
-        {"os_version", " "}
-    };
+    nlohmann::json output {{"os_name", "Linux"}, {"os_version", " "}};
     setOsFull(output);
     EXPECT_EQ("Linux", output["os_full"]);
 }
 
 TEST_F(SysInfoParsersTest, SetOsFullWithoutName)
 {
-    nlohmann::json output
-    {
-        {"os_version", "14.1-RELEASE"}
-    };
+    nlohmann::json output {{"os_version", "14.1-RELEASE"}};
     setOsFull(output);
     EXPECT_FALSE(output.contains("os_full"));
 }
 
 TEST_F(SysInfoParsersTest, SetOsFullOnMacOS)
 {
-    nlohmann::json output
-    {
-        {"os_name", "macOS"},
-        {"os_version", "26.6.2"},
-        {"os_build", "25G83"}
-    };
+    nlohmann::json output {{"os_name", "macOS"}, {"os_version", "26.6.2"}, {"os_build", "25G83"}};
     setOsFull(output);
     EXPECT_EQ("macOS 26.6.2", output["os_full"]);
 }
 
 TEST_F(SysInfoParsersTest, SetOsFullKeepsAnExistingValue)
 {
-    nlohmann::json output
-    {
-        {"os_name", "Ubuntu"},
-        {"os_version", "22.04.3 LTS (Jammy Jellyfish)"},
-        {"os_full", "Ubuntu 22.04"}
-    };
+    nlohmann::json output {
+        {"os_name", "Ubuntu"}, {"os_version", "22.04.3 LTS (Jammy Jellyfish)"}, {"os_full", "Ubuntu 22.04"}};
     setOsFull(output);
     EXPECT_EQ("Ubuntu 22.04", output["os_full"]);
 }

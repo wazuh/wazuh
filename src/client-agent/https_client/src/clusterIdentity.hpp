@@ -26,27 +26,27 @@
  */
 class ClusterIdentity final
 {
-    public:
-        struct Snapshot
-        {
-            std::string name;
-        };
+public:
+    struct Snapshot
+    {
+        std::string name;
+    };
 
-        void set(std::string name)
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_value.name = std::move(name);
-        }
+    void set(std::string name)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_value.name = std::move(name);
+    }
 
-        Snapshot get() const
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_value;
-        }
+    Snapshot get() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_value;
+    }
 
-    private:
-        mutable std::mutex m_mutex;
-        Snapshot m_value;
+private:
+    mutable std::mutex m_mutex;
+    Snapshot m_value;
 };
 
 #endif // _HC_CLUSTER_IDENTITY_HPP

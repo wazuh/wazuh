@@ -25,36 +25,43 @@
  * w_ca_publication_open_staging(). */
 #define CA_PUBLICATION_TEMP_SUFFIX ".tmp"
 
-int64_t w_ca_publication_read(const char *path) {
-    FILE *fp;
+int64_t w_ca_publication_read(const char* path)
+{
+    FILE* fp;
     char line[OS_BUFFER_SIZE];
     int64_t generation = W_CA_PUBLICATION_UNKNOWN;
     int lines = 0;
 
-    if (path == NULL) {
+    if (path == NULL)
+    {
         return W_CA_PUBLICATION_UNKNOWN;
     }
 
-    if (fp = wfopen(path, "r"), fp == NULL) {
+    if (fp = wfopen(path, "r"), fp == NULL)
+    {
         return W_CA_PUBLICATION_UNKNOWN;
     }
 
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        const char *value;
-        char *end = NULL;
+    while (fgets(line, sizeof(line), fp) != NULL)
+    {
+        const char* value;
+        char* end = NULL;
         long long parsed;
 
         /* The certificates begin here: everything this function cares about is above them, and
          * a "## generation:" inside a base64 body is not a thing that can happen. */
-        if (strncmp(line, "-----BEGIN", 10) == 0) {
+        if (strncmp(line, "-----BEGIN", 10) == 0)
+        {
             break;
         }
 
-        if (++lines > CA_PUBLICATION_MAX_HEADER_LINES) {
+        if (++lines > CA_PUBLICATION_MAX_HEADER_LINES)
+        {
             break;
         }
 
-        if (strncmp(line, CA_PUBLICATION_PREFIX, strlen(CA_PUBLICATION_PREFIX)) != 0) {
+        if (strncmp(line, CA_PUBLICATION_PREFIX, strlen(CA_PUBLICATION_PREFIX)) != 0)
+        {
             continue;
         }
 
@@ -66,19 +73,22 @@ int64_t w_ca_publication_read(const char *path) {
          * written by w_ca_publication_render() and reading a publication out of it would be
          * guessing. No upper bound to check: a long long can't exceed INT64_MAX, and strtoll()
          * reports overflow through errno. */
-        if (errno != 0 || end == value || parsed <= 0) {
+        if (errno != 0 || end == value || parsed <= 0)
+        {
             break;
         }
 
-        while (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n') {
+        while (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')
+        {
             end++;
         }
 
-        if (*end != '\0') {
+        if (*end != '\0')
+        {
             break;
         }
 
-        generation = (int64_t) parsed;
+        generation = (int64_t)parsed;
         break;
     }
 
@@ -87,17 +97,20 @@ int64_t w_ca_publication_read(const char *path) {
     return generation;
 }
 
-int w_ca_publication_render(int64_t generation, char *out, size_t out_size) {
+int w_ca_publication_render(int64_t generation, char* out, size_t out_size)
+{
     int written;
 
-    if (out == NULL || generation <= 0) {
+    if (out == NULL || generation <= 0)
+    {
         return -1;
     }
 
-    written = snprintf(out, out_size, "%s\n%s %lld\n", CA_PUBLICATION_BANNER,
-                       CA_PUBLICATION_PREFIX, (long long) generation);
+    written =
+        snprintf(out, out_size, "%s\n%s %lld\n", CA_PUBLICATION_BANNER, CA_PUBLICATION_PREFIX, (long long)generation);
 
-    if (written < 0 || (size_t) written >= out_size) {
+    if (written < 0 || (size_t)written >= out_size)
+    {
         return -1;
     }
 
@@ -135,15 +148,18 @@ int w_ca_publication_render(int64_t generation, char *out, size_t out_size) {
  */
 #ifndef WIN32
 /* Creates the staging file, failing rather than following or reusing anything already there. */
-static int w_ca_publication_create_staging(const char *path) {
+static int w_ca_publication_create_staging(const char* path)
+{
     return open(path, O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW | O_CLOEXEC, 0640);
 }
 #endif
 
-static FILE *w_ca_publication_open_staging(const char *path, char *out, size_t out_size) {
+static FILE* w_ca_publication_open_staging(const char* path, char* out, size_t out_size)
+{
     int written = snprintf(out, out_size, "%s%s", path, CA_PUBLICATION_TEMP_SUFFIX);
 
-    if (written < 0 || (size_t) written >= out_size) {
+    if (written < 0 || (size_t)written >= out_size)
+    {
         errno = ENAMETOOLONG;
         return NULL;
     }
@@ -156,21 +172,24 @@ static FILE *w_ca_publication_open_staging(const char *path, char *out, size_t o
     return wfopen(out, "w");
 
 #else
-    FILE *fp;
+    FILE* fp;
     int fd = w_ca_publication_create_staging(out);
 
-    if (fd < 0 && errno == EEXIST) {
+    if (fd < 0 && errno == EEXIST)
+    {
         /* Our own leftover, from an install this agent did not live to finish. Removed once,
          * then the create is retried; ENOENT means someone else removed it first, which is the
          * outcome this wanted anyway. */
-        if (unlink(out) != 0 && errno != ENOENT) {
+        if (unlink(out) != 0 && errno != ENOENT)
+        {
             return NULL;
         }
 
         fd = w_ca_publication_create_staging(out);
     }
 
-    if (fd < 0) {
+    if (fd < 0)
+    {
         return NULL;
     }
 
@@ -178,7 +197,8 @@ static FILE *w_ca_publication_open_staging(const char *path, char *out, size_t o
      * and never writes it. Applied with fchmod() rather than left to the create's mode, which
      * umask() would narrow, and to the fd rather than the name, which nothing can substitute
      * between the two calls. */
-    if (fchmod(fd, 0640) != 0 || (fp = fdopen(fd, "w"), fp == NULL)) {
+    if (fchmod(fd, 0640) != 0 || (fp = fdopen(fd, "w"), fp == NULL))
+    {
         const int saved = errno;
         close(fd);
         unlink(out);
@@ -190,34 +210,37 @@ static FILE *w_ca_publication_open_staging(const char *path, char *out, size_t o
 #endif
 }
 
-int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, int64_t generation) {
+int w_ca_publication_install(const char* path, const char* pem, size_t pem_len, int64_t generation)
+{
     char block[128];
     char temp_path[OS_FLSIZE + 1] = {'\0'};
-    FILE *fp = NULL;
-    X509 **certs = NULL;
+    FILE* fp = NULL;
+    X509** certs = NULL;
     size_t count = 0;
     int ret = -1;
 
-    if (path == NULL || pem == NULL || pem_len == 0) {
+    if (path == NULL || pem == NULL || pem_len == 0)
+    {
         return -1;
     }
 
-    if (w_ca_publication_render(generation, block, sizeof(block)) != 0) {
-        merror("CA bundle: refusing to record publication %lld.", (long long) generation);
+    if (w_ca_publication_render(generation, block, sizeof(block)) != 0)
+    {
+        merror("CA bundle: refusing to record publication %lld.", (long long)generation);
         return -1;
     }
 
     /* The staging file is where the body is judged, not the destination: a bundle that turns out
      * not to be certificates must never have existed at the path the agent verifies against. It
      * is named after the target, so the rename below stays within one filesystem and is atomic. */
-    if (fp = w_ca_publication_open_staging(path, temp_path, sizeof(temp_path)), fp == NULL) {
-        merror("CA bundle: could not create a temporary file beside '%s': %s (%d).", path,
-               strerror(errno), errno);
+    if (fp = w_ca_publication_open_staging(path, temp_path, sizeof(temp_path)), fp == NULL)
+    {
+        merror("CA bundle: could not create a temporary file beside '%s': %s (%d).", path, strerror(errno), errno);
         return -1;
     }
 
-    if (fwrite(block, 1, strlen(block), fp) != strlen(block) ||
-            fwrite(pem, 1, pem_len, fp) != pem_len) {
+    if (fwrite(block, 1, strlen(block), fp) != strlen(block) || fwrite(pem, 1, pem_len, fp) != pem_len)
+    {
         merror("CA bundle: could not write the trust store to '%s'.", temp_path);
         goto end;
     }
@@ -232,21 +255,21 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
      * repair itself. Same pattern, and the same reasoning, as w_shred_file()'s own flush. */
     if (fflush(fp) != 0
 #ifdef WIN32
-            || _commit(_fileno(fp)) != 0
+        || _commit(_fileno(fp)) != 0
 #else
-            || fsync(fileno(fp)) != 0
+        || fsync(fileno(fp)) != 0
 #endif
-       ) {
-        merror("CA bundle: could not flush the trust store to '%s': %s (%d).", temp_path,
-               strerror(errno), errno);
+    )
+    {
+        merror("CA bundle: could not flush the trust store to '%s': %s (%d).", temp_path, strerror(errno), errno);
         goto end;
     }
 
-    if (fclose(fp) != 0) {
+    if (fclose(fp) != 0)
+    {
         /* A write error can still surface here even after a successful flush. */
         fp = NULL;
-        merror("CA bundle: could not close the trust store at '%s': %s (%d).", temp_path,
-               strerror(errno), errno);
+        merror("CA bundle: could not close the trust store at '%s': %s (%d).", temp_path, strerror(errno), errno);
         goto end;
     }
 
@@ -254,9 +277,11 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
 
     /* Judged only now that every byte is on disk, and judged from the file rather than the
      * buffer so what is validated is exactly what would be installed. */
-    if (certs = w_x509_load_all_pem(temp_path, &count), certs == NULL) {
+    if (certs = w_x509_load_all_pem(temp_path, &count), certs == NULL)
+    {
         merror("CA bundle: the body served for publication %lld is not a certificate bundle this "
-               "agent can parse; the trust store is unchanged.", (long long) generation);
+               "agent can parse; the trust store is unchanged.",
+               (long long)generation);
         goto end;
     }
 
@@ -280,17 +305,17 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
 #ifdef WIN32
 
     /* rename() refuses an existing destination on Windows; MoveFileEx replaces it in one step. */
-    if (!MoveFileExA(temp_path, path, MOVEFILE_REPLACE_EXISTING)) {
-        merror("CA bundle: could not install the trust store at '%s' (error %lu).", path,
-               GetLastError());
+    if (!MoveFileExA(temp_path, path, MOVEFILE_REPLACE_EXISTING))
+    {
+        merror("CA bundle: could not install the trust store at '%s' (error %lu).", path, GetLastError());
         goto end;
     }
 
 #else
 
-    if (rename(temp_path, path) != 0) {
-        merror("CA bundle: could not install the trust store at '%s': %s (%d).", path,
-               strerror(errno), errno);
+    if (rename(temp_path, path) != 0)
+    {
+        merror("CA bundle: could not install the trust store at '%s': %s (%d).", path, strerror(errno), errno);
         goto end;
     }
 
@@ -305,24 +330,31 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
      * undo a correct install. */
     {
         char dir[OS_FLSIZE + 1];
-        const char *sep = strrchr(path, '/');
+        const char* sep = strrchr(path, '/');
         int dir_fd;
 
-        if (sep == NULL) {
+        if (sep == NULL)
+        {
             snprintf(dir, sizeof(dir), ".");
-        } else if (sep == path) {
+        }
+        else if (sep == path)
+        {
             snprintf(dir, sizeof(dir), "/");
-        } else {
-            snprintf(dir, sizeof(dir), "%.*s", (int) (sep - path), path);
+        }
+        else
+        {
+            snprintf(dir, sizeof(dir), "%.*s", (int)(sep - path), path);
         }
 
-        if (dir_fd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dir_fd < 0) {
-            mdebug1("CA bundle: could not open '%s' to flush the rename: %s (%d).", dir,
-                    strerror(errno), errno);
-        } else {
-            if (fsync(dir_fd) != 0) {
-                mdebug1("CA bundle: could not flush the rename into '%s': %s (%d).", dir,
-                        strerror(errno), errno);
+        if (dir_fd = open(dir, O_RDONLY | O_DIRECTORY | O_CLOEXEC), dir_fd < 0)
+        {
+            mdebug1("CA bundle: could not open '%s' to flush the rename: %s (%d).", dir, strerror(errno), errno);
+        }
+        else
+        {
+            if (fsync(dir_fd) != 0)
+            {
+                mdebug1("CA bundle: could not flush the rename into '%s': %s (%d).", dir, strerror(errno), errno);
             }
 
             close(dir_fd);
@@ -330,13 +362,13 @@ int w_ca_publication_install(const char *path, const char *pem, size_t pem_len, 
     }
 #endif
 
-    minfo("CA bundle: trust store replaced at publication %lld (%zu certificate(s)).",
-          (long long) generation, count);
+    minfo("CA bundle: trust store replaced at publication %lld (%zu certificate(s)).", (long long)generation, count);
     return 0;
 
 end:
 
-    if (fp != NULL) {
+    if (fp != NULL)
+    {
         fclose(fp);
     }
 

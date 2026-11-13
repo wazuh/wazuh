@@ -24,44 +24,45 @@
 
 class ScaTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            m_logOutput.clear();
+protected:
+    void SetUp() override
+    {
+        m_logOutput.clear();
 
-            // #38601: syncModule() now asks the shared-memory provider for this agent's id, and
-            // that provider is a file at a path relative to the working directory. Resetting it
-            // is not enough on its own: sca_recovery_test publishes agent id "001" into the very
-            // same file from its own SetUp, so under a parallel ctest that write can land after
-            // this reset and put these cases on the identity-changed branch, which nothing here
-            // scripts. Own directory per binary, like sca_identity_test.
-            std::filesystem::create_directories("sca_test_workdir/var/run");
-            std::filesystem::current_path("sca_test_workdir");
-            metadata_provider_reset();
+        // #38601: syncModule() now asks the shared-memory provider for this agent's id, and
+        // that provider is a file at a path relative to the working directory. Resetting it
+        // is not enough on its own: sca_recovery_test publishes agent id "001" into the very
+        // same file from its own SetUp, so under a parallel ctest that write can land after
+        // this reset and put these cases on the identity-changed branch, which nothing here
+        // scripts. Own directory per binary, like sca_identity_test.
+        std::filesystem::create_directories("sca_test_workdir/var/run");
+        std::filesystem::current_path("sca_test_workdir");
+        metadata_provider_reset();
 
-            // Set up the logging callback to avoid "Log callback not set" errors. Locked: some
-            // cases log from a second thread (pause() waiting while Stop() runs).
-            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
+        // Set up the logging callback to avoid "Log callback not set" errors. Locked: some
+        // cases log from a second thread (pause() waiting while Stop() runs).
+        LoggingHelper::setLogCallback(
+            [this](const modules_log_level_t /* level */, const char* log)
             {
                 std::lock_guard<std::mutex> lock(m_logMutex);
                 m_logOutput += log;
                 m_logOutput += "\n";
             });
 
-            m_mockDBSync = std::make_shared<MockDBSync>();
-            m_sca = std::make_shared<SecurityConfigurationAssessment>("test_path", m_mockDBSync);
-        }
+        m_mockDBSync = std::make_shared<MockDBSync>();
+        m_sca = std::make_shared<SecurityConfigurationAssessment>("test_path", m_mockDBSync);
+    }
 
-        void TearDown() override
-        {
-            // Back out of the per-binary directory entered in SetUp.
-            std::filesystem::current_path("..");
-        }
+    void TearDown() override
+    {
+        // Back out of the per-binary directory entered in SetUp.
+        std::filesystem::current_path("..");
+    }
 
-        std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
-        std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
-        std::mutex m_logMutex;
-        std::string m_logOutput;
+    std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
+    std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
+    std::mutex m_logMutex;
+    std::string m_logOutput;
 };
 
 namespace
@@ -73,34 +74,33 @@ namespace
         return path.string();
     }
 
-    const std::string kCreateStatement =
-        "CREATE TABLE IF NOT EXISTS sca_policy ("
-        "id TEXT PRIMARY KEY,"
-        "name TEXT,"
-        "file TEXT,"
-        "description TEXT,"
-        "refs TEXT);"
-        "CREATE TABLE IF NOT EXISTS sca_check ("
-        "checksum TEXT NOT NULL,"
-        "id TEXT PRIMARY KEY,"
-        "policy_id TEXT REFERENCES sca_policy(id),"
-        "name TEXT,"
-        "description TEXT,"
-        "rationale TEXT,"
-        "remediation TEXT,"
-        "refs TEXT,"
-        "result TEXT DEFAULT 'Not run',"
-        "reason TEXT,"
-        "condition TEXT,"
-        "compliance TEXT,"
-        "mitre TEXT,"
-        "rules TEXT,"
-        "regex_type TEXT DEFAULT 'pcre2',"
-        "version INTEGER NOT NULL DEFAULT 1,"
-        "sync INTEGER NOT NULL DEFAULT 0);"
-        "CREATE TABLE IF NOT EXISTS sca_metadata ("
-        "key TEXT PRIMARY KEY,"
-        "value INTEGER);";
+    const std::string kCreateStatement = "CREATE TABLE IF NOT EXISTS sca_policy ("
+                                         "id TEXT PRIMARY KEY,"
+                                         "name TEXT,"
+                                         "file TEXT,"
+                                         "description TEXT,"
+                                         "refs TEXT);"
+                                         "CREATE TABLE IF NOT EXISTS sca_check ("
+                                         "checksum TEXT NOT NULL,"
+                                         "id TEXT PRIMARY KEY,"
+                                         "policy_id TEXT REFERENCES sca_policy(id),"
+                                         "name TEXT,"
+                                         "description TEXT,"
+                                         "rationale TEXT,"
+                                         "remediation TEXT,"
+                                         "refs TEXT,"
+                                         "result TEXT DEFAULT 'Not run',"
+                                         "reason TEXT,"
+                                         "condition TEXT,"
+                                         "compliance TEXT,"
+                                         "mitre TEXT,"
+                                         "rules TEXT,"
+                                         "regex_type TEXT DEFAULT 'pcre2',"
+                                         "version INTEGER NOT NULL DEFAULT 1,"
+                                         "sync INTEGER NOT NULL DEFAULT 0);"
+                                         "CREATE TABLE IF NOT EXISTS sca_metadata ("
+                                         "key TEXT PRIMARY KEY,"
+                                         "value INTEGER);";
 
     void insertRow(const std::shared_ptr<IDBSync>& dbSync, const std::string& table, const nlohmann::json& data)
     {
@@ -108,7 +108,7 @@ namespace
         const auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
         dbSync->syncRow(query.query(), callback);
     }
-}
+} // namespace
 
 TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
 {
@@ -116,7 +116,8 @@ TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
     bool statefulCalled = false;
     bool statelessCalled = false;
 
-    auto statefulLambda = [&](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t) -> int // NOLINT(performance-unnecessary-value-param)
+    auto statefulLambda = [&](const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)
+        -> int // NOLINT(performance-unnecessary-value-param)
     {
         statefulCalled = true;
         return expectedReturnValue;
@@ -132,7 +133,8 @@ TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
     m_sca->SetPushStatefulMessageFunction(statefulLambda);
 
     const std::string dummyMessage = R"({"key": "value"})";
-    const int result = statefulLambda("test_id", Operation_t::OPERATION_CREATE, "index", dummyMessage, 1) + statelessLambda(dummyMessage);
+    const int result = statefulLambda("test_id", Operation_t::OPERATION_CREATE, "index", dummyMessage, 1) +
+                       statelessLambda(dummyMessage);
 
     EXPECT_TRUE(statefulCalled && statelessCalled);
     EXPECT_EQ(result, expectedReturnValue * 2);
@@ -181,7 +183,7 @@ TEST_F(ScaTest, SCAPolicyRunAndStop)
 
     std::vector<std::tuple<std::string, std::string, std::string>> reported;
 
-    auto reportCheckResult = [&](const CheckResult & r) -> void
+    auto reportCheckResult = [&](const CheckResult& r) -> void
     {
         reported.emplace_back(r.policyId, r.checkId, r.result);
     };
@@ -201,7 +203,6 @@ TEST_F(ScaTest, SCAPolicyRunAndStop)
     EXPECT_TRUE(reported.empty());
 }
 
-
 TEST_F(ScaTest, SCAPolicyRun_NoRequirements)
 {
     std::string policyId = "policy_id";
@@ -219,7 +220,7 @@ TEST_F(ScaTest, SCAPolicyRun_NoRequirements)
 
     std::vector<std::tuple<std::string, std::string, std::string>> reported;
 
-    auto reportCheckResult = [&](const CheckResult & r)
+    auto reportCheckResult = [&](const CheckResult& r)
     {
         reported.emplace_back(r.policyId, r.checkId, r.result);
     };
@@ -249,11 +250,7 @@ TEST_F(ScaTest, Setup_WithEmptyPolicies_CreatesNoPolicies)
 
 TEST_F(ScaTest, Setup_WithFakePolicies_LoadsNothing)
 {
-    std::vector<sca::PolicyData> policyData =
-    {
-        {"policy1.yaml", true, false},
-        {"policy2.yaml", true, true}
-    };
+    std::vector<sca::PolicyData> policyData = {{"policy1.yaml", true, false}, {"policy2.yaml", true, true}};
 
     auto mockFileSystem = std::make_shared<MockFileSystemWrapper>();
     auto mockDBSync = std::make_shared<MockDBSync>();
@@ -263,11 +260,8 @@ TEST_F(ScaTest, Setup_WithFakePolicies_LoadsNothing)
 
     // Mock filesystem exists() to call Stop() when called, then return true
     EXPECT_CALL(*mockFileSystem, exists(testing::_))
-    .WillOnce(testing::DoAll(testing::InvokeWithoutArgs([&scm]()
-    {
-        scm.Stop();
-    }), testing::Return(true)))
-    .WillRepeatedly(testing::Return(true));
+        .WillOnce(testing::DoAll(testing::InvokeWithoutArgs([&scm]() { scm.Stop(); }), testing::Return(true)))
+        .WillRepeatedly(testing::Return(true));
 
     // Run() should exit when Stop() is called from the mock
     scm.Run();
@@ -300,11 +294,12 @@ TEST_F(ScaTest, StopUnblocksPauseWaiters)
     scaMock->setSyncInProgress(true);
 
     std::atomic<bool> pauseReturned {false};
-    std::thread pauseThread([&scaMock, &pauseReturned]()
-    {
-        scaMock->pause();
-        pauseReturned.store(true);
-    });
+    std::thread pauseThread(
+        [&scaMock, &pauseReturned]()
+        {
+            scaMock->pause();
+            pauseReturned.store(true);
+        });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     scaMock->Stop();
@@ -335,11 +330,12 @@ TEST_F(ScaTest, StopCompletesAfterPauseMutexRelease)
     scaMock->lockPauseMutex();
 
     std::atomic<bool> stopReturned {false};
-    std::thread stopThread([&scaMock, &stopReturned]()
-    {
-        scaMock->Stop();
-        stopReturned.store(true);
-    });
+    std::thread stopThread(
+        [&scaMock, &stopReturned]()
+        {
+            scaMock->Stop();
+            stopReturned.store(true);
+        });
 
     for (int i = 0; i < 50 && !stopReturned.load(); ++i)
     {
@@ -416,18 +412,18 @@ TEST_F(ScaTest, Run_WithSyncProtocol_CallsReset)
     scaMock->setSyncProtocol(mockSyncProtocol);
 
     // Expect reset() to be called on the sync protocol when Run() starts
-    EXPECT_CALL(*mockSyncProtocol, reset())
-    .Times(1);
+    EXPECT_CALL(*mockSyncProtocol, reset()).Times(1);
 
     // Mock selectRows to return count = 0 for hasDataInDatabase() (no cleanup needed)
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        // Return count = 0 for both sca_policy and sca_check
-        nlohmann::json result = {{"count", 0}};
-        callback(SELECTED, result);
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                // Return count = 0 for both sca_policy and sca_check
+                nlohmann::json result = {{"count", 0}};
+                callback(SELECTED, result);
+            }));
 
     // Setup with enabled=true but no policies (will exit early after reset)
     std::vector<sca::PolicyData> noPolicies;
@@ -450,24 +446,22 @@ TEST_F(ScaTest, Run_ExecutesScanLoopWithValidPolicy)
     std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
 
     // Mock filesystem to return that the file exists
-    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
 
     // Mock selectRows to return count = 0 for hasDataInDatabase() (no cleanup needed)
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json result = {{"count", 0}};
-        callback(SELECTED, result);
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json result = {{"count", 0}};
+                callback(SELECTED, result);
+            }));
 
     // Mock other DBSync operations
-    EXPECT_CALL(*mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
 
-    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     // Create a mock yamlToJsonFunc that returns valid policy JSON
     auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
@@ -475,14 +469,10 @@ TEST_F(ScaTest, Run_ExecutesScanLoopWithValidPolicy)
         nlohmann::json result;
         result["variables"] = {{"$test_var", "/etc"}};
         result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
-        result["checks"] = nlohmann::json::array({
-            {
-                {"id", "check1"},
-                {"title", "Test Check"},
-                {"condition", "all"},
-                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
-            }
-        });
+        result["checks"] = nlohmann::json::array({{{"id", "check1"},
+                                                   {"title", "Test Check"},
+                                                   {"condition", "all"},
+                                                   {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}}});
         return result;
     };
 
@@ -490,10 +480,7 @@ TEST_F(ScaTest, Run_ExecutesScanLoopWithValidPolicy)
     scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
 
     // Run in a separate thread so we can stop it after it executes
-    std::thread runThread([&scaMock]()
-    {
-        scaMock->Run();
-    });
+    std::thread runThread([&scaMock]() { scaMock->Run(); });
 
     // Give it time to execute the scan loop
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -518,23 +505,20 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
     std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
 
     // Mock filesystem
-    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
 
     // Mock selectRows
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json result = {{"count", 0}};
-        callback(SELECTED, result);
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json&, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json result = {{"count", 0}};
+                callback(SELECTED, result);
+            }));
 
     // Mock other DBSync operations
-    EXPECT_CALL(*mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(nullptr));
-    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     // Create yamlToJsonFunc
     auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
@@ -542,11 +526,10 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
         nlohmann::json result;
         result["variables"] = {{"$test_var", "/etc"}};
         result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
-        result["checks"] = nlohmann::json::array({
-            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
-                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
-            }
-        });
+        result["checks"] = nlohmann::json::array({{{"id", "check1"},
+                                                   {"title", "Test Check"},
+                                                   {"condition", "all"},
+                                                   {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}}});
         return result;
     };
 
@@ -554,10 +537,7 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
     scaMock->Setup(true, false, std::chrono::seconds(1), 30, false, policyData, yamlToJsonFunc);
 
     // Run in a separate thread
-    std::thread runThread([&scaMock]()
-    {
-        scaMock->Run();
-    });
+    std::thread runThread([&scaMock]() { scaMock->Run(); });
 
     // Wait a bit for Run() to start
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -590,32 +570,28 @@ TEST_F(ScaTest, Run_SetsFirstScanCompletedAfterFirstSuccessfulScan)
 
     std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
 
-    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
 
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json result = {{"count", 0}};
-        callback(SELECTED, result);
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json&, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json result = {{"count", 0}};
+                callback(SELECTED, result);
+            }));
 
-    EXPECT_CALL(*mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(nullptr));
-    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
     {
         nlohmann::json result;
         result["variables"] = {{"$test_var", "/etc"}};
         result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
-        result["checks"] = nlohmann::json::array({
-            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
-                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
-            }
-        });
+        result["checks"] = nlohmann::json::array({{{"id", "check1"},
+                                                   {"title", "Test Check"},
+                                                   {"condition", "all"},
+                                                   {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}}});
         return result;
     };
 
@@ -623,10 +599,7 @@ TEST_F(ScaTest, Run_SetsFirstScanCompletedAfterFirstSuccessfulScan)
 
     scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
 
-    std::thread runThread([&scaMock]()
-    {
-        scaMock->Run();
-    });
+    std::thread runThread([&scaMock]() { scaMock->Run(); });
 
     // Give the scan_on_start scan time to actually complete.
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
@@ -649,49 +622,49 @@ TEST_F(ScaTest, Run_CheckThatThrowsDoesNotStopTheScan)
 
     std::vector<sca::PolicyData> policyData = {{"failing_policy.yaml", true, false}, {"next_policy.yaml", true, false}};
 
-    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
 
     std::atomic<bool> samePolicyCheckReached {false};
     std::atomic<bool> nextPolicyReached {false};
 
     // Reporting the first check throws, as any unexpected error while a check is handled would.
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([&samePolicyCheckReached, &nextPolicyReached](const nlohmann::json & query,
-                                                                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+        .WillRepeatedly(::testing::Invoke(
+            [&samePolicyCheckReached, &nextPolicyReached](
+                const nlohmann::json& query, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                const auto queryText = query.dump();
+
+                if (queryText.find("id = 'failing_check'") != std::string::npos)
+                {
+                    throw std::runtime_error("unexpected failure");
+                }
+
+                if (queryText.find("id = 'second_check'") != std::string::npos)
+                {
+                    samePolicyCheckReached = true;
+                }
+
+                if (queryText.find("id = 'next_check'") != std::string::npos)
+                {
+                    nextPolicyReached = true;
+                }
+
+                nlohmann::json result = {{"count", 0}};
+                callback(SELECTED, result);
+            }));
+
+    EXPECT_CALL(*mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
+
+    auto yamlToJsonFunc = [](const std::string& path) -> nlohmann::json
     {
-        const auto queryText = query.dump();
-
-        if (queryText.find("id = 'failing_check'") != std::string::npos)
+        const auto makeCheck = [](const std::string& id)
         {
-            throw std::runtime_error("unexpected failure");
-        }
-
-        if (queryText.find("id = 'second_check'") != std::string::npos)
-        {
-            samePolicyCheckReached = true;
-        }
-
-        if (queryText.find("id = 'next_check'") != std::string::npos)
-        {
-            nextPolicyReached = true;
-        }
-
-        nlohmann::json result = {{"count", 0}};
-        callback(SELECTED, result);
-    }));
-
-    EXPECT_CALL(*mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(nullptr));
-    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
-
-    auto yamlToJsonFunc = [](const std::string & path) -> nlohmann::json
-    {
-        const auto makeCheck = [](const std::string & id)
-        {
-            return nlohmann::json {{"id", id}, {"title", "Test Check"}, {"condition", "all"},
-                {"rules", nlohmann::json::array({"f:/etc/passwd exists"})}};
+            return nlohmann::json {{"id", id},
+                                   {"title", "Test Check"},
+                                   {"condition", "all"},
+                                   {"rules", nlohmann::json::array({"f:/etc/passwd exists"})}};
         };
 
         nlohmann::json result;
@@ -712,10 +685,7 @@ TEST_F(ScaTest, Run_CheckThatThrowsDoesNotStopTheScan)
 
     scaMock->Setup(true, true, std::chrono::seconds(100), 30, false, policyData, yamlToJsonFunc);
 
-    std::thread runThread([&scaMock]()
-    {
-        scaMock->Run();
-    });
+    std::thread runThread([&scaMock]() { scaMock->Run(); });
 
     // Wait for the scan to complete instead of a fixed delay, so a slow runner does not fail the test.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
@@ -754,32 +724,28 @@ TEST_F(ScaTest, Run_RetriesScanOnStartAfterPauseEvenPastFirstScan)
 
     std::vector<sca::PolicyData> policyData = {{"test_policy.yaml", true, false}};
 
-    EXPECT_CALL(*mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(true));
+    EXPECT_CALL(*mockFileSystem, exists(::testing::_)).WillRepeatedly(::testing::Return(true));
 
     EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json result = {{"count", 0}};
-        callback(SELECTED, result);
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [](const nlohmann::json&, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json result = {{"count", 0}};
+                callback(SELECTED, result);
+            }));
 
-    EXPECT_CALL(*mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(nullptr));
-    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+    EXPECT_CALL(*mockDBSync, syncRow(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     auto yamlToJsonFunc = [](const std::string&) -> nlohmann::json
     {
         nlohmann::json result;
         result["variables"] = {{"$test_var", "/etc"}};
         result["policy"] = {{"id", "test_policy"}, {"name", "Test Policy"}};
-        result["checks"] = nlohmann::json::array({
-            {   {"id", "check1"}, {"title", "Test Check"}, {"condition", "all"},
-                {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}
-            }
-        });
+        result["checks"] = nlohmann::json::array({{{"id", "check1"},
+                                                   {"title", "Test Check"},
+                                                   {"condition", "all"},
+                                                   {"rules", nlohmann::json::array({"f:$test_var/passwd exists"})}}});
         return result;
     };
 
@@ -791,10 +757,7 @@ TEST_F(ScaTest, Run_RetriesScanOnStartAfterPauseEvenPastFirstScan)
     // First Run(): let scan_on_start complete normally so first_scan_completed
     // becomes true, matching an agent well past its first-ever scan.
     {
-        std::thread runThread([&scaMock]()
-        {
-            scaMock->Run();
-        });
+        std::thread runThread([&scaMock]() { scaMock->Run(); });
         std::this_thread::sleep_for(std::chrono::milliseconds(150));
         scaMock->Stop();
         runThread.join();
@@ -813,10 +776,7 @@ TEST_F(ScaTest, Run_RetriesScanOnStartAfterPauseEvenPastFirstScan)
     // guaranteed to be observed).
     m_logOutput.clear();
     scaMock->pause();
-    std::thread runThread2([&scaMock]()
-    {
-        scaMock->Run();
-    });
+    std::thread runThread2([&scaMock]() { scaMock->Run(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     scaMock->resume();
 
@@ -833,62 +793,53 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
 {
     const auto dbPath = makeTempPath();
     auto dbSync = std::make_shared<DBSync>(
-                      HostType::AGENT,
-                      DbEngineType::SQLITE3,
-                      dbPath,
-                      kCreateStatement,
-                      DbManagement::PERSISTENT);
+        HostType::AGENT, DbEngineType::SQLITE3, dbPath, kCreateStatement, DbManagement::PERSISTENT);
     auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
     SCAMock scaMock(dbSync, nullptr);
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    insertRow(dbSync, "sca_policy",
-    {
-        {"id", "policy-1"},
-        {"name", "Policy 1"},
-        {"file", "policy.yml"},
-        {"description", "Policy description"},
-        {"refs", "https://example.com"}
-    });
-    insertRow(dbSync, "sca_check",
-    {
-        {"checksum", "abc123"},
-        {"id", "check-1"},
-        {"policy_id", "policy-1"},
-        {"name", "Check 1"},
-        {"description", "Check description"},
-        {"rationale", "Rationale"},
-        {"remediation", "Remediation"},
-        {"refs", "https://ref.example.com"},
-        {"result", "Not applicable"},
-        {"reason", "Policy requirements not met"},
-        {"condition", "all"},
-        {"compliance", "[]"},
-        {"mitre", "[]"},
-        {"rules", "f:/tmp exists"},
-        {"regex_type", "pcre2"},
-        {"version", 7},
-        {"sync", 1}
-    });
+    insertRow(dbSync,
+              "sca_policy",
+              {{"id", "policy-1"},
+               {"name", "Policy 1"},
+               {"file", "policy.yml"},
+               {"description", "Policy description"},
+               {"refs", "https://example.com"}});
+    insertRow(dbSync,
+              "sca_check",
+              {{"checksum", "abc123"},
+               {"id", "check-1"},
+               {"policy_id", "policy-1"},
+               {"name", "Check 1"},
+               {"description", "Check description"},
+               {"rationale", "Rationale"},
+               {"remediation", "Remediation"},
+               {"refs", "https://ref.example.com"},
+               {"result", "Not applicable"},
+               {"reason", "Policy requirements not met"},
+               {"condition", "all"},
+               {"compliance", "[]"},
+               {"mitre", "[]"},
+               {"rules", "f:/tmp exists"},
+               {"regex_type", "pcre2"},
+               {"version", 7},
+               {"sync", 1}});
 
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{true}));
-    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
-    .WillOnce(testing::Invoke([](const std::string&,
-                                 Operation,
-                                 const std::string&,
-                                 const std::string & data,
-                                 uint64_t,
-                                 bool)
-    {
-        const auto payload = nlohmann::json::parse(data);
-        EXPECT_EQ(payload["check"]["id"], "check-1");
-        EXPECT_EQ(payload["check"]["result"], "Not applicable");
-        EXPECT_EQ(payload["policy"]["id"], "policy-1");
-    }));
+        .WillOnce(testing::Return(SyncModuleResult {true}));
+    EXPECT_CALL(*mockSyncProtocol,
+                persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
+        .WillOnce(testing::Invoke(
+            [](const std::string&, Operation, const std::string&, const std::string& data, uint64_t, bool)
+            {
+                const auto payload = nlohmann::json::parse(data);
+                EXPECT_EQ(payload["check"]["id"], "check-1");
+                EXPECT_EQ(payload["check"]["result"], "Not applicable");
+                EXPECT_EQ(payload["policy"]["id"], "policy-1");
+            }));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{true}));
+        .WillOnce(testing::Return(SyncModuleResult {true}));
 
     EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
 
@@ -903,65 +854,52 @@ TEST_F(ScaTest, SyncModule_SnapshotKeepsGoingWhenAReasonCannotBeSerialized)
 {
     const auto dbPath = makeTempPath();
     auto dbSync = std::make_shared<DBSync>(
-                      HostType::AGENT,
-                      DbEngineType::SQLITE3,
-                      dbPath,
-                      kCreateStatement,
-                      DbManagement::PERSISTENT);
+        HostType::AGENT, DbEngineType::SQLITE3, dbPath, kCreateStatement, DbManagement::PERSISTENT);
     auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
     SCAMock scaMock(dbSync, nullptr);
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    insertRow(dbSync, "sca_policy",
-    {
-        {"id", "policy-1"},
-        {"name", "Policy 1"},
-        {"file", "policy.yml"},
-        {"description", "Policy description"},
-        {"refs", "https://example.com"}
-    });
+    insertRow(dbSync,
+              "sca_policy",
+              {{"id", "policy-1"},
+               {"name", "Policy 1"},
+               {"file", "policy.yml"},
+               {"description", "Policy description"},
+               {"refs", "https://example.com"}});
 
-    const auto check = [](const std::string & id, const std::string & reason)
+    const auto check = [](const std::string& id, const std::string& reason)
     {
-        return nlohmann::json
-        {
-            {"checksum", "abc123"},
-            {"id", id},
-            {"policy_id", "policy-1"},
-            {"name", "Check " + id},
-            {"result", "Not applicable"},
-            {"reason", reason},
-            {"condition", "all"},
-            {"compliance", "[]"},
-            {"mitre", "[]"},
-            {"rules", "f:/tmp exists"},
-            {"regex_type", "pcre2"},
-            {"version", 7},
-            {"sync", 1}
-        };
+        return nlohmann::json {{"checksum", "abc123"},
+                               {"id", id},
+                               {"policy_id", "policy-1"},
+                               {"name", "Check " + id},
+                               {"result", "Not applicable"},
+                               {"reason", reason},
+                               {"condition", "all"},
+                               {"compliance", "[]"},
+                               {"mitre", "[]"},
+                               {"rules", "f:/tmp exists"},
+                               {"regex_type", "pcre2"},
+                               {"version", 7},
+                               {"sync", 1}};
     };
 
     insertRow(dbSync, "sca_check", check("check-1", "Path '/tmp/\xff\xfe' does not exist"));
     insertRow(dbSync, "sca_check", check("check-2", "Path '/tmp/other' does not exist"));
 
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{true}));
+        .WillOnce(testing::Return(SyncModuleResult {true}));
 
     std::vector<std::string> persisted;
-    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
-    .Times(2)
-    .WillRepeatedly(testing::Invoke([&persisted](const std::string&,
-                                                 Operation,
-                                                 const std::string&,
-                                                 const std::string & data,
-                                                 uint64_t,
-                                                 bool)
-    {
-        persisted.push_back(nlohmann::json::parse(data)["check"]["id"].get<std::string>());
-    }));
+    EXPECT_CALL(*mockSyncProtocol,
+                persistDifference(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7, false))
+        .Times(2)
+        .WillRepeatedly(testing::Invoke(
+            [&persisted](const std::string&, Operation, const std::string&, const std::string& data, uint64_t, bool)
+            { persisted.push_back(nlohmann::json::parse(data)["check"]["id"].get<std::string>()); }));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{true}));
+        .WillOnce(testing::Return(SyncModuleResult {true}));
 
     EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
     EXPECT_THAT(persisted, testing::UnorderedElementsAre("check-1", "check-2"));
@@ -973,11 +911,7 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
 {
     const auto dbPath = makeTempPath();
     auto dbSync = std::make_shared<DBSync>(
-                      HostType::AGENT,
-                      DbEngineType::SQLITE3,
-                      dbPath,
-                      kCreateStatement,
-                      DbManagement::PERSISTENT);
+        HostType::AGENT, DbEngineType::SQLITE3, dbPath, kCreateStatement, DbManagement::PERSISTENT);
     auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
     SCAMock scaMock(dbSync, nullptr);
     scaMock.setSyncProtocol(mockSyncProtocol);
@@ -986,13 +920,13 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
     insertRow(dbSync, "sca_metadata", {{"key", "first_sync_completed"}, {"value", 123456}});
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{true}));
+        .WillOnce(testing::Return(SyncModuleResult {true}));
     // After the first sync, periodic syncs call synchronizeModule() directly and never go
     // through the snapshot-rebuild path (notifyDataClean + persistDifference per item).
-    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_, testing::_))
-    .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
-    .Times(0);
+    EXPECT_CALL(*mockSyncProtocol, notifyDataClean(testing::_, testing::_, testing::_)).Times(0);
+    EXPECT_CALL(*mockSyncProtocol,
+                persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
+        .Times(0);
 
     EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
 
@@ -1009,13 +943,11 @@ namespace
     void expectFirstSyncCompleted(std::shared_ptr<MockDBSync>& mockDBSync)
     {
         EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
-                                             std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-        {
-            callback(SELECTED, nlohmann::json{{"key", "first_sync_completed"}, {"value", 123456}});
-        }));
+            .WillRepeatedly(::testing::Invoke(
+                [](const nlohmann::json&, std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+                { callback(SELECTED, nlohmann::json {{"key", "first_sync_completed"}, {"value", 123456}}); }));
     }
-}
+} // namespace
 
 // While the manager is briefly not ready (streak within tolerance), the periodic sync is reported at
 // INFO as deferred, not as a WARNING.
@@ -1029,14 +961,15 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyWithinToleranceLogsDeferred)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
-                                               .managerNotReady = true,
-                                               .consecutiveFailures = 1u}));
+        .WillOnce(testing::Return(SyncModuleResult {.failureReason = "Failed to communicate with the manager.",
+                                                    .managerNotReady = true,
+                                                    .consecutiveFailures = 1u}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr(
                     "SCA synchronization deferred: Failed to communicate with the manager. Will retry next cycle."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
 }
@@ -1053,16 +986,16 @@ TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
-                                               .managerNotReady = true,
-                                               .consecutiveFailures = streak}));
+        .WillOnce(testing::Return(SyncModuleResult {.failureReason = "Failed to communicate with the manager.",
+                                                    .managerNotReady = true,
+                                                    .consecutiveFailures = streak}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA synchronization failed " + std::to_string(streak) +
-                    " times in a row: Failed to communicate with the manager."));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Failed to communicate with the manager."));
 }
 
 // While the local sync intake itself isn't reachable yet (streak within tolerance), the periodic
@@ -1077,15 +1010,16 @@ TEST_F(ScaTest, SyncModule_LocalTransportUnavailableWithinToleranceLogsDeferred)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
-                                               .consecutiveFailures = 1u,
-                                               .localTransportUnavailable = true}));
+        .WillOnce(testing::Return(SyncModuleResult {.failureReason = "Local sync intake is unreachable.",
+                                                    .consecutiveFailures = 1u,
+                                                    .localTransportUnavailable = true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(
+        m_logOutput,
+        ::testing::HasSubstr("SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
 }
 
@@ -1100,15 +1034,16 @@ TEST_F(ScaTest, SyncModule_LocalTransportUnavailableAtToleranceLogsDeferred)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
-                                               .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
-                                               .localTransportUnavailable = true}));
+        .WillOnce(testing::Return(SyncModuleResult {.failureReason = "Local sync intake is unreachable.",
+                                                    .consecutiveFailures = SYNC_MANAGER_NOT_READY_TOLERANCE,
+                                                    .localTransportUnavailable = true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
+    EXPECT_THAT(
+        m_logOutput,
+        ::testing::HasSubstr("SCA synchronization deferred: Local sync intake is unreachable. Will retry next cycle."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
 }
 
@@ -1126,16 +1061,16 @@ TEST_F(ScaTest, SyncModule_LocalTransportUnavailablePastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Local sync intake is unreachable.",
-                                               .consecutiveFailures = streak,
-                                               .localTransportUnavailable = true}));
+        .WillOnce(testing::Return(SyncModuleResult {.failureReason = "Local sync intake is unreachable.",
+                                                    .consecutiveFailures = streak,
+                                                    .localTransportUnavailable = true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA synchronization failed " + std::to_string(streak) +
-                    " times in a row: Local sync intake is unreachable."));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Local sync intake is unreachable."));
 }
 
 // When the manager hasn't synchronized this agent's groups yet (most commonly right after
@@ -1151,18 +1086,15 @@ TEST_F(ScaTest, SyncModule_AwaitingPrerequisiteLogsDeferredNotWarning)
     expectFirstSyncCompleted(mockDBSync);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult
-    {
-        .failureReason =
-        "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
-        .awaitingPrerequisite = true
-    }));
+        .WillOnce(testing::Return(
+            SyncModuleResult {.failureReason = "No groups available in metadata. Waiting for the server to synchronize "
+                                               "the groups. Cannot proceed with synchronization.",
+                              .awaitingPrerequisite = true}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA synchronization deferred: No groups available in metadata."));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("SCA synchronization deferred: No groups available in metadata."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
 }
 
@@ -1179,20 +1111,21 @@ TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyWithinToleranceLo
     scaMock.pause();
 
     // No "first_sync_completed" row: the module takes the initial full-snapshot path.
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
-    EXPECT_CALL(*mockSyncProtocol, persistDifference(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-    .Times(0);
-    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_))
-    .Times(0);
+        .WillOnce(
+            testing::Return(SyncModuleResult {false, "Failed to communicate with the manager.", false, true, 1u}));
+    EXPECT_CALL(*mockSyncProtocol,
+                persistDifference(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(::testing::_, ::testing::_)).Times(0);
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr(
                     "SCA synchronization deferred: Failed to communicate with the manager. Will retry next cycle."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("WARNING")));
@@ -1208,19 +1141,19 @@ TEST_F(ScaTest, SyncModule_InitialSync_DataCleanManagerNotReadyPastToleranceLogs
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+        .WillOnce(
+            testing::Return(SyncModuleResult {false, "Failed to communicate with the manager.", false, true, streak}));
 
     m_logOutput.clear();
     EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA synchronization failed " + std::to_string(streak) +
-                    " times in a row: Failed to communicate with the manager."));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA synchronization failed " + std::to_string(streak) +
+                                     " times in a row: Failed to communicate with the manager."));
 }
 
 // While the manager is briefly not ready (streak within tolerance), a DataClean failure during
@@ -1234,19 +1167,19 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyWithinToleranceLogsDefer
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
-    .Times(1);
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+        .WillOnce(
+            testing::Return(SyncModuleResult {false, "Failed to communicate with the manager.", false, true, 1u}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery deferred: Failed to communicate with the manager. It will be retried in the next integrity_interval"));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA recovery deferred: Failed to communicate with the manager. It will be "
+                                     "retried in the next integrity_interval"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
 }
 
@@ -1261,22 +1194,22 @@ TEST_F(ScaTest, PerformRecovery_ResendFailsAfterDataCleanSaysQueuedRowsGoWithNex
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
-    .Times(1);
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{true, "", false, false, 0u}));
+        .WillOnce(testing::Return(SyncModuleResult {true, "", false, false, 0u}));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, ::testing::_))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+        .WillOnce(
+            testing::Return(SyncModuleResult {false, "Failed to communicate with the manager.", false, true, 1u}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::QUEUED);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery deferred: Failed to communicate with the manager. The queued checks will be "
-                    "delivered by the next regular synchronization."));
+    EXPECT_THAT(
+        m_logOutput,
+        ::testing::HasSubstr("SCA recovery deferred: Failed to communicate with the manager. The queued checks will be "
+                             "delivered by the next regular synchronization."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("next integrity_interval")));
 }
 
@@ -1291,21 +1224,20 @@ TEST_F(ScaTest, PerformRecovery_DataCleanManagerNotReadyPastToleranceLogsWarning
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
-    .Times(1);
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+        .WillOnce(
+            testing::Return(SyncModuleResult {false, "Failed to communicate with the manager.", false, true, streak}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery failed " + std::to_string(streak) +
-                    " times in a row: Failed to communicate with the manager."));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA recovery failed " + std::to_string(streak) +
+                                     " times in a row: Failed to communicate with the manager."));
 }
 
 // logSyncFailure() treats localTransportUnavailable the same as managerNotReady (same tolerance,
@@ -1320,19 +1252,19 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailableWithinToleranc
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
-    .Times(1);
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, 1u, false, true}));
+        .WillOnce(testing::Return(
+            SyncModuleResult {false, "Failed to reach the sync intake socket.", false, false, 1u, false, true}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery deferred: Failed to reach the sync intake socket. It will be retried in the next integrity_interval"));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA recovery deferred: Failed to reach the sync intake socket. It will be "
+                                     "retried in the next integrity_interval"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA recovery failed")));
 }
 
@@ -1344,21 +1276,20 @@ TEST_F(ScaTest, PerformRecovery_DataCleanLocalTransportUnavailablePastToleranceL
     scaMock.setSyncProtocol(mockSyncProtocol);
     scaMock.pause();
 
-    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check"))
-    .Times(1);
-    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*mockDBSync, increaseEachEntryVersion("sca_check")).Times(1);
+    EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_)).WillRepeatedly(::testing::Return());
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, notifyDataClean(::testing::_, Option::SYNC, true))
-    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to reach the sync intake socket.", false, false, streak, false, true}));
+        .WillOnce(testing::Return(
+            SyncModuleResult {false, "Failed to reach the sync intake socket.", false, false, streak, false, true}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callPerformRecovery(), RecoveryOutcome::FAILED);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA recovery failed " + std::to_string(streak) +
-                    " times in a row: Failed to reach the sync intake socket."));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA recovery failed " + std::to_string(streak) +
+                                     " times in a row: Failed to reach the sync intake socket."));
 }
 
 // A flush that fails while the manager is briefly not ready is reported at INFO as deferred, not as
@@ -1371,15 +1302,16 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyWithinToleranceLogsDeferred)
     scaMock.setSyncProtocol(mockSyncProtocol);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
-                                               .managerNotReady = true,
-                                               .consecutiveFailures = 1u}));
+        .WillOnce(testing::Return(SyncModuleResult {.failureReason = "Failed to communicate with the manager.",
+                                                    .managerNotReady = true,
+                                                    .consecutiveFailures = 1u}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA flush deferred: Failed to communicate with the manager. Will retry next cycle."));
+    EXPECT_THAT(
+        m_logOutput,
+        ::testing::HasSubstr("SCA flush deferred: Failed to communicate with the manager. Will retry next cycle."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA flush failed")));
 }
 
@@ -1393,16 +1325,16 @@ TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyPastToleranceLogsWarning)
 
     const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Failed to communicate with the manager.",
-                                               .managerNotReady = true,
-                                               .consecutiveFailures = streak}));
+        .WillOnce(testing::Return(SyncModuleResult {.failureReason = "Failed to communicate with the manager.",
+                                                    .managerNotReady = true,
+                                                    .consecutiveFailures = streak}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA flush failed " + std::to_string(streak) +
-                    " times in a row: Failed to communicate with the manager."));
+    EXPECT_THAT(m_logOutput,
+                ::testing::HasSubstr("SCA flush failed " + std::to_string(streak) +
+                                     " times in a row: Failed to communicate with the manager."));
 }
 
 // A flush that hits the same "no groups yet" condition is deferred at INFO too, not ERROR.
@@ -1414,18 +1346,15 @@ TEST_F(ScaTest, ExecuteFlushSync_AwaitingPrerequisiteLogsDeferredNotError)
     scaMock.setSyncProtocol(mockSyncProtocol);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult
-    {
-        .failureReason =
-        "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.",
-        .awaitingPrerequisite = true
-    }));
+        .WillOnce(testing::Return(
+            SyncModuleResult {.failureReason = "No groups available in metadata. Waiting for the server to synchronize "
+                                               "the groups. Cannot proceed with synchronization.",
+                              .awaitingPrerequisite = true}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
-                    "SCA flush deferred: No groups available in metadata."));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("SCA flush deferred: No groups available in metadata."));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA flush failed")));
 }
 
@@ -1438,7 +1367,8 @@ TEST_F(ScaTest, ExecuteFlushSync_GenuineFailureKeepsError)
     scaMock.setSyncProtocol(mockSyncProtocol);
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(SyncModuleResult{.failureReason = "Manager sent an unexpected or invalid response."}));
+        .WillOnce(
+            testing::Return(SyncModuleResult {.failureReason = "Manager sent an unexpected or invalid response."}));
 
     m_logOutput.clear();
     EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
@@ -1477,23 +1407,18 @@ TEST_F(ScaTest, ReleaseResources_ReleasesSqliteWriteLock)
 {
     const auto dbPath = makeTempPath();
     auto dbSync = std::make_shared<DBSync>(
-                      HostType::AGENT,
-                      DbEngineType::SQLITE3,
-                      dbPath,
-                      kCreateStatement,
-                      DbManagement::PERSISTENT);
+        HostType::AGENT, DbEngineType::SQLITE3, dbPath, kCreateStatement, DbManagement::PERSISTENT);
 
     SCAMock scaMock(dbSync, nullptr);
 
     // Writing inside DBSync's standing transaction takes the RESERVED lock on the database file.
-    insertRow(dbSync, "sca_policy",
-    {
-        {"id", "policy-1"},
-        {"name", "Policy 1"},
-        {"file", "policy.yml"},
-        {"description", "Policy description"},
-        {"refs", "https://example.com"}
-    });
+    insertRow(dbSync,
+              "sca_policy",
+              {{"id", "policy-1"},
+               {"name", "Policy 1"},
+               {"file", "policy.yml"},
+               {"description", "Policy description"},
+               {"refs", "https://example.com"}});
 
     dbSync.reset();
     scaMock.releaseResources();
@@ -1502,19 +1427,14 @@ TEST_F(ScaTest, ReleaseResources_ReleasesSqliteWriteLock)
     // database and write to it immediately.
     std::shared_ptr<DBSync> reopened;
     ASSERT_NO_THROW(reopened = std::make_shared<DBSync>(
-                                   HostType::AGENT,
-                                   DbEngineType::SQLITE3,
-                                   dbPath,
-                                   kCreateStatement,
-                                   DbManagement::PERSISTENT));
-    EXPECT_NO_THROW(insertRow(reopened, "sca_policy",
-    {
-        {"id", "policy-2"},
-        {"name", "Policy 2"},
-        {"file", "policy2.yml"},
-        {"description", "Policy description"},
-        {"refs", "https://example.com"}
-    }));
+                        HostType::AGENT, DbEngineType::SQLITE3, dbPath, kCreateStatement, DbManagement::PERSISTENT));
+    EXPECT_NO_THROW(insertRow(reopened,
+                              "sca_policy",
+                              {{"id", "policy-2"},
+                               {"name", "Policy 2"},
+                               {"file", "policy2.yml"},
+                               {"description", "Policy description"},
+                               {"refs", "https://example.com"}}));
 
     reopened->closeAndDeleteDatabase();
 }

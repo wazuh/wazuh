@@ -53,10 +53,10 @@
 #endif
 
 #ifdef WAZUH_UNIT_TESTING
-    // Remove static qualifier when unit testing
-    #define STATIC
+// Remove static qualifier when unit testing
+#define STATIC
 #else
-    #define STATIC static
+#define STATIC static
 #endif
 
 /* Written in one pass for the credential files this serves, which hold a single line. Sized as a
@@ -74,25 +74,29 @@
  * @param buf Backing storage for the directory; @p filename points into it, so it must outlive it.
  * @return 0 on success, -1 when @p path does not fit in @p buf (errno set to ENAMETOOLONG).
  */
-STATIC int w_shred_split_dir_filename(const char *path, char *buf, size_t buf_size, const char **filename)
+STATIC int w_shred_split_dir_filename(const char* path, char* buf, size_t buf_size, const char** filename)
 {
-    const char *separator = strrchr(path, '/');
+    const char* separator = strrchr(path, '/');
 
 #ifdef WIN32
-    const char *backslash = strrchr(path, '\\');
+    const char* backslash = strrchr(path, '\\');
 
-    if (backslash != NULL && (separator == NULL || backslash > separator)) {
+    if (backslash != NULL && (separator == NULL || backslash > separator))
+    {
         separator = backslash;
     }
 #endif
 
-    if (separator == NULL) {
-        if (strlen(path) == 0) {
+    if (separator == NULL)
+    {
+        if (strlen(path) == 0)
+        {
             errno = EINVAL;
             return -1;
         }
 
-        if ((size_t) snprintf(buf, buf_size, ".") >= buf_size) {
+        if ((size_t)snprintf(buf, buf_size, ".") >= buf_size)
+        {
             errno = ENAMETOOLONG;
             return -1;
         }
@@ -101,17 +105,19 @@ STATIC int w_shred_split_dir_filename(const char *path, char *buf, size_t buf_si
         return 0;
     }
 
-    if ((size_t) (separator - path) >= buf_size) {
+    if ((size_t)(separator - path) >= buf_size)
+    {
         errno = ENAMETOOLONG;
         return -1;
     }
 
-    memcpy(buf, path, (size_t) (separator - path));
+    memcpy(buf, path, (size_t)(separator - path));
     buf[separator - path] = '\0';
 
     /* An absolute path whose only separator is the leading one: the directory is the root itself,
      * not the empty string, which openat() would reject. */
-    if (buf[0] == '\0') {
+    if (buf[0] == '\0')
+    {
         buf[0] = '/';
         buf[1] = '\0';
     }
@@ -120,16 +126,17 @@ STATIC int w_shred_split_dir_filename(const char *path, char *buf, size_t buf_si
     return 0;
 }
 
-int w_shred_file_in_place(const char *path)
+int w_shred_file_in_place(const char* path)
 {
     char zeros[W_SHRED_CHUNK] = {0};
     char dir[PATH_MAX];
-    const char *filename;
-    FILE *fp;
+    const char* filename;
+    FILE* fp;
     long size;
     long written;
 
-    if (w_shred_split_dir_filename(path, dir, sizeof(dir), &filename) != 0) {
+    if (w_shred_split_dir_filename(path, dir, sizeof(dir), &filename) != 0)
+    {
         merror(FOPEN_ERROR, path, errno, strerror(errno));
         return 1;
     }
@@ -140,38 +147,44 @@ int w_shred_file_in_place(const char *path)
      * points at. The helper opens for update WITHOUT truncating, which is the whole point here: a
      * truncating open would release the secret's bytes and write the zeros into a fresh allocation,
      * silently, with nothing in the return value to say so. */
-    if (fp = w_fopen_nofollow_update(dir, filename), fp == NULL) {
+    if (fp = w_fopen_nofollow_update(dir, filename), fp == NULL)
+    {
         merror(FOPEN_ERROR, path, errno, strerror(errno));
         return 1;
     }
 
-    if (fseek(fp, 0, SEEK_END) != 0 || (size = ftell(fp)) < 0) {
+    if (fseek(fp, 0, SEEK_END) != 0 || (size = ftell(fp)) < 0)
+    {
         merror(FSEEK_ERROR, path, errno, strerror(errno));
         fclose(fp);
         return 1;
     }
 
-    if (size == 0) {
+    if (size == 0)
+    {
         fclose(fp);
         return 0;
     }
 
-    if (fseek(fp, 0, SEEK_SET) != 0) {
+    if (fseek(fp, 0, SEEK_SET) != 0)
+    {
         merror(FSEEK_ERROR, path, errno, strerror(errno));
         fclose(fp);
         return 1;
     }
 
-    for (written = 0; written < size; ) {
-        const size_t chunk = (size - written) < W_SHRED_CHUNK ? (size_t) (size - written) : W_SHRED_CHUNK;
+    for (written = 0; written < size;)
+    {
+        const size_t chunk = (size - written) < W_SHRED_CHUNK ? (size_t)(size - written) : W_SHRED_CHUNK;
 
-        if (fwrite(zeros, 1, chunk, fp) != chunk) {
+        if (fwrite(zeros, 1, chunk, fp) != chunk)
+        {
             merror("Could not overwrite '%s': %s (%d).", path, strerror(errno), errno);
             fclose(fp);
             return 1;
         }
 
-        written += (long) chunk;
+        written += (long)chunk;
     }
 
     /* The zeros have to reach the disk before the caller's unlink does. Left in the page cache, a
@@ -180,11 +193,12 @@ int w_shred_file_in_place(const char *path)
      * nobody can tell that it did not work. */
     if (fflush(fp) != 0
 #ifdef WIN32
-            || _commit(_fileno(fp)) != 0
+        || _commit(_fileno(fp)) != 0
 #else
-            || fsync(fileno(fp)) != 0
+        || fsync(fileno(fp)) != 0
 #endif
-       ) {
+    )
+    {
         merror("Could not flush the overwrite of '%s' to disk: %s (%d).", path, strerror(errno), errno);
         fclose(fp);
         return 1;
@@ -202,18 +216,21 @@ int w_agent_shred_enrollment_password(void)
      * failure by assigning GetLastError() straight into errno, so a missing file arrives as
      * ERROR_FILE_NOT_FOUND rather than as ENOENT. Both are 2, which is a coincidence and not a
      * contract -- every other Win32 code on that path means something else entirely. */
-    if (!w_is_file(AUTHD_PASS)) {
+    if (!w_is_file(AUTHD_PASS))
+    {
         return 0;
     }
 
-    if (w_shred_file_in_place(AUTHD_PASS) != 0) {
+    if (w_shred_file_in_place(AUTHD_PASS) != 0)
+    {
         /* Deliberately not an early return. Overwriting is defence in depth; unlinking is what
          * actually takes the fleet-wide credential off the endpoint, and a file that could not be
          * opened for writing can still be removable. */
         failed = 1;
     }
 
-    if (unlink(AUTHD_PASS) != 0) {
+    if (unlink(AUTHD_PASS) != 0)
+    {
         merror(UNLINK_ERROR, AUTHD_PASS, errno, strerror(errno));
         failed = 1;
     }

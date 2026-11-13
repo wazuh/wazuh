@@ -21,12 +21,12 @@
 #define BOOKMARKS_DIR "bookmarks"
 
 /* Logging levels */
-#define WINEVENT_AUDIT		0
-#define WINEVENT_CRITICAL	1
-#define WINEVENT_ERROR		2
-#define WINEVENT_WARNING	3
-#define WINEVENT_INFORMATION	4
-#define WINEVENT_VERBOSE	5
+#define WINEVENT_AUDIT       0
+#define WINEVENT_CRITICAL    1
+#define WINEVENT_ERROR       2
+#define WINEVENT_WARNING     3
+#define WINEVENT_INFORMATION 4
+#define WINEVENT_VERBOSE     5
 
 /* Audit types */
 #define WINEVENT_AUDIT_FAILURE 0x10000000000000LL
@@ -54,78 +54,68 @@
 #define STATIC static
 #endif
 
-typedef struct _os_event {
-    char *name;
+typedef struct _os_event
+{
+    char* name;
     unsigned int id;
-    char *source;
-    SID *uid;
-    char *user;
-    char *domain;
-    char *computer;
-    char *message;
+    char* source;
+    SID* uid;
+    char* user;
+    char* domain;
+    char* computer;
+    char* message;
     ULONGLONG time_created;
-    char *timestamp;
+    char* timestamp;
     int64_t keywords;
     int64_t level;
-    char *category;
+    char* category;
 } os_event;
 
-typedef struct _os_channel {
-    char *evt_log;
-    char *bookmark_name;
+typedef struct _os_channel
+{
+    char* evt_log;
+    char* bookmark_name;
     char bookmark_enabled;
     char bookmark_filename[OS_MAXSTR];
-    char *query;
+    char* query;
     int reconnect_time;
     EVT_HANDLE subscription;
 } os_channel;
 
-STATIC EVT_HANDLE read_bookmark(os_channel *channel);
+STATIC EVT_HANDLE read_bookmark(os_channel* channel);
 
-wchar_t *convert_unix_string(char *string)
+wchar_t* convert_unix_string(char* string)
 {
-    wchar_t *dest = NULL;
+    wchar_t* dest = NULL;
     size_t size = 0;
     int result = 0;
 
-    if (string == NULL) {
+    if (string == NULL)
+    {
         return (NULL);
     }
 
     /* Determine size required */
-    size = MultiByteToWideChar(CP_UTF8,
-                               MB_ERR_INVALID_CHARS,
-                               string,
-                               -1,
-                               NULL,
-                               0);
+    size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, string, -1, NULL, 0);
 
-    if (size == 0) {
-        merror(
-            "Could not MultiByteToWideChar() when determining size which returned (%lu)",
-            GetLastError());
+    if (size == 0)
+    {
+        merror("Could not MultiByteToWideChar() when determining size which returned (%lu)", GetLastError());
         return (NULL);
     }
 
-    if ((dest = calloc(size, sizeof(wchar_t))) == NULL) {
+    if ((dest = calloc(size, sizeof(wchar_t))) == NULL)
+    {
         merror(
-            "Could not calloc() memory for MultiByteToWideChar() which returned [(%d)-(%s)]",
-            errno,
-            strerror(errno));
+            "Could not calloc() memory for MultiByteToWideChar() which returned [(%d)-(%s)]", errno, strerror(errno));
         return (NULL);
     }
 
-    result = MultiByteToWideChar(CP_UTF8,
-                                 MB_ERR_INVALID_CHARS,
-                                 string,
-                                 -1,
-                                 dest,
-                                 size);
+    result = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, string, -1, dest, size);
 
-    if (result == 0) {
-        merror(
-            "Could not MultiByteToWideChar() which returned (%lu)",
-            GetLastError());
+    if (result == 0)
+    {
+        merror("Could not MultiByteToWideChar() which returned (%lu)", GetLastError());
         free(dest);
         return (NULL);
     }
@@ -134,37 +124,38 @@ wchar_t *convert_unix_string(char *string)
 }
 
 /* Read an existing bookmark (if one exists) */
-EVT_HANDLE read_bookmark(os_channel *channel)
+EVT_HANDLE read_bookmark(os_channel* channel)
 {
     EVT_HANDLE bookmark = NULL;
     size_t size = 0;
-    FILE *fp = NULL;
+    FILE* fp = NULL;
     wchar_t bookmark_xml[OS_MAXSTR];
 
     /* If we have a stored bookmark, start from it */
-    if ((fp = wfopen(channel->bookmark_filename, "r")) == NULL) {
+    if ((fp = wfopen(channel->bookmark_filename, "r")) == NULL)
+    {
         /* Check if the error was not because the
          * file did not exist which should be logged
          */
-        if (errno != ENOENT) {
-            merror(
-                "Could not wfopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-                channel->bookmark_filename,
-                channel->evt_log,
-                errno,
-                strerror(errno));
+        if (errno != ENOENT)
+        {
+            merror("Could not wfopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+                   channel->bookmark_filename,
+                   channel->evt_log,
+                   errno,
+                   strerror(errno));
         }
         return (NULL);
     }
 
     size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR - 1, fp);
-    if (ferror(fp)) {
-        merror(
-            "Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            channel->bookmark_filename,
-            channel->evt_log,
-            errno,
-            strerror(errno));
+    if (ferror(fp))
+    {
+        merror("Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+               channel->bookmark_filename,
+               channel->evt_log,
+               errno,
+               strerror(errno));
         fclose(fp);
         return (NULL);
     }
@@ -172,7 +163,8 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     fclose(fp);
 
     /* Make sure bookmark data was read */
-    if (size == 0) {
+    if (size == 0)
+    {
         return (NULL);
     }
 
@@ -180,12 +172,12 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     bookmark_xml[size] = L'\0';
 
     /* Create bookmark from saved XML */
-    if ((bookmark = EvtCreateBookmark(bookmark_xml)) == NULL) {
-        merror(
-            "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename,
-            channel->evt_log,
-            GetLastError());
+    if ((bookmark = EvtCreateBookmark(bookmark_xml)) == NULL)
+    {
+        merror("Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+               channel->bookmark_filename,
+               channel->evt_log,
+               GetLastError());
         return (NULL);
     }
 
@@ -193,92 +185,81 @@ EVT_HANDLE read_bookmark(os_channel *channel)
 }
 
 /* Update the log position of a bookmark */
-int update_bookmark(EVT_HANDLE evt, os_channel *channel)
+int update_bookmark(EVT_HANDLE evt, os_channel* channel)
 {
     DWORD size = 0;
     DWORD count = 0;
-    void *buffer = NULL;
+    void* buffer = NULL;
     int result = 0;
     int status = 0;
     EVT_HANDLE bookmark = NULL;
-    FILE *fp = NULL;
+    FILE* fp = NULL;
 
-    if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
-        merror(
-            "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename,
-            channel->evt_log,
-            GetLastError());
+    if ((bookmark = EvtCreateBookmark(NULL)) == NULL)
+    {
+        merror("Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+               channel->bookmark_filename,
+               channel->evt_log,
+               GetLastError());
         goto cleanup;
     }
 
-    if (!EvtUpdateBookmark(bookmark, evt)) {
-        merror(
-            "Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename,
-            channel->evt_log,
-            GetLastError());
+    if (!EvtUpdateBookmark(bookmark, evt))
+    {
+        merror("Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+               channel->bookmark_filename,
+               channel->evt_log,
+               GetLastError());
         goto cleanup;
     }
 
     /* Make initial call to determine buffer size */
-    result = EvtRender(NULL,
-                       bookmark,
-                       EvtRenderBookmark,
-                       0,
-                       NULL,
-                       &size,
-                       &count);
-    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        merror(
-            "Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename,
-            channel->evt_log,
-            GetLastError());
+    result = EvtRender(NULL, bookmark, EvtRenderBookmark, 0, NULL, &size, &count);
+    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+    {
+        merror("Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
+               channel->bookmark_filename,
+               channel->evt_log,
+               GetLastError());
         goto cleanup;
     }
 
-    if (buffer = calloc(size, sizeof(void)), buffer == NULL) {
-        merror(
-            "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            channel->bookmark_filename,
-            channel->evt_log,
-            errno,
-            strerror(errno));
+    if (buffer = calloc(size, sizeof(void)), buffer == NULL)
+    {
+        merror("Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+               channel->bookmark_filename,
+               channel->evt_log,
+               errno,
+               strerror(errno));
         goto cleanup;
     }
 
-    if (!EvtRender(NULL,
-                   bookmark,
-                   EvtRenderBookmark,
-                   size,
-                   buffer,
-                   &size,
-                   &count)) {
-        merror(
-            "Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename, channel->evt_log,
-            GetLastError());
+    if (!EvtRender(NULL, bookmark, EvtRenderBookmark, size, buffer, &size, &count))
+    {
+        merror("Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
+               channel->bookmark_filename,
+               channel->evt_log,
+               GetLastError());
         goto cleanup;
     }
 
-    if ((fp = wfopen(channel->bookmark_filename, "w")) == NULL) {
-        mwarn(
-            "Could not wfopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            channel->bookmark_filename,
-            channel->evt_log,
-            errno,
-            strerror(errno));
+    if ((fp = wfopen(channel->bookmark_filename, "w")) == NULL)
+    {
+        mwarn("Could not wfopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+              channel->bookmark_filename,
+              channel->evt_log,
+              errno,
+              strerror(errno));
         goto cleanup;
     }
 
-    if ((fwrite(buffer, 1, size, fp)) < size) {
-        merror(
-            "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            channel->bookmark_filename,
-            channel->evt_log,
-            errno,
-            strerror(errno));
+    if ((fwrite(buffer, 1, size, fp)) < size)
+    {
+        merror("Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+               channel->bookmark_filename,
+               channel->evt_log,
+               errno,
+               strerror(errno));
         goto cleanup;
     }
 
@@ -291,66 +272,54 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 cleanup:
     free(buffer);
 
-    if (bookmark != NULL) {
+    if (bookmark != NULL)
+    {
         EvtClose(bookmark);
     }
 
-    if (fp) {
+    if (fp)
+    {
         fclose(fp);
     }
 
     return (status);
 }
 
-
-void send_channel_event(EVT_HANDLE evt, os_channel *channel)
+void send_channel_event(EVT_HANDLE evt, os_channel* channel)
 {
     DWORD buffer_length = 0;
     PEVT_VARIANT properties_values = NULL;
     DWORD count = 0;
     int result = 0;
-    char *xml_event = NULL;
+    char* xml_event = NULL;
 
-    result = EvtRender(NULL,
-                       evt,
-                       EvtRenderEventXml,
-                       0,
-                       NULL,
-                       &buffer_length,
-                       &count);
-    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        merror(
-            "Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
+    result = EvtRender(NULL, evt, EvtRenderEventXml, 0, NULL, &buffer_length, &count);
+    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+    {
+        merror("Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
+               channel->evt_log,
+               GetLastError());
         goto cleanup;
     }
 
-    if ((properties_values = malloc(buffer_length)) == NULL) {
-        merror(
-            "Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
-            channel->evt_log,
-            errno,
-            strerror(errno));
+    if ((properties_values = malloc(buffer_length)) == NULL)
+    {
+        merror("Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
+               channel->evt_log,
+               errno,
+               strerror(errno));
         goto cleanup;
     }
 
-    if (!EvtRender(NULL,
-                   evt,
-                   EvtRenderEventXml,
-                   buffer_length,
-                   properties_values,
-                   &buffer_length,
-                   &count)) {
-        merror(
-            "Could not EvtRender() for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
+    if (!EvtRender(NULL, evt, EvtRenderEventXml, buffer_length, properties_values, &buffer_length, &count))
+    {
+        merror("Could not EvtRender() for (%s) which returned (%lu)", channel->evt_log, GetLastError());
         goto cleanup;
     }
-    xml_event = convert_windows_string((LPCWSTR) properties_values);
+    xml_event = convert_windows_string((LPCWSTR)properties_values);
 
-    if (!xml_event) {
+    if (!xml_event)
+    {
         goto cleanup;
     }
 
@@ -358,14 +327,18 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     w_logcollector_state_update_file(channel->evt_log, strlen(xml_event));
 
-    if (SendMSG(logr_queue, xml_event, "EventChannel", WIN_EVT_MQ) < 0) {
+    if (SendMSG(logr_queue, xml_event, "EventChannel", WIN_EVT_MQ) < 0)
+    {
         merror(QUEUE_SEND);
         w_logcollector_state_update_target(channel->evt_log, "agent", true);
-    } else {
+    }
+    else
+    {
         w_logcollector_state_update_target(channel->evt_log, "agent", false);
     }
 
-    if (channel->bookmark_enabled) {
+    if (channel->bookmark_enabled)
+    {
         update_bookmark(evt, channel);
     }
 
@@ -384,12 +357,16 @@ cleanup:
  *
  * @param channel Pointer to an os_channel structure.
  */
-void os_channel_destroy(os_channel * channel) {
-    if (channel != NULL) {
+void os_channel_destroy(os_channel* channel)
+{
+    if (channel != NULL)
+    {
         free(channel->bookmark_name);
 
-        if (channel->subscription != NULL) {
-            if (!EvtClose(channel->subscription)) {
+        if (channel->subscription != NULL)
+        {
+            if (!EvtClose(channel->subscription))
+            {
                 merror("Could not close subscription to channel '%s': %lu", channel->evt_log, GetLastError());
             }
         }
@@ -398,19 +375,27 @@ void os_channel_destroy(os_channel * channel) {
     }
 }
 
-DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
+DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel* channel, EVT_HANDLE evt)
 {
-    if (action == EvtSubscribeActionDeliver) {
+    if (action == EvtSubscribeActionDeliver)
+    {
         send_channel_event(evt, channel);
-    } else {
+    }
+    else
+    {
         mwarn("The eventlog service is down. Unable to collect logs from '%s' channel.", channel->evt_log);
 
-        while(1) {
+        while (1)
+        {
             /* Try to restart EventChannel */
-            if (win_start_event_channel(channel->evt_log, !channel->bookmark_enabled, channel->query, channel->reconnect_time) == -1) {
-                mdebug1("Trying to reconnect %s channel in %i seconds.", channel->evt_log, channel->reconnect_time );
+            if (win_start_event_channel(
+                    channel->evt_log, !channel->bookmark_enabled, channel->query, channel->reconnect_time) == -1)
+            {
+                mdebug1("Trying to reconnect %s channel in %i seconds.", channel->evt_log, channel->reconnect_time);
                 sleep(channel->reconnect_time);
-            } else {
+            }
+            else
+            {
                 minfo("'%s' channel has been reconnected succesfully.", channel->evt_log);
                 os_channel_destroy(channel);
                 break;
@@ -421,12 +406,12 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
     return (0);
 }
 
-int win_start_event_channel(char *evt_log, char future, char *query, int reconnect_time)
+int win_start_event_channel(char* evt_log, char future, char* query, int reconnect_time)
 {
-    wchar_t *wchannel = NULL;
-    wchar_t *wquery = NULL;
-    char *filtered_query = NULL;
-    os_channel *channel = NULL;
+    wchar_t* wchannel = NULL;
+    wchar_t* wquery = NULL;
+    char* filtered_query = NULL;
+    os_channel* channel = NULL;
     DWORD flags = EvtSubscribeToFutureEvents;
     EVT_HANDLE bookmark = NULL;
     int status = 0;
@@ -443,82 +428,82 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
     channel->query = query;
 
     /* Replace '/' with '_' */
-    if (strchr(channel->bookmark_name, '/')) {
+    if (strchr(channel->bookmark_name, '/'))
+    {
         *(strrchr(channel->bookmark_name, '/')) = '_';
     }
 
     /* Convert evt_log to Windows string */
-    if ((wchannel = convert_unix_string(channel->evt_log)) == NULL) {
-        merror(
-            "Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
-            channel->evt_log,
-            errno,
-            strerror(errno));
+    if ((wchannel = convert_unix_string(channel->evt_log)) == NULL)
+    {
+        merror("Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
+               channel->evt_log,
+               errno,
+               strerror(errno));
         goto cleanup;
     }
 
     /* Convert query to Windows string */
-    if (query) {
-        if ((filtered_query = filter_special_chars(query)) == NULL) {
-            merror(
-                "Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
-                channel->evt_log,
-                errno,
-                strerror(errno));
+    if (query)
+    {
+        if ((filtered_query = filter_special_chars(query)) == NULL)
+        {
+            merror("Could not filter_special_chars() query for (%s) which returned [(%d)-(%s)]",
+                   channel->evt_log,
+                   errno,
+                   strerror(errno));
             goto cleanup;
         }
 
-        if ((wquery = convert_unix_string(filtered_query)) == NULL) {
-            merror(
-                "Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
-                channel->evt_log,
-                errno,
-                strerror(errno));
+        if ((wquery = convert_unix_string(filtered_query)) == NULL)
+        {
+            merror("Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
+                   channel->evt_log,
+                   errno,
+                   strerror(errno));
             goto cleanup;
         }
     }
 
     channel->bookmark_enabled = !future;
 
-    if (channel->bookmark_enabled) {
+    if (channel->bookmark_enabled)
+    {
         /* Create bookmark file name */
         snprintf(channel->bookmark_filename,
-                 sizeof(channel->bookmark_filename), "%s/%s", BOOKMARKS_DIR,
+                 sizeof(channel->bookmark_filename),
+                 "%s/%s",
+                 BOOKMARKS_DIR,
                  channel->bookmark_name);
 
         /* Try to read existing bookmark */
-        if ((bookmark = read_bookmark(channel)) != NULL) {
+        if ((bookmark = read_bookmark(channel)) != NULL)
+        {
             flags = EvtSubscribeStartAfterBookmark;
         }
     }
 
-    channel->subscription = EvtSubscribe(NULL,
-                          NULL,
-                          wchannel,
-                          wquery,
-                          bookmark,
-                          channel,
-                          (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
-                          flags);
+    channel->subscription = EvtSubscribe(
+        NULL, NULL, wchannel, wquery, bookmark, channel, (EVT_SUBSCRIBE_CALLBACK)event_channel_callback, flags);
 
-    if (channel->subscription == NULL && flags == EvtSubscribeStartAfterBookmark) {
+    if (channel->subscription == NULL && flags == EvtSubscribeStartAfterBookmark)
+    {
         channel->subscription = EvtSubscribe(NULL,
-                              NULL,
-                              wchannel,
-                              wquery,
-                              NULL,
-                              channel,
-                              (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
-                              EvtSubscribeToFutureEvents);
+                                             NULL,
+                                             wchannel,
+                                             wquery,
+                                             NULL,
+                                             channel,
+                                             (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
+                                             EvtSubscribeToFutureEvents);
     }
 
-    if (channel->subscription == NULL) {
+    if (channel->subscription == NULL)
+    {
         unsigned long id = GetLastError();
-        if (id != RPC_S_SERVER_UNAVAILABLE && id != RPC_S_UNKNOWN_IF) {
-            merror(
-                "Could not EvtSubscribe() for (%s) which returned (%lu)",
-                channel->evt_log,
-                id);
+        if (id != RPC_S_SERVER_UNAVAILABLE && id != RPC_S_UNKNOWN_IF)
+        {
+            merror("Could not EvtSubscribe() for (%s) which returned (%lu)", channel->evt_log, id);
         }
         goto cleanup;
     }
@@ -534,11 +519,13 @@ cleanup:
     free(wquery);
     free(filtered_query);
 
-    if (status == 0) {
+    if (status == 0)
+    {
         os_channel_destroy(channel);
     }
 
-    if (bookmark != NULL) {
+    if (bookmark != NULL)
+    {
         EvtClose(bookmark);
     }
 

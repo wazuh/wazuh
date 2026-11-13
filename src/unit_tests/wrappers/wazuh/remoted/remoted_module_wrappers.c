@@ -15,26 +15,32 @@
 #include <cmocka.h>
 
 void __wrap_remoted_module_start(__attribute__((unused)) const logging_callback_t logCb,
-                                  __attribute__((unused)) const remoted_module_config_t* config) {
+                                 __attribute__((unused)) const remoted_module_config_t* config)
+{
     // Mock implementation - does nothing in tests
 }
 
-void __wrap_remoted_module_stop(void) {
+void __wrap_remoted_module_stop(void)
+{
     // Mock implementation - does nothing in tests
 }
 
-int __wrap_remoted_module_tls_ca_matches_leaf(void) {
+int __wrap_remoted_module_tls_ca_matches_leaf(void)
+{
     return mock_type(int);
 }
 
-int __wrap_remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity) {
+int __wrap_remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity)
+{
     const char* pem = mock_ptr_type(const char*);
     int written = mock_type(int);
 
-    if (pem != NULL && written > 0) {
+    if (pem != NULL && written > 0)
+    {
         size_t length = strlen(pem);
 
-        if (length > capacity) {
+        if (length > capacity)
+        {
             length = capacity;
         }
 
@@ -46,11 +52,13 @@ int __wrap_remoted_module_tls_leaf_signer_pem(char* buffer, size_t capacity) {
 
 int __wrap_remoted_module_validate_tls(__attribute__((unused)) const remoted_module_config_t* configuration,
                                        char* error,
-                                       size_t capacity) {
+                                       size_t capacity)
+{
     const char* reason = mock_ptr_type(const char*);
     int result = mock_type(int);
 
-    if (reason != NULL && error != NULL && capacity > 0) {
+    if (reason != NULL && error != NULL && capacity > 0)
+    {
         strncpy(error, reason, capacity - 1);
         error[capacity - 1] = '\0';
     }
@@ -58,7 +66,8 @@ int __wrap_remoted_module_validate_tls(__attribute__((unused)) const remoted_mod
     return result;
 }
 
-int __wrap_remoted_module_init_tls_library(void) {
+int __wrap_remoted_module_init_tls_library(void)
+{
     // No call path under test branches on it beyond logging: succeed without a queued value.
     return 0;
 }

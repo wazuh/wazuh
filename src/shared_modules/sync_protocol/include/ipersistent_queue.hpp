@@ -23,14 +23,14 @@ enum class Operation : int
     CREATE = OPERATION_CREATE,  ///< The operation is to create a new record.
     MODIFY = OPERATION_MODIFY,  ///< The operation is to modify an existing record.
     DELETE_ = OPERATION_DELETE, ///< The operation is to delete a record.
-    NO_OP  = OPERATION_NO_OP    ///< No specific operation is being synchronized. Represents a neutral state.
+    NO_OP = OPERATION_NO_OP     ///< No specific operation is being synchronized. Represents a neutral state.
 };
 
 /// @brief Defines the type of synchronization mode.
 enum class Mode : int
 {
-    DELTA = MODE_DELTA,              ///< Delta synchronization mode.
-    CHECK = MODE_CHECK,              ///< Integrity check mode.
+    DELTA = MODE_DELTA,                   ///< Delta synchronization mode.
+    CHECK = MODE_CHECK,                   ///< Integrity check mode.
     METADATA_DELTA = MODE_METADATA_DELTA, ///< Metadata delta synchronization mode.
     METADATA_CHECK = MODE_METADATA_CHECK, ///< Metadata integrity check mode.
     GROUP_DELTA = MODE_GROUP_DELTA,       ///< Group delta synchronization mode.
@@ -40,9 +40,9 @@ enum class Mode : int
 /// @brief Defines additional synchronization options.
 enum class Option : int
 {
-    SYNC    = OPTION_SYNC,     ///< Standard synchronization option.
+    SYNC = OPTION_SYNC,        ///< Standard synchronization option.
     VDFIRST = OPTION_VD_FIRST, ///< Virtual data first synchronization option.
-    VDSYNC  = OPTION_VD_SYNC   ///< Virtual data synchronization option.
+    VDSYNC = OPTION_VD_SYNC    ///< Virtual data synchronization option.
 };
 
 /// @brief Represents a persisted message used in module synchronization.
@@ -52,7 +52,7 @@ enum class Option : int
 struct PersistedData
 {
     /// @brief Sequence number of the message (scoped per module).
-    uint64_t seq{};
+    uint64_t seq {};
 
     /// @brief Unique identifier of the message.
     std::string id;
@@ -64,10 +64,10 @@ struct PersistedData
     std::string data;
 
     /// @brief Type of operation (CREATE, MODIFY, DELETE).
-    Operation operation{Operation::NO_OP};
+    Operation operation {Operation::NO_OP};
 
     /// @brief Version of the data.
-    uint64_t version{};
+    uint64_t version {};
 
     /// @brief Flag indicating if this is DataContext (true) or DataValue (false).
     bool is_data_context = false;
@@ -77,10 +77,10 @@ struct PersistedData
 struct IntegrityProgress
 {
     /// @brief Checksum mismatches (409) the manager has reported in a row.
-    unsigned int mismatches{};
+    unsigned int mismatches {};
 
     /// @brief When the last of them was reported, in milliseconds since the epoch.
-    int64_t lastMismatchMs{};
+    int64_t lastMismatchMs {};
 };
 
 /// @brief Interface for persistent message queues.
@@ -90,66 +90,66 @@ struct IntegrityProgress
 /// It decouples in-memory logic from the actual storage backend.
 class IPersistentQueue
 {
-    public:
-        /// @brief Virtual destructor.
-        virtual ~IPersistentQueue() = default;
+public:
+    /// @brief Virtual destructor.
+    virtual ~IPersistentQueue() = default;
 
-        /// @brief Adds a new message to the queue and returns its assigned sequence number.
-        /// @param id The message ID.
-        /// @param index The message grouping key.
-        /// @param data The serialized payload of the message.
-        /// @param operation The type of operation (CREATE, MODIFY, DELETE).
-        /// @param version Version of the data.
-        /// @param isDataContext Flag to mark data as DataContext (true) or DataValue (false).
-        ///                      DataContext messages are used for vulnerability detection data
-        ///                      that requires special handling on the manager side. Default is false.
-        virtual void submit(const std::string& id,
-                            const std::string& index,
-                            const std::string& data,
-                            Operation operation,
-                            uint64_t version,
-                            bool isDataContext = false) = 0;
+    /// @brief Adds a new message to the queue and returns its assigned sequence number.
+    /// @param id The message ID.
+    /// @param index The message grouping key.
+    /// @param data The serialized payload of the message.
+    /// @param operation The type of operation (CREATE, MODIFY, DELETE).
+    /// @param version Version of the data.
+    /// @param isDataContext Flag to mark data as DataContext (true) or DataValue (false).
+    ///                      DataContext messages are used for vulnerability detection data
+    ///                      that requires special handling on the manager side. Default is false.
+    virtual void submit(const std::string& id,
+                        const std::string& index,
+                        const std::string& data,
+                        Operation operation,
+                        uint64_t version,
+                        bool isDataContext = false) = 0;
 
-        /// @brief Fetches a batch of pending messages up to a byte budget and marks them for synchronization.
-        /// @param maxBytes Maximum estimated payload size to collect. 0 means no byte cap.
-        /// @return A vector of messages now marked as SYNCING.
-        virtual std::vector<PersistedData> fetchAndMarkForSync(size_t maxBytes = 0) = 0;
+    /// @brief Fetches a batch of pending messages up to a byte budget and marks them for synchronization.
+    /// @param maxBytes Maximum estimated payload size to collect. 0 means no byte cap.
+    /// @return A vector of messages now marked as SYNCING.
+    virtual std::vector<PersistedData> fetchAndMarkForSync(size_t maxBytes = 0) = 0;
 
-        /// @brief Fetches pending DataValue items without marking them for sync.
-        /// @param onlyDataValues If true, only returns items with is_data_context=false
-        /// @return A vector of pending DataValue messages.
-        virtual std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) = 0;
+    /// @brief Fetches pending DataValue items without marking them for sync.
+    /// @param onlyDataValues If true, only returns items with is_data_context=false
+    /// @return A vector of pending DataValue messages.
+    virtual std::vector<PersistedData> fetchPendingItems(bool onlyDataValues = true) = 0;
 
-        /// @brief Clears items that were successfully synchronized.
-        virtual void clearSyncedItems() = 0;
+    /// @brief Clears items that were successfully synchronized.
+    virtual void clearSyncedItems() = 0;
 
-        /// @brief Resets items that failed to synchronize.
-        /// The manager may have applied them, so they are no longer treated as new: a later
-        /// DELETE of them is sent instead of coalesced away.
-        virtual void resetSyncingItems() = 0;
+    /// @brief Resets items that failed to synchronize.
+    /// The manager may have applied them, so they are no longer treated as new: a later
+    /// DELETE of them is sent instead of coalesced away.
+    virtual void resetSyncingItems() = 0;
 
-        /// @brief Clears all items belonging to a specific index.
-        /// @param index The index for which all items should be cleared.
-        virtual void clearItemsByIndex(const std::string& index) = 0;
+    /// @brief Clears all items belonging to a specific index.
+    /// @param index The index for which all items should be cleared.
+    virtual void clearItemsByIndex(const std::string& index) = 0;
 
-        /// @brief Clears all DataContext items (where is_data_context = true).
-        virtual void clearAllDataContext() = 0;
+    /// @brief Clears all DataContext items (where is_data_context = true).
+    virtual void clearAllDataContext() = 0;
 
-        /// @brief Deletes the database file.
-        /// This method closes the database connection and removes the database file from disk.
-        virtual void deleteDatabase() = 0;
+    /// @brief Deletes the database file.
+    /// This method closes the database connection and removes the database file from disk.
+    virtual void deleteDatabase() = 0;
 
-        /// @brief Returns the stored checksum mismatch progress of an index.
-        /// @param index The index to look up.
-        /// @return The progress, or std::nullopt if none is stored.
-        virtual std::optional<IntegrityProgress> getIntegrityProgress(const std::string& index) = 0;
+    /// @brief Returns the stored checksum mismatch progress of an index.
+    /// @param index The index to look up.
+    /// @return The progress, or std::nullopt if none is stored.
+    virtual std::optional<IntegrityProgress> getIntegrityProgress(const std::string& index) = 0;
 
-        /// @brief Stores the checksum mismatch progress of an index, replacing any previous one.
-        /// @param index The index the progress belongs to.
-        /// @param progress The progress to store.
-        virtual void setIntegrityProgress(const std::string& index, const IntegrityProgress& progress) = 0;
+    /// @brief Stores the checksum mismatch progress of an index, replacing any previous one.
+    /// @param index The index the progress belongs to.
+    /// @param progress The progress to store.
+    virtual void setIntegrityProgress(const std::string& index, const IntegrityProgress& progress) = 0;
 
-        /// @brief Removes the checksum mismatch progress of an index, if any.
-        /// @param index The index whose progress is removed.
-        virtual void clearIntegrityProgress(const std::string& index) = 0;
+    /// @brief Removes the checksum mismatch progress of an index, if any.
+    /// @param index The index whose progress is removed.
+    virtual void clearIntegrityProgress(const std::string& index) = 0;
 };

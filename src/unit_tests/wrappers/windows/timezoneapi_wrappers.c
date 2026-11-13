@@ -12,8 +12,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-WINBOOL wrap_FileTimeToSystemTime(CONST FILETIME *lpFileTime,
-                                  LPSYSTEMTIME lpSystemTime) {
+WINBOOL wrap_FileTimeToSystemTime(CONST FILETIME* lpFileTime, LPSYSTEMTIME lpSystemTime)
+{
     check_expected(lpFileTime);
     memcpy(lpSystemTime, mock_type(LPSYSTEMTIME), sizeof(SYSTEMTIME));
     return mock();

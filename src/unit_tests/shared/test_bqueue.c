@@ -17,108 +17,120 @@
 
 #include "bqueue_op.h"
 
-static const char * MESSAGE = "AB";
+static const char* MESSAGE = "AB";
 
-
-static int test_setup_2(void **state) {
+static int test_setup_2(void** state)
+{
     test_mode = 1;
 
-    bqueue_t *bqueue = bqueue_init(2, BQUEUE_NOFLAG);
+    bqueue_t* bqueue = bqueue_init(2, BQUEUE_NOFLAG);
     *state = bqueue;
     return 0;
 }
 
-static int test_setup_3(void **state) {
+static int test_setup_3(void** state)
+{
     test_mode = 1;
 
-    bqueue_t *bqueue = bqueue_init(3, BQUEUE_NOFLAG);
+    bqueue_t* bqueue = bqueue_init(3, BQUEUE_NOFLAG);
     *state = bqueue;
     return 0;
 }
 
-static int test_setup_20(void **state) {
+static int test_setup_20(void** state)
+{
     test_mode = 1;
 
-    bqueue_t *bqueue = bqueue_init(20, BQUEUE_NOFLAG);
+    bqueue_t* bqueue = bqueue_init(20, BQUEUE_NOFLAG);
     *state = bqueue;
     return 0;
 }
 
-static int test_setup_1024(void **state) {
+static int test_setup_1024(void** state)
+{
     test_mode = 1;
 
-    bqueue_t *bqueue = bqueue_init(1024+1, BQUEUE_SHRINK);
+    bqueue_t* bqueue = bqueue_init(1024 + 1, BQUEUE_SHRINK);
     *state = bqueue;
     return 0;
 }
 
-static int test_teardown(void **state) {
+static int test_teardown(void** state)
+{
     test_mode = 0;
 
-    bqueue_t *bqueue = *state;
+    bqueue_t* bqueue = *state;
     bqueue_destroy(bqueue);
     return 0;
 }
 
-static void test_bqueue_init_fail(void **state) {
-    (void) state;
+static void test_bqueue_init_fail(void** state)
+{
+    (void)state;
 
     // 1-byte queue is forbidden
-    bqueue_t * queue = bqueue_init(1, BQUEUE_NOFLAG);
+    bqueue_t* queue = bqueue_init(1, BQUEUE_NOFLAG);
     assert_null(queue);
 
     free(queue);
 }
 
-static void test_bqueue_init_ok(void **state) {
-    (void) state;
+static void test_bqueue_init_ok(void** state)
+{
+    (void)state;
 
     // 2-byte queue is allowed
-    bqueue_t * queue = bqueue_init(2, BQUEUE_NOFLAG);
+    bqueue_t* queue = bqueue_init(2, BQUEUE_NOFLAG);
     assert_non_null(queue);
     bqueue_destroy(queue);
 }
 
-static void test_bqueue_destroy_fail(void **state) {
-    (void) state;
+static void test_bqueue_destroy_fail(void** state)
+{
+    (void)state;
 
-    bqueue_t * queue = NULL;
+    bqueue_t* queue = NULL;
     bqueue_destroy(queue);
     assert_null(queue);
 }
 
-static void test_bqueue_destroy_ok(void **state) {
-    (void) state;
+static void test_bqueue_destroy_ok(void** state)
+{
+    (void)state;
 
-    bqueue_t * queue = bqueue_init(2, BQUEUE_NOFLAG);
+    bqueue_t* queue = bqueue_init(2, BQUEUE_NOFLAG);
     bqueue_destroy(queue);
     assert_non_null(queue);
 }
 
-static void test_bqueue_push_fail(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_fail(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), -1);
 }
 
-static void test_bqueue_push_fail_non_space(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_fail_non_space(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), 0);
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), -1);
 }
 
-static void test_bqueue_push_ok(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_ok(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), 0);
 }
 
-static void test_bqueue_push_pop_ok(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_pop_ok(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), 0);
@@ -128,8 +140,9 @@ static void test_bqueue_push_pop_ok(void **state) {
     assert_string_equal(MESSAGE, buffer);
 }
 
-static void test_bqueue_push_second_pop_fail(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_second_pop_fail(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     assert_int_equal(bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG), 0);
@@ -139,8 +152,9 @@ static void test_bqueue_push_second_pop_fail(void **state) {
     assert_int_equal(bqueue_pop(queue, buffer, sizeof(buffer), BQUEUE_NOFLAG), 0);
 }
 
-static void test_bqueue_push_pop_used_ok(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_pop_used_ok(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     // Push 2 char
@@ -154,8 +168,9 @@ static void test_bqueue_push_pop_used_ok(void **state) {
     assert_string_equal(MESSAGE, buffer);
 }
 
-static void test_bqueue_push_second_peek_empty(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_second_peek_empty(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     // Push 2 char
@@ -170,8 +185,9 @@ static void test_bqueue_push_second_peek_empty(void **state) {
     assert_int_equal(bqueue_peek(queue, buffer, sizeof(buffer), BQUEUE_NOFLAG), 0);
 }
 
-static void test_bqueue_push_peek_drop_ok(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_peek_drop_ok(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
 
@@ -188,8 +204,9 @@ static void test_bqueue_push_peek_drop_ok(void **state) {
     assert_string_equal(MESSAGE, buffer);
 }
 
-static void test_bqueue_push_peek_drop_fail(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_peek_drop_fail(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
     // Push 2 char
@@ -202,8 +219,9 @@ static void test_bqueue_push_peek_drop_fail(void **state) {
     assert_int_equal(bqueue_drop(queue, 4), -1);
 }
 
-static void test_bqueue_push_clear_ok(void **state) {
-    bqueue_t *queue = *state;
+static void test_bqueue_push_clear_ok(void** state)
+{
+    bqueue_t* queue = *state;
 
     assert_non_null(queue);
 
@@ -219,17 +237,20 @@ static void test_bqueue_push_clear_ok(void **state) {
     assert_int_equal(used, 0);
 }
 
-static void test_bqueue_push_pop_full_buff(void **state) {
+static void test_bqueue_push_pop_full_buff(void** state)
+{
     /* This test will complete 1024 bytes of bufer with AB string,
        pop and validate last 2 bytes
 
        Buffer: |ABABABAB........ABABAB|
                                     ^^
     */
-    bqueue_t *queue = *state;
+    bqueue_t* queue = *state;
 
-    for (int a = 0; a < (1024 / strlen(MESSAGE)); a++) {
-        if (bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG) != 0) {
+    for (int a = 0; a < (1024 / strlen(MESSAGE)); a++)
+    {
+        if (bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG) != 0)
+        {
             assert_null(queue);
             break;
         }
@@ -239,8 +260,10 @@ static void test_bqueue_push_pop_full_buff(void **state) {
 
     char buffer[3] = "";
 
-    for (int a = 0; a < (1024 / strlen(MESSAGE)); a++) {
-        if (bqueue_pop(queue, buffer, strlen(MESSAGE), BQUEUE_NOFLAG) != strlen(MESSAGE)) {
+    for (int a = 0; a < (1024 / strlen(MESSAGE)); a++)
+    {
+        if (bqueue_pop(queue, buffer, strlen(MESSAGE), BQUEUE_NOFLAG) != strlen(MESSAGE))
+        {
             assert_null(queue);
             break;
         }
@@ -251,19 +274,22 @@ static void test_bqueue_push_pop_full_buff(void **state) {
     assert_non_null(queue);
 }
 
-static void test_bqueue_push_pop_rollover(void **state) {
+static void test_bqueue_push_pop_rollover(void** state)
+{
     /* This test will complete 1022 spaces of 1024 bufer with AB string,
        and pop first 3 bytes, then push 5 new bytes and validate last 5 bytes
 
        Buffer: |345BABAB........ABAB12|
                 ^^^                 ^^
     */
-    bqueue_t *queue = *state;
+    bqueue_t* queue = *state;
 
     char buffer[1024] = "";
     // complete fist 1022 buffer spaces with "AB"
-    for (int a = 0; a < (1024 / strlen(MESSAGE) -1 ); a++) {
-        if (bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG) != 0) {
+    for (int a = 0; a < (1024 / strlen(MESSAGE) - 1); a++)
+    {
+        if (bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG) != 0)
+        {
             assert_null(queue);
             break;
         }
@@ -289,19 +315,22 @@ static void test_bqueue_push_pop_rollover(void **state) {
     assert_non_null(queue);
 }
 
-static void test_bqueue_push_drop_cross_pointers(void **state) {
+static void test_bqueue_push_drop_cross_pointers(void** state)
+{
     /*
        Buffer: |345...AB12|
                   T   H
     */
-    bqueue_t *queue = *state;
+    bqueue_t* queue = *state;
 
     char buffer[11] = "";
     assert_non_null(queue);
 
     // complete fist 10 buffer spaces with "AB"
-    for (int a = 0; a < (10 / strlen(MESSAGE)-1); a++) {
-        if (bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG) != 0) {
+    for (int a = 0; a < (10 / strlen(MESSAGE) - 1); a++)
+    {
+        if (bqueue_push(queue, MESSAGE, strlen(MESSAGE), BQUEUE_NOFLAG) != 0)
+        {
             assert_null(queue);
             break;
         }
@@ -329,9 +358,10 @@ static void test_bqueue_push_drop_cross_pointers(void **state) {
     assert_string_equal("1234567890", buffer);
 }
 
-static void test_bqueue_push_drop_to_expand(void **state) {
+static void test_bqueue_push_drop_to_expand(void** state)
+{
 
-    bqueue_t *queue = *state;
+    bqueue_t* queue = *state;
 
     char buffer[10] = "";
     assert_non_null(queue);
@@ -365,7 +395,8 @@ static void test_bqueue_push_drop_to_expand(void **state) {
     assert_string_equal("2345678", buffer);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_bqueue_init_fail),
         cmocka_unit_test(test_bqueue_init_ok),

@@ -15,11 +15,11 @@
 
 class IOSHardware
 {
-    public:
-        // LCOV_EXCL_START
-        virtual ~IOSHardware() = default;
-        // LCOV_EXCL_STOP
-        virtual void buildHardwareData(nlohmann::json& hardware) = 0;
+public:
+    // LCOV_EXCL_START
+    virtual ~IOSHardware() = default;
+    // LCOV_EXCL_STOP
+    virtual void buildHardwareData(nlohmann::json& hardware) = 0;
 };
 
 #endif // _HARDWARE_INTERFACE_H

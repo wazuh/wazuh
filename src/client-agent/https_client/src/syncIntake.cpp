@@ -100,8 +100,8 @@ namespace
 
     /// Streams the framed session on peerFd into a fresh temp file. Returns the
     /// spool path (and fills id/size) on success, or an empty string.
-    std::string spoolConnection(int peerFd, int stopFd, const std::string& spoolDir,
-                                std::string& sessionId, uint64_t& size)
+    std::string
+    spoolConnection(int peerFd, int stopFd, const std::string& spoolDir, std::string& sessionId, uint64_t& size)
     {
         std::string tmpl = spoolDir + "/hc_sync_intake_XXXXXX";
 
@@ -183,8 +183,7 @@ bool SyncIntake::start()
     std::strncpy(addr.sun_path, m_socketPath.c_str(), sizeof(addr.sun_path) - 1);
     unlink(m_socketPath.c_str());
 
-    if (bind(m_listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 ||
-            listen(m_listenFd, 16) != 0)
+    if (bind(m_listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 || listen(m_listenFd, 16) != 0)
     {
         closeFd(m_listenFd);
         closeFd(m_stopPipe[0]);
@@ -267,8 +266,7 @@ void SyncIntake::handleConnection(int peerFd)
     (void)writeSyncSessionAck(write, accepted);
 }
 
-bool sendSyncSession(const std::string& socketPath, const std::string& sessionId,
-                     const uint8_t* body, size_t length)
+bool sendSyncSession(const std::string& socketPath, const std::string& sessionId, const uint8_t* body, size_t length)
 {
     if (!fitsInSunPath(socketPath))
     {
@@ -312,8 +310,7 @@ bool sendSyncSession(const std::string& socketPath, const std::string& sessionId
         return static_cast<long>(recv(fd, buffer, n, 0));
     };
     // Only report success once the agent says it took the session.
-    const bool ok = writeSyncSessionFrame(write, sessionId, body, length) &&
-                    readSyncSessionAck(read);
+    const bool ok = writeSyncSessionFrame(write, sessionId, body, length) && readSyncSessionAck(read);
     close(fd);
     return ok;
 }
@@ -325,17 +322,11 @@ bool SyncIntake::start()
     return false;
 }
 
-void SyncIntake::stop()
-{
-}
+void SyncIntake::stop() {}
 
-void SyncIntake::acceptLoop()
-{
-}
+void SyncIntake::acceptLoop() {}
 
-void SyncIntake::handleConnection(int)
-{
-}
+void SyncIntake::handleConnection(int) {}
 
 bool sendSyncSession(const std::string&, const std::string&, const uint8_t*, size_t)
 {

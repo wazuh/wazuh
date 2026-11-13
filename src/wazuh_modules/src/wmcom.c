@@ -16,39 +16,50 @@
  * each get their own entry, named after the wodle. */
 #define WMCOM_MODULE_NAME "wmodules"
 
+size_t wmcom_dispatch(char* command, size_t length, char** output)
+{
 
-size_t wmcom_dispatch(char * command, size_t length, char ** output){
-
-    if (strncmp(command, "getconfig", 9) == 0){
+    if (strncmp(command, "getconfig", 9) == 0)
+    {
         /*
          * getconfig wmodules
          * getconfig internal_options
-        */
-        char *rcv_comm = command;
-        char *rcv_args = NULL;
+         */
+        char* rcv_comm = command;
+        char* rcv_args = NULL;
 
-        if ((rcv_args = strchr(rcv_comm, ' '))){
+        if ((rcv_args = strchr(rcv_comm, ' ')))
+        {
             *rcv_args = '\0';
             rcv_args++;
         }
         // getconfig section
-        if (!rcv_args){
+        if (!rcv_args)
+        {
             mdebug1("WMCOM getconfig needs arguments.");
             os_strdup("err WMCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return wmcom_getconfig(rcv_args, output);
-    } else if (strcmp(command, "getallconfig") == 0) {
+    }
+    else if (strcmp(command, "getallconfig") == 0)
+    {
         return wmcom_getallconfig(output);
-    } else if (strncmp(command, "query ", 6) == 0) {
+    }
+    else if (strncmp(command, "query ", 6) == 0)
+    {
         return wm_module_query(command + 6, output);
-    } else if (wmcom_sync(command, length) == 0) {
+    }
+    else if (wmcom_sync(command, length) == 0)
+    {
         /*
          * syscollector_sync { ... }
          * sca_sync { ... }
-        */
+         */
         return 0;
-    } else {
+    }
+    else
+    {
         mdebug1("WMCOM Unrecognized command '%s'.", command);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
@@ -64,24 +75,27 @@ size_t wmcom_dispatch(char * command, size_t length, char ** output){
  * @param report Destination array.
  * @param modules Result of getModulesConfig(). Left untouched.
  */
-static void wmcom_report_wodles(cJSON * report, const cJSON * modules) {
+static void wmcom_report_wodles(cJSON* report, const cJSON* modules)
+{
 
-    const cJSON *wodles = modules ? cJSON_GetObjectItem(modules, "wmodules") : NULL;
-    const cJSON *wodle = NULL;
+    const cJSON* wodles = modules ? cJSON_GetObjectItem(modules, "wmodules") : NULL;
+    const cJSON* wodle = NULL;
 
-    cJSON_ArrayForEach(wodle, wodles) {
-        if (wodle->child) {
-            module_report_add(report, wodle->child->string,
-                                     cJSON_Duplicate(wodle->child, true));
+    cJSON_ArrayForEach(wodle, wodles)
+    {
+        if (wodle->child)
+        {
+            module_report_add(report, wodle->child->string, cJSON_Duplicate(wodle->child, true));
         }
     }
 }
 
-size_t wmcom_getallconfig(char ** output) {
+size_t wmcom_getallconfig(char** output)
+{
 
-    cJSON *report = cJSON_CreateObject();
-    cJSON *modules = getModulesConfig();
-    cJSON *internal = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
+    cJSON* modules = getModulesConfig();
+    cJSON* internal = cJSON_CreateObject();
 
     wmcom_report_wodles(report, modules);
     cJSON_Delete(modules);
@@ -91,34 +105,46 @@ size_t wmcom_getallconfig(char ** output) {
     return module_report_reply(report, output);
 }
 
-size_t wmcom_getconfig(const char * section, char ** output) {
+size_t wmcom_getconfig(const char* section, char** output)
+{
 
-    cJSON *cfg;
-    char *json_str;
+    cJSON* cfg;
+    char* json_str;
 
-    if (strcmp(section, "wmodules") == 0){
-        if (cfg = getModulesConfig(), cfg) {
+    if (strcmp(section, "wmodules") == 0)
+    {
+        if (cfg = getModulesConfig(), cfg)
+        {
             os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else if (strcmp(section, "internal_options") == 0){
-        if (cfg = getModulesInternalOptions(), cfg) {
+    }
+    else if (strcmp(section, "internal_options") == 0)
+    {
+        if (cfg = getModulesInternalOptions(), cfg)
+        {
             os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else {
+    }
+    else
+    {
         goto error;
     }
 error:
@@ -127,34 +153,35 @@ error:
     return strlen(*output);
 }
 
-int wmcom_sync(char * buffer, size_t length) {
+int wmcom_sync(char* buffer, size_t length)
+{
     const int ret = modulesSync(buffer, length);
-    if(ret) {
+    if (ret)
+    {
         mdebug1("At WMCOM sync: Could not sync '%s' buffer", buffer);
     }
     return ret;
 }
 
 #ifdef WIN32
-void wmcom_send(char * message, size_t length)
+void wmcom_send(char* message, size_t length)
 {
-    char * response = NULL;
+    char* response = NULL;
     wmcom_dispatch(message, length, &response);
     os_free(response);
 }
 #else
 
-void wmcom_send(char * message, size_t length)
+void wmcom_send(char* message, size_t length)
 {
     int sock;
-    if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        switch (errno) {
-            case ECONNREFUSED:
-                mdebug1("Target wmodules refused connection. The component might be disabled");
-                break;
+    if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0)
+    {
+        switch (errno)
+        {
+            case ECONNREFUSED: mdebug1("Target wmodules refused connection. The component might be disabled"); break;
 
-            default:
-                mdebug1("Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
+            default: mdebug1("Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
         }
     }
     else
@@ -164,36 +191,38 @@ void wmcom_send(char * message, size_t length)
     }
 }
 
-void * wmcom_main(__attribute__((unused)) void * arg) {
+void* wmcom_main(__attribute__((unused)) void* arg)
+{
     int sock;
     int peer;
-    char *buffer = NULL;
-    char *response = NULL;
+    char* buffer = NULL;
+    char* response = NULL;
     ssize_t length;
     fd_set fdset;
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomainWithPerms(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
+    if (sock = OS_BindUnixDomainWithPerms(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660),
+        sock < 0)
+    {
         merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
-    while (!wm_shutdown_requested) {
+    while (!wm_shutdown_requested)
+    {
 
-
-        switch (wm_select_interruptible(sock, &fdset)) {
-        case -1:
-            merror_exit("At wmcom_main(): select(): %s", strerror(errno));
-            break;
-        case 0:
-            continue;
-        default:
-            break;
+        switch (wm_select_interruptible(sock, &fdset))
+        {
+            case -1: merror_exit("At wmcom_main(): select(): %s", strerror(errno)); break;
+            case 0: continue;
+            default: break;
         }
 
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
+        if (peer = accept(sock, NULL, NULL), peer < 0)
+        {
+            if (errno != EINTR)
+            {
                 merror("At wmcom_main(): accept(): %s", strerror(errno));
             }
 
@@ -204,40 +233,42 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
         // not hold it: bound every wait for the client, while reading the request and while
         // writing the reply. Each wait is bounded, not the request as a whole; the socket is
         // only open to root and the daemon's own group.
-        if (OS_SetRecvTimeout(peer, wm_socket_timeout, 0) < 0 || OS_SetSendTimeout(peer, wm_socket_timeout) < 0) {
+        if (OS_SetRecvTimeout(peer, wm_socket_timeout, 0) < 0 || OS_SetSendTimeout(peer, wm_socket_timeout) < 0)
+        {
             mdebug1("At wmcom_main(): could not set the socket timeout: %s (%d)", strerror(errno), errno);
         }
 
         // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
-        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
-        case OS_SOCKTERR:
-            merror("At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
-            break;
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length)
+        {
+            case OS_SOCKTERR:
+                merror("At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                break;
 
-        case -1:
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                mwarn("At wmcom_main(): a local client sent nothing for %d seconds before completing its request.",
-                      wm_socket_timeout);
-            } else {
-                merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
-            }
-            break;
+            case -1:
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                {
+                    mwarn("At wmcom_main(): a local client sent nothing for %d seconds before completing its request.",
+                          wm_socket_timeout);
+                }
+                else
+                {
+                    merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+                }
+                break;
 
-        case 0:
-            mdebug1("Empty message from local client.");
-            break;
+            case 0: mdebug1("Empty message from local client."); break;
 
-        case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
-            break;
+            case OS_MAXLEN: merror("Received message > %i", MAX_DYN_STR); break;
 
-        default:
-            length = wmcom_dispatch(buffer, length, &response);
-            if (length) {
-                OS_SendSecureTCP(peer, length, response);
-            }
-            os_free(response);
+            default:
+                length = wmcom_dispatch(buffer, length, &response);
+                if (length)
+                {
+                    OS_SendSecureTCP(peer, length, response);
+                }
+                os_free(response);
         }
 
         // Every outcome above ends the exchange: close the client here so no branch can leak it.

@@ -242,8 +242,8 @@ TEST(ModuleConfigTest, SystemModeFailsClosedWhenFallbackAnchorIsUnreadable)
     MockFsProbe fsProbe;
     auto config = minimalConfig();
     config.verify_mode = HC_VERIFY_SYSTEM;
-    std::strncpy(config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem",
-                 sizeof(config.system_fallback_ca_path) - 1);
+    std::strncpy(
+        config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem", sizeof(config.system_fallback_ca_path) - 1);
     EXPECT_CALL(fsProbe, isReadableFile("/var/ossec/etc/certs/root-ca.pem")).WillOnce(Return(false));
     EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
 }
@@ -266,8 +266,8 @@ TEST(ModuleConfigTest, SystemModeValidWithoutBundleWhenFallbackAnchorConfigured)
     MockFsProbe fsProbe;
     auto config = minimalConfig();
     config.verify_mode = HC_VERIFY_SYSTEM;
-    std::strncpy(config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem",
-                 sizeof(config.system_fallback_ca_path) - 1);
+    std::strncpy(
+        config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem", sizeof(config.system_fallback_ca_path) - 1);
     EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return(""));
     EXPECT_CALL(fsProbe, isReadableFile("/var/ossec/etc/certs/root-ca.pem")).WillOnce(Return(true));
     EXPECT_TRUE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));
@@ -282,8 +282,8 @@ TEST(ModuleConfigTest, SystemModeFailsClosedWhenFallbackAnchorIsUnreadableEvenWi
     MockFsProbe fsProbe;
     auto config = minimalConfig();
     config.verify_mode = HC_VERIFY_SYSTEM;
-    std::strncpy(config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem",
-                 sizeof(config.system_fallback_ca_path) - 1);
+    std::strncpy(
+        config.system_fallback_ca_path, "/var/ossec/etc/certs/root-ca.pem", sizeof(config.system_fallback_ca_path) - 1);
     EXPECT_CALL(fsProbe, findSystemCaBundle()).WillOnce(Return("/etc/ssl/certs/ca-certificates.crt"));
     EXPECT_CALL(fsProbe, isReadableFile("/var/ossec/etc/certs/root-ca.pem")).WillOnce(Return(false));
     EXPECT_FALSE(ModuleConfig::fromC(config).validate(fsProbe, TEST_LOG));

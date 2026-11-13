@@ -24,35 +24,37 @@
 #endif // ARGV0
 
 #ifdef WIN32
-typedef DWORD WINAPI (*wm_routine)(void*);  // Standard routine pointer
+typedef DWORD WINAPI (*wm_routine)(void*); // Standard routine pointer
 #else
-typedef void* (*wm_routine)(void*);         // Standard routine pointer
+typedef void* (*wm_routine)(void*); // Standard routine pointer
 #endif
 
 // Module context: this should be defined for every module
 
-typedef struct wm_context {
-    const char *name;                           // Name for module
-    wm_routine start;                           // Main function
-    void (*destroy)(void *);                    // Configuration destructor
-    cJSON *(* dump)(const void *);              // Dump current configuration
-    int (* sync)(const char*, size_t);          // Sync
-    void (*stop)(void *);                       // Module destructor
-    size_t (*query)(void *, char *, char **);   // Run a query
+typedef struct wm_context
+{
+    const char* name;                      // Name for module
+    wm_routine start;                      // Main function
+    void (*destroy)(void*);                // Configuration destructor
+    cJSON* (*dump)(const void*);           // Dump current configuration
+    int (*sync)(const char*, size_t);      // Sync
+    void (*stop)(void*);                   // Module destructor
+    size_t (*query)(void*, char*, char**); // Run a query
 } wm_context;
 
 // Main module structure
 
-typedef struct wmodule {
-    pthread_t thread;                   // Thread ID
+typedef struct wmodule
+{
+    pthread_t thread; // Thread ID
 #ifdef WIN32
-    HANDLE win_thread;                  // Module's own worker thread handle, so stop_wmodules()
-                                         // can join it before the service reports SERVICE_STOPPED
+    HANDLE win_thread; // Module's own worker thread handle, so stop_wmodules()
+                       // can join it before the service reports SERVICE_STOPPED
 #endif
-    const wm_context *context;          // Context (common structure)
-    char *tag;                          // Module tag
-    void *data;                         // Data (module-dependent structure)
-    struct wmodule *next;               // Pointer to next module
+    const wm_context* context; // Context (common structure)
+    char* tag;                 // Module tag
+    void* data;                // Data (module-dependent structure)
+    struct wmodule* next;      // Pointer to next module
 } wmodule;
 
-#endif //W_MODULES_DEFS
+#endif // W_MODULES_DEFS

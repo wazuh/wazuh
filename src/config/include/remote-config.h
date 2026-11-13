@@ -17,15 +17,17 @@
 
 #define REMOTED_NET_PROTOCOL_TCP_STR "TCP" ///< String to represent the TCP protocol
 #define REMOTED_NET_PROTOCOL_UDP_STR "UDP" ///< String to represent the UDP protocol
-#define REMOTED_NET_PROTOCOL_DEFAULT_STR  (REMOTED_NET_PROTOCOL_DEFAULT == REMOTED_NET_PROTOCOL_TCP \
-                ? REMOTED_NET_PROTOCOL_TCP_STR : REMOTED_NET_PROTOCOL_UDP_STR) ///< String to represent default protocol
+#define REMOTED_NET_PROTOCOL_DEFAULT_STR                                                                               \
+    (REMOTED_NET_PROTOCOL_DEFAULT == REMOTED_NET_PROTOCOL_TCP                                                          \
+         ? REMOTED_NET_PROTOCOL_TCP_STR                                                                                \
+         : REMOTED_NET_PROTOCOL_UDP_STR) ///< String to represent default protocol
 
-#define REMOTED_NET_PROTOCOL_TCP_UDP (REMOTED_NET_PROTOCOL_TCP | REMOTED_NET_PROTOCOL_UDP) ///< Either UDP or TCP
-#define REMOTED_RIDS_CLOSING_TIME_DEFAULT   (5 * 60) ///< Default rids_closing_time value (5 minutes)
+#define REMOTED_NET_PROTOCOL_TCP_UDP      (REMOTED_NET_PROTOCOL_TCP | REMOTED_NET_PROTOCOL_UDP) ///< Either UDP or TCP
+#define REMOTED_RIDS_CLOSING_TIME_DEFAULT (5 * 60) ///< Default rids_closing_time value (5 minutes)
 
 #define REMOTED_LEGACY_LOCAL_IP_DEFAULT "0.0.0.0"
 
-#define REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false  ///< Default allow_higher_versions value (false)
+#define REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false ///< Default allow_higher_versions value (false)
 
 /* remote.https.verification_mode values. Kept in sync by hand with the C-ABI
  * mirror in src/remoted/remoted_module/include/remoted_module.h (REMOTED_MODULE_HTTPS_VERIFY_*),
@@ -48,14 +50,16 @@
  * IPv6 (e.g. "::"): controls the IPV6_V6ONLY socket option, i.e. whether the same
  * socket also accepts IPv4 clients. Kept in sync by hand with the C-ABI mirror in
  * src/remoted/remoted_module/include/remoted_module.h. */
-#define REMOTED_HTTPS_DUAL_STACK_UNSET 0 ///< Not configured -> module defaults to IPv6-only (RestinioHttpServer.cpp).
-                                          ///< Kept distinct from _NO so the "dual_stack only applies to an IPv6
-                                          ///< bind_addr" warning doesn't fire when the operator never touched it.
-                                          ///< Also what Read_Remote_JSON() stores for `dual_stack: false`: the
-                                          ///< schema defaults the option to false, so `no` and absent are one value.
-#define REMOTED_HTTPS_DUAL_STACK_YES   1 ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4
-#define REMOTED_HTTPS_DUAL_STACK_NO    2 ///< Force IPv6-only (IPV6_V6ONLY=1); same socket option as _UNSET, and not
-                                          ///< produced by Read_Remote_JSON()
+#define REMOTED_HTTPS_DUAL_STACK_UNSET                                                                                 \
+    0                                  ///< Not configured -> module defaults to IPv6-only (RestinioHttpServer.cpp).
+                                       ///< Kept distinct from _NO so the "dual_stack only applies to an IPv6
+                                       ///< bind_addr" warning doesn't fire when the operator never touched it.
+                                       ///< Also what Read_Remote_JSON() stores for `dual_stack: false`: the
+                                       ///< schema defaults the option to false, so `no` and absent are one value.
+#define REMOTED_HTTPS_DUAL_STACK_YES 1 ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4
+#define REMOTED_HTTPS_DUAL_STACK_NO                                                                                    \
+    2 ///< Force IPv6-only (IPV6_V6ONLY=1); same socket option as _UNSET, and not
+      ///< produced by Read_Remote_JSON()
 
 /* remote.https.<endpoint>_rate_limit sentinel. Kept in sync by hand with the
  * C-ABI mirror in src/remoted/remoted_module/include/remoted_module.h
@@ -72,7 +76,7 @@
 /* Upper bound of the rate options, kept in sync by hand with the schema's own "maximum"
  * (src/shared_modules/manager_config/schema/wazuh-manager.schema.json). Repeated here because a
  * document can reach the reader without having gone through the schema. */
-#define REMOTED_HTTPS_RATE_LIMIT_MAX   100000
+#define REMOTED_HTTPS_RATE_LIMIT_MAX 100000
 
 /* Maximum lengths for remote.https string options. Kept in sync by hand with the
  * fixed-size C-ABI buffers in src/remoted/remoted_module/include/remoted_module.h
@@ -83,49 +87,51 @@
  * this point it is a plain char* with no length limit until it reaches that buffer.
  * The manager configuration schema mirrors each limit as the field's maxLength, so
  * `wazuh-manager-conf validate` refuses the same values: change both together. */
-#define REMOTED_HTTPS_BIND_ADDR_MAX_LEN     255
-#define REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN 255
-#define REMOTED_HTTPS_CERTIFICATE_MAX_LEN   511
-#define REMOTED_HTTPS_KEY_MAX_LEN           511
-#define REMOTED_HTTPS_CA_MAX_LEN            511
+#define REMOTED_HTTPS_BIND_ADDR_MAX_LEN      255
+#define REMOTED_HTTPS_GLOBAL_PREFIX_MAX_LEN  255
+#define REMOTED_HTTPS_CERTIFICATE_MAX_LEN    511
+#define REMOTED_HTTPS_KEY_MAX_LEN            511
+#define REMOTED_HTTPS_CA_MAX_LEN             511
 #define REMOTED_HTTPS_CA_CERTIFICATE_MAX_LEN 511
-#define REMOTED_HTTPS_CIPHERS_MAX_LEN       255
-#define REMOTED_HTTPS_GROUPS_MAX_LEN        255
+#define REMOTED_HTTPS_CIPHERS_MAX_LEN        255
+#define REMOTED_HTTPS_GROUPS_MAX_LEN         255
 
 #include "shared.h"
 #include "global-config.h"
 
 /* remote.https configuration. Every field defaults to an "unset" sentinel
  * (0/NULL) so an absent https mapping leaves the module's own defaults untouched. */
-typedef struct _remoted_https_config {
-    int port;                  ///< 0 -> module default
-    char *bind_addr;           ///< NULL -> module default
-    char *global_prefix;       ///< NULL -> module default "/" (endpoints served unprefixed)
-    char *certificate;         ///< NULL -> module default
-    char *key;                 ///< NULL -> module default
-    char *ca;                  ///< NULL -> module default (/etc/wazuh-manager/certs/root-ca.pem), opened only in verification modes
-    char *ca_certificate;      ///< NULL -> module default (CA that signs the listener certificate)
-    char *ciphers;             ///< NULL -> module default cipher list (the schema default carries the same list)
-    char *groups;              ///< NULL -> OpenSSL's key exchange groups (its defaults, or what OPENSSL_CONF sets)
-    int verification_mode;     ///< REMOTED_HTTPS_VERIFY_*
-    long max_body_size;        ///< bytes; 0 -> module default (the schema default "10M" is the same value)
-    int dual_stack;            ///< REMOTED_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind_addr
+typedef struct _remoted_https_config
+{
+    int port;            ///< 0 -> module default
+    char* bind_addr;     ///< NULL -> module default
+    char* global_prefix; ///< NULL -> module default "/" (endpoints served unprefixed)
+    char* certificate;   ///< NULL -> module default
+    char* key;           ///< NULL -> module default
+    char* ca; ///< NULL -> module default (/etc/wazuh-manager/certs/root-ca.pem), opened only in verification modes
+    char* ca_certificate;  ///< NULL -> module default (CA that signs the listener certificate)
+    char* ciphers;         ///< NULL -> module default cipher list (the schema default carries the same list)
+    char* groups;          ///< NULL -> OpenSSL's key exchange groups (its defaults, or what OPENSSL_CONF sets)
+    int verification_mode; ///< REMOTED_HTTPS_VERIFY_*
+    long max_body_size;    ///< bytes; 0 -> module default (the schema default "10M" is the same value)
+    int dual_stack;        ///< REMOTED_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind_addr
     /* Rate limits of the two unauthenticated routes. An enrolling agent has no client.keys entry
      * and a trust-bootstrapping one has no anchor yet, so neither route can be put behind the
      * bearer-token gateway that bounds every other one. The bucket is per ENDPOINT, so these are
      * fleet-wide ceilings, not per-caller allowances. REMOTED_HTTPS_RATE_LIMIT_UNSET -> module
      * default, 0 -> no limit, >0 -> requests per second. */
-    int enroll_rate_limit;     ///< POST /enroll sustained requests/second, whole endpoint
-    int cacerts_rate_limit;    ///< GET /cacerts sustained requests/second, whole endpoint
+    int enroll_rate_limit;  ///< POST /enroll sustained requests/second, whole endpoint
+    int cacerts_rate_limit; ///< GET /cacerts sustained requests/second, whole endpoint
 } remoted_https_config;
 
 /* socklen_t header */
-typedef struct _remoted {
+typedef struct _remoted
+{
     int proto;
     int port;
     int ipv6;
 
-    char *lip;
+    char* lip;
 
     bool allow_higher_versions;
     bool legacy_enabled; ///< Whether remote.legacy.enabled is true
@@ -140,8 +146,8 @@ typedef struct _remoted {
      */
     bool legacy_ca_delivery;
 
-    int tcp_sock;       ///< This socket is used to receive requests over TCP
-    int udp_sock;       ///< This socket is used to receive requests over UDP
+    int tcp_sock; ///< This socket is used to receive requests over TCP
+    int udp_sock; ///< This socket is used to receive requests over UDP
     socklen_t peer_size;
     long queue_size;
     bool worker_node;

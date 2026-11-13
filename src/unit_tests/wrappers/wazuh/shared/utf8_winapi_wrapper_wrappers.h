@@ -54,13 +54,13 @@ DWORD __wrap_utf8_SetNamedSecurityInfo(const char* utf8_path,
 
 BOOL __wrap_utf8_LookupAccountSid(LPCSTR lpSystemName,
                                   PSID lpSid,
-                                  char **lpName,
+                                  char** lpName,
                                   LPDWORD cchName,
-                                  char **lpReferencedDomainName,
+                                  char** lpReferencedDomainName,
                                   LPDWORD cchReferencedDomainName,
                                   PSID_NAME_USE peUse);
 
-void expect_utf8_LookupAccountSid_call(char *name, char *domain_name, int ret_value);
+void expect_utf8_LookupAccountSid_call(char* name, char* domain_name, int ret_value);
 
 #endif
 

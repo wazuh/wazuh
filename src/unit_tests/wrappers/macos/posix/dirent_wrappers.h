@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef DIRENT_WRAPPERS_MACOS_H
 #define DIRENT_WRAPPERS_MACOS_H
 
@@ -20,10 +19,10 @@
 #undef readdir
 #define readdir wrap_readdir
 
-int wrap_closedir(__attribute__((unused)) DIR *dirp);
+int wrap_closedir(__attribute__((unused)) DIR* dirp);
 
-DIR * wrap_opendir(const char *filename);
+DIR* wrap_opendir(const char* filename);
 
-struct dirent * wrap_readdir(DIR *dirp);
+struct dirent* wrap_readdir(DIR* dirp);
 
 #endif

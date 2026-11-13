@@ -20,7 +20,7 @@ namespace
     struct GroupsCacheState final
     {
         std::vector<Group> cachedGroups;
-        std::chrono::steady_clock::time_point cacheTimestamp{};
+        std::chrono::steady_clock::time_point cacheTimestamp {};
         bool cacheValid = false;
     };
 
@@ -29,7 +29,7 @@ namespace
         thread_local auto* state = new GroupsCacheState();
         return *state;
     }
-}
+} // namespace
 
 GroupsHelper::GroupsHelper(std::shared_ptr<IWindowsApiWrapper> winapiWrapper, std::shared_ptr<IUsersHelper> usersHelper)
     : m_winapiWrapper(std::move(winapiWrapper))
@@ -102,9 +102,11 @@ std::vector<Group> GroupsHelper::processLocalGroups()
 
             Group newGroup;
             newGroup.sid = m_usersHelper->psidToString(groupSid);
-            newGroup.comment = Utils::EncodingWindowsHelper::wstringToStringUTF8(groupsInfoBuffer.get()[i].lgrpi1_comment);
+            newGroup.comment =
+                Utils::EncodingWindowsHelper::wstringToStringUTF8(groupsInfoBuffer.get()[i].lgrpi1_comment);
             newGroup.gid = m_usersHelper->getRidFromSid(groupSid);
-            newGroup.groupname = Utils::EncodingWindowsHelper::wstringToStringUTF8(groupsInfoBuffer.get()[i].lgrpi1_name);
+            newGroup.groupname =
+                Utils::EncodingWindowsHelper::wstringToStringUTF8(groupsInfoBuffer.get()[i].lgrpi1_name);
 
             groups.push_back(std::move(newGroup));
 
@@ -115,8 +117,7 @@ std::vector<Group> GroupsHelper::processLocalGroups()
             }
         }
 
-    }
-    while (ret == ERROR_MORE_DATA);
+    } while (ret == ERROR_MORE_DATA);
 
     // Update cache with fresh data
     cache.cachedGroups = groups;

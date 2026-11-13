@@ -34,10 +34,10 @@ typedef struct fim_key_txn_context_s
     event_data_t* evt_data;
     registry_t* config;
     fim_registry_key* key;
-    OSList* failed_keys;  // List of failed_registry_key_t* for deferred deletion
+    OSList* failed_keys; // List of failed_registry_key_t* for deferred deletion
 
     // Pending sync flag updates (applied after transaction commit)
-    OSList* pending_sync_updates;  // List of pending_sync_item_t items for sync flag updates
+    OSList* pending_sync_updates; // List of pending_sync_item_t items for sync flag updates
 } fim_key_txn_context_t;
 
 typedef struct fim_val_txn_context_s
@@ -46,10 +46,10 @@ typedef struct fim_val_txn_context_s
     registry_t* config;
     fim_registry_value_data* data;
     char* diff;
-    OSList* failed_values;  // List of failed_registry_value_t* for deferred deletion
+    OSList* failed_values; // List of failed_registry_value_t* for deferred deletion
 
     // Pending sync flag updates (applied after transaction commit)
-    OSList* pending_sync_updates;  // List of pending_sync_item_t items for sync flag updates
+    OSList* pending_sync_updates; // List of pending_sync_item_t items for sync flag updates
 } fim_val_txn_context_t;
 
 /**
@@ -81,7 +81,8 @@ void fim_registry_scan();
  * @param configuration The configuration associated with the registry value.
  * @return A pointer to a cJSON object the translated value attributes.
  */
-cJSON* fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_registry_value_data* data,
+cJSON* fim_registry_value_attributes_json(const cJSON* dbsync_event,
+                                          const fim_registry_value_data* data,
                                           const registry_t* configuration);
 
 /**
@@ -92,7 +93,9 @@ cJSON* fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
  * @param configuration The configuration associated with the registry key.
  * @return A pointer to a cJSON object the translated key attributes.
  */
-cJSON* fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_registry_key* data, const registry_t* configuration);
+cJSON* fim_registry_key_attributes_json(const cJSON* dbsync_event,
+                                        const fim_registry_key* data,
+                                        const registry_t* configuration);
 
 /**
  * @brief Calculates the `changed_attributes` and `old_attributes` for registry keys using the
@@ -122,7 +125,6 @@ void fim_calculate_dbsync_difference_value(const registry_t* configuration,
                                            cJSON* changed_attributes,
                                            cJSON* old_attributes);
 
-
 /**
  * @brief Build a stateful event for a registry key with proper hierarchical structure
  *
@@ -130,11 +132,17 @@ void fim_calculate_dbsync_difference_value(const registry_t* configuration,
  * @param sha1_hash SHA1 hash for checksum
  * @param document_version Document version number
  * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
- * @param dbsync_event Data returned by dbsync in JSON format from where fim attributes will get extracted if no registry_data is passed in.
+ * @param dbsync_event Data returned by dbsync in JSON format from where fim attributes will get extracted if no
+ * registry_data is passed in.
  * @param registry_data structure from where the fim attributes will get extracted (Optional)
  * @return cJSON object containing the stateful event, NULL on error
  */
-cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON* dbsync_event, fim_registry_key* data);
+cJSON* build_stateful_event_registry_key(const char* path,
+                                         const char* sha1_hash,
+                                         const uint64_t document_version,
+                                         int arch,
+                                         const cJSON* dbsync_event,
+                                         fim_registry_key* data);
 
 /**
  * @brief Build a stateful event for a registry value with proper hierarchical structure
@@ -144,11 +152,17 @@ cJSON* build_stateful_event_registry_key(const char* path, const char* sha1_hash
  * @param sha1_hash SHA1 hash for checksum
  * @param document_version Document version number
  * @param arch Architecture (ARCH_32BIT or ARCH_64BIT)
- * @param dbsync_event Data returned by dbsync in JSON format from where fim attributes will get extracted if no registry_data is passed in.
+ * @param dbsync_event Data returned by dbsync in JSON format from where fim attributes will get extracted if no
+ * registry_data is passed in.
  * @param registry_data structure from where the fim attributes will get extracted (Optional)
  * @return cJSON object containing the stateful event, NULL on error
  */
-cJSON* build_stateful_event_registry_value(const char* path, const char* value, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON* dbsync_event,
+cJSON* build_stateful_event_registry_value(const char* path,
+                                           const char* value,
+                                           const char* sha1_hash,
+                                           const uint64_t document_version,
+                                           int arch,
+                                           const cJSON* dbsync_event,
                                            fim_registry_value_data* registry_data);
 #endif
 

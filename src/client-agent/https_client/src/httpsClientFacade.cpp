@@ -32,7 +32,7 @@ namespace
     std::function<std::string()> makeStatelessHostCollector(const hc_callbacks_t& callbacks)
     {
         return makeMetadataCollector(
-                   callbacks.on_collect_stateless_host, callbacks.user_data, AGENT_METADATA_JSON_MAX_BYTES);
+            callbacks.on_collect_stateless_host, callbacks.user_data, AGENT_METADATA_JSON_MAX_BYTES);
     }
 
     /// Hands a vetted CA bundle to the consumer, which parses it and owns the write. Called
@@ -44,7 +44,7 @@ namespace
         auto* const callback = callbacks.on_ca_bundle;
         auto* const userData = callbacks.user_data;
 
-        return [callback, userData](const std::string & pem, std::int64_t generation) -> bool
+        return [callback, userData](const std::string& pem, std::int64_t generation) -> bool
         {
             // No bridge wired (a test harness, say): refuse rather than report an install that
             // never happened, which would leave the module believing a publication it does not
@@ -191,32 +191,31 @@ void HttpsClientFacade::startSyncIntake()
         return; // Large-session intake disabled; sessions arrive via the ABI only.
     }
 
-    const std::string spoolDir = m_config.spoolDir.empty() ? std::string {"/tmp"} :
-                                 m_config.spoolDir;
+    const std::string spoolDir = m_config.spoolDir.empty() ? std::string {"/tmp"} : m_config.spoolDir;
     m_syncIntake = std::make_unique<SyncIntake>(
-                       m_config.syncSocketPath,
-                       spoolDir,
-                       [this](const std::string & sessionId, const std::string & path, uint64_t size)
-    {
-        // The intake streamed the session to `path`; hand it to the stateful
-        // stream, which adopts and deletes it after sending — or right away if
-        // it cannot take it.
-        if (!m_stateful.submitFile(sessionId, path, size))
+        m_config.syncSocketPath,
+        spoolDir,
+        [this](const std::string& sessionId, const std::string& path, uint64_t size)
         {
-            // Say so on both channels: the producer is another process and only
-            // sees the intake's answer, while the outcome of every other session
-            // reaches this agent through on_sync_response.
-            LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.", sessionId.c_str());
-            // 503: the manager-not-ready code the sync protocol already knows how to
-            // handle (retry next cycle) - this is local backpressure, never a real HTTP
-            // response, but the semantics match.
-            m_dispatcher.onSyncResponse(sessionId, 503, "");
-            return false;
-        }
+            // The intake streamed the session to `path`; hand it to the stateful
+            // stream, which adopts and deletes it after sending — or right away if
+            // it cannot take it.
+            if (!m_stateful.submitFile(sessionId, path, size))
+            {
+                // Say so on both channels: the producer is another process and only
+                // sees the intake's answer, while the outcome of every other session
+                // reaches this agent through on_sync_response.
+                LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.", sessionId.c_str());
+                // 503: the manager-not-ready code the sync protocol already knows how to
+                // handle (retry next cycle) - this is local backpressure, never a real HTTP
+                // response, but the semantics match.
+                m_dispatcher.onSyncResponse(sessionId, 503, "");
+                return false;
+            }
 
-        m_statefulWaiter.notify();
-        return true;
-    });
+            m_statefulWaiter.notify();
+            return true;
+        });
 
     if (m_syncIntake->start())
     {

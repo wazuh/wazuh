@@ -15,30 +15,37 @@
 #include "os_xml.h"
 #include "os_xml_internal.h"
 
-
 /* Clear the Node structure */
-void OS_ClearNode(xml_node **node)
+void OS_ClearNode(xml_node** node)
 {
-    if (node) {
+    if (node)
+    {
         int i = 0;
-        while (node[i]) {
-            if (node[i]->element) {
+        while (node[i])
+        {
+            if (node[i]->element)
+            {
                 free(node[i]->element);
             }
-            if (node[i]->content) {
+            if (node[i]->content)
+            {
                 free(node[i]->content);
             }
-            if (node[i]->attributes) {
+            if (node[i]->attributes)
+            {
                 int j = 0;
-                while (node[i]->attributes[j]) {
+                while (node[i]->attributes[j])
+                {
                     free(node[i]->attributes[j]);
                     j++;
                 }
                 free(node[i]->attributes);
             }
-            if (node[i]->values) {
+            if (node[i]->values)
+            {
                 int j = 0;
-                while (node[i]->values[j]) {
+                while (node[i]->values[j])
+                {
                     free(node[i]->values[j]);
                     j++;
                 }
@@ -57,37 +64,44 @@ void OS_ClearNode(xml_node **node)
     }
 }
 
-
 /* Get the elements by node */
-xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
+xml_node** OS_GetElementsbyNode(const OS_XML* _lxml, const xml_node* node)
 {
     unsigned int i, k = 0, m;
-    xml_node **ret = NULL;
-    xml_node **ret_tmp = NULL;
+    xml_node** ret = NULL;
+    xml_node** ret_tmp = NULL;
 
-    if (node == NULL) {
+    if (node == NULL)
+    {
         m = 0;
         i = 0;
-    } else {
+    }
+    else
+    {
         i = node->key;
         m = _lxml->rl[i++] + 1;
     }
 
-    for (; i < _lxml->cur; i++) {
-        if (_lxml->tp[i] == XML_ELEM) {
-            if ((_lxml->rl[i] == m) && (_lxml->el[i] != NULL)) {
+    for (; i < _lxml->cur; i++)
+    {
+        if (_lxml->tp[i] == XML_ELEM)
+        {
+            if ((_lxml->rl[i] == m) && (_lxml->el[i] != NULL))
+            {
                 unsigned int l = i + 1;
                 /* Allocate for xml_node ** */
-                ret_tmp = (xml_node **)realloc(ret, (k + 2) * sizeof(xml_node *));
-                if (ret_tmp == NULL) {
+                ret_tmp = (xml_node**)realloc(ret, (k + 2) * sizeof(xml_node*));
+                if (ret_tmp == NULL)
+                {
                     goto fail;
                 }
                 ret = ret_tmp;
 
                 /* Allocate for the xml_node * */
-                ret[k] = (xml_node *)calloc(1, sizeof(xml_node));
+                ret[k] = (xml_node*)calloc(1, sizeof(xml_node));
                 ret[k + 1] = NULL;
-                if (ret[k] == NULL) {
+                if (ret[k] == NULL)
+                {
                     goto fail;
                 }
 
@@ -98,14 +112,17 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
 
                 /* Get element */
                 ret[k]->element = strdup(_lxml->el[i]);
-                if (ret[k]->element == NULL) {
+                if (ret[k]->element == NULL)
+                {
                     goto fail;
                 }
 
                 /* Get content */
-                if (_lxml->ct[i]) {
+                if (_lxml->ct[i])
+                {
                     ret[k]->content = strdup(_lxml->ct[i]);
-                    if (ret[k]->content == NULL) {
+                    if (ret[k]->content == NULL)
+                    {
                         goto fail;
                     }
                 }
@@ -113,18 +130,21 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
                 ret[k]->key = i;
 
                 /* Get attributes */
-                while (l < _lxml->cur) {
-                    if ((_lxml->tp[l] == XML_ATTR) && (_lxml->rl[l] == m) &&
-                            (_lxml->el[l]) && (_lxml->ct[l])) {
-                        char **tmp;
-                        tmp = (char **)realloc(ret[k]->attributes, (l - i + 1) * sizeof(char *));
-                        if (tmp == NULL) {
+                while (l < _lxml->cur)
+                {
+                    if ((_lxml->tp[l] == XML_ATTR) && (_lxml->rl[l] == m) && (_lxml->el[l]) && (_lxml->ct[l]))
+                    {
+                        char** tmp;
+                        tmp = (char**)realloc(ret[k]->attributes, (l - i + 1) * sizeof(char*));
+                        if (tmp == NULL)
+                        {
                             goto fail;
                         }
                         ret[k]->attributes = tmp;
                         ret[k]->attributes[l - i] = NULL;
-                        tmp = (char **)realloc(ret[k]->values, (l - i + 1) * sizeof(char *));
-                        if (tmp == NULL) {
+                        tmp = (char**)realloc(ret[k]->values, (l - i + 1) * sizeof(char*));
+                        if (tmp == NULL)
+                        {
                             goto fail;
                         }
                         ret[k]->values = tmp;
@@ -132,12 +152,14 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
 
                         ret[k]->attributes[l - i - 1] = strdup(_lxml->el[l]);
                         ret[k]->values[l - i - 1] = strdup(_lxml->ct[l]);
-                        if (!(ret[k]->attributes[l - i - 1]) ||
-                                !(ret[k]->values[l - i - 1])) {
+                        if (!(ret[k]->attributes[l - i - 1]) || !(ret[k]->values[l - i - 1]))
+                        {
                             goto fail;
                         }
                         l++;
-                    } else {
+                    }
+                    else
+                    {
                         break;
                     }
                 }
@@ -145,10 +167,14 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
                 continue;
             }
         }
-        if ((_lxml->tp[i] == XML_ELEM) && (m > _lxml->rl[i])) {
-            if (node == NULL) {
+        if ((_lxml->tp[i] == XML_ELEM) && (m > _lxml->rl[i]))
+        {
+            if (node == NULL)
+            {
                 continue;
-            } else {
+            }
+            else
+            {
                 break;
             }
         }

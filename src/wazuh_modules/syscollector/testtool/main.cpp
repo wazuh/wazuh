@@ -18,95 +18,74 @@
 #include "sysInfo.hpp"
 #include "syscollector.hpp"
 
-constexpr int DEFAULT_SLEEP_TIME { 60 };
+constexpr int DEFAULT_SLEEP_TIME {60};
 
 int main(int argc, const char* argv[])
 {
-    auto timedMainLoop { false };
-    auto sleepTime { DEFAULT_SLEEP_TIME };
+    auto timedMainLoop {false};
+    auto sleepTime {DEFAULT_SLEEP_TIME};
 
     if (2 == argc)
     {
         timedMainLoop = true;
-        std::string firstArgument { argv[1] };
+        std::string firstArgument {argv[1]};
 
-        sleepTime = firstArgument.find_first_not_of("0123456789") == std::string::npos ? std::stoi(firstArgument) : DEFAULT_SLEEP_TIME;
-
+        sleepTime = firstArgument.find_first_not_of("0123456789") == std::string::npos ? std::stoi(firstArgument)
+                                                                                       : DEFAULT_SLEEP_TIME;
     }
     else if (2 < argc)
     {
         return -1;
     }
 
-    const auto reportDiffFunction
-    {
-        [](const std::string & payload)
-        {
-            std::cout << "diff output payload:" << std::endl;
-            std::cout << payload << std::endl;
-        }
-    };
+    const auto reportDiffFunction {[](const std::string& payload)
+                                   {
+                                       std::cout << "diff output payload:" << std::endl;
+                                       std::cout << payload << std::endl;
+                                   }};
 
-    const auto persistDiffFunction
-    {
-        [](const std::string&, Operation_t, const std::string&, const std::string & payload, uint64_t version)
+    const auto persistDiffFunction {
+        [](const std::string&, Operation_t, const std::string&, const std::string& payload, uint64_t version)
         {
             std::cout << "persist output payload (version: " << version << "):" << std::endl;
             std::cout << payload << std::endl;
-        }
-    };
+        }};
 
-    const auto logFunction
-    {
-        [](const modules_log_level_t level, const std::string & log)
+    const auto logFunction {
+        [](const modules_log_level_t level, const std::string& log)
         {
-            static const std::map<modules_log_level_t, std::string> s_logStringMap
-            {
-                {LOG_ERROR, "ERROR"},
-                {LOG_INFO, "INFO"},
-                {LOG_DEBUG, "DEBUG"},
-                {LOG_DEBUG_VERBOSE, "DEBUG2"}
-            };
+            static const std::map<modules_log_level_t, std::string> s_logStringMap {
+                {LOG_ERROR, "ERROR"}, {LOG_INFO, "INFO"}, {LOG_DEBUG, "DEBUG"}, {LOG_DEBUG_VERBOSE, "DEBUG2"}};
             std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
-        }
-    };
+        }};
 
-    const auto logErrorFunction
-    {
-        [](const std::string & log)
-        {
-            std::cout << "ERROR: " << log << std::endl;
-        }
-    };
+    const auto logErrorFunction {[](const std::string& log) { std::cout << "ERROR: " << log << std::endl; }};
 
-    const auto spInfo{ std::make_shared<SysInfo>() };
+    const auto spInfo {std::make_shared<SysInfo>()};
     DBSync::initialize(logErrorFunction);
 
-    std::thread thread;  // Declare thread outside try block
+    std::thread thread; // Declare thread outside try block
 
     try
     {
-        thread = std::thread
-        {
-            [timedMainLoop, sleepTime]
-            {
-                if (!timedMainLoop)
-                {
-                    while (std::cin.get() != 'q');
-                }
-                else
-                {
-                    std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
-                }
+        thread = std::thread {[timedMainLoop, sleepTime]
+                              {
+                                  if (!timedMainLoop)
+                                  {
+                                      while (std::cin.get() != 'q');
+                                  }
+                                  else
+                                  {
+                                      std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
+                                  }
 
-                // Only signal stop from this thread. releaseResources() must run on the
-                // same thread that called start() (below), since it releases per-thread
-                // resources -- e.g. Windows' hotfixes() COM context -- on the calling
-                // thread. Calling destroy() here would release the wrong thread's
-                // resources; see Syscollector::destroy()'s documented contract.
-                Syscollector::instance().quiesce();
-            }
-        };
+                                  // Only signal stop from this thread. releaseResources() must run on the
+                                  // same thread that called start() (below), since it releases per-thread
+                                  // resources -- e.g. Windows' hotfixes() COM context -- on the calling
+                                  // thread. Calling destroy() here would release the wrong thread's
+                                  // resources; see Syscollector::destroy()'s documented contract.
+                                  Syscollector::instance().quiesce();
+                              }};
 
         Syscollector::instance().init(spInfo,
                                       reportDiffFunction,

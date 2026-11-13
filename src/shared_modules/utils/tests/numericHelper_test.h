@@ -41,4 +41,4 @@ protected:
      */
     void TearDown() override;
 };
-#endif //NUMERIC_HELPER_TESTS_H
+#endif // NUMERIC_HELPER_TESTS_H

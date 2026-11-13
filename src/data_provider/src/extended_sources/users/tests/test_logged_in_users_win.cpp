@@ -16,60 +16,60 @@
 
 class MockTWSapiWrapper : public ITWSapiWrapper
 {
-    public:
-        MOCK_METHOD(bool, WTSEnumerateSessionsW, (HANDLE hServer, DWORD pLevel, DWORD Filter,
-                                                  PWTS_SESSION_INFOW* ppSessionInfo,
-                                                  DWORD* pCount), (override));
-        MOCK_METHOD(bool, WTSQuerySessionInformationW, (HANDLE hServer,
-                                                        DWORD SessionId,
-                                                        WTS_INFO_CLASS WTSInfoClass,
-                                                        LPWSTR* ppBuffer,
-                                                        DWORD* pBytesReturned),
-                    (override));
-        MOCK_METHOD(void, WTSFreeMemory, (PVOID pMemory), (override));
+public:
+    MOCK_METHOD(bool,
+                WTSEnumerateSessionsW,
+                (HANDLE hServer, DWORD pLevel, DWORD Filter, PWTS_SESSION_INFOW* ppSessionInfo, DWORD* pCount),
+                (override));
+    MOCK_METHOD(bool,
+                WTSQuerySessionInformationW,
+                (HANDLE hServer, DWORD SessionId, WTS_INFO_CLASS WTSInfoClass, LPWSTR* ppBuffer, DWORD* pBytesReturned),
+                (override));
+    MOCK_METHOD(void, WTSFreeMemory, (PVOID pMemory), (override));
 };
 
 class MockWinBaseApiWrapper : public IWinBaseApiWrapper
 {
-    public:
-        MOCK_METHOD(bool, LookupAccountNameW, (LPCWSTR lpSystemName,
-                                               LPCWSTR lpAccountName,
-                                               PSID Sid,
-                                               LPDWORD cbSid,
-                                               LPWSTR ReferencedDomainName,
-                                               LPDWORD cchReferencedDomainName,
-                                               PSID_NAME_USE peUse), (override));
+public:
+    MOCK_METHOD(bool,
+                LookupAccountNameW,
+                (LPCWSTR lpSystemName,
+                 LPCWSTR lpAccountName,
+                 PSID Sid,
+                 LPDWORD cbSid,
+                 LPWSTR ReferencedDomainName,
+                 LPDWORD cchReferencedDomainName,
+                 PSID_NAME_USE peUse),
+                (override));
 };
 
 class MockWinSDDLWrapper : public IWinSDDLWrapper
 {
-    public:
-        MOCK_METHOD(bool, ConvertSidToStringSidW, (PSID Sid, LPWSTR* StringSid), (override));
-
+public:
+    MOCK_METHOD(bool, ConvertSidToStringSidW, (PSID Sid, LPWSTR* StringSid), (override));
 };
 
 class MockWinSecurityBaseApiWrapper : public IWinSecurityBaseApiWrapper
 {
-    public:
-        MOCK_METHOD(bool, IsValidSid, (PSID pSid), (override));
+public:
+    MOCK_METHOD(bool, IsValidSid, (PSID pSid), (override));
 };
 
 class MockUsersHelper : public IUsersHelper
 {
-    public:
-        MOCK_METHOD(std::string, getUserShell, (const std::string& sid), (override));
-        MOCK_METHOD(std::vector<User>, processLocalAccounts, (std::set<std::string>& processed_sids), (override));
-        MOCK_METHOD(std::vector<User>, processRoamingProfiles, (std::set<std::string>& processed_sids), (override));
-        MOCK_METHOD(std::unique_ptr<BYTE[]>, getSidFromAccountName, (const std::wstring& accountNameInput), (override));
-        MOCK_METHOD(std::string, psidToString, (PSID sid), (override));
-        MOCK_METHOD(DWORD, getRidFromSid, (PSID sid), (override));
+public:
+    MOCK_METHOD(std::string, getUserShell, (const std::string& sid), (override));
+    MOCK_METHOD(std::vector<User>, processLocalAccounts, (std::set<std::string> & processed_sids), (override));
+    MOCK_METHOD(std::vector<User>, processRoamingProfiles, (std::set<std::string> & processed_sids), (override));
+    MOCK_METHOD(std::unique_ptr<BYTE[]>, getSidFromAccountName, (const std::wstring& accountNameInput), (override));
+    MOCK_METHOD(std::string, psidToString, (PSID sid), (override));
+    MOCK_METHOD(DWORD, getRidFromSid, (PSID sid), (override));
 };
 
-
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::SetArgPointee;
-using ::testing::DoAll;
 
 TEST(LoggedInUsersWindowsProviderTest, CollectReturnsEmpty)
 {
@@ -81,8 +81,8 @@ TEST(LoggedInUsersWindowsProviderTest, CollectReturnsEmpty)
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSEnumerateSessionsW(_, _, _, _, _)).WillOnce(Return(false));
 
-    LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper, mockedUsersHelper);
+    LoggedInUsersProvider provider(
+        mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper, mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
 
@@ -116,40 +116,25 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithAF_UNSPECAddress)
     std::string sidString = "S-1-5-21-1234567890-1234567890-1234567890-1003";
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSEnumerateSessionsW(_, _, _, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(sessionInfo),
-                  SetArgPointee<4>(1),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(sessionInfo), SetArgPointee<4>(1), Return(true)));
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSQuerySessionInformationW(_, 1, WTSSessionInfo, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsSessionInfo.get())),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsSessionInfo.get())), Return(true)));
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSQuerySessionInformationW(_, 1, WTSClientInfo, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsClientInfo.get())),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsClientInfo.get())), Return(true)));
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSQuerySessionInformationW(_, 1, WTSClientName, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(clientName),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(clientName), Return(true)));
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSFreeMemory(_)).Times(4);
 
-    EXPECT_CALL(*mockedUsersHelper, getSidFromAccountName(_))
-    .WillOnce(Return(testing::ByMove(std::move(sidBuffer))));
+    EXPECT_CALL(*mockedUsersHelper, getSidFromAccountName(_)).WillOnce(Return(testing::ByMove(std::move(sidBuffer))));
 
-    EXPECT_CALL(*mockedUsersHelper, psidToString(_))
-    .WillOnce(Return(sidString));
+    EXPECT_CALL(*mockedUsersHelper, psidToString(_)).WillOnce(Return(sidString));
 
-    LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper, mockedUsersHelper);
+    LoggedInUsersProvider provider(
+        mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper, mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
     ASSERT_EQ(result.size(), static_cast<size_t>(1));
@@ -174,19 +159,14 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithFailedSessionInfoQuery)
     sessionInfo[0].pWinStationName = const_cast<LPWSTR>(L"Console");
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSEnumerateSessionsW(_, _, _, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(sessionInfo),
-                  SetArgPointee<4>(1),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(sessionInfo), SetArgPointee<4>(1), Return(true)));
 
-    EXPECT_CALL(*mockTWSapiWrapper, WTSQuerySessionInformationW(_, 1, WTSSessionInfo, _, _))
-    .WillOnce(Return(false));
+    EXPECT_CALL(*mockTWSapiWrapper, WTSQuerySessionInformationW(_, 1, WTSSessionInfo, _, _)).WillOnce(Return(false));
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSFreeMemory(_)).Times(1);
 
-    LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper, mockedUsersHelper);
+    LoggedInUsersProvider provider(
+        mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper, mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
 
@@ -224,36 +204,24 @@ TEST(LoggedInUsersWindowsProviderTest, CollectWithOneValidSession)
     std::string sidString = "S-1-5-21-1234567890-1234567890-1234567890-1001";
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSEnumerateSessionsW(_, _, _, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(sessionInfo),
-                  SetArgPointee<4>(1),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(sessionInfo), SetArgPointee<4>(1), Return(true)));
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSQuerySessionInformationW(_, 1, WTSSessionInfo, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsSessionInfo.get())),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsSessionInfo.get())), Return(true)));
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSQuerySessionInformationW(_, 1, WTSClientInfo, _, _))
-    .WillOnce(DoAll(
-                  SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsClientInfo.get())),
-                  Return(true)
-              ));
+        .WillOnce(DoAll(SetArgPointee<3>(reinterpret_cast<LPWSTR>(wtsClientInfo.get())), Return(true)));
 
     // No need for WTSClientName query for this test
 
     EXPECT_CALL(*mockTWSapiWrapper, WTSFreeMemory(_)).Times(3);
 
-    EXPECT_CALL(*mockedUsersHelper, getSidFromAccountName(_))
-    .WillOnce(Return(testing::ByMove(std::move(sidBuffer))));
+    EXPECT_CALL(*mockedUsersHelper, getSidFromAccountName(_)).WillOnce(Return(testing::ByMove(std::move(sidBuffer))));
 
-    EXPECT_CALL(*mockedUsersHelper, psidToString(_))
-    .WillOnce(Return(sidString));
+    EXPECT_CALL(*mockedUsersHelper, psidToString(_)).WillOnce(Return(sidString));
 
-    LoggedInUsersProvider provider(mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper,
-                                   mockedSecurityBaseWrapper, mockedUsersHelper);
+    LoggedInUsersProvider provider(
+        mockTWSapiWrapper, mockedWinBaseWrapper, mockedWinSDDLWrapper, mockedSecurityBaseWrapper, mockedUsersHelper);
 
     auto result = provider.collect();
 

@@ -19,14 +19,19 @@ using JsonFieldHelpers::getBoolField;
 using JsonFieldHelpers::getObjectField;
 using JsonFieldHelpers::getStringField;
 
-FirefoxAddonsProvider::FirefoxAddonsProvider(
-    std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper,
-    std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
+FirefoxAddonsProvider::FirefoxAddonsProvider(std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper,
+                                             std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_firefoxAddonsWrapper(std::move(firefoxAddonsWrapper))
-    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>()) {}
+    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                            : std::make_unique<file_system::FileSystemWrapper>())
+{
+}
 
-FirefoxAddonsProvider::FirefoxAddonsProvider() : m_firefoxAddonsWrapper(std::make_shared<BrowserExtensionsWrapper>())
-    , m_fileSystemWrapper(std::make_unique<file_system::FileSystemWrapper>()) {}
+FirefoxAddonsProvider::FirefoxAddonsProvider()
+    : m_firefoxAddonsWrapper(std::make_shared<BrowserExtensionsWrapper>())
+    , m_fileSystemWrapper(std::make_unique<file_system::FileSystemWrapper>())
+{
+}
 
 nlohmann::json FirefoxAddonsProvider::toJson(const FirefoxAddons& addons)
 {
@@ -63,10 +68,8 @@ bool FirefoxAddonsProvider::isValidFirefoxProfile(const std::string& profilePath
 
 bool FirefoxAddonsProvider::isValidPath(const std::string& path)
 {
-    if (path.empty() ||
-            path.find("..") != std::string::npos ||
-            path.find("//") != std::string::npos ||
-            path.length() > MAX_PATH_LENGTH)
+    if (path.empty() || path.find("..") != std::string::npos || path.find("//") != std::string::npos ||
+        path.length() > MAX_PATH_LENGTH)
     {
         return false;
     }
@@ -101,13 +104,15 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
         std::string username = userHome.filename().string();
         const std::string userId = m_firefoxAddonsWrapper->getUserId(username);
-        const std::string ownerUid = userId.empty() ? browser_extensions::homeDirectoryOwner(userHome.string()) : userId;
+        const std::string ownerUid =
+            userId.empty() ? browser_extensions::homeDirectoryOwner(userHome.string()) : userId;
 
         for (const auto& path : FIREFOX_PATHS)
         {
             const std::filesystem::path firefoxInstallationPath = userHome / path;
 
-            if (!m_fileSystemWrapper->is_directory(firefoxInstallationPath) || !isValidPath(firefoxInstallationPath.string()))
+            if (!m_fileSystemWrapper->is_directory(firefoxInstallationPath) ||
+                !isValidPath(firefoxInstallationPath.string()))
             {
                 continue;
             }
@@ -116,8 +121,8 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
             {
                 entity = firefoxInstallationPath / entity;
 
-                if (!m_fileSystemWrapper->is_directory(entity) || !browser_extensions::isPlainDirectory(entity.string()) ||
-                        !isValidPath(entity.string()))
+                if (!m_fileSystemWrapper->is_directory(entity) ||
+                    !browser_extensions::isPlainDirectory(entity.string()) || !isValidPath(entity.string()))
                 {
                     continue;
                 }

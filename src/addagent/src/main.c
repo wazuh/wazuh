@@ -16,13 +16,13 @@
 #endif
 
 #if defined(__MINGW32__) || defined(__hppa__)
-static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
+static int setenv(const char* name, const char* val, __attribute__((unused)) int overwrite)
 {
     assert(name);
     assert(val);
 
     int len = strlen(name) + strlen(val) + 2;
-    char *str;
+    char* str;
     os_malloc(len, str);
 
     snprintf(str, len, "%s=%s", name, val);
@@ -48,7 +48,11 @@ __attribute__((noreturn)) static void helpmsg()
 static void print_banner()
 {
     printf("\n");
-    printf(BANNER, __wazuh_name, __wazuh_version, (int)(21 - strlen(__wazuh_name) - strlen(__wazuh_version)), "                     ");
+    printf(BANNER,
+           __wazuh_name,
+           __wazuh_version,
+           (int)(21 - strlen(__wazuh_name) - strlen(__wazuh_version)),
+           "                     ");
 
     printf(BANNER_CLIENT);
     return;
@@ -67,7 +71,7 @@ __attribute__((noreturn)) void manage_shutdown(__attribute__((unused)) int sig)
 
 char shost[512];
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
 #ifdef WIN32
     // This must be always the first instruction
@@ -77,47 +81,43 @@ int main(int argc, char **argv)
 #endif
 
     int c = 0, json_output = 0;
-    char *user_msg;
-    const char *cmdimport = NULL;
+    char* user_msg;
+    const char* cmdimport = NULL;
 #ifndef WIN32
-    const char *group = GROUPGLOBAL;
+    const char* group = GROUPGLOBAL;
     gid_t gid;
 #else
-    FILE *fp;
+    FILE* fp;
 #endif
 
     /* Set the name */
     OS_SetName(ARGV0);
 #ifndef WIN32
-    char * home_path = w_homedir(argv[0]);
+    char* home_path = w_homedir(argv[0]);
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Change working directory */
-    if (chdir(home_path) == -1) {
+    if (chdir(home_path) == -1)
+    {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 #endif
 
-    while ((c = getopt(argc, argv, "Vhji:")) != -1) {
-        switch (c) {
-            case 'V':
-                print_version();
-                break;
-            case 'h':
-                helpmsg();
-                break;
+    while ((c = getopt(argc, argv, "Vhji:")) != -1)
+    {
+        switch (c)
+        {
+            case 'V': print_version(); break;
+            case 'h': helpmsg(); break;
             case 'i':
-                if (!optarg) {
+                if (!optarg)
+                {
                     merror_exit("-i needs an argument.");
                 }
                 cmdimport = optarg;
                 break;
-            case 'j':
-                json_output = 1;
-                break;
-            default:
-                helpmsg();
-                break;
+            case 'j': json_output = 1; break;
+            default: helpmsg(); break;
         }
     }
 
@@ -129,24 +129,28 @@ int main(int argc, char **argv)
     getuname();
 
 #ifndef WIN32
-    if (gethostname(shost, sizeof(shost) - 1) < 0) {
+    if (gethostname(shost, sizeof(shost) - 1) < 0)
+    {
         strncpy(shost, "localhost", sizeof(shost) - 1);
         shost[sizeof(shost) - 1] = '\0';
     }
 
     /* Get the group name */
     gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
+    if (gid == (gid_t)-1)
+    {
         merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }
 
     /* Set the group */
-    if (Privsep_SetGroup(gid) < 0) {
+    if (Privsep_SetGroup(gid) < 0)
+    {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     /* Chroot to the default directory */
-    if (Privsep_Chroot(home_path) < 0) {
+    if (Privsep_Chroot(home_path) < 0)
+    {
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
 
@@ -160,20 +164,25 @@ int main(int argc, char **argv)
 
     /* Check permissions */
     fp = wfopen(WAZUHCONF, "r");
-    if (fp) {
+    if (fp)
+    {
         fclose(fp);
-    } else {
+    }
+    else
+    {
         merror_exit(CONF_ERROR, WAZUHCONF);
     }
 #endif
 
-    if (cmdimport) {
+    if (cmdimport)
+    {
         k_import(cmdimport);
         exit(0);
     }
 
     /* Little shell */
-    while (1) {
+    while (1)
+    {
         int leave_s = 0;
 
         if (!json_output)
@@ -182,38 +191,36 @@ int main(int argc, char **argv)
         /* Get ACTION from the environment. If ACTION is specified,
          * we must set leave_s = 1 to ensure that the loop will end */
         user_msg = getenv("OSSEC_ACTION");
-        if (user_msg == NULL) {
+        if (user_msg == NULL)
+        {
             user_msg = read_from_user();
-        } else {
+        }
+        else
+        {
             leave_s = 1;
         }
 
         /* All the allowed actions */
-        switch (user_msg[0]) {
+        switch (user_msg[0])
+        {
             case 'i':
-            case 'I':
-                k_import(NULL);
-                break;
+            case 'I': k_import(NULL); break;
             case 'q':
-            case 'Q':
-                leave_s = 1;
-                break;
-            case 'V':
-                print_version();
-                break;
-            default:
-                printf("\n ** Invalid Action ** \n\n");
-                break;
+            case 'Q': leave_s = 1; break;
+            case 'V': print_version(); break;
+            default: printf("\n ** Invalid Action ** \n\n"); break;
         }
 
-        if (leave_s) {
+        if (leave_s)
+        {
             break;
         }
 
         continue;
     }
 
-    if (!json_output) {
+    if (!json_output)
+    {
         printf("\n");
         printf(EXIT);
     }

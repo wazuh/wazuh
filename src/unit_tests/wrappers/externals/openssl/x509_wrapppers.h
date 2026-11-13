@@ -7,10 +7,9 @@
  * Foundation
  */
 
-
 #include <openssl/x509.h>
 
-int __wrap_X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md);
+int __wrap_X509_sign(X509* x, EVP_PKEY* pkey, const EVP_MD* md);
 
-X509 *__wrap_X509_new(void);
-extern X509 *__real_X509_new(void);
+X509* __wrap_X509_new(void);
+extern X509* __real_X509_new(void);

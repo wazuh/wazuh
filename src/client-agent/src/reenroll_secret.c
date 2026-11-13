@@ -18,20 +18,24 @@
  * truncated into something that happens to validate. */
 #define W_REENROLL_LINE_SIZE 128
 
-int w_reenroll_secret_store(const char *id, const char *secret) {
-    if (id == NULL || secret == NULL) {
+int w_reenroll_secret_store(const char* id, const char* secret)
+{
+    if (id == NULL || secret == NULL)
+    {
         return -1;
     }
 
     /* Validated before anything is written, never after: a store holding values the verifier will
      * refuse is worse than no store at all, because the agent would present a bearer nobody can
      * check instead of falling back to a credential that still works. */
-    if (!OS_IsValidID(id)) {
+    if (!OS_IsValidID(id))
+    {
         merror("Re-enrollment secret not stored: the manager answered with an invalid agent id.");
         return -1;
     }
 
-    if (!OS_IsValidReenrollSecret(secret)) {
+    if (!OS_IsValidReenrollSecret(secret))
+    {
         merror("Re-enrollment secret not stored: the manager answered with a malformed secret.");
         return -1;
     }
@@ -39,9 +43,10 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
 #ifdef WIN32
     /* Non-atomic, exactly like w_enrollment_store_key_entry()'s Windows branch: the platform split
      * is inherited on purpose (#38465) rather than unified here. */
-    FILE *fp = wfopen(AGENT_REENROLL_SECRET, "w");
+    FILE* fp = wfopen(AGENT_REENROLL_SECRET, "w");
 
-    if (!fp) {
+    if (!fp)
+    {
         merror(FOPEN_ERROR, AGENT_REENROLL_SECRET, errno, strerror(errno));
         return -1;
     }
@@ -52,7 +57,8 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
 #else /* !WIN32 */
     File file;
 
-    if (TempFile(&file, AGENT_REENROLL_SECRET, 0) < 0) {
+    if (TempFile(&file, AGENT_REENROLL_SECRET, 0) < 0)
+    {
         merror(FOPEN_ERROR, AGENT_REENROLL_SECRET, errno, strerror(errno));
         return -1;
     }
@@ -62,7 +68,8 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
      * not read back a secret written in the root window of w_agent_token_bootstrap(). Set, and
      * the secret written, through the descriptor TempFile() returned: nothing is done to the
      * staged copy by name but the move below. */
-    if (fchmod(fileno(file.fp), 0640) == -1) {
+    if (fchmod(fileno(file.fp), 0640) == -1)
+    {
         merror(CHMOD_ERROR, file.name, errno, strerror(errno));
         fclose(file.fp);
         unlink(file.name);
@@ -75,12 +82,14 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
     bool failed = (fprintf(file.fp, "%s %s\n", id, secret) < 0);
     int error = errno;
 
-    if (fclose(file.fp) != 0 && !failed) {
+    if (fclose(file.fp) != 0 && !failed)
+    {
         failed = true;
         error = errno;
     }
 
-    if (failed) {
+    if (failed)
+    {
         merror(FWRITE_ERROR, file.name, error, strerror(error));
         unlink(file.name);
         os_free(file.name);
@@ -90,7 +99,8 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
     /* w_move_file_nofollow() renames it over the previous secret, or copies it in where the file
      * can't be renamed over, such as a single-file bind mount, without following a link at either
      * name. It logs why it failed. */
-    if (w_move_file_nofollow(file.name, AGENT_REENROLL_SECRET) != 0) {
+    if (w_move_file_nofollow(file.name, AGENT_REENROLL_SECRET) != 0)
+    {
         unlink(file.name);
         os_free(file.name);
         return -1;
@@ -104,24 +114,27 @@ int w_reenroll_secret_store(const char *id, const char *secret) {
     return 0;
 }
 
-int w_reenroll_secret_load(char *id, size_t id_size, char *secret, size_t secret_size) {
+int w_reenroll_secret_load(char* id, size_t id_size, char* secret, size_t secret_size)
+{
     char line[W_REENROLL_LINE_SIZE];
-    const char *id_text;
-    const char *secret_text;
-    char *separator;
-    FILE *fp;
-    char *read_ok;
+    const char* id_text;
+    const char* secret_text;
+    char* separator;
+    FILE* fp;
+    char* read_ok;
     size_t len;
     int result = 0;
 
-    if (id == NULL || secret == NULL || id_size == 0 || secret_size == 0) {
+    if (id == NULL || secret == NULL || id_size == 0 || secret_size == 0)
+    {
         return 0;
     }
 
     id[0] = '\0';
     secret[0] = '\0';
 
-    if ((fp = wfopen(AGENT_REENROLL_SECRET, "r")) == NULL) {
+    if ((fp = wfopen(AGENT_REENROLL_SECRET, "r")) == NULL)
+    {
         /* Missing is the normal state of a legacy install, an agent that has never enrolled
          * against a 5.0 manager, or one whose manager issues no secret. Never an error. */
         return 0;
@@ -130,17 +143,20 @@ int w_reenroll_secret_load(char *id, size_t id_size, char *secret, size_t secret
     read_ok = fgets(line, sizeof(line), fp);
     fclose(fp);
 
-    if (read_ok == NULL) {
+    if (read_ok == NULL)
+    {
         return 0; /* Empty file: same as absent. */
     }
 
     len = strlen(line);
 
-    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+    {
         line[--len] = '\0';
     }
 
-    if (len == 0) {
+    if (len == 0)
+    {
         return 0;
     }
 
@@ -154,7 +170,8 @@ int w_reenroll_secret_load(char *id, size_t id_size, char *secret, size_t secret
      * wrong with the file. */
     separator = strchr(line, ' ');
 
-    if (separator == NULL || separator == line || strchr(separator + 1, ' ') != NULL) {
+    if (separator == NULL || separator == line || strchr(separator + 1, ' ') != NULL)
+    {
         merror("Re-enrollment secret store '%s' is malformed; ignoring it.", AGENT_REENROLL_SECRET);
         goto end;
     }
@@ -163,18 +180,20 @@ int w_reenroll_secret_load(char *id, size_t id_size, char *secret, size_t secret
     id_text = line;
     secret_text = separator + 1;
 
-    if (*secret_text == '\0') {
+    if (*secret_text == '\0')
+    {
         merror("Re-enrollment secret store '%s' is malformed; ignoring it.", AGENT_REENROLL_SECRET);
         goto end;
     }
 
-    if (!OS_IsValidID(id_text) || !OS_IsValidReenrollSecret(secret_text)) {
-        merror("Re-enrollment secret store '%s' holds an invalid id or secret; ignoring it.",
-               AGENT_REENROLL_SECRET);
+    if (!OS_IsValidID(id_text) || !OS_IsValidReenrollSecret(secret_text))
+    {
+        merror("Re-enrollment secret store '%s' holds an invalid id or secret; ignoring it.", AGENT_REENROLL_SECRET);
         goto end;
     }
 
-    if (strlen(id_text) >= id_size || strlen(secret_text) >= secret_size) {
+    if (strlen(id_text) >= id_size || strlen(secret_text) >= secret_size)
+    {
         merror("Re-enrollment secret store '%s' does not fit the caller's buffers; ignoring it.",
                AGENT_REENROLL_SECRET);
         goto end;
@@ -190,7 +209,8 @@ end:
     /* Every exit path, including the failures: the secret reached this buffer either way. */
     OPENSSL_cleanse(line, sizeof(line));
 
-    if (result == 0) {
+    if (result == 0)
+    {
         id[0] = '\0';
         secret[0] = '\0';
     }
@@ -198,8 +218,10 @@ end:
     return result;
 }
 
-void w_reenroll_secret_clear(void) {
-    if (FileSize(AGENT_REENROLL_SECRET) < 0) {
+void w_reenroll_secret_clear(void)
+{
+    if (FileSize(AGENT_REENROLL_SECRET) < 0)
+    {
         return; /* Nothing to clear. */
     }
 
@@ -209,9 +231,10 @@ void w_reenroll_secret_clear(void) {
      * and w_shred_file_in_place() has already logged anything worth knowing. It is shared with the
      * MSI's --shred-enrollment-password rather than written twice -- two copies of "overwrite
      * without truncating" are two places to get the open mode wrong, and the wrong one is silent. */
-    (void) w_shred_file_in_place(AGENT_REENROLL_SECRET);
+    (void)w_shred_file_in_place(AGENT_REENROLL_SECRET);
 
-    if (unlink(AGENT_REENROLL_SECRET) != 0) {
+    if (unlink(AGENT_REENROLL_SECRET) != 0)
+    {
         merror(UNLINK_ERROR, AGENT_REENROLL_SECRET, errno, strerror(errno));
         return;
     }

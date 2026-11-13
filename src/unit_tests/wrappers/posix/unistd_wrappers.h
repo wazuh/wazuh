@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef UNISTD_WRAPPERS_H
 #define UNISTD_WRAPPERS_H
 
@@ -17,10 +16,10 @@
 #undef _unlink
 #define _unlink wrap__unlink
 
-int __wrap_unlink(const char *file);
+int __wrap_unlink(const char* file);
 void expect_unlink_errno(int err);
 #ifdef WIN32
-int wrap__unlink(const char *file);
+int wrap__unlink(const char* file);
 #endif
 
 #ifndef WIN32
@@ -40,18 +39,18 @@ int __wrap_sysconf(int name);
 
 int __wrap_usleep(useconds_t usec);
 
-ssize_t __wrap_read(int fildes, void *buf, size_t nbyte);
+ssize_t __wrap_read(int fildes, void* buf, size_t nbyte);
 
-int __wrap_gethostname(char *name, int len);
+int __wrap_gethostname(char* name, int len);
 
-ssize_t __wrap_readlink(const char *path, char *buf, size_t bufsiz);
+ssize_t __wrap_readlink(const char* path, char* buf, size_t bufsiz);
 
-ssize_t __wrap_readlinkat(int dirfd, const char *path, char *buf, size_t bufsiz);
+ssize_t __wrap_readlinkat(int dirfd, const char* path, char* buf, size_t bufsiz);
 
-int __wrap_symlink(const char *path1, const char *path2);
+int __wrap_symlink(const char* path1, const char* path2);
 
-int __wrap_rmdir(const char *path);
+int __wrap_rmdir(const char* path);
 
-int __wrap_access (const char *__name, int __type);
+int __wrap_access(const char* __name, int __type);
 
 #endif

@@ -19,18 +19,21 @@
 #include "passwd_wrapper.hpp"
 #include "open_directory_utils_wrapper.hpp"
 
-UsersProvider::UsersProvider(
-    std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
-    std::shared_ptr<IUUIDWrapper> uuidWrapper,
-    std::shared_ptr<IODUtilsWrapper> odWrapper)
-    : m_passwdWrapper(std::move(passwdWrapper)),
-      m_uuidWrapper(std::move(uuidWrapper)),
-      m_odWrapper(std::move(odWrapper)) {}
+UsersProvider::UsersProvider(std::shared_ptr<IPasswdWrapperDarwin> passwdWrapper,
+                             std::shared_ptr<IUUIDWrapper> uuidWrapper,
+                             std::shared_ptr<IODUtilsWrapper> odWrapper)
+    : m_passwdWrapper(std::move(passwdWrapper))
+    , m_uuidWrapper(std::move(uuidWrapper))
+    , m_odWrapper(std::move(odWrapper))
+{
+}
 
 UsersProvider::UsersProvider()
-    : m_passwdWrapper(std::make_shared<PasswdWrapperDarwin>()),
-      m_uuidWrapper(std::make_shared<UUIDWrapper>()),
-      m_odWrapper(std::make_shared<ODUtilsWrapper>()) {}
+    : m_passwdWrapper(std::make_shared<PasswdWrapperDarwin>())
+    , m_uuidWrapper(std::make_shared<UUIDWrapper>())
+    , m_odWrapper(std::make_shared<ODUtilsWrapper>())
+{
+}
 
 nlohmann::json UsersProvider::collect()
 {
@@ -46,7 +49,8 @@ nlohmann::json UsersProvider::genUserJson(const struct passwd* pwd)
 {
     nlohmann::json user;
 
-    if (!pwd) return user;
+    if (!pwd)
+        return user;
 
     user["username"] = pwd->pw_name ? pwd->pw_name : "";
     user["uid"] = pwd->pw_uid;
@@ -77,7 +81,7 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
     // Both are resolved once per collection rather than once per user: the directory is read
     // in a single query and the membership list is the same for everyone.
     std::set<std::string> disabledUsers;
-    const auto disabledUsersResolved { m_odWrapper->genDisabledUsers(disabledUsers) };
+    const auto disabledUsersResolved {m_odWrapper->genDisabledUsers(disabledUsers)};
 
     std::map<std::string, nlohmann::json> passwordData;
     m_odWrapper->genPasswordData(passwordData);
@@ -88,10 +92,11 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
         {
             struct passwd* pwd = m_passwdWrapper->getpwuid(uid);
 
-            if (!pwd) continue;
+            if (!pwd)
+                continue;
 
             std::map<std::string, bool> userNames;
-            std::string pwUsernameStr{pwd->pw_name};
+            std::string pwUsernameStr {pwd->pw_name};
             m_odWrapper->genEntries("dsRecTypeStandard:Users", &pwUsernameStr, userNames);
 
             nlohmann::json user = genUserJson(pwd);
@@ -129,7 +134,7 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
             // User exists in OpenDirectory but not in local passwd database
             // Initialize all fields with default values to ensure consistent JSON structure
             user["username"] = username;
-            user["uid"] = static_cast<uid_t>(-1);  // Special value indicating user not found locally
+            user["uid"] = static_cast<uid_t>(-1); // Special value indicating user not found locally
             user["gid"] = static_cast<gid_t>(-1);
             user["uid_signed"] = -1;
             user["gid_signed"] = -1;
@@ -183,8 +188,8 @@ nlohmann::json UsersProvider::collectAccountPolicyData(const uid_t uid)
             // wire field, so it needs its own cap independent of the expiration-date arithmetic.
             accountData["password_max_days_between_changes"] = std::min(expiresEveryNDays, maxWireValue);
             accountData["password_expiration_date"] = (expiresEveryNDays > maxExpireDaysForAccount)
-                                                      ? noExpiration
-                                                      : lastSetTimeSeconds + expiresEveryNDays * secondsPerDay;
+                                                          ? noExpiration
+                                                          : lastSetTimeSeconds + expiresEveryNDays * secondsPerDay;
         }
     }
 
@@ -198,13 +203,9 @@ nlohmann::json UsersProvider::collectPasswordData(const std::string& username,
 {
     // Empty rather than absent, so a user whose record could not be read is reported as not
     // collected instead of inheriting whatever the caller had in the object.
-    nlohmann::json userPasswordData
-    {
-        {"password_status", ""},
-        {"password_hash_algorithm", ""}
-    };
+    nlohmann::json userPasswordData {{"password_status", ""}, {"password_hash_algorithm", ""}};
 
-    const auto it { passwordData.find(username) };
+    const auto it {passwordData.find(username)};
 
     if (it != passwordData.end())
     {

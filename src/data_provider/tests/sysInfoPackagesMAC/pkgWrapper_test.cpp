@@ -38,15 +38,11 @@ namespace
 
         return path;
     }
-}
+} // namespace
 
 void PKGWrapperTest::SetUp()
 {
-    PKGWrapper::setReceiptLivenessChecker(
-        [](const std::string&, const std::string&)
-    {
-        return true;
-    });
+    PKGWrapper::setReceiptLivenessChecker([](const std::string&, const std::string&) { return true; });
 
     // Create a unique temp directory for tests that write files.
     char tmpl[] = "/tmp/pkgtest_XXXXXX";
@@ -64,7 +60,7 @@ void PKGWrapperTest::TearDown()
     // Remove any leftover files and the temp directory itself.
     if (!m_tempDir.empty())
     {
-        const std::string cmd { "rm -rf " + m_tempDir };
+        const std::string cmd {"rm -rf " + m_tempDir};
         ::system(cmd.c_str());
     }
 };
@@ -77,12 +73,9 @@ TEST_F(PKGWrapperTest, LongVersion)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_LongVersion.app" };
+    std::string package {"PKGWrapperTest_LongVersion.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
@@ -106,12 +99,9 @@ TEST_F(PKGWrapperTest, ShortVersion)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_ShortVersion.app" };
+    std::string package {"PKGWrapperTest_ShortVersion.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
@@ -135,12 +125,9 @@ TEST_F(PKGWrapperTest, NameDifferentExecutable)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NameDifferentExecutable.app" };
+    std::string package {"PKGWrapperTest_NameDifferentExecutable.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "OperaName");
@@ -164,12 +151,9 @@ TEST_F(PKGWrapperTest, NameFirst)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NameFirst.app" };
+    std::string package {"PKGWrapperTest_NameFirst.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "OperaName");
@@ -193,12 +177,9 @@ TEST_F(PKGWrapperTest, NoNameButExecutable)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NoNameButExecutable.app" };
+    std::string package {"PKGWrapperTest_NoNameButExecutable.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
@@ -222,12 +203,9 @@ TEST_F(PKGWrapperTest, NoNameNoExecutable)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NoNameNoExecutable.app" };
+    std::string package {"PKGWrapperTest_NoNameNoExecutable.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "");
@@ -251,12 +229,9 @@ TEST_F(PKGWrapperTest, NoVersion)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NoVersion.app" };
+    std::string package {"PKGWrapperTest_NoVersion.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
@@ -280,12 +255,9 @@ TEST_F(PKGWrapperTest, OnlyBundleVersion)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_OnlyBundleVersion.app" };
+    std::string package {"PKGWrapperTest_OnlyBundleVersion.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "WindowManager");
@@ -309,12 +281,9 @@ TEST_F(PKGWrapperTest, NoGroups)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NoGroups.app" };
+    std::string package {"PKGWrapperTest_NoGroups.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
@@ -338,12 +307,9 @@ TEST_F(PKGWrapperTest, NoDescription)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NoDescription.app" };
+    std::string package {"PKGWrapperTest_NoDescription.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
@@ -367,12 +333,9 @@ TEST_F(PKGWrapperTest, NoVendor)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_NoVendor.app" };
+    std::string package {"PKGWrapperTest_NoVendor.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "Opera");
@@ -399,12 +362,9 @@ TEST_F(PKGWrapperTest, SourceUtilitiesFolder)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files/Utilities";
-    std::string package { "PKGWrapperTest_Utilities.app" };
+    std::string package {"PKGWrapperTest_Utilities.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "SampleUtility");
@@ -431,12 +391,9 @@ TEST_F(PKGWrapperTest, SourceBundleNamedLikeUtilities)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "PKGWrapperTest_MyUtilities.app" };
+    std::string package {"PKGWrapperTest_MyUtilities.app"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "MyUtilities");
@@ -449,16 +406,16 @@ TEST_F(PKGWrapperTest, SourceBundleNamedLikeUtilities)
 // path component should count, not any folder name containing it as a prefix.
 TEST_F(PKGWrapperTest, SourceFolderNamedLikeUtilitiesButNotExactly)
 {
-    const std::string parentDir { m_tempDir + "/Utilities Pro" };
-    const std::string package { "PKGWrapperTest_NotUtilities.app" };
-    const std::string contentsDir { parentDir + "/" + package + "/Contents" };
+    const std::string parentDir {m_tempDir + "/Utilities Pro"};
+    const std::string package {"PKGWrapperTest_NotUtilities.app"};
+    const std::string contentsDir {parentDir + "/" + package + "/Contents"};
     ASSERT_TRUE(std::filesystem::create_directories(contentsDir));
 
-    std::ofstream file { contentsDir + "/Info.plist" };
+    std::ofstream file {contentsDir + "/Info.plist"};
     file << "<plist></plist>";
     file.close();
 
-    PackageContext ctx { parentDir, package, "" };
+    PackageContext ctx {parentDir, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -470,12 +427,9 @@ TEST_F(PKGWrapperTest, pkgVersionXML)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "com.wazuh.pkg.wazuh-agent.plist" };
+    std::string package {"com.wazuh.pkg.wazuh-agent.plist"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "wazuh-agent");
@@ -499,12 +453,9 @@ TEST_F(PKGWrapperTest, pkgVersionBin)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "us.zoom.pkg.videomeeting.plist" };
+    std::string package {"us.zoom.pkg.videomeeting.plist"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "videomeeting");
@@ -528,12 +479,9 @@ TEST_F(PKGWrapperTest, pkgVersionLong)
     std::string inputPath;
     inputPath += currentWorkingDirectory();
     inputPath += "/input_files";
-    std::string package { "org.R-project.x86_64.R.GUI.pkg.plist" };
+    std::string package {"org.R-project.x86_64.R.GUI.pkg.plist"};
 
-    struct PackageContext ctx
-    {
-        inputPath, package, ""
-    };
+    struct PackageContext ctx {inputPath, package, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "R.GUI");
@@ -562,9 +510,10 @@ namespace
                            const std::string& installDate,
                            const std::string& installPrefixPath = "")
     {
-        std::ofstream out { path, std::ios::trunc };
+        std::ofstream out {path, std::ios::trunc};
         out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-            << "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+            << "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+               "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
             << "<plist version=\"1.0\">\n"
             << "<dict>\n"
             << "  <key>PackageIdentifier</key><string>" << pkgId << "</string>\n"
@@ -579,7 +528,7 @@ namespace
         out << "</dict>\n"
             << "</plist>\n";
     }
-}
+} // namespace
 
 TEST_F(PKGWrapperTest, ReceiptKeptWhenLivenessCheckerReturnsTrue)
 {
@@ -588,16 +537,16 @@ TEST_F(PKGWrapperTest, ReceiptKeptWhenLivenessCheckerReturnsTrue)
     std::string seenPath;
     std::string seenPrefix;
     PKGWrapper::setReceiptLivenessChecker(
-        [&](const std::string & p, const std::string & prefix)
-    {
-        seenPath = p;
-        seenPrefix = prefix;
-        return true;
-    });
+        [&](const std::string& p, const std::string& prefix)
+        {
+            seenPath = p;
+            seenPrefix = prefix;
+            return true;
+        });
 
-    const std::string dir { currentWorkingDirectory() + "/input_files" };
-    const std::string package { "com.wazuh.pkg.wazuh-agent.plist" };
-    PackageContext ctx { dir, package, "" };
+    const std::string dir {currentWorkingDirectory() + "/input_files"};
+    const std::string package {"com.wazuh.pkg.wazuh-agent.plist"};
+    PackageContext ctx {dir, package, ""};
 
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
@@ -612,15 +561,11 @@ TEST_F(PKGWrapperTest, ReceiptKeptWhenLivenessCheckerReturnsTrue)
 
 TEST_F(PKGWrapperTest, ReceiptDroppedWhenLivenessCheckerReturnsFalse)
 {
-    PKGWrapper::setReceiptLivenessChecker(
-        [](const std::string&, const std::string&)
-    {
-        return false;
-    });
+    PKGWrapper::setReceiptLivenessChecker([](const std::string&, const std::string&) { return false; });
 
-    const std::string dir { currentWorkingDirectory() + "/input_files" };
-    const std::string package { "com.wazuh.pkg.wazuh-agent.plist" };
-    PackageContext ctx { dir, package, "" };
+    const std::string dir {currentWorkingDirectory() + "/input_files"};
+    const std::string package {"com.wazuh.pkg.wazuh-agent.plist"};
+    PackageContext ctx {dir, package, ""};
 
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
@@ -639,11 +584,11 @@ TEST_F(PKGWrapperTest, JavaResidualReceiptIsDroppedByDefaultChecker)
     // as dead.
     PKGWrapper::resetReceiptLivenessChecker();
 
-    const std::string plistName { "com.oracle.jre.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"com.oracle.jre.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.oracle.jre", "1.1", "2022-08-16T15:30:00Z");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -655,11 +600,11 @@ TEST_F(PKGWrapperTest, ReceiptWithoutBomIsDroppedByDefaultChecker)
 {
     PKGWrapper::resetReceiptLivenessChecker();
 
-    const std::string plistName { "no_bom.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"no_bom.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.example.nobom", "9.9", "2024-01-01T00:00:00Z");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -673,17 +618,17 @@ TEST_F(PKGWrapperTest, DotPrefixIsNormalisedToRoot)
 {
     std::string seenPrefix;
     PKGWrapper::setReceiptLivenessChecker(
-        [&](const std::string&, const std::string & prefix)
-    {
-        seenPrefix = prefix;
-        return true;
-    });
+        [&](const std::string&, const std::string& prefix)
+        {
+            seenPrefix = prefix;
+            return true;
+        });
 
-    const std::string plistName { "dot_prefix.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"dot_prefix.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.example.dotprefix", "1.0", "2024-01-01T00:00:00Z", ".");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -699,17 +644,17 @@ TEST_F(PKGWrapperTest, SlashPrefixIsPassedThrough)
 {
     std::string seenPrefix;
     PKGWrapper::setReceiptLivenessChecker(
-        [&](const std::string&, const std::string & prefix)
-    {
-        seenPrefix = prefix;
-        return true;
-    });
+        [&](const std::string&, const std::string& prefix)
+        {
+            seenPrefix = prefix;
+            return true;
+        });
 
-    const std::string plistName { "slash_prefix.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"slash_prefix.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.example.slashprefix", "2.0", "2024-01-01T00:00:00Z", "/");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -724,17 +669,17 @@ TEST_F(PKGWrapperTest, CustomPrefixIsPreserved)
 {
     std::string seenPrefix;
     PKGWrapper::setReceiptLivenessChecker(
-        [&](const std::string&, const std::string & prefix)
-    {
-        seenPrefix = prefix;
-        return true;
-    });
+        [&](const std::string&, const std::string& prefix)
+        {
+            seenPrefix = prefix;
+            return true;
+        });
 
-    const std::string plistName { "custom_prefix.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"custom_prefix.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.example.custom", "3.0", "2024-01-01T00:00:00Z", "/Library/Java");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -749,17 +694,17 @@ TEST_F(PKGWrapperTest, MissingPrefixDefaultsToRoot)
 {
     std::string seenPrefix;
     PKGWrapper::setReceiptLivenessChecker(
-        [&](const std::string&, const std::string & prefix)
-    {
-        seenPrefix = prefix;
-        return true;
-    });
+        [&](const std::string&, const std::string& prefix)
+        {
+            seenPrefix = prefix;
+            return true;
+        });
 
-    const std::string plistName { "no_prefix.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"no_prefix.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.example.noprefix", "4.0", "2024-01-01T00:00:00Z");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -771,17 +716,13 @@ TEST_F(PKGWrapperTest, MissingPrefixDefaultsToRoot)
 // ---------------------------------------------------------------------------
 TEST_F(PKGWrapperTest, LiveReceiptRetainsAllFields)
 {
-    PKGWrapper::setReceiptLivenessChecker(
-        [](const std::string&, const std::string&)
-    {
-        return true;
-    });
+    PKGWrapper::setReceiptLivenessChecker([](const std::string&, const std::string&) { return true; });
 
-    const std::string plistName { "live_receipt.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"live_receipt.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.vendor.product", "5.6.7", "2025-03-15T12:00:00Z", "/");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -799,17 +740,13 @@ TEST_F(PKGWrapperTest, LiveReceiptRetainsAllFields)
 // ---------------------------------------------------------------------------
 TEST_F(PKGWrapperTest, DeadReceiptClearsNameOnly)
 {
-    PKGWrapper::setReceiptLivenessChecker(
-        [](const std::string&, const std::string&)
-    {
-        return false;
-    });
+    PKGWrapper::setReceiptLivenessChecker([](const std::string&, const std::string&) { return false; });
 
-    const std::string plistName { "dead_receipt.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"dead_receipt.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     writeReceiptPlist(plistPath, "com.vendor.deadpkg", "1.0", "2025-01-01T00:00:00Z", "/");
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
 
@@ -827,11 +764,11 @@ TEST_F(PKGWrapperTest, DeadReceiptClearsNameOnly)
 // ---------------------------------------------------------------------------
 TEST_F(PKGWrapperTest, RejectsAFifoInsteadOfBlocking)
 {
-    const std::string plistName { "fifo.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"fifo.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     ASSERT_EQ(0, ::mkfifo(plistPath.c_str(), 0644));
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
 
     // The point of the test: opening a FIFO with no writer must not block
@@ -843,11 +780,11 @@ TEST_F(PKGWrapperTest, RejectsAFifoInsteadOfBlocking)
 
 TEST_F(PKGWrapperTest, RejectsASymlinkToACharacterDevice)
 {
-    const std::string plistName { "devzero.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"devzero.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     ASSERT_EQ(0, ::symlink("/dev/zero", plistPath.c_str()));
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "");
@@ -857,14 +794,14 @@ TEST_F(PKGWrapperTest, RejectsAFileLargerThanTheSizeLimit)
 {
     // A sparse file: its logical size is huge but it occupies no real disk
     // space, the same shape as the attack this size check defends against.
-    const std::string plistName { "huge_receipt.plist" };
-    const std::string plistPath { m_tempDir + "/" + plistName };
+    const std::string plistName {"huge_receipt.plist"};
+    const std::string plistPath {m_tempDir + "/" + plistName};
     {
-        std::ofstream file { plistPath, std::ios::binary };
+        std::ofstream file {plistPath, std::ios::binary};
     }
     ASSERT_EQ(0, ::truncate(plistPath.c_str(), MAX_PLIST_SIZE + 1));
 
-    PackageContext ctx { m_tempDir, plistName, "" };
+    PackageContext ctx {m_tempDir, plistName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->name(), "");
@@ -872,18 +809,18 @@ TEST_F(PKGWrapperTest, RejectsAFileLargerThanTheSizeLimit)
 
 TEST_F(PKGWrapperTest, FollowsASymlinkToAnOrdinaryReceiptFile)
 {
-    const std::string realName { "real_receipt.plist" };
-    const std::string realPath { m_tempDir + "/" + realName };
+    const std::string realName {"real_receipt.plist"};
+    const std::string realPath {m_tempDir + "/" + realName};
     writeReceiptPlist(realPath, "com.example.symlinked", "3.2.1", "2025-06-01T00:00:00Z", "/");
 
-    const std::string linkName { "receipt_via_symlink.plist" };
-    const std::string linkPath { m_tempDir + "/" + linkName };
+    const std::string linkName {"receipt_via_symlink.plist"};
+    const std::string linkPath {m_tempDir + "/" + linkName};
     ASSERT_EQ(0, ::symlink(realPath.c_str(), linkPath.c_str()));
 
     // A symlink to an ordinary file must still be accepted and parsed like the
     // real file: only the resolved target's type matters, not whether the
     // final path component is itself a symlink.
-    PackageContext ctx { m_tempDir, linkName, "" };
+    PackageContext ctx {m_tempDir, linkName, ""};
     std::shared_ptr<PKGWrapper> wrapper;
     EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
     EXPECT_EQ(wrapper->version(), "3.2.1");
@@ -893,18 +830,17 @@ TEST_F(PKGWrapperTest, FollowsASymlinkToAnOrdinaryReceiptFile)
 namespace
 {
     // Writes an XML Info.plist under appPath; returns false if any step fails.
-    bool writeAppInfoPlist(const std::string& appPath,
-                           const std::string& shortVersion,
-                           const std::string& bundleVersion)
+    bool
+    writeAppInfoPlist(const std::string& appPath, const std::string& shortVersion, const std::string& bundleVersion)
     {
-        const std::string contents { appPath + "/Contents" };
+        const std::string contents {appPath + "/Contents"};
 
         if (::mkdir(appPath.c_str(), 0700) != 0 || ::mkdir(contents.c_str(), 0700) != 0)
         {
             return false;
         }
 
-        std::ofstream out { contents + "/Info.plist", std::ios::trunc };
+        std::ofstream out {contents + "/Info.plist", std::ios::trunc};
         out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             << "<plist version=\"1.0\">\n"
             << "<dict>\n"
@@ -916,60 +852,59 @@ namespace
         out.close();
         return static_cast<bool>(out);
     }
-}
+} // namespace
 
 // CFBundleVersion is only reported when it extends the short version by whole
 // numeric components; a plain text prefix is not enough. Each case runs with
 // an XML plist and again with the same plist converted to binary.
 TEST_F(PKGWrapperTest, BundleVersionPrefixMatchesWholeComponents)
 {
-    const std::vector<std::tuple<std::string, std::string, std::string>> cases
-    {
-        { "1.2", "1.2.345", "1.2.345" },
-        { "1.2", "1.2.3.4", "1.2.3.4" },
-        { "1.2", "1.2", "1.2" },
-        { "1.2", "1.21", "1.2" },
-        { "1.2", "1.2b3", "1.2" },
-        { "1.2", "1.2-345", "1.2" },
-        { "1.2.3", "1.2", "1.2.3" },
-        { "1.2", "1.2 (345)", "1.2" },
-        { "1.2", "1.2.", "1.2" },
-        { "1.2", "1.2..3", "1.2" },
-        { "1.2", "1.2.beta", "1.2" },
-        { "1.2", "1.2.3 (45)", "1.2" },
-        { "2", "2025", "2" },
-        { "2", "2.0.1", "2.0.1" },
-        { "1.2", "", "1.2" },
-        { "1.", "1.2", "1.2" },
-        { "2.0.", "2.0.1", "2.0.1" },
-        { "1.", "1..2", "1." },
-        { "1.", "1.beta", "1." },
+    const std::vector<std::tuple<std::string, std::string, std::string>> cases {
+        {"1.2", "1.2.345", "1.2.345"},
+        {"1.2", "1.2.3.4", "1.2.3.4"},
+        {"1.2", "1.2", "1.2"},
+        {"1.2", "1.21", "1.2"},
+        {"1.2", "1.2b3", "1.2"},
+        {"1.2", "1.2-345", "1.2"},
+        {"1.2.3", "1.2", "1.2.3"},
+        {"1.2", "1.2 (345)", "1.2"},
+        {"1.2", "1.2.", "1.2"},
+        {"1.2", "1.2..3", "1.2"},
+        {"1.2", "1.2.beta", "1.2"},
+        {"1.2", "1.2.3 (45)", "1.2"},
+        {"2", "2025", "2"},
+        {"2", "2.0.1", "2.0.1"},
+        {"1.2", "", "1.2"},
+        {"1.", "1.2", "1.2"},
+        {"2.0.", "2.0.1", "2.0.1"},
+        {"1.", "1..2", "1."},
+        {"1.", "1.beta", "1."},
     };
 
     ASSERT_FALSE(m_tempDir.empty());
 
-    const bool binaryPasses[] { false, true };
-    int index { 0 };
+    const bool binaryPasses[] {false, true};
+    int index {0};
 
     for (const auto binary : binaryPasses)
     {
         for (const auto& [shortVersion, bundleVersion, expected] : cases)
         {
-            const std::string package { "VersionApp" + std::to_string(index++) + ".app" };
-            const std::string appPath { m_tempDir + "/" + package };
+            const std::string package {"VersionApp" + std::to_string(index++) + ".app"};
+            const std::string appPath {m_tempDir + "/" + package};
             ASSERT_TRUE(writeAppInfoPlist(appPath, shortVersion, bundleVersion));
 
             if (binary)
             {
-                const std::string cmd { "plutil -convert binary1 '" + appPath + "/Contents/Info.plist'" };
+                const std::string cmd {"plutil -convert binary1 '" + appPath + "/Contents/Info.plist'"};
                 ASSERT_EQ(0, ::system(cmd.c_str()));
             }
 
-            PackageContext ctx { m_tempDir, package, "" };
+            PackageContext ctx {m_tempDir, package, ""};
             std::shared_ptr<PKGWrapper> wrapper;
             EXPECT_NO_THROW(wrapper = std::make_shared<PKGWrapper>(ctx));
             EXPECT_EQ(wrapper->version(), expected)
-                    << "short=" << shortVersion << " bundle=" << bundleVersion << " binary=" << binary;
+                << "short=" << shortVersion << " bundle=" << bundleVersion << " binary=" << binary;
         }
     }
 }

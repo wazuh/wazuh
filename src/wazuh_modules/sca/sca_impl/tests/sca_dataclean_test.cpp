@@ -34,97 +34,94 @@
  */
 class SCADataCleanTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
-        {
-            m_logOutput.clear();
+protected:
+    void SetUp() override
+    {
+        m_logOutput.clear();
 
-            // Set up logging callback
-            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string & log)
-            {
-                m_logOutput += log + "\n";
-            });
+        // Set up logging callback
+        LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string& log)
+                                      { m_logOutput += log + "\n"; });
 
-            m_mockDBSync = std::make_shared<MockDBSync>();
-            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
-            m_mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+        m_mockDBSync = std::make_shared<MockDBSync>();
+        m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+        m_mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
 
-            // Basic mock setup for DBSync handle - return nullptr to skip actual DB operations in tests
-            EXPECT_CALL(*m_mockDBSync, handle())
-            .WillRepeatedly(::testing::Return(nullptr));
+        // Basic mock setup for DBSync handle - return nullptr to skip actual DB operations in tests
+        EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
 
-            m_sca = std::make_shared<SCAMock>(m_mockDBSync, m_mockFileSystem);
-        }
+        m_sca = std::make_shared<SCAMock>(m_mockDBSync, m_mockFileSystem);
+    }
 
-        void TearDown() override
-        {
-            m_sca.reset();
-            m_mockDBSync.reset();
-            m_mockFileSystem.reset();
-            m_mockSyncProtocol.reset();
-        }
+    void TearDown() override
+    {
+        m_sca.reset();
+        m_mockDBSync.reset();
+        m_mockFileSystem.reset();
+        m_mockSyncProtocol.reset();
+    }
 
-        // Helper to set up SCA with no policies but data in DB
-        void setupWithEmptyPoliciesAndDataInDB()
-        {
-            // Setup with no policies
-            m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, {});
+    // Helper to set up SCA with no policies but data in DB
+    void setupWithEmptyPoliciesAndDataInDB()
+    {
+        // Setup with no policies
+        m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, {});
 
-            // Set sync protocol mock
-            m_sca->setSyncProtocol(m_mockSyncProtocol);
+        // Set sync protocol mock
+        m_sca->setSyncProtocol(m_mockSyncProtocol);
 
-            // Mock selectRows to return count > 0 for hasDataInDatabase()
-            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+        // Mock selectRows to return count > 0 for hasDataInDatabase()
+        EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
             .WillOnce(::testing::Return()) // Sync manager initialization query
             .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
             .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
-            .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                           std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-            {
-                // Return policy count > 0
-                nlohmann::json data;
-                data["count"] = 5;
-                callback(SELECTED, data);
-            }))
-            .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                           std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-            {
-                // Return check count > 0
-                nlohmann::json data;
-                data["count"] = 10;
-                callback(SELECTED, data);
-            }))
+            .WillOnce(::testing::Invoke(
+                [](const nlohmann::json& /* query */,
+                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+                {
+                    // Return policy count > 0
+                    nlohmann::json data;
+                    data["count"] = 5;
+                    callback(SELECTED, data);
+                }))
+            .WillOnce(::testing::Invoke(
+                [](const nlohmann::json& /* query */,
+                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+                {
+                    // Return check count > 0
+                    nlohmann::json data;
+                    data["count"] = 10;
+                    callback(SELECTED, data);
+                }))
             .WillRepeatedly(::testing::Return());
-        }
+    }
 
-        // Helper to set up SCA with policies and empty DB
-        void setupWithPoliciesAndEmptyDB()
-        {
-            std::vector<sca::PolicyData> policies =
-            {
-                {"policy1.yaml", true, false}
-            };
+    // Helper to set up SCA with policies and empty DB
+    void setupWithPoliciesAndEmptyDB()
+    {
+        std::vector<sca::PolicyData> policies = {{"policy1.yaml", true, false}};
 
-            m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, policies);
-            m_sca->setSyncProtocol(m_mockSyncProtocol);
+        m_sca->Setup(true, false, std::chrono::seconds(3600), 30, false, policies);
+        m_sca->setSyncProtocol(m_mockSyncProtocol);
 
-            // Mock selectRows to return count = 0 for hasDataInDatabase()
-            EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+        // Mock selectRows to return count = 0 for hasDataInDatabase()
+        EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
             .WillOnce(::testing::Return()) // Sync manager initialization query
-            .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
-                                                 std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-            {
-                nlohmann::json data;
-                data["count"] = 0;
-                callback(SELECTED, data);
-            }));
-        }
+            .WillRepeatedly(::testing::Invoke(
+                [](const nlohmann::json& /* query */,
+                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+                {
+                    nlohmann::json data;
+                    data["count"] = 0;
+                    callback(SELECTED, data);
+                }));
+    }
 
-        std::shared_ptr<MockDBSync> m_mockDBSync;
-        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
-        std::shared_ptr<MockAgentSyncProtocol> m_mockSyncProtocol;
-        std::shared_ptr<SCAMock> m_sca;
-        std::string m_logOutput;
+    std::shared_ptr<MockDBSync> m_mockDBSync;
+    std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+    std::shared_ptr<MockAgentSyncProtocol> m_mockSyncProtocol;
+    std::shared_ptr<SCAMock> m_sca;
+    std::string m_logOutput;
 };
 
 // Test: All policies removed at startup triggers DataClean
@@ -134,7 +131,7 @@ TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_TriggersDataClean)
 
     // Expect notifyDataClean to be called with SCA index
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult{true}));
+        .WillOnce(::testing::Return(SyncModuleResult {true}));
 
     // Run should detect no policies + data in DB and trigger DataClean
     m_sca->Run();
@@ -154,34 +151,37 @@ TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_DataCleanFailure_Retries)
 
     // Mock selectRows to return count > 0 for hasDataInDatabase()
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return()) // Sync manager initialization query
-    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 5;
-        callback(SELECTED, data);
-    }))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 5;
-        callback(SELECTED, data);
-    }));
+        .WillOnce(::testing::Return()) // Sync manager initialization query
+        .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
+        .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 5;
+                callback(SELECTED, data);
+            }))
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 5;
+                callback(SELECTED, data);
+            }));
 
     // Expect notifyDataClean to fail on first call, retry will trigger,
     // then second call stops the module to exit the retry loop
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult{false}))  // First call fails
-    .WillOnce(::testing::Invoke([this](const std::vector<std::string>&, Option, bool) -> SyncModuleResult
-    {
-        // Stop the module on retry to exit the loop
-        m_sca->Stop();
-        return {false};
-    }));
+        .WillOnce(::testing::Return(SyncModuleResult {false})) // First call fails
+        .WillOnce(::testing::Invoke(
+            [this](const std::vector<std::string>&, Option, bool) -> SyncModuleResult
+            {
+                // Stop the module on retry to exit the loop
+                m_sca->Stop();
+                return {false};
+            }));
 
     // Run should detect failure and enter retry loop, then exit when Stop() is called on retry
     m_sca->Run();
@@ -199,27 +199,28 @@ TEST_F(SCADataCleanTest, NoPoliciesNoData_ExitsCleanly)
 
     // Mock selectRows to return count = 0 for hasDataInDatabase()
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return()) // Sync manager initialization query
-    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 0;
-        callback(SELECTED, data);
-    }))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 0;
-        callback(SELECTED, data);
-    }));
+        .WillOnce(::testing::Return()) // Sync manager initialization query
+        .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
+        .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 0;
+                callback(SELECTED, data);
+            }))
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 0;
+                callback(SELECTED, data);
+            }));
 
     // DataClean should NOT be called since there's no data
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
 
     m_sca->Run();
 
@@ -235,28 +236,30 @@ TEST_F(SCADataCleanTest, HandleAllPoliciesRemoved_SendsDataCleanAndExits)
 
     // Expect notifyDataClean to succeed
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult{true}));
+        .WillOnce(::testing::Return(SyncModuleResult {true}));
 
     // Mock selectRows to indicate data exists
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return()) // Sync manager initialization query
-    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 1;
-        callback(SELECTED, data);
-    }))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 1;
-        callback(SELECTED, data);
-    }))
-    .WillRepeatedly(::testing::Return());
+        .WillOnce(::testing::Return()) // Sync manager initialization query
+        .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
+        .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 1;
+                callback(SELECTED, data);
+            }))
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 1;
+                callback(SELECTED, data);
+            }))
+        .WillRepeatedly(::testing::Return());
 
     m_sca->Run();
 
@@ -272,8 +275,7 @@ TEST_F(SCADataCleanTest, ModuleDisabled_DoesNotTriggerDataClean)
     m_sca->setSyncProtocol(m_mockSyncProtocol);
 
     // DataClean should NOT be called for disabled module
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
 
     m_sca->Run();
 
@@ -297,26 +299,23 @@ TEST_F(SCADataCleanTest, PartialPolicyRemoval_GeneratesDeleteEvents)
     // For unit testing, we verify that when policies are present,
     // the normal flow continues (no DataClean triggered)
 
-    std::vector<sca::PolicyData> policies =
-    {
-        {"policy1.yaml", true, false}
-    };
+    std::vector<sca::PolicyData> policies = {{"policy1.yaml", true, false}};
 
     m_sca->Setup(true, true, std::chrono::seconds(3600), 30, false, policies);
     m_sca->setSyncProtocol(m_mockSyncProtocol);
 
     // Mock file exists - scanOnStart=true so we reach this immediately
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Invoke([this](const std::filesystem::path&) -> bool
-    {
-        // Stop module to prevent infinite loop
-        m_sca->Stop();
-        return false;  // File doesn't exist, so no policy loads
-    }));
+        .WillRepeatedly(::testing::Invoke(
+            [this](const std::filesystem::path&) -> bool
+            {
+                // Stop module to prevent infinite loop
+                m_sca->Stop();
+                return false; // File doesn't exist, so no policy loads
+            }));
 
     // DataClean should NOT be called since we have policies configured
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .Times(0);
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).Times(0);
 
     m_sca->Run();
 
@@ -330,7 +329,7 @@ TEST_F(SCADataCleanTest, DataCleanSetsExitFlag)
     setupWithEmptyPoliciesAndDataInDB();
 
     EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
-    .WillOnce(::testing::Return(SyncModuleResult{true}));
+        .WillOnce(::testing::Return(SyncModuleResult {true}));
 
     m_sca->Run();
 
@@ -347,23 +346,25 @@ TEST_F(SCADataCleanTest, DataClean_WithoutSyncProtocol_Fails)
 
     // Mock selectRows to indicate data exists
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return()) // Sync manager initialization query
-    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 1;
-        callback(SELECTED, data);
-    }))
-    .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
-                                   std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 1;
-        callback(SELECTED, data);
-    }));
+        .WillOnce(::testing::Return()) // Sync manager initialization query
+        .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
+        .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 1;
+                callback(SELECTED, data);
+            }))
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 1;
+                callback(SELECTED, data);
+            }));
 
     m_sca->Run();
 
@@ -383,35 +384,33 @@ TEST_F(SCADataCleanTest, DataClean_WaitsForSyncInProgress)
 
     // Mock selectRows to indicate data exists
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillOnce(::testing::Return()) // Sync manager initialization query
-    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
-    .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
-    .WillOnce(::testing::Invoke(
-                  [](const nlohmann::json& /* query */,
-                     std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 1;
-        callback(SELECTED, data);
-    }))
-    .WillOnce(::testing::Invoke(
-                  [](const nlohmann::json& /* query */,
-                     std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json data;
-        data["count"] = 1;
-        callback(SELECTED, data);
-    }))
-    .WillRepeatedly(::testing::Return());
+        .WillOnce(::testing::Return()) // Sync manager initialization query
+        .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
+        .WillOnce(::testing::Return()) // first_scan_completed metadata lookup (issue 38428)
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 1;
+                callback(SELECTED, data);
+            }))
+        .WillOnce(::testing::Invoke(
+            [](const nlohmann::json& /* query */,
+               std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+            {
+                nlohmann::json data;
+                data["count"] = 1;
+                callback(SELECTED, data);
+            }))
+        .WillRepeatedly(::testing::Return());
 
     // Expect DataClean to be called after sync completes
-    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_)).WillOnce(::testing::Return(SyncModuleResult{true}));
+    EXPECT_CALL(*m_mockSyncProtocol, notifyDataClean(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(SyncModuleResult {true}));
 
     // Start Run() in a separate thread since it will block waiting for sync
-    std::thread runThread([this]()
-    {
-        m_sca->Run();
-    });
+    std::thread runThread([this]() { m_sca->Run(); });
 
     // Give Run() time to start and reach the wait
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

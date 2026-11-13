@@ -11,8 +11,6 @@
 #ifndef WAZUH_DB_CONFIG_H
 #define WAZUH_DB_CONFIG_H
 
-
-
 #ifndef CLIENT
 struct cJSON;
 /**
@@ -22,7 +20,7 @@ struct cJSON;
  * @param wdb The section returned by w_mconf_section("wdb"); NULL or an absent backup block keeps the defaults.
  * @return OS_SUCCESS, or OS_INVALID when a value breaks the rules the schema cannot express.
  */
-int Read_WazuhDB_JSON(const struct cJSON *wdb);
+int Read_WazuhDB_JSON(const struct cJSON* wdb);
 #endif
 
 /**

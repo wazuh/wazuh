@@ -34,7 +34,8 @@ extern volatile sig_atomic_t wm_shutdown_requested;
 volatile sig_atomic_t wm_shutdown_requested = 0;
 #endif
 
-static int teardown_shutdown_flag(void **state) {
+static int teardown_shutdown_flag(void** state)
+{
     (void)state;
     wm_shutdown_requested = 0;
     return 0;
@@ -46,12 +47,15 @@ static int teardown_shutdown_flag(void **state) {
  * startup instead of racing ahead into a module that's about to be torn
  * down. Before the fix this path returned void -- indistinguishable from a
  * real release. */
-static void test_wait_for_ready_returns_shutdown_requested_without_polling(void **state) {
+static void test_wait_for_ready_returns_shutdown_requested_without_polling(void** state)
+{
     (void)state;
     wm_shutdown_requested = 1;
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "Startup hash gate: shutdown requested, aborting startup for 'wazuh-sca' without waiting for handshake.");
+    expect_string(
+        __wrap__mdebug1,
+        formatted_msg,
+        "Startup hash gate: shutdown requested, aborting startup for 'wazuh-sca' without waiting for handshake.");
 
     startup_gate_wait_result_t result = startup_gate_wait_for_ready("wazuh-sca");
 
@@ -59,21 +63,26 @@ static void test_wait_for_ready_returns_shutdown_requested_without_polling(void 
 }
 
 /* A NULL/empty module name must not crash the log line -- falls back to "module". */
-static void test_wait_for_ready_shutdown_requested_defaults_module_name(void **state) {
+static void test_wait_for_ready_shutdown_requested_defaults_module_name(void** state)
+{
     (void)state;
     wm_shutdown_requested = 1;
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "Startup hash gate: shutdown requested, aborting startup for 'module' without waiting for handshake.");
+    expect_string(
+        __wrap__mdebug1,
+        formatted_msg,
+        "Startup hash gate: shutdown requested, aborting startup for 'module' without waiting for handshake.");
 
     startup_gate_wait_result_t result = startup_gate_wait_for_ready(NULL);
 
     assert_int_equal(result, STARTUP_GATE_SHUTDOWN_REQUESTED);
 }
 
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_teardown(test_wait_for_ready_returns_shutdown_requested_without_polling, teardown_shutdown_flag),
+        cmocka_unit_test_teardown(test_wait_for_ready_returns_shutdown_requested_without_polling,
+                                  teardown_shutdown_flag),
         cmocka_unit_test_teardown(test_wait_for_ready_shutdown_requested_defaults_module_name, teardown_shutdown_flag),
     };
 
@@ -82,7 +91,8 @@ int main(void) {
 
 #else
 
-int main(void) {
+int main(void)
+{
     return 0;
 }
 

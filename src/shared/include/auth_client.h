@@ -12,7 +12,7 @@
 #define AUTH_CLIENT_H
 
 // Remove agent. Returns 0 on success or -1 on error.
-int auth_remove_agent(int sock, const char *id, int json_format);
+int auth_remove_agent(int sock, const char* id, int json_format);
 
 /**
  * @brief Remove an agent, reporting authd's own error code instead of collapsing it to -1.
@@ -36,6 +36,6 @@ int auth_remove_agent(int sock, const char *id, int json_format);
  *             Written only when authd answered. May be NULL.
  * @return 0 when authd answered, whatever it answered; -1 when it did not.
  */
-int auth_remove_agent_code(int sock, const char *id, int *error_code);
+int auth_remove_agent_code(int sock, const char* id, int* error_code);
 
 #endif /* AUTH_CLIENT_H */

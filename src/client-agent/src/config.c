@@ -19,9 +19,9 @@
 /* Global variables */
 int run_foreground;
 keystore keys;
-agent *agt;
+agent* agt;
 #ifndef WIN32
-anti_tampering *atc;
+anti_tampering* atc;
 #endif
 int remote_conf;
 int rotate_log;
@@ -43,7 +43,7 @@ pthread_mutex_t agent_handshake_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define ENROLLMENT_RETRY_DELTA_S_DEFAULT 5
 
 /* Read the config file (for the remote client) */
-int ClientConf(const char *cfgfile)
+int ClientConf(const char* cfgfile)
 {
     int modules = 0;
 
@@ -96,14 +96,18 @@ int ClientConf(const char *cfgfile)
     agt->enrollment.delay_after_enrollment = 20;
     agt->enrollment.set_under_agent = false;
 
-    if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
+    if (ReadConfig(modules, cfgfile, agt, NULL) < 0)
+    {
         return (OS_INVALID);
     }
 
-    if(agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf) {
+    if (agt->flags.remote_conf = getDefine_Int("agent", "remote_conf", 0, 1), agt->flags.remote_conf)
+    {
         remote_conf = agt->flags.remote_conf;
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
-    } else {
+    }
+    else
+    {
         remote_conf = 0;
     }
 
@@ -116,7 +120,8 @@ int ClientConf(const char *cfgfile)
         getDefine_Int_default("agent", "enrollment_retry_delta", 1, 3600, ENROLLMENT_RETRY_DELTA_S_DEFAULT);
 
 #ifndef WIN32
-    if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
+    if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0)
+    {
         return OS_INVALID;
     }
 #endif
@@ -166,7 +171,7 @@ int ClientConf(const char *cfgfile)
  * manager, say -- is invisible until reloadAgent() re-runs ClientConf() from scratch, so a
  * future caller must either sequence its write before this point or call this again
  * (#39026, #39027). Idempotent, so calling it twice is safe. */
-void w_agent_resolve_ssl_posture(agent *cfg)
+void w_agent_resolve_ssl_posture(agent* cfg)
 {
     /* Probed once, up front, and reused: every branch below needs the same answer, and one
      * discarded open on the 'system' path is cheaper than reasoning about how many times
@@ -186,18 +191,25 @@ void w_agent_resolve_ssl_posture(agent *cfg)
      * is set when none actually was, and would block the anchor from filling the gap. */
     bool ca_set = cfg->ssl.certificate_authorities != NULL && *cfg->ssl.certificate_authorities != '\0';
 
-    if (cfg->ssl.verification_mode == AGENT_VERIFY_UNSET) {
-        if (ca_set) {
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_UNSET)
+    {
+        if (ca_set)
+        {
             mwarn("The '<ssl><certificate_authorities>' option is configured but "
                   "'<verification_mode>' is not; defaulting '<verification_mode>' to 'certificate'.");
             cfg->ssl.verification_mode = AGENT_VERIFY_CERT;
-        } else if (anchor) {
+        }
+        else if (anchor)
+        {
             cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
-        } else {
+        }
+        else
+        {
             cfg->ssl.verification_mode = AGENT_VERIFY_NONE;
         }
-    } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor
-               && !cfg->ssl.verification_mode_explicit) {
+    }
+    else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor && !cfg->ssl.verification_mode_explicit)
+    {
         /* A 'none' nobody asked for: this function resolved it that way on an earlier pass,
          * when there was no trust material to work with, and an anchor has appeared since --
          * written by the enrollment-token bootstrap, which runs after ClientConf() has already
@@ -205,7 +217,9 @@ void w_agent_resolve_ssl_posture(agent *cfg)
          * boot, so the first boot verifies from here on instead of waiting for a restart to
          * notice the file. */
         cfg->ssl.verification_mode = AGENT_VERIFY_FULL;
-    } else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor) {
+    }
+    else if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE && anchor)
+    {
         /* Nothing to change: 'none' is what the operator asked for and it stands. Worth a
          * warning all the same -- an anchor on disk means this host could verify and has been
          * told not to, which is the one combination an operator is most likely to have
@@ -223,8 +237,9 @@ void w_agent_resolve_ssl_posture(agent *cfg)
      * refuse to start every agent that holds an anchor. 'none' is excluded because it reads
      * no CA at all: injecting one would put a path the agent never opens into the config
      * report, and would turn a later switch to 'full' into a silent change of trust. */
-    if ((cfg->ssl.verification_mode == AGENT_VERIFY_FULL || cfg->ssl.verification_mode == AGENT_VERIFY_CERT)
-            && !ca_set && anchor) {
+    if ((cfg->ssl.verification_mode == AGENT_VERIFY_FULL || cfg->ssl.verification_mode == AGENT_VERIFY_CERT) &&
+        !ca_set && anchor)
+    {
         /* os_free() first: os_strdup() overwrites the pointer without releasing it, and an
          * empty <certificate_authorities/> left a real allocation behind. Heap, never the
          * constant itself -- Free_Agent() frees this field. */
@@ -236,16 +251,17 @@ void w_agent_resolve_ssl_posture(agent *cfg)
 /* Both agentd and the Windows agent gate startup on this, at the point where each can
  * still fail cleanly: before daemonizing on POSIX, before the first module thread on
  * Windows. Shared so the two can never drift apart on what counts as a usable CA. */
-bool w_agent_validate_ssl_ca(const agent *cfg)
+bool w_agent_validate_ssl_ca(const agent* cfg)
 {
-    const char *ca = cfg->ssl.certificate_authorities;
+    const char* ca = cfg->ssl.certificate_authorities;
 
     /* 'none' reads no CA at all, so <certificate_authorities> is inert here and is not even
      * probed: warning that an ignored value is unreadable is noise about something that has
      * no effect, and it invited the reading that the path was doing something. A wrong path
      * surfaces the moment verification is actually turned on, as (4118), which is the point
      * at which it starts to matter. */
-    if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE) {
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_NONE)
+    {
         /* ...unless this install has verified before. Since #39321 the agent owns its anchor so
          * it can replace it on a CA rotation, and anything that can replace a file can delete
          * one -- at which point w_agent_resolve_ssl_posture() sees no anchor, no configured CA
@@ -261,8 +277,10 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
          * This is not a defence against that user REPLACING the anchor with a CA of its own --
          * nothing here could be, once the agent adopts rotations unaided. It closes the cheaper
          * attack and the commoner accident: ending up with no verification at all. */
-        if (!cfg->ssl.verification_mode_explicit && w_is_file(AGENT_ANCHOR_CA) == 0) {
-            if (w_is_file(AGENT_ANCHOR_MARKER) != 0) {
+        if (!cfg->ssl.verification_mode_explicit && w_is_file(AGENT_ANCHOR_CA) == 0)
+        {
+            if (w_is_file(AGENT_ANCHOR_MARKER) != 0)
+            {
                 merror(AG_SSL_ANCHOR_VANISHED, AGENT_ANCHOR_CA, AGENT_ANCHOR_MARKER);
                 return false;
             }
@@ -270,7 +288,8 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
 #ifndef WIN32
             /* A CA the upgrade could not validate. Only stats, so a planted FIFO can't block, and a
              * symlink is skipped the way the installer skips it. */
-            if (IsFile(AGENT_DELIVERED_CA) == 0 && IsLink(AGENT_DELIVERED_CA) != 0) {
+            if (IsFile(AGENT_DELIVERED_CA) == 0 && IsLink(AGENT_DELIVERED_CA) != 0)
+            {
                 mwarn(AG_SSL_DELIVERED_CA_PENDING, AGENT_ANCHOR_CA, AGENT_DELIVERED_CA);
             }
 #endif
@@ -288,13 +307,15 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * in which case there is still a way to verify and startup proceeds: the https_client
      * module tries the OS store first regardless, and only falls back to that anchor if the
      * store turns out not to vouch for this specific manager (curlPerformer.cpp, #39123). */
-    if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM) {
+    if (cfg->ssl.verification_mode == AGENT_VERIFY_SYSTEM)
+    {
         /* A present-but-empty <certificate_authorities/> is not a real CA --
          * w_agent_resolve_ssl_posture() already treats it that way (it does not infer
          * 'certificate' from it), so this check has to agree, or an operator who reaches
          * 'system' with that exact shape is refused a start over a CA that isn't really
          * set. */
-        if (ca && *ca != '\0') {
+        if (ca && *ca != '\0')
+        {
             merror(AG_SSL_CA_FORBIDDEN_SYSTEM, ca);
             return false;
         }
@@ -312,7 +333,8 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
          * probe below, which is Linux-only. */
         const bool anchor_present = w_is_file(AGENT_ANCHOR_CA) != 0;
 
-        if (anchor_present) {
+        if (anchor_present)
+        {
             /* load_ALL_pem, not w_x509_load_pem(): since #39321 this anchor is a BUNDLE -- the
              * agent adopts up to ca_bundle::kMaxCertificates from a manager publication, and
              * during a rotation's overlap it legitimately holds two or more roots. The singular
@@ -320,9 +342,10 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
              * on the strength of one certificate and leave the rest unchecked, which is the
              * exact gap the <certificate_authorities> check below was changed to close. */
             size_t anchor_count = 0;
-            X509 **anchor = w_x509_load_all_pem(AGENT_ANCHOR_CA, &anchor_count);
+            X509** anchor = w_x509_load_all_pem(AGENT_ANCHOR_CA, &anchor_count);
 
-            if (anchor == NULL) {
+            if (anchor == NULL)
+            {
                 merror(AG_SSL_ANCHOR_UNPARSEABLE, AGENT_ANCHOR_CA);
                 return false;
             }
@@ -336,7 +359,8 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
          * actually fails to verify (curlPerformer.cpp), and refusing here would never give
          * that fallback a chance to run. Both being absent is the one combination this
          * process can already tell has no way to verify at all. */
-        if (os_find_ca_bundle(NULL) == NULL && !anchor_present) {
+        if (os_find_ca_bundle(NULL) == NULL && !anchor_present)
+        {
             merror(AG_SSL_SYSTEM_NO_BUNDLE);
             return false;
         }
@@ -347,7 +371,8 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
 
     /* A verifying mode without a readable CA can never connect: the https_client module
      * fails closed on this, per its own validation. */
-    if (!ca || !w_is_file(ca)) {
+    if (!ca || !w_is_file(ca))
+    {
         merror(AG_INV_SSL_CA, ca ? ca : "");
         return false;
     }
@@ -371,9 +396,10 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
      * so the publication block the agent records alongside its anchor (RFC 7468 section 2)
      * parses here exactly as a bare bundle does. */
     size_t ca_count = 0;
-    X509 **parsed = w_x509_load_all_pem(ca, &ca_count);
+    X509** parsed = w_x509_load_all_pem(ca, &ca_count);
 
-    if (parsed == NULL) {
+    if (parsed == NULL)
+    {
         merror(AG_SSL_CA_UNPARSEABLE, ca);
         return false;
     }
@@ -381,7 +407,8 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
     /* Only worth a line when there is more than one: a single anchor is the ordinary case and
      * saying so on every start is noise, while two or more means a rotation is in flight and
      * an operator reading the log wants to know the agent picked both up. */
-    if (ca_count > 1) {
+    if (ca_count > 1)
+    {
         minfo(AG_SSL_CA_BUNDLE_LOADED, ca, ca_count);
     }
 
@@ -399,19 +426,22 @@ bool w_agent_validate_ssl_ca(const agent *cfg)
  * Not part of w_agent_validate_ssl_ca(): that runs before the enrollment-token bootstrap, so it
  * would fire on the first boot of every token install, just before the bootstrap writes the anchor
  * and the posture is resolved again. */
-void w_agent_warn_unverified_without_anchor(const agent *cfg)
+void w_agent_warn_unverified_without_anchor(const agent* cfg)
 {
-    if (cfg->ssl.verification_mode != AGENT_VERIFY_NONE || cfg->ssl.verification_mode_explicit) {
+    if (cfg->ssl.verification_mode != AGENT_VERIFY_NONE || cfg->ssl.verification_mode_explicit)
+    {
         return;
     }
 
-    if (w_is_file(AGENT_ANCHOR_CA) != 0) {
+    if (w_is_file(AGENT_ANCHOR_CA) != 0)
+    {
         return;
     }
 
 #ifndef WIN32
     /* (4126) already named the anchor, and a better fix, at startup. */
-    if (IsFile(AGENT_DELIVERED_CA) == 0 && IsLink(AGENT_DELIVERED_CA) != 0) {
+    if (IsFile(AGENT_DELIVERED_CA) == 0 && IsLink(AGENT_DELIVERED_CA) != 0)
+    {
         return;
     }
 #endif
@@ -420,41 +450,48 @@ void w_agent_warn_unverified_without_anchor(const agent *cfg)
 }
 
 // Helper for translating the verification_mode enum to a string for JSON output.
-static const char *w_agent_verify_mode_str(int verification_mode)
+static const char* w_agent_verify_mode_str(int verification_mode)
 {
-    switch (verification_mode) {
-    case AGENT_VERIFY_FULL:
-        return "full";
-    case AGENT_VERIFY_CERT:
-        return "certificate";
-    case AGENT_VERIFY_NONE:
-        return "none";
-    case AGENT_VERIFY_SYSTEM:
-        return "system";
-    default:
-        return "unknown";
+    switch (verification_mode)
+    {
+        case AGENT_VERIFY_FULL: return "full";
+        case AGENT_VERIFY_CERT: return "certificate";
+        case AGENT_VERIFY_NONE: return "none";
+        case AGENT_VERIFY_SYSTEM: return "system";
+        default: return "unknown";
     }
 }
 
-cJSON *getAgentConfig(void) {
+cJSON* getAgentConfig(void)
+{
 
-    if (!agt) {
+    if (!agt)
+    {
         return NULL;
     }
 
     unsigned int i;
-    cJSON *root = cJSON_CreateObject();
-    cJSON *agent_config = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* agent_config = cJSON_CreateObject();
 
-    if (agt->profile) cJSON_AddStringToObject(agent_config,"config-profile",agt->profile);
-    cJSON_AddNumberToObject(agent_config,"notify_time",agt->notify_time);
-    cJSON_AddNumberToObject(agent_config,"time-reconnect",agt->max_time_reconnect_try);
-    if (agt->flags.auto_restart) cJSON_AddStringToObject(agent_config,"auto_restart","yes"); else cJSON_AddStringToObject(agent_config,"auto_restart","no");
-    if (agt->flags.remote_conf) cJSON_AddStringToObject(agent_config,"remote_conf","yes"); else cJSON_AddStringToObject(agent_config,"remote_conf","no");
-    if (agt->server) {
-        cJSON *servers = cJSON_CreateArray();
-        for (i=0;agt->server[i].rip;i++) {
-            cJSON *server = cJSON_CreateObject();
+    if (agt->profile)
+        cJSON_AddStringToObject(agent_config, "config-profile", agt->profile);
+    cJSON_AddNumberToObject(agent_config, "notify_time", agt->notify_time);
+    cJSON_AddNumberToObject(agent_config, "time-reconnect", agt->max_time_reconnect_try);
+    if (agt->flags.auto_restart)
+        cJSON_AddStringToObject(agent_config, "auto_restart", "yes");
+    else
+        cJSON_AddStringToObject(agent_config, "auto_restart", "no");
+    if (agt->flags.remote_conf)
+        cJSON_AddStringToObject(agent_config, "remote_conf", "yes");
+    else
+        cJSON_AddStringToObject(agent_config, "remote_conf", "no");
+    if (agt->server)
+    {
+        cJSON* servers = cJSON_CreateArray();
+        for (i = 0; agt->server[i].rip; i++)
+        {
+            cJSON* server = cJSON_CreateObject();
             cJSON_AddStringToObject(server, "address", agt->server[i].rip);
             cJSON_AddNumberToObject(server, "port", agt->server[i].port);
 
@@ -467,13 +504,13 @@ cJSON *getAgentConfig(void) {
             cJSON_AddNumberToObject(server, "max_retries", agt->server[i].max_retries);
             cJSON_AddNumberToObject(server, "retry_interval", agt->server[i].retry_interval);
 
-            cJSON_AddItemToArray(servers,server);
+            cJSON_AddItemToArray(servers, server);
         }
-        cJSON_AddItemToObject(agent_config,"manager",servers);
+        cJSON_AddItemToObject(agent_config, "manager", servers);
     }
 
     {
-        cJSON *enrollment_cfg = cJSON_CreateObject();
+        cJSON* enrollment_cfg = cJSON_CreateObject();
         cJSON_AddStringToObject(enrollment_cfg, "enabled", agt->enrollment.enabled ? "yes" : "no");
         cJSON_AddNumberToObject(enrollment_cfg, "delay_after_enrollment", agt->enrollment.delay_after_enrollment);
 
@@ -487,36 +524,39 @@ cJSON *getAgentConfig(void) {
         if (agt->enrollment.authorization_pass_path)
             cJSON_AddStringToObject(enrollment_cfg, "authorization_pass_path", agt->enrollment.authorization_pass_path);
 
-        cJSON_AddItemToObject(agent_config,"enrollment",enrollment_cfg);
+        cJSON_AddItemToObject(agent_config, "enrollment", enrollment_cfg);
     }
     // <ssl>
-    cJSON *ssl = cJSON_CreateObject();
+    cJSON* ssl = cJSON_CreateObject();
     cJSON_AddStringToObject(ssl, "verification_mode", w_agent_verify_mode_str(agt->ssl.verification_mode));
-    if (agt->ssl.certificate) cJSON_AddStringToObject(ssl, "certificate", agt->ssl.certificate);
-    if (agt->ssl.key) cJSON_AddStringToObject(ssl, "key", agt->ssl.key);
-    if (agt->ssl.certificate_authorities) cJSON_AddStringToObject(ssl, "certificate_authorities", agt->ssl.certificate_authorities);
-    if (agt->ssl.ciphers) cJSON_AddStringToObject(ssl, "ciphers", agt->ssl.ciphers);
+    if (agt->ssl.certificate)
+        cJSON_AddStringToObject(ssl, "certificate", agt->ssl.certificate);
+    if (agt->ssl.key)
+        cJSON_AddStringToObject(ssl, "key", agt->ssl.key);
+    if (agt->ssl.certificate_authorities)
+        cJSON_AddStringToObject(ssl, "certificate_authorities", agt->ssl.certificate_authorities);
+    if (agt->ssl.ciphers)
+        cJSON_AddStringToObject(ssl, "ciphers", agt->ssl.ciphers);
     cJSON_AddItemToObject(agent_config, "ssl", ssl);
 
     // <batch>
-    cJSON *batch = cJSON_CreateObject();
+    cJSON* batch = cJSON_CreateObject();
     /* Zero means <size> was never configured, and every reader of that zero applies
      * DEFAULT_BATCH_SIZE_BYTES, so the report states the cap actually in force rather
      * than the sentinel. Not seeded into agt: that value is passed on to
      * asp_set_session_max_bytes(), where a seed would read as an explicit setting. */
-    cJSON_AddNumberToObject(batch, "size",
-                            agt->batch.size > 0 ? agt->batch.size : DEFAULT_BATCH_SIZE_BYTES);
+    cJSON_AddNumberToObject(batch, "size", agt->batch.size > 0 ? agt->batch.size : DEFAULT_BATCH_SIZE_BYTES);
     cJSON_AddNumberToObject(batch, "interval", agt->batch.interval);
     cJSON_AddItemToObject(agent_config, "batch", batch);
 
     /* The two periodic report pushes (#37843). Reported so the /config document
      * says whether the agent is reporting, and on what cadence. */
-    cJSON *stats_report = cJSON_CreateObject();
+    cJSON* stats_report = cJSON_CreateObject();
     cJSON_AddStringToObject(stats_report, "enabled", agt->stats_report.enabled ? "yes" : "no");
     cJSON_AddNumberToObject(stats_report, "interval", agt->stats_report.interval);
     cJSON_AddItemToObject(agent_config, "stats_report", stats_report);
 
-    cJSON *config_report = cJSON_CreateObject();
+    cJSON* config_report = cJSON_CreateObject();
     cJSON_AddStringToObject(config_report, "enabled", agt->config_report.enabled ? "yes" : "no");
     cJSON_AddNumberToObject(config_report, "interval", agt->config_report.interval);
     cJSON_AddItemToObject(agent_config, "config_report", config_report);
@@ -527,16 +567,21 @@ cJSON *getAgentConfig(void) {
 }
 
 #ifndef WIN32
-cJSON *getAntiTamperingConfig(void) {
+cJSON* getAntiTamperingConfig(void)
+{
 
-    if (!atc) {
+    if (!atc)
+    {
         return NULL;
     }
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *package_uninstallation = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* package_uninstallation = cJSON_CreateObject();
 
-    if (atc->package_uninstallation) cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","yes"); else cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","no");
+    if (atc->package_uninstallation)
+        cJSON_AddStringToObject(package_uninstallation, "package_uninstallation", "yes");
+    else
+        cJSON_AddStringToObject(package_uninstallation, "package_uninstallation", "no");
 
     cJSON_AddItemToObject(root, "package_uninstallation", package_uninstallation);
 
@@ -544,41 +589,42 @@ cJSON *getAntiTamperingConfig(void) {
 }
 #endif
 
-cJSON *getAgentInternalOptions(void) {
+cJSON* getAgentInternalOptions(void)
+{
 
-    cJSON *root = cJSON_CreateObject();
-    cJSON *internals = cJSON_CreateObject();
+    cJSON* root = cJSON_CreateObject();
+    cJSON* internals = cJSON_CreateObject();
 
-    cJSON *agent = cJSON_CreateObject();
+    cJSON* agent = cJSON_CreateObject();
 
 #ifdef WIN32
-    cJSON_AddNumberToObject(agent,"debug",win_debug_level);
+    cJSON_AddNumberToObject(agent, "debug", win_debug_level);
 #else
-    cJSON_AddNumberToObject(agent,"debug",agent_debug_level);
+    cJSON_AddNumberToObject(agent, "debug", agent_debug_level);
 #endif
     /* Read from the internal options: the globals that held these lived in the
      * retired buffer.c/request.c. */
     const int warn_level = getDefine_Int("agent", "warn_level", 1, 100);
-    cJSON_AddNumberToObject(agent,"warn_level",warn_level);
-    cJSON_AddNumberToObject(agent,"normal_level",getDefine_Int("agent", "normal_level", 0, warn_level - 1));
-    cJSON_AddNumberToObject(agent,"tolerance",getDefine_Int("agent", "tolerance", 0, 600));
-    cJSON_AddNumberToObject(agent,"state_interval",interval);
-    cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
+    cJSON_AddNumberToObject(agent, "warn_level", warn_level);
+    cJSON_AddNumberToObject(agent, "normal_level", getDefine_Int("agent", "normal_level", 0, warn_level - 1));
+    cJSON_AddNumberToObject(agent, "tolerance", getDefine_Int("agent", "tolerance", 0, 600));
+    cJSON_AddNumberToObject(agent, "state_interval", interval);
+    cJSON_AddNumberToObject(agent, "remote_conf", remote_conf);
 
-    cJSON_AddItemToObject(internals,"agent",agent);
+    cJSON_AddItemToObject(internals, "agent", agent);
 
-    cJSON *monitord = cJSON_CreateObject();
+    cJSON* monitord = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(monitord,"rotate_log",rotate_log);
-    cJSON_AddNumberToObject(monitord,"compress",log_compress);
-    cJSON_AddNumberToObject(monitord,"keep_log_days",keep_log_days);
-    cJSON_AddNumberToObject(monitord,"day_wait",day_wait);
-    cJSON_AddNumberToObject(monitord,"size_rotate",size_rotate_read);
-    cJSON_AddNumberToObject(monitord,"daily_rotations",daily_rotations);
+    cJSON_AddNumberToObject(monitord, "rotate_log", rotate_log);
+    cJSON_AddNumberToObject(monitord, "compress", log_compress);
+    cJSON_AddNumberToObject(monitord, "keep_log_days", keep_log_days);
+    cJSON_AddNumberToObject(monitord, "day_wait", day_wait);
+    cJSON_AddNumberToObject(monitord, "size_rotate", size_rotate_read);
+    cJSON_AddNumberToObject(monitord, "daily_rotations", daily_rotations);
 
-    cJSON_AddItemToObject(internals,"monitord",monitord);
+    cJSON_AddItemToObject(internals, "monitord", monitord);
 
-    cJSON_AddItemToObject(root,"internal",internals);
+    cJSON_AddItemToObject(root, "internal", internals);
 
     return root;
 }

@@ -26,78 +26,73 @@
  */
 class AgentInfoEventProcessingTest : public ::testing::Test
 {
-    protected:
-        void SetUp() override
+protected:
+    void SetUp() override
+    {
+        m_logOutput.clear();
+        m_reportedEvents.clear();
+
+        m_mockDBSync = std::make_shared<MockDBSync>();
+        m_mockSysInfo = std::make_shared<MockSysInfo>();
+        m_mockFileIO = std::make_shared<MockFileIOUtils>();
+        m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+
+        // Configure expected calls to avoid warnings
+        EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+
+        // Set up callbacks to capture events
+        m_reportDiffFunc = [this](const std::string& event)
         {
-            m_logOutput.clear();
-            m_reportedEvents.clear();
+            m_reportedEvents.push_back(nlohmann::json::parse(event));
+        };
 
-            m_mockDBSync = std::make_shared<MockDBSync>();
-            m_mockSysInfo = std::make_shared<MockSysInfo>();
-            m_mockFileIO = std::make_shared<MockFileIOUtils>();
-            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+        // Note: persist callback removed as per PR feedback - new implementation uses
+        // synchronizeMetadataOrGroups instead of persistDifference with callbacks
 
-            // Configure expected calls to avoid warnings
-            EXPECT_CALL(*m_mockDBSync, handle())
-            .WillRepeatedly(::testing::Return(nullptr));
-
-            // Set up callbacks to capture events
-            m_reportDiffFunc = [this](const std::string & event)
-            {
-                m_reportedEvents.push_back(nlohmann::json::parse(event));
-            };
-
-            // Note: persist callback removed as per PR feedback - new implementation uses
-            // synchronizeMetadataOrGroups instead of persistDifference with callbacks
-
-            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
-            {
-                m_logOutput += msg + "\n";
-            };
-
-            // Create a mock query module function
-            m_queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
-            {
-                // Mock implementation that returns success
-                if (response)
-                {
-                    *response = nullptr;
-                }
-
-                return 0;
-            };
-        }
-
-        void TearDown() override
+        m_logFunc = [this](modules_log_level_t /* level */, const std::string& msg)
         {
-            m_agentInfo.reset();
-            m_mockDBSync.reset();
-            m_mockSysInfo.reset();
-            m_mockFileIO.reset();
-            m_mockFileSystem.reset();
-        }
+            m_logOutput += msg + "\n";
+        };
 
-        std::shared_ptr<MockDBSync> m_mockDBSync;
-        std::shared_ptr<MockSysInfo> m_mockSysInfo;
-        std::shared_ptr<MockFileIOUtils> m_mockFileIO;
-        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
-        std::shared_ptr<AgentInfoImpl> m_agentInfo;
-        std::function<void(const std::string&)> m_reportDiffFunc;
-        std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
-        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
-        std::vector<nlohmann::json> m_reportedEvents;
-        std::string m_logOutput;
+        // Create a mock query module function
+        m_queryModuleFunc =
+            [](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+        {
+            // Mock implementation that returns success
+            if (response)
+            {
+                *response = nullptr;
+            }
+
+            return 0;
+        };
+    }
+
+    void TearDown() override
+    {
+        m_agentInfo.reset();
+        m_mockDBSync.reset();
+        m_mockSysInfo.reset();
+        m_mockFileIO.reset();
+        m_mockFileSystem.reset();
+    }
+
+    std::shared_ptr<MockDBSync> m_mockDBSync;
+    std::shared_ptr<MockSysInfo> m_mockSysInfo;
+    std::shared_ptr<MockFileIOUtils> m_mockFileIO;
+    std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+    std::shared_ptr<AgentInfoImpl> m_agentInfo;
+    std::function<void(const std::string&)> m_reportDiffFunc;
+    std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+    std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
+    std::vector<nlohmann::json> m_reportedEvents;
+    std::string m_logOutput;
 };
 
 TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      m_mockDBSync
-                  );
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>(":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     // Create test data for agent_metadata insertion
     nlohmann::json testData;
@@ -128,13 +123,8 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
 
 TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      m_mockDBSync
-                  );
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>(":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     // Create test data for agent_metadata modification
     nlohmann::json testData;
@@ -164,13 +154,8 @@ TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
 
 TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      m_mockDBSync
-                  );
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>(":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     // Create test data for agent_groups deletion
     nlohmann::json testData;
@@ -190,13 +175,8 @@ TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
 
 TEST_F(AgentInfoEventProcessingTest, ProcessAgentGroupsEvent)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      m_mockDBSync
-                  );
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>(":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     // Create test data for agent_groups
     nlohmann::json testData;
@@ -221,13 +201,8 @@ TEST_F(AgentInfoEventProcessingTest, ProcessEventWithExceptionInCallback)
         throw std::runtime_error("Test exception in report callback");
     };
 
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      throwingReportFunc,
-                      m_logFunc,
-                      m_queryModuleFunc,
-                      m_mockDBSync
-                  );
+    m_agentInfo =
+        std::make_shared<AgentInfoImpl>(":memory:", throwingReportFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync);
 
     nlohmann::json testData;
     testData["agent_id"] = "001";

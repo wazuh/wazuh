@@ -13,9 +13,9 @@
 #include "shared.h"
 
 #ifdef WIN32
-#define LOGCOLLECTOR_STATE      "wazuh-logcollector.state"
+#define LOGCOLLECTOR_STATE "wazuh-logcollector.state"
 #else
-#define LOGCOLLECTOR_STATE      "var/run/wazuh-logcollector.state"
+#define LOGCOLLECTOR_STATE "var/run/wazuh-logcollector.state"
 #endif
 
 #define LOGCOLLECTOR_STATE_FILES_MAX   40                   ///< Size of the statistics hash table
@@ -29,17 +29,19 @@
  * @brief state storage structure
  * key: location option value. value: w_lc_state_file_t
  */
-typedef struct {
-    time_t start;    ///< initial state timestamp
-    OSHash * states; ///< state storage
+typedef struct
+{
+    time_t start;   ///< initial state timestamp
+    OSHash* states; ///< state storage
 } w_lc_state_storage_t;
 
 /**
  * @brief target state storage
  *
  */
-typedef struct {
-    char * name;    ///< target name
+typedef struct
+{
+    char* name;     ///< target name
     uint64_t drops; ///< drop count
 } w_lc_state_target_t;
 
@@ -47,17 +49,19 @@ typedef struct {
  * @brief file state storage
  *
  */
-typedef struct {
-    uint64_t bytes;               ///< bytes count
-    uint64_t events;              ///< events count
-    w_lc_state_target_t ** targets; ///< array of poiters to file's different targets
+typedef struct
+{
+    uint64_t bytes;                ///< bytes count
+    uint64_t events;               ///< events count
+    w_lc_state_target_t** targets; ///< array of poiters to file's different targets
 } w_lc_state_file_t;
 
 /**
  * @brief statistics types
  *
  */
-typedef enum {
+typedef enum
+{
     LC_STATE_GLOBAL = 0x1 << 0,  ///< statistics since the begining of program execution
     LC_STATE_INTERVAL = 0x1 << 1 ///< periodically calculated statistic
 } w_lc_state_type_t;
@@ -76,9 +80,9 @@ void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_ena
  * @return void* default return value for thread function prototype (unused)
  */
 #ifdef WIN32
-DWORD WINAPI w_logcollector_state_main(void * args);
+DWORD WINAPI w_logcollector_state_main(void* args);
 #else
-void * w_logcollector_state_main(void * args);
+void* w_logcollector_state_main(void* args);
 #endif
 
 /**
@@ -88,7 +92,7 @@ void * w_logcollector_state_main(void * args);
  * @param target target name
  * @param dropped true if want to register a drop.
  */
-void w_logcollector_state_update_target(char * fpath, char * target, bool dropped);
+void w_logcollector_state_update_target(char* fpath, char* target, bool dropped);
 
 /**
  * @brief Update/register current event and byte count for a particular file/location
@@ -96,14 +100,14 @@ void w_logcollector_state_update_target(char * fpath, char * target, bool droppe
  * @param fpath file path or locafile location value
  * @param bytes amount of bytes. If bigger than zero, event counter will increment.
  */
-void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
+void w_logcollector_state_update_file(char* fpath, uint64_t bytes);
 
 /**
  * @brief Removes the `fpath` file from statistics
- * 
+ *
  * @param fpath file path or locafile location value
  */
-void w_logcollector_state_delete_file(char * fpath);
+void w_logcollector_state_delete_file(char* fpath);
 
 /**
  * @brief Get current state in JSON format
@@ -111,6 +115,6 @@ void w_logcollector_state_delete_file(char * fpath);
  * @return cJSON* allocated object with current state.
  * The cJSON* is heap allocated memory that must be freed by the caller using cJSON_Delete.
  */
-cJSON * w_logcollector_state_get();
+cJSON* w_logcollector_state_get();
 
 #endif /* LOGCOLLECTOR_STAT_H */

@@ -7,11 +7,10 @@
  * Foundation
  */
 
-
 #ifndef TIME_WRAPPERS_H
 #define TIME_WRAPPERS_H
 
 #include <time.h>
 
-size_t __wrap_strftime(char *s, size_t max, const char *format, const struct tm *tm);
+size_t __wrap_strftime(char* s, size_t max, const char* format, const struct tm* tm);
 #endif

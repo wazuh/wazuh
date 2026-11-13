@@ -6,32 +6,32 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
-*/
+ */
 
 #ifndef OS_INTERNAL_H
 #define OS_INTERNAL_H
 
 /* Prototype for the _OsMatch */
-int _OS_Match(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
-int _os_strncmp(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
-int _os_strcmp_last(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
-int _os_strcmp(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
-int _os_strmatch(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
+int _OS_Match(const char* pattern, const char* str, size_t str_len, size_t size) __attribute__((nonnull));
+int _os_strncmp(const char* pattern, const char* str, size_t str_len, size_t size) __attribute__((nonnull));
+int _os_strcmp_last(const char* pattern, const char* str, size_t str_len, size_t size) __attribute__((nonnull));
+int _os_strcmp(const char* pattern, const char* str, size_t str_len, size_t size) __attribute__((nonnull));
+int _os_strmatch(const char* pattern, const char* str, size_t str_len, size_t size) __attribute__((nonnull));
 
-#define BACKSLASH   '\\'
-#define ENDSTR      '\0'
-#define ENDLINE     '\n'
-#define BEGINREGEX  '^'
-#define ENDREGEX    '$'
-#define OR          '|'
-#define AND         '&'
+#define BACKSLASH  '\\'
+#define ENDSTR     '\0'
+#define ENDLINE    '\n'
+#define BEGINREGEX '^'
+#define ENDREGEX   '$'
+#define OR         '|'
+#define AND        '&'
 
-#define TRUE         1
-#define FALSE        0
+#define TRUE  1
+#define FALSE 0
 
 /* Pattern flags */
-#define BEGIN_SET   0000200
-#define END_SET     0000400
+#define BEGIN_SET 0000200
+#define END_SET   0000400
 
 /* uchar */
 typedef unsigned char uchar;
@@ -43,9 +43,7 @@ typedef unsigned char uchar;
  * a-z or A-Z or 0-9
  * Returns 1 if true
  */
-#define _IsW(x) ((x >= 48 && x <= 57 )|| \
-                 (x >= 65 && x <= 90 )|| \
-                 (x >= 97 && x <= 122))
+#define _IsW(x) ((x >= 48 && x <= 57) || (x >= 65 && x <= 90) || (x >= 97 && x <= 122))
 
 /* Is it a ' ' (blank)
  * Ascii 32
@@ -59,32 +57,22 @@ typedef unsigned char uchar;
 /* Is it '+' or '*'
  * Returns 1 on success
  */
-#define isPlus(x)    ((x == '+') || (x == '*'))
+#define isPlus(x) ((x == '+') || (x == '*'))
 
 /* True char */
-#define TRUECHAR    1
+#define TRUECHAR 1
 
 /* Is "y" a valid "x"?.
  * Returns 1 on success
  */
-#define Regex(x,y)   (regexmap[x][y] == TRUECHAR)
-#define Regex2(x,y)   (x == 'd' && y >= 48 && y <= 57)|| \
-                     (x == 's' && y == 32)|| \
-                     ((x == 'p') && \
-                      ((y >= 40 && y <= 46)|| \
-                      (y >= 58 && y <= 63)))|| \
-                     ((x == 'w') && \
-                      ((y == '_')|| \
-                      (y >= 48 && y <= 57)|| \
-                      (y >= 65 && y <= 90)|| \
-                      (y >= 97 && y <= 122)))|| \
-                     (x == '.')|| \
-                     ((x == '\\') && (y == '\\'))|| \
-                     ((x == 'n') && (y == '\n'))|| \
-                     (x == 'S' && y != 32)|| \
-                     (x == 'D' && (y < 48 || y > 57))|| \
-                     (x == 'W' && (y < 48 || y > 122 || \
-                     (y > 57 && y <65)||(y > 90 && y< 97)))
+#define Regex(x, y) (regexmap[x][y] == TRUECHAR)
+#define Regex2(x, y)                                                                                                   \
+    (x == 'd' && y >= 48 && y <= 57) || (x == 's' && y == 32) ||                                                       \
+        ((x == 'p') && ((y >= 40 && y <= 46) || (y >= 58 && y <= 63))) ||                                              \
+        ((x == 'w') && ((y == '_') || (y >= 48 && y <= 57) || (y >= 65 && y <= 90) || (y >= 97 && y <= 122))) ||       \
+        (x == '.') || ((x == '\\') && (y == '\\')) || ((x == 'n') && (y == '\n')) || (x == 'S' && y != 32) ||          \
+        (x == 'D' && (y < 48 || y > 57)) ||                                                                            \
+        (x == 'W' && (y < 48 || y > 122 || (y > 57 && y < 65) || (y > 90 && y < 97)))
 
 /* Charmap for case insensitive search */
 extern const uchar charmap[256];

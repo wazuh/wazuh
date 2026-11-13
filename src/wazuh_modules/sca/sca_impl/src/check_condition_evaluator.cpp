@@ -8,14 +8,11 @@ namespace
     {
         switch (type)
         {
-            case ConditionType::All:
-                return "all";
+            case ConditionType::All: return "all";
 
-            case ConditionType::Any:
-                return "any";
+            case ConditionType::Any: return "any";
 
-            case ConditionType::None:
-                return "none";
+            case ConditionType::None: return "none";
         }
 
         return {}; // LCOV_EXCL_LINE - unreachable
@@ -130,14 +127,11 @@ sca::CheckResult CheckConditionEvaluator::Result() const
 
     switch (m_type)
     {
-        case ConditionType::All:
-            return sca::CheckResult::Passed;
+        case ConditionType::All: return sca::CheckResult::Passed;
 
-        case ConditionType::Any:
-            return sca::CheckResult::Failed;
+        case ConditionType::Any: return sca::CheckResult::Failed;
 
-        case ConditionType::None:
-            return sca::CheckResult::Passed;
+        case ConditionType::None: return sca::CheckResult::Passed;
 
         // LCOV_EXCL_START - UNREACHABLE
         default:

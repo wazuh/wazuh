@@ -7,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef LOG_ROTATE_WRAPPERS_H
 #define LOG_ROTATE_WRAPPERS_H
 

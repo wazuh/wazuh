@@ -21,10 +21,10 @@ typedef struct callback_ctx
     event_data_t* event;
     const directory_t* config;
     fim_entry* entry;
-    OSList* failed_paths;  // List of paths that failed schema validation (to be deleted after transaction)
+    OSList* failed_paths; // List of paths that failed schema validation (to be deleted after transaction)
 
     // Pending sync flag updates (applied after transaction commit)
-    OSList* pending_sync_updates;  // List of pending_sync_item_t items for sync flag updates
+    OSList* pending_sync_updates; // List of pending_sync_item_t items for sync flag updates
 } callback_ctx;
 
 /**
@@ -188,11 +188,8 @@ void fim_generate_delete_event(const char* file_path, const void* evt_data, cons
  * @param to_delete Flag indicating if the entry should be deleted from the database.
  * @param fallback_cb Flag indicating if a fallback callback should be used.
  */
-void fim_handle_delete_by_path(const char* path,
-                               const event_data_t* evt_data,
-                               const directory_t* config,
-                               bool to_delete,
-                               bool fallback_cb);
+void fim_handle_delete_by_path(
+    const char* path, const event_data_t* evt_data, const directory_t* config, bool to_delete, bool fallback_cb);
 
 /**
  * @brief Main scheduled algorithm for file scan
@@ -248,11 +245,17 @@ void fim_calculate_dbsync_difference(const directory_t* configuration,
  * @param path File path
  * @param sha1_hash SHA1 hash of the file
  * @param document_version Version number of the document stored in the db
- * @param db_sync_event Data returned by dbsync in JSON format from where fim attributes will get extracted if no file_data is passed in.
+ * @param db_sync_event Data returned by dbsync in JSON format from where fim attributes will get extracted if no
+ * file_data is passed in.
  * @param file_data file_data structure from where the fim attributes will get extracted (Optional)
  * @param directories_list The OSList of directory_t objects to use for configuration lookup (must not be NULL)
  * @return Complete stateful event cJSON object (must be freed by caller)
  */
-cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON* dbsync_event, const fim_file_data* file_data, const OSList* directories_list);
+cJSON* build_stateful_event_file(const char* path,
+                                 const char* sha1_hash,
+                                 const uint64_t document_version,
+                                 const cJSON* dbsync_event,
+                                 const fim_file_data* file_data,
+                                 const OSList* directories_list);
 
 #endif

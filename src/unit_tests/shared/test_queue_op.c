@@ -18,45 +18,52 @@
 
 static const int QUEUE_SIZE = 5;
 static void (*callback_ptr)(void) = NULL;
-static w_queue_t *queue_ptr = NULL; // Local ptr to queue
+static w_queue_t* queue_ptr = NULL; // Local ptr to queue
 /****************SETUP/TEARDOWN******************/
-int setup_queue(void **state) {
-    w_queue_t *queue = queue_init(QUEUE_SIZE);
+int setup_queue(void** state)
+{
+    w_queue_t* queue = queue_init(QUEUE_SIZE);
     *state = queue;
     queue_ptr = queue;
     return 0;
 }
 
-int teardown_queue(void **state) {
-    w_queue_t *queue = *state;
+int teardown_queue(void** state)
+{
+    w_queue_t* queue = *state;
     queue_free(queue);
     callback_ptr = NULL;
     queue_ptr = NULL;
     return 0;
 }
 
-//Unlocks blocked queue
-void callback_queue_pop_ex() {
+// Unlocks blocked queue
+void callback_queue_pop_ex()
+{
     queue_pop_ex(queue_ptr);
 }
 
-void callback_queue_push_ex() {
-    int *ptr = malloc(sizeof(int));
+void callback_queue_push_ex()
+{
+    int* ptr = malloc(sizeof(int));
     *ptr = 0;
     queue_push_ex(queue_ptr, ptr);
 }
 /*****************WRAPS********************/
-int __wrap_pthread_mutex_lock(pthread_mutex_t *mutex) {
+int __wrap_pthread_mutex_lock(pthread_mutex_t* mutex)
+{
     check_expected_ptr(mutex);
     return 0;
 }
 
-int __wrap_pthread_mutex_unlock(pthread_mutex_t *mutex) {
+int __wrap_pthread_mutex_unlock(pthread_mutex_t* mutex)
+{
     check_expected_ptr(mutex);
     return 0;
 }
 
-int __wrap_pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex) {
+int __wrap_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex)
+{
     check_expected_ptr(cond);
     check_expected_ptr(mutex);
     // callback function to avoid infinite loops when testing
@@ -65,7 +72,8 @@ int __wrap_pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex) {
     return 0;
 }
 
-int __wrap_pthread_cond_timedwait(pthread_cond_t *cond,pthread_mutex_t *mutex, const struct timespec * abstime) {
+int __wrap_pthread_cond_timedwait(pthread_cond_t* cond, pthread_mutex_t* mutex, const struct timespec* abstime)
+{
     check_expected_ptr(cond);
     check_expected_ptr(mutex);
     check_expected_ptr(abstime);
@@ -75,35 +83,41 @@ int __wrap_pthread_cond_timedwait(pthread_cond_t *cond,pthread_mutex_t *mutex, c
     return mock_type(int);
 }
 
-int __wrap_pthread_cond_signal(pthread_cond_t *cond) {
+int __wrap_pthread_cond_signal(pthread_cond_t* cond)
+{
     check_expected_ptr(cond);
     return 0;
 }
 
 /****************TESTS***************************/
-void test_queue_full(void **state){
-    w_queue_t *queue = *state;
-    for (int i=0; i < QUEUE_SIZE - 1; i++){
+void test_queue_full(void** state)
+{
+    w_queue_t* queue = *state;
+    for (int i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         assert_int_equal(queue_full(queue), 0);
         queue->begin++;
     }
     assert_int_equal(queue_full(queue), 1);
 }
 
-void test_queue_full_ex(void **state) {
-    w_queue_t *queue = *state;
-    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE);
+void test_queue_full_ex(void** state)
+{
+    w_queue_t* queue = *state;
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE);
     expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE);
 
-    for (int i=0; i < QUEUE_SIZE - 1; i++){
+    for (int i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         assert_int_equal(queue_full_ex(queue), 0);
         queue->begin++;
     }
     assert_int_equal(queue_full_ex(queue), 1);
 }
 
-void test_queue_empty(void **state){
-    w_queue_t *queue = *state;
+void test_queue_empty(void** state)
+{
+    w_queue_t* queue = *state;
     assert_int_equal(queue_empty(queue), 1);
     queue->begin++;
     assert_int_equal(queue_empty(queue), 0);
@@ -111,9 +125,10 @@ void test_queue_empty(void **state){
     assert_int_equal(queue_empty(queue), 1);
 }
 
-void test_queue_get_percentage_ex(void ** state) {
+void test_queue_get_percentage_ex(void** state)
+{
 
-    w_queue_t * queue = *state;
+    w_queue_t* queue = *state;
 
     // empty
     expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
@@ -121,7 +136,8 @@ void test_queue_get_percentage_ex(void ** state) {
     assert_float_equal(queue_get_percentage_ex(queue), 0.0f, 0.01f);
 
     // quarter full
-    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+    for (int i = 0; i < QUEUE_SIZE / 4; i++)
+    {
         queue_push(queue, NULL);
     }
     expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
@@ -129,7 +145,8 @@ void test_queue_get_percentage_ex(void ** state) {
     assert_float_equal(queue_get_percentage_ex(queue), 0.25f, 0.01f);
 
     // half full
-    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+    for (int i = 0; i < QUEUE_SIZE / 4; i++)
+    {
         queue_push(queue, NULL);
     }
     expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
@@ -137,7 +154,8 @@ void test_queue_get_percentage_ex(void ** state) {
     assert_float_equal(queue_get_percentage_ex(queue), 0.5f, 0.01f);
 
     // three quarters full
-    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+    for (int i = 0; i < QUEUE_SIZE / 4; i++)
+    {
         queue_push(queue, NULL);
     }
     expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
@@ -145,7 +163,8 @@ void test_queue_get_percentage_ex(void ** state) {
     assert_float_equal(queue_get_percentage_ex(queue), 0.75f, 0.01f);
 
     // full
-    for (int i = 0; i < QUEUE_SIZE / 4; i++) {
+    for (int i = 0; i < QUEUE_SIZE / 4; i++)
+    {
         queue_push(queue, NULL);
     }
     expect_value(__wrap_pthread_mutex_lock, mutex, &queue->mutex);
@@ -153,7 +172,8 @@ void test_queue_get_percentage_ex(void ** state) {
     assert_float_equal(queue_get_percentage_ex(queue), 1.0f, 0.01f);
 
     // empty
-    for (int i = 0; i < QUEUE_SIZE; i++) {
+    for (int i = 0; i < QUEUE_SIZE; i++)
+    {
         queue_pop(queue);
     }
 
@@ -162,11 +182,13 @@ void test_queue_get_percentage_ex(void ** state) {
     assert_float_equal(queue_get_percentage_ex(queue), 0.0f, 0.01f);
 }
 
-void test_queue_push(void **state) {
-    w_queue_t *queue = *state;
+void test_queue_push(void** state)
+{
+    w_queue_t* queue = *state;
     int i;
-    int *ptr = NULL;
-    for (i=0; i < QUEUE_SIZE - 1; i++){
+    int* ptr = NULL;
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = malloc(sizeof(int));
         *ptr = i;
         // Should fit QUEUE_SIZE - 1 elements
@@ -175,22 +197,25 @@ void test_queue_push(void **state) {
     // Should now be full
     assert_int_equal(queue_push(queue, ptr), -1);
     // Validate elements are in queue
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = queue->data[i];
         assert_int_equal(*ptr, i);
         os_free(ptr);
     }
 }
 
-void test_queue_push_ex(void **state) {
-    w_queue_t *queue = *state;
+void test_queue_push_ex(void** state)
+{
+    w_queue_t* queue = *state;
     int i;
-    int *ptr = NULL;
-    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE);
+    int* ptr = NULL;
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE);
     expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available, QUEUE_SIZE - 1);
     expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE);
 
-    for (i=0; i < QUEUE_SIZE - 1; i++){
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = malloc(sizeof(int));
         *ptr = i;
         // Should fit QUEUE_SIZE - 1 elements
@@ -199,18 +224,20 @@ void test_queue_push_ex(void **state) {
     // Should now be full
     assert_int_equal(queue_push_ex(queue, ptr), -1);
     // Validate elements are in queue
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = queue->data[i];
         assert_int_equal(*ptr, i);
         os_free(ptr);
     }
 }
 
-void test_queue_push_ex_block(void **state) {
-    w_queue_t *queue = *state;
+void test_queue_push_ex_block(void** state)
+{
+    w_queue_t* queue = *state;
     int i;
-    int *ptr = NULL;
-    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE + 1);
+    int* ptr = NULL;
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE + 1);
     expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE + 1);
 
     // Set callback and wait
@@ -218,7 +245,8 @@ void test_queue_push_ex_block(void **state) {
     expect_value(__wrap_pthread_cond_wait, mutex, &queue->mutex);
     callback_ptr = callback_queue_pop_ex;
 
-    for (i=0; i < QUEUE_SIZE - 1; i++){
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = malloc(sizeof(int));
         *ptr = i;
         // Should fit QUEUE_SIZE - 1 elements
@@ -232,24 +260,28 @@ void test_queue_push_ex_block(void **state) {
     expect_value(__wrap_pthread_cond_signal, cond, &queue->available);
     assert_int_equal(queue_push_ex_block(queue, ptr), 0);
     // Validate elements are in queue
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = queue->data[i];
         assert_int_equal(*ptr, i);
         os_free(ptr);
     }
 }
 
-void test_queue_pop(void **state) {
-    w_queue_t *queue = *state;
+void test_queue_pop(void** state)
+{
+    w_queue_t* queue = *state;
     int i;
-    int *ptr = NULL;
-    for (i=0; i < QUEUE_SIZE - 1; i++){
+    int* ptr = NULL;
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = malloc(sizeof(int));
         *ptr = i;
         queue_push(queue, ptr);
     }
     // Pop items from full queue
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = queue_pop(queue);
         assert_int_equal(*ptr, i);
         os_free(ptr);
@@ -260,20 +292,23 @@ void test_queue_pop(void **state) {
     os_free(ptr);
 }
 
-void test_queue_pop_ex(void **state) {
-    w_queue_t *queue = *state;
+void test_queue_pop_ex(void** state)
+{
+    w_queue_t* queue = *state;
     int i;
-    int *ptr = NULL;
-    for (i=0; i < QUEUE_SIZE - 1; i++){
+    int* ptr = NULL;
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = malloc(sizeof(int));
         *ptr = i;
         queue_push(queue, ptr);
     }
     // Pop items from full queue
-    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE + 1);
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE + 1);
     expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE + 1);
     expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available_not_empty, QUEUE_SIZE - 1);
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = queue_pop_ex(queue);
         assert_int_equal(*ptr, i);
         os_free(ptr);
@@ -289,21 +324,24 @@ void test_queue_pop_ex(void **state) {
     os_free(ptr);
 }
 
-void test_queue_pop_ex_timedwait_timeout(void **state) {
-    w_queue_t *queue = *state;
+void test_queue_pop_ex_timedwait_timeout(void** state)
+{
+    w_queue_t* queue = *state;
     struct timespec abstime;
     int i;
-    int *ptr = NULL;
-    for (i=0; i < QUEUE_SIZE - 1; i++){
+    int* ptr = NULL;
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = malloc(sizeof(int));
         *ptr = i;
         queue_push(queue, ptr);
     }
     // Pop items from full queue
-    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE);
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE);
     expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE);
     expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available_not_empty, QUEUE_SIZE - 1);
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = queue_pop_ex_timedwait(queue, &abstime);
         assert_int_equal(*ptr, i);
         os_free(ptr);
@@ -317,21 +355,24 @@ void test_queue_pop_ex_timedwait_timeout(void **state) {
     assert_ptr_equal(ptr, NULL);
 }
 
-void test_queue_pop_ex_timedwait_no_timeout(void **state) {
-    w_queue_t *queue = *state;
+void test_queue_pop_ex_timedwait_no_timeout(void** state)
+{
+    w_queue_t* queue = *state;
     struct timespec abstime;
     int i;
-    int *ptr = NULL;
-    for (i=0; i < QUEUE_SIZE - 1; i++){
+    int* ptr = NULL;
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = malloc(sizeof(int));
         *ptr = i;
         queue_push(queue, ptr);
     }
     // Pop items from full queue
-    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE + 1);
+    expect_value_count(__wrap_pthread_mutex_lock, mutex, &queue->mutex, QUEUE_SIZE + 1);
     expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE + 1);
     expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available_not_empty, QUEUE_SIZE - 1);
-    for(i=0; i < QUEUE_SIZE - 1; i++) {
+    for (i = 0; i < QUEUE_SIZE - 1; i++)
+    {
         ptr = queue_pop_ex_timedwait(queue, &abstime);
         assert_int_equal(*ptr, i);
         os_free(ptr);
@@ -399,24 +440,27 @@ void test_try_queue_pop_ex_with_elements(void** state)
 }
 /* A zero size divides by zero in queue_full(); a size whose byte count overflows size_t would
  * allocate a short buffer that queue_push() writes past. Both must be refused before allocating. */
-void test_queue_init_zero_size(void **state) {
-    (void) state;
+void test_queue_init_zero_size(void** state)
+{
+    (void)state;
     static char msg[OS_SIZE_256];
-    snprintf(msg, sizeof(msg), "Invalid queue size 0: it must be between 1 and %zu.", SIZE_MAX / sizeof(void *));
+    snprintf(msg, sizeof(msg), "Invalid queue size 0: it must be between 1 and %zu.", SIZE_MAX / sizeof(void*));
     expect_string(__wrap__merror_exit, formatted_msg, msg);
     expect_assert_failure(queue_init(0));
 }
 
-void test_queue_init_size_overflow(void **state) {
-    (void) state;
+void test_queue_init_size_overflow(void** state)
+{
+    (void)state;
     static char msg[OS_SIZE_256];
-    size_t size = SIZE_MAX / sizeof(void *) + 1;
-    snprintf(msg, sizeof(msg), "Invalid queue size %zu: it must be between 1 and %zu.", size, SIZE_MAX / sizeof(void *));
+    size_t size = SIZE_MAX / sizeof(void*) + 1;
+    snprintf(msg, sizeof(msg), "Invalid queue size %zu: it must be between 1 and %zu.", size, SIZE_MAX / sizeof(void*));
     expect_string(__wrap__merror_exit, formatted_msg, msg);
     expect_assert_failure(queue_init(size));
 }
 /************************************************/
-int main(void) {
+int main(void)
+{
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_queue_full, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_full_ex, setup_queue, teardown_queue),

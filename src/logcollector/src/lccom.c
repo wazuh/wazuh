@@ -17,61 +17,86 @@
 /* Name this daemon reports itself under in the /config and /stats documents. */
 #define LCCOM_MODULE_NAME "logcollector"
 
-#define LEN_LOCATION        (10)    /*!< length of "location"*/
-#define LEN_BOOL_STR        (5)     /*!< length of "false"*/
-#define MAX_LEN_HEADER      (150)   /*!< length of maximun header*/
+#define LEN_LOCATION        (10)  /*!< length of "location"*/
+#define LEN_BOOL_STR        (5)   /*!< length of "false"*/
+#define MAX_LEN_HEADER      (150) /*!< length of maximun header*/
 #define OFFSET_HEADER_TAGS  (3)
 #define OFFSET_CLOSING_TAGS (2)
 #define AMOUNT_CLOSING_TAGS (4)
 
-#define TAG_ERROR           "{\"error\""
-#define TAG_DATA            "\"data\""
-#define TAG_GLOBAL          "\"global\""
-#define TAG_FILES           "\"files\""
-#define TAG_INTERVAL        "\"interval\""
-#define TAG_LOCATION        "\"location\""
+#define TAG_ERROR    "{\"error\""
+#define TAG_DATA     "\"data\""
+#define TAG_GLOBAL   "\"global\""
+#define TAG_FILES    "\"files\""
+#define TAG_INTERVAL "\"interval\""
+#define TAG_LOCATION "\"location\""
 
-bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amountObj);
-uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, size_t *ptrs, char *output, size_t *sizeOutput);
-void addHeader(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader);
-void addClosingTags(char *strJson);
-void extractHeadersFromJson(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t *LenHeaderInterval, size_t *LenHeaderData, size_t *LenHeaderGlobal);
-void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t LenHeaderInterval, size_t LenHeaderData, size_t LenHeaderGlobal, size_t counter, bool getNextPage);
+bool getObjectIndexFromJsonStats(char* outjson_aux, size_t* ptrs, uint16_t* amountObj);
+uint16_t
+checkJson64k(char* outjson, uint16_t initialIndex, uint16_t amountObj, size_t* ptrs, char* output, size_t* sizeOutput);
+void addHeader(char* strJson, char* bufferTmp, char* headerData, size_t lenHeaderData, char* header, size_t lenHeader);
+void addClosingTags(char* strJson);
+void extractHeadersFromJson(char* buffJson,
+                            char* headerGlobal,
+                            char* headerInterval,
+                            char* headerData,
+                            size_t* LenHeaderInterval,
+                            size_t* LenHeaderData,
+                            size_t* LenHeaderGlobal);
+void addStartandEndTagsToJsonStrBlock(char* buffJson,
+                                      char* headerGlobal,
+                                      char* headerInterval,
+                                      char* headerData,
+                                      size_t LenHeaderInterval,
+                                      size_t LenHeaderData,
+                                      size_t LenHeaderGlobal,
+                                      size_t counter,
+                                      bool getNextPage);
 bool isJsonUpdated(void);
-uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage);
-void replaceBoolToStr(char *buffer, char *match, bool value);
+uint16_t getJsonStr64kBlockFromLatestIndex(char** output, bool getNextPage);
+void replaceBoolToStr(char* buffer, char* match, bool value);
 
-size_t lccom_dispatch(char * command, char ** output){
+size_t lccom_dispatch(char* command, char** output)
+{
 
-    const char *rcv_comm = command;
-    char *rcv_args = NULL;
+    const char* rcv_comm = command;
+    char* rcv_args = NULL;
 
-    if ((rcv_args = strchr(rcv_comm, ' '))){
+    if ((rcv_args = strchr(rcv_comm, ' ')))
+    {
         *rcv_args = '\0';
         rcv_args++;
     }
 
-    if (strcmp(rcv_comm, "getconfig") == 0){
+    if (strcmp(rcv_comm, "getconfig") == 0)
+    {
         // getconfig section
-        if (!rcv_args){
+        if (!rcv_args)
+        {
             mdebug1("LCCOM getconfig needs arguments.");
             os_strdup("err LCCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return lccom_getconfig(rcv_args, output);
-
-    } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getallconfig") == 0)
+    {
         return lccom_getallconfig(output);
-
-    } else if (strcmp(rcv_comm, "getallstats") == 0) {
+    }
+    else if (strcmp(rcv_comm, "getallstats") == 0)
+    {
         return lccom_getallstats(output);
-
-    } else if (strcmp(rcv_comm, "getstate") == 0) {
-        if (rcv_args && !strncmp(rcv_args, "next", 4)){
+    }
+    else if (strcmp(rcv_comm, "getstate") == 0)
+    {
+        if (rcv_args && !strncmp(rcv_args, "next", 4))
+        {
             return lccom_getstate(output, true);
         }
         return lccom_getstate(output, false);
-    } else {
+    }
+    else
+    {
         mdebug1("LCCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
@@ -87,15 +112,18 @@ size_t lccom_dispatch(char * command, char ** output){
  * @return true all indexes are stored
  * @return false not all indexes are stored
  */
-bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amountObj) {
+bool getObjectIndexFromJsonStats(char* outjson_aux, size_t* ptrs, uint16_t* amountObj)
+{
     bool isReadyIndex = false;
     int i = 0;
-    ptrs[i++] = (size_t)outjson_aux;   //ptrs[0] inicio de estadisticas sin 1er location
+    ptrs[i++] = (size_t)outjson_aux; // ptrs[0] inicio de estadisticas sin 1er location
 
-    while (outjson_aux != NULL) {
+    while (outjson_aux != NULL)
+    {
         outjson_aux = strstr(outjson_aux, TAG_LOCATION);
-        if (outjson_aux == NULL) {
-            isReadyIndex =  true;
+        if (outjson_aux == NULL)
+        {
+            isReadyIndex = true;
             break;
         }
         ptrs[i++] = (size_t)(&outjson_aux[0]);
@@ -116,22 +144,29 @@ bool getObjectIndexFromJsonStats(char *outjson_aux, size_t *ptrs, uint16_t *amou
  * @param sizeOutput size output
  * @return uint16_t last calculated index
  */
-uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, size_t *ptrs, char *output, size_t *sizeOutput) {
+uint16_t
+checkJson64k(char* outjson, uint16_t initialIndex, uint16_t amountObj, size_t* ptrs, char* output, size_t* sizeOutput)
+{
 
     size_t counter = 0;
     uint16_t currentIndex = (initialIndex == 0) ? 1 : initialIndex;
     uint16_t lastIndex = 0;
 
-    if (output != NULL && outjson != NULL) {
-        while ( currentIndex < amountObj ) {
-            size_t len = ptrs[currentIndex] - ptrs[currentIndex-1];
+    if (output != NULL && outjson != NULL)
+    {
+        while (currentIndex < amountObj)
+        {
+            size_t len = ptrs[currentIndex] - ptrs[currentIndex - 1];
             size_t currentLength = len;
             counter += currentLength;
-            if (counter < OS_MAXSTR - OS_SIZE_1024) {
+            if (counter < OS_MAXSTR - OS_SIZE_1024)
+            {
                 currentIndex++;
-            } else {
+            }
+            else
+            {
                 memset(output, 0, OS_MAXSTR);
-                memcpy(output, (const char *)ptrs[initialIndex], ptrs[currentIndex-1] - ptrs[initialIndex]);
+                memcpy(output, (const char*)ptrs[initialIndex], ptrs[currentIndex - 1] - ptrs[initialIndex]);
                 lastIndex = currentIndex - 1;
                 counter = 0;
                 currentIndex = 1;
@@ -139,11 +174,13 @@ uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, 
             }
         }
 
-        if (currentIndex != 1 && (counter < OS_MAXSTR - OS_SIZE_1024)) {
+        if (currentIndex != 1 && (counter < OS_MAXSTR - OS_SIZE_1024))
+        {
             memset(output, 0, OS_MAXSTR);
-            strncpy(output, outjson + ptrs[initialIndex] - ptrs[0],
-                ptrs[currentIndex-1] - ptrs[initialIndex == 0 ? initialIndex : (initialIndex-1)] +
-                strlen(outjson + ptrs[currentIndex-1] - ptrs[0]));
+            strncpy(output,
+                    outjson + ptrs[initialIndex] - ptrs[0],
+                    ptrs[currentIndex - 1] - ptrs[initialIndex == 0 ? initialIndex : (initialIndex - 1)] +
+                        strlen(outjson + ptrs[currentIndex - 1] - ptrs[0]));
         }
     }
     *sizeOutput = counter;
@@ -160,12 +197,14 @@ uint16_t checkJson64k(char *outjson, uint16_t initialIndex, uint16_t amountObj, 
  * @param header header tag to object global/interval
  * @param lenHeader header tag length for object global/interval
  */
-void addHeader(char *strJson, char *bufferTmp, char *headerData, size_t lenHeaderData, char *header, size_t lenHeader) {
-    if (bufferTmp != NULL && strJson != NULL) {
+void addHeader(char* strJson, char* bufferTmp, char* headerData, size_t lenHeaderData, char* header, size_t lenHeader)
+{
+    if (bufferTmp != NULL && strJson != NULL)
+    {
         memcpy(bufferTmp, headerData, lenHeaderData);
         memcpy(bufferTmp + lenHeaderData, header, lenHeader);
         memcpy(bufferTmp + lenHeaderData + lenHeader, strJson, OS_MAXSTR - lenHeaderData - lenHeader - 1);
-        memset(strJson, 0 , OS_MAXSTR);
+        memset(strJson, 0, OS_MAXSTR);
         memcpy(strJson, bufferTmp, OS_MAXSTR - 1);
     }
 }
@@ -175,8 +214,10 @@ void addHeader(char *strJson, char *bufferTmp, char *headerData, size_t lenHeade
  *
  * @param strJson json string split with opening tags but without closing tags, no greater than 64k
  */
-void addClosingTags(char *strJson) {
-    if (strJson != NULL) {
+void addClosingTags(char* strJson)
+{
+    if (strJson != NULL)
+    {
         memcpy(strJson + strlen(strJson) - OFFSET_CLOSING_TAGS, "]}}}", AMOUNT_CLOSING_TAGS);
     }
 }
@@ -192,34 +233,50 @@ void addClosingTags(char *strJson) {
  * @param LenHeaderData pointer to store length of data
  * @param LenHeaderGlobal pointer to store length of global
  */
-void extractHeadersFromJson(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t *LenHeaderInterval, size_t *LenHeaderData, size_t *LenHeaderGlobal) {
-    char *ptrInterval = NULL;
-    char *ptrFilesInterval = NULL;
-    char *ptrGlobal = NULL;
-    char *ptrFilesGlobal = NULL;
-    char *ptrData = NULL;
+void extractHeadersFromJson(char* buffJson,
+                            char* headerGlobal,
+                            char* headerInterval,
+                            char* headerData,
+                            size_t* LenHeaderInterval,
+                            size_t* LenHeaderData,
+                            size_t* LenHeaderGlobal)
+{
+    char* ptrInterval = NULL;
+    char* ptrFilesInterval = NULL;
+    char* ptrGlobal = NULL;
+    char* ptrFilesGlobal = NULL;
+    char* ptrData = NULL;
 
-    if (buffJson != NULL) {
-        if (headerGlobal != NULL && headerInterval != NULL) {
-            if ((ptrGlobal = strstr(buffJson, TAG_GLOBAL)) != NULL) {
-                if ((ptrFilesGlobal = strstr(ptrGlobal, TAG_FILES)) != NULL) {
+    if (buffJson != NULL)
+    {
+        if (headerGlobal != NULL && headerInterval != NULL)
+        {
+            if ((ptrGlobal = strstr(buffJson, TAG_GLOBAL)) != NULL)
+            {
+                if ((ptrFilesGlobal = strstr(ptrGlobal, TAG_FILES)) != NULL)
+                {
                     *LenHeaderGlobal = ptrFilesGlobal - ptrGlobal + strlen(TAG_FILES) + OFFSET_HEADER_TAGS;
                     memcpy(headerGlobal, ptrGlobal, *LenHeaderGlobal);
                 }
             }
         }
 
-        if (headerInterval != NULL && LenHeaderInterval != NULL) {
-            if ((ptrInterval = strstr(buffJson, TAG_INTERVAL)) != NULL) {
-                if ((ptrFilesInterval = strstr(ptrInterval, TAG_FILES)) != NULL) {
+        if (headerInterval != NULL && LenHeaderInterval != NULL)
+        {
+            if ((ptrInterval = strstr(buffJson, TAG_INTERVAL)) != NULL)
+            {
+                if ((ptrFilesInterval = strstr(ptrInterval, TAG_FILES)) != NULL)
+                {
                     *LenHeaderInterval = ptrFilesInterval - ptrInterval + strlen(TAG_FILES) + OFFSET_HEADER_TAGS;
                     memcpy(headerInterval, ptrInterval, *LenHeaderInterval);
                 }
             }
         }
 
-        if (headerData != NULL && LenHeaderData != NULL) {
-            if ((ptrData = strstr(buffJson, TAG_DATA)) != NULL) {
+        if (headerData != NULL && LenHeaderData != NULL)
+        {
+            if ((ptrData = strstr(buffJson, TAG_DATA)) != NULL)
+            {
                 *LenHeaderData = ptrData + strlen(TAG_FILES) - buffJson + 1;
                 memcpy(headerData, buffJson, *LenHeaderData);
             }
@@ -240,40 +297,62 @@ void extractHeadersFromJson(char *buffJson, char *headerGlobal, char *headerInte
  * @param counter block size, if it is 0 it means that the block is larger than 64KB
  * @param getNextPage false mean that start from first page, otherwise the get next page sequentially
  */
-void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *headerInterval, char *headerData, size_t LenHeaderInterval, size_t LenHeaderData, size_t LenHeaderGlobal, size_t counter, bool getNextPage) {
+void addStartandEndTagsToJsonStrBlock(char* buffJson,
+                                      char* headerGlobal,
+                                      char* headerInterval,
+                                      char* headerData,
+                                      size_t LenHeaderInterval,
+                                      size_t LenHeaderData,
+                                      size_t LenHeaderGlobal,
+                                      size_t counter,
+                                      bool getNextPage)
+{
     static bool flag_interval = false;
-    static bool flag_global   = false;
+    static bool flag_global = false;
     char bufferTmp[OS_MAXSTR] = {0};
     memset(bufferTmp, 0, OS_MAXSTR);
 
     /* starts from the first page when the request is getstate*/
-    if (getNextPage == false) {
+    if (getNextPage == false)
+    {
         flag_interval = false;
-        flag_global   = false;
+        flag_global = false;
     }
 
-    if (buffJson != NULL && headerGlobal != NULL && headerInterval != NULL && headerData != NULL) {
-        if (flag_global == false) {
-            if (strstr(buffJson, TAG_ERROR) != NULL) {
-                if (strstr(buffJson, TAG_DATA) != NULL) {
-                    if (strstr(buffJson, TAG_GLOBAL) != NULL) {
+    if (buffJson != NULL && headerGlobal != NULL && headerInterval != NULL && headerData != NULL)
+    {
+        if (flag_global == false)
+        {
+            if (strstr(buffJson, TAG_ERROR) != NULL)
+            {
+                if (strstr(buffJson, TAG_DATA) != NULL)
+                {
+                    if (strstr(buffJson, TAG_GLOBAL) != NULL)
+                    {
                         flag_global = true;
-                        if (strstr(buffJson, TAG_FILES) != NULL) {
-                            if (strstr(buffJson, TAG_INTERVAL) != NULL) {
+                        if (strstr(buffJson, TAG_FILES) != NULL)
+                        {
+                            if (strstr(buffJson, TAG_INTERVAL) != NULL)
+                            {
                                 flag_interval = true;
-                                if (counter == 0) {
+                                if (counter == 0)
+                                {
                                     /* 1: find error,data,global,files,intervals,files
                                             and greather than 64k
                                     */
                                     addClosingTags(buffJson);
-                                } else {
+                                }
+                                else
+                                {
                                     /* 2: find error,data,global,files,intervals,files
                                             and lower than 64k, it closes self
                                     */
                                     flag_interval = false;
                                     flag_global = false;
                                 }
-                            } else {
+                            }
+                            else
+                            {
                                 /* 3:
                                 find error,data,global,files, dont find intervals,files
                                 and greather than 64k
@@ -282,29 +361,39 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
                                 flag_interval = false;
                             }
                         }
-                    } else {
+                    }
+                    else
+                    {
                         flag_global = false;
                         mwarn("'global' tag no found in logcollector JSON stats");
                     }
                 }
             }
-        } else if (flag_interval == false && flag_global == true) {
-            if (strstr(buffJson, TAG_INTERVAL) != NULL) {
+        }
+        else if (flag_interval == false && flag_global == true)
+        {
+            if (strstr(buffJson, TAG_INTERVAL) != NULL)
+            {
                 flag_interval = true;
-                if (counter == 0) {
+                if (counter == 0)
+                {
                     /* 4: remainder of first block onwards, already find global
                     find intervals,files and greather than 64k
                     */
                     addClosingTags(buffJson);
                     addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
-                } else  {
+                }
+                else
+                {
                     /* 5: remainder of first block onwards, already find global
                     find intervals,files and lower than 64k, it closes self
                     */
                     addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
                     flag_interval = false;
                 }
-            } else {
+            }
+            else
+            {
                 /* 6: remainder of first block onwards, already find global
                 intervals,files not found and greather than 64k
                 always  global and interval are full json therefore dont is need lower than 64k
@@ -313,15 +402,20 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
                 addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerGlobal, LenHeaderGlobal);
                 flag_interval = false;
             }
-        } else if (flag_interval == true && flag_global == true) {
-            if (counter == 0) {
+        }
+        else if (flag_interval == true && flag_global == true)
+        {
+            if (counter == 0)
+            {
                 /* 7:
                 remainder of interval block onwards
                 greather than 64k
                 */
                 addClosingTags(buffJson);
                 addHeader(buffJson, bufferTmp, headerData, LenHeaderData, headerInterval, LenHeaderInterval);
-            } else {
+            }
+            else
+            {
                 /* 8:
                 remainder of interval block onwards
                 lower than 64k, it closes self
@@ -340,16 +434,18 @@ void addStartandEndTagsToJsonStrBlock(char *buffJson, char *headerGlobal, char *
  * @return true it was updated
  * @return false it was not updated
  */
-bool isJsonUpdated(void) {
+bool isJsonUpdated(void)
+{
     static time_t mtime_prev = 0;
     time_t mtime_current = 0;
     struct stat outstat;
-    struct tm *tm_stat;
+    struct tm* tm_stat;
     char date_string[256];
     bool isJsonUpdated = false;
 
     /*should be reset index to the first page when some files are added or removed*/
-    if (w_stat(LOGCOLLECTOR_STATE, &outstat) == 0) {
+    if (w_stat(LOGCOLLECTOR_STATE, &outstat) == 0)
+    {
         tm_stat = localtime(&outstat.st_mtime);
         /* Get localized date string. */
         strftime(date_string, sizeof(date_string), "%c", tm_stat);
@@ -357,7 +453,8 @@ bool isJsonUpdated(void) {
         mdebug2(" %s %s", date_string, LOGCOLLECTOR_STATE);
     }
 
-    if (difftime(mtime_current, mtime_prev) != 0 && mtime_prev != 0) {
+    if (difftime(mtime_current, mtime_prev) != 0 && mtime_prev != 0)
+    {
         mdebug2("Logcollector JSON stats have been updated.");
         isJsonUpdated = true;
     }
@@ -373,7 +470,8 @@ bool isJsonUpdated(void) {
  * @param getNextPage indicate that you should request the next page (true) or first page (false)
  * @return uint16_t size of *output
  */
-uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
+uint16_t getJsonStr64kBlockFromLatestIndex(char** output, bool getNextPage)
+{
     char buffer[OS_MAXSTR] = {0};
     char headerGlobal[MAX_LEN_HEADER] = {0};
     char headerInterval[MAX_LEN_HEADER] = {0};
@@ -389,14 +487,24 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
 
     isReadyIndex = getObjectIndexFromJsonStats(*output, ptrs, &i);
     apiLatestIndex = (getNextPage == false) ? 0 : apiLatestIndex;
-    extractHeadersFromJson(*output, headerGlobal, headerInterval, headerData, &LenHeaderInterval, &LenHeaderData, &LenHeaderGlobal);
+    extractHeadersFromJson(
+        *output, headerGlobal, headerInterval, headerData, &LenHeaderInterval, &LenHeaderData, &LenHeaderGlobal);
 
-    if (isReadyIndex) {
+    if (isReadyIndex)
+    {
         apiLatestIndex = checkJson64k(*output, apiLatestIndex, i, ptrs, buffer, &counter);
-        addStartandEndTagsToJsonStrBlock(buffer, headerGlobal, headerInterval, headerData,
-                                        LenHeaderInterval, LenHeaderData, LenHeaderGlobal, counter, getNextPage);
+        addStartandEndTagsToJsonStrBlock(buffer,
+                                         headerGlobal,
+                                         headerInterval,
+                                         headerData,
+                                         LenHeaderInterval,
+                                         LenHeaderData,
+                                         LenHeaderGlobal,
+                                         counter,
+                                         getNextPage);
 
-        if (apiLatestIndex == i) {
+        if (apiLatestIndex == i)
+        {
             apiLatestIndex = 0;
             i = 0;
             memset(headerGlobal, 0, MAX_LEN_HEADER);
@@ -410,7 +518,7 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
         os_free(*output);
         os_strdup(buffer, *output);
     }
-    return  strlen(buffer);
+    return strlen(buffer);
 }
 
 /**
@@ -420,25 +528,32 @@ uint16_t getJsonStr64kBlockFromLatestIndex(char **output, bool getNextPage) {
  * @param match object name to match from json block
  * @param value true or false
  */
-void replaceBoolToStr(char *buffer, char *match, bool value) {
-    char *ptr = NULL;
-    if (buffer != NULL && match != NULL) {
-        if ((ptr = strstr(buffer, match)) != NULL) {
+void replaceBoolToStr(char* buffer, char* match, bool value)
+{
+    char* ptr = NULL;
+    if (buffer != NULL && match != NULL)
+    {
+        if ((ptr = strstr(buffer, match)) != NULL)
+        {
             memcpy(ptr + strlen(match), value == true ? "true " : "false", LEN_BOOL_STR);
         }
     }
 }
 
-size_t lccom_getstate(char ** output, bool getNextPage) {
+size_t lccom_getstate(char** output, bool getNextPage)
+{
     size_t retval = 0;
-    cJSON * state_json = NULL;
-    cJSON * w_packet = cJSON_CreateObject();
-    if (state_json = w_logcollector_state_get(), state_json == NULL) {
+    cJSON* state_json = NULL;
+    cJSON* w_packet = cJSON_CreateObject();
+    if (state_json = w_logcollector_state_get(), state_json == NULL)
+    {
         cJSON_AddNumberToObject(w_packet, "error", 1);
         cJSON_AddObjectToObject(w_packet, "data");
         cJSON_AddStringToObject(w_packet, "message", "Statistics unavailable");
         mdebug1("At LCCOM getstate: Statistics unavailable");
-    } else {
+    }
+    else
+    {
         cJSON_AddNumberToObject(w_packet, "error", 0);
         cJSON_AddFalseToObject(w_packet, "remaining");
         cJSON_AddFalseToObject(w_packet, "json_updated");
@@ -448,22 +563,26 @@ size_t lccom_getstate(char ** output, bool getNextPage) {
     cJSON_Delete(w_packet);
 
     /* '*output' point to the global json without split*/
-    if (strlen(*output) >= OS_MAXSTR) {
+    if (strlen(*output) >= OS_MAXSTR)
+    {
         retval = getJsonStr64kBlockFromLatestIndex(output, getNextPage);
 
         /* '*output' point to the block of length <= 64k*/
-        replaceBoolToStr(*output, "\"remaining\":", strlen(*output) >= OS_MAXSTR - (2*OS_SIZE_1024));
+        replaceBoolToStr(*output, "\"remaining\":", strlen(*output) >= OS_MAXSTR - (2 * OS_SIZE_1024));
         replaceBoolToStr(*output, "\"json_updated\":", isJsonUpdated());
-    } else {
+    }
+    else
+    {
         retval = strlen(*output);
     }
     return retval;
 }
 
-size_t lccom_getallconfig(char ** output) {
+size_t lccom_getallconfig(char** output)
+{
 
-    cJSON *report = cJSON_CreateObject();
-    cJSON *body = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
+    cJSON* body = cJSON_CreateObject();
 
     module_report_merge(body, getLocalfileConfig());
     module_report_merge(body, getSocketConfig());
@@ -473,9 +592,10 @@ size_t lccom_getallconfig(char ** output) {
     return module_report_reply(report, output);
 }
 
-size_t lccom_getallstats(char ** output) {
+size_t lccom_getallstats(char** output)
+{
 
-    cJSON *report = cJSON_CreateObject();
+    cJSON* report = cJSON_CreateObject();
 
     /* Straight from the state rather than through lccom_getstate(): the report
      * wants the statistics themselves, without that path's error envelope or
@@ -484,45 +604,62 @@ size_t lccom_getallstats(char ** output) {
     return module_report_reply(report, output);
 }
 
-size_t lccom_getconfig(const char * section, char ** output) {
+size_t lccom_getconfig(const char* section, char** output)
+{
 
-    cJSON *cfg;
-    char *json_str;
+    cJSON* cfg;
+    char* json_str;
 
-    if (strcmp(section, "localfile") == 0){
-        if (cfg = getLocalfileConfig(), cfg) {
+    if (strcmp(section, "localfile") == 0)
+    {
+        if (cfg = getLocalfileConfig(), cfg)
+        {
             os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else if (strcmp(section, "socket") == 0){
-        if (cfg = getSocketConfig(), cfg) {
+    }
+    else if (strcmp(section, "socket") == 0)
+    {
+        if (cfg = getSocketConfig(), cfg)
+        {
             os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else if (strcmp(section, "internal") == 0){
-        if (cfg = getLogcollectorInternalOptions(), cfg) {
+    }
+    else if (strcmp(section, "internal") == 0)
+    {
+        if (cfg = getLogcollectorInternalOptions(), cfg)
+        {
             os_strdup("ok", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
             cJSON_Delete(cfg);
             return strlen(*output);
-        } else {
+        }
+        else
+        {
             goto error;
         }
-    } else {
+    }
+    else
+    {
         goto error;
     }
 error:
@@ -531,43 +668,48 @@ error:
     return strlen(*output);
 }
 
-
 #ifndef WIN32
-void * lccom_main(__attribute__((unused)) void * arg) {
+void* lccom_main(__attribute__((unused)) void* arg)
+{
     int sock;
     int peer;
-    char *buffer = NULL;
-    char *response = NULL;
+    char* buffer = NULL;
+    char* response = NULL;
     ssize_t length;
     fd_set fdset;
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0)
+    {
         merror("Unable to bind to socket '%s': (%d) %s.", LC_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
-    while (FOREVER()) {
+    while (FOREVER())
+    {
 
         // Wait for socket
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
-        case -1:
-            if (errno != EINTR) {
-                merror_exit("At lccom_main(): select(): %s", strerror(errno));
-            }
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL))
+        {
+            case -1:
+                if (errno != EINTR)
+                {
+                    merror_exit("At lccom_main(): select(): %s", strerror(errno));
+                }
 
-            continue;
+                continue;
 
-        case 0:
-            continue;
+            case 0: continue;
         }
 
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
+        if (peer = accept(sock, NULL, NULL), peer < 0)
+        {
+            if (errno != EINTR)
+            {
                 merror("At lccom_main(): accept(): %s", strerror(errno));
             }
 
@@ -576,23 +718,20 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
         // One byte more than the limit, so a request of exactly OS_MAXSTR bytes stays terminated.
         os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
-        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
-        case OS_SOCKTERR:
-            merror("At lccom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
-            break;
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length)
+        {
+            case OS_SOCKTERR:
+                merror("At lccom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                break;
 
-        case -1:
-            merror("At lccom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
-            break;
+            case -1: merror("At lccom_main(): OS_RecvSecureTCP(): %s", strerror(errno)); break;
 
-        case 0:
-            mdebug1("Empty message from local client.");
-            break;
+            case 0: mdebug1("Empty message from local client."); break;
 
-        default:
-            length = lccom_dispatch(buffer, &response);
-            OS_SendSecureTCP(peer, length, response);
-            free(response);
+            default:
+                length = lccom_dispatch(buffer, &response);
+                OS_SendSecureTCP(peer, length, response);
+                free(response);
         }
 
         // Every outcome above ends the exchange, including a failed receive.

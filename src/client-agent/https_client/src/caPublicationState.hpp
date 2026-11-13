@@ -73,71 +73,71 @@ inline bool caPublicationShouldFetch(std::int64_t local, std::optional<std::int6
  */
 class CaPublicationState final
 {
-    public:
-        explicit CaPublicationState(std::int64_t local)
-            : m_local(local)
+public:
+    explicit CaPublicationState(std::int64_t local)
+        : m_local(local)
+    {
+    }
+
+    std::int64_t local() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_local;
+    }
+
+    /// Records what was actually installed, once a bundle has been committed to disk.
+    void setLocal(std::int64_t local)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_local = local;
+
+        // A commit satisfies any target at or below it. Leaving a lower one armed would
+        // spend a fetch re-learning what was just installed.
+        if (m_pending <= m_local)
         {
-        }
-
-        std::int64_t local() const
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_local;
-        }
-
-        /// Records what was actually installed, once a bundle has been committed to disk.
-        void setLocal(std::int64_t local)
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_local = local;
-
-            // A commit satisfies any target at or below it. Leaving a lower one armed would
-            // spend a fetch re-learning what was just installed.
-            if (m_pending <= m_local)
-            {
-                m_pending = 0;
-            }
-        }
-
-        /// Applies rule 3 to one notify. Returns true when this is the observation that arms a
-        /// fetch, so the caller schedules exactly one wait however many notifies raise the
-        /// target while it is pending.
-        bool observe(std::optional<std::int64_t> advertised)
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-
-            if (!caPublicationShouldFetch(m_local, advertised))
-            {
-                return false;
-            }
-
-            const bool armed = m_pending == 0;
-            m_pending = std::max(m_pending, *advertised);
-
-            return armed;
-        }
-
-        /// The publication to fetch, or 0 when none is pending. Left armed: it is cleared by
-        /// setLocal() on a successful commit, so a discarded response (rule 5.3) still has a
-        /// target to retry against.
-        std::int64_t pending() const
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            return m_pending;
-        }
-
-        /// Abandons the pending target without installing anything. For the cases where
-        /// retrying cannot help: the target was withdrawn, or the agent is giving up on it.
-        void clearPending()
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
             m_pending = 0;
         }
+    }
 
-    private:
-        mutable std::mutex m_mutex;
-        std::int64_t m_local;
-        std::int64_t m_pending {0};
+    /// Applies rule 3 to one notify. Returns true when this is the observation that arms a
+    /// fetch, so the caller schedules exactly one wait however many notifies raise the
+    /// target while it is pending.
+    bool observe(std::optional<std::int64_t> advertised)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        if (!caPublicationShouldFetch(m_local, advertised))
+        {
+            return false;
+        }
+
+        const bool armed = m_pending == 0;
+        m_pending = std::max(m_pending, *advertised);
+
+        return armed;
+    }
+
+    /// The publication to fetch, or 0 when none is pending. Left armed: it is cleared by
+    /// setLocal() on a successful commit, so a discarded response (rule 5.3) still has a
+    /// target to retry against.
+    std::int64_t pending() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_pending;
+    }
+
+    /// Abandons the pending target without installing anything. For the cases where
+    /// retrying cannot help: the target was withdrawn, or the agent is giving up on it.
+    void clearPending()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_pending = 0;
+    }
+
+private:
+    mutable std::mutex m_mutex;
+    std::int64_t m_local;
+    std::int64_t m_pending {0};
 };
 
 #endif // _HC_CA_PUBLICATION_STATE_HPP

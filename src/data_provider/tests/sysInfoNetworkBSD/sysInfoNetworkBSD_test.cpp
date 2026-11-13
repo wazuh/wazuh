@@ -22,35 +22,35 @@ void SysInfoNetworkBSDTest::TearDown() {};
 using ::testing::_;
 using ::testing::Return;
 
-class SysInfoNetworkBSDWrapperMock: public INetworkInterfaceWrapper
+class SysInfoNetworkBSDWrapperMock : public INetworkInterfaceWrapper
 {
-    public:
-        SysInfoNetworkBSDWrapperMock() = default;
-        virtual ~SysInfoNetworkBSDWrapperMock() = default;
-        MOCK_METHOD(int, family, (), (const override));
-        MOCK_METHOD(std::string, name, (), (const override));
-        MOCK_METHOD(std::string, address, (), (const override));
-        MOCK_METHOD(std::string, netmask, (), (const override));
-        MOCK_METHOD(std::string, broadcast, (), (const override));
-        MOCK_METHOD(std::string, addressV6, (), (const override));
-        MOCK_METHOD(std::string, netmaskV6, (), (const override));
-        MOCK_METHOD(std::string, broadcastV6, (), (const override));
-        MOCK_METHOD(std::string, metrics, (), (const override));
-        MOCK_METHOD(std::string, metricsV6, (), (const override));
-        MOCK_METHOD(std::string, gateway, (), (const override));
-        MOCK_METHOD(std::string, gatewayV6, (), (const override));
-        MOCK_METHOD(uint32_t, dhcp, (), (const override));
-        MOCK_METHOD(uint32_t, mtu, (), (const override));
-        MOCK_METHOD(LinkStats, stats, (), (const override));
-        MOCK_METHOD(std::string, type, (), (const override));
-        MOCK_METHOD(std::string, state, (), (const override));
-        MOCK_METHOD(std::string, MAC, (), (const override));
-        MOCK_METHOD(std::string, adapter, (), (const override));
+public:
+    SysInfoNetworkBSDWrapperMock() = default;
+    virtual ~SysInfoNetworkBSDWrapperMock() = default;
+    MOCK_METHOD(int, family, (), (const override));
+    MOCK_METHOD(std::string, name, (), (const override));
+    MOCK_METHOD(std::string, address, (), (const override));
+    MOCK_METHOD(std::string, netmask, (), (const override));
+    MOCK_METHOD(std::string, broadcast, (), (const override));
+    MOCK_METHOD(std::string, addressV6, (), (const override));
+    MOCK_METHOD(std::string, netmaskV6, (), (const override));
+    MOCK_METHOD(std::string, broadcastV6, (), (const override));
+    MOCK_METHOD(std::string, metrics, (), (const override));
+    MOCK_METHOD(std::string, metricsV6, (), (const override));
+    MOCK_METHOD(std::string, gateway, (), (const override));
+    MOCK_METHOD(std::string, gatewayV6, (), (const override));
+    MOCK_METHOD(uint32_t, dhcp, (), (const override));
+    MOCK_METHOD(uint32_t, mtu, (), (const override));
+    MOCK_METHOD(LinkStats, stats, (), (const override));
+    MOCK_METHOD(std::string, type, (), (const override));
+    MOCK_METHOD(std::string, state, (), (const override));
+    MOCK_METHOD(std::string, MAC, (), (const override));
+    MOCK_METHOD(std::string, adapter, (), (const override));
 };
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET_THROW)
 {
-    auto mock { std::make_shared<SysInfoNetworkBSDWrapperMock>() };
+    auto mock {std::make_shared<SysInfoNetworkBSDWrapperMock>()};
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET));
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return(""));
@@ -59,7 +59,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET_THROW)
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
 {
-    auto mock { std::make_shared<SysInfoNetworkBSDWrapperMock>() };
+    auto mock {std::make_shared<SysInfoNetworkBSDWrapperMock>()};
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET));
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return("192.168.0.1"));
@@ -81,7 +81,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6_THROW)
 {
-    auto mock { std::make_shared<SysInfoNetworkBSDWrapperMock>() };
+    auto mock {std::make_shared<SysInfoNetworkBSDWrapperMock>()};
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET6));
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return(""));
@@ -90,7 +90,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6_THROW)
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
 {
-    auto mock { std::make_shared<SysInfoNetworkBSDWrapperMock>() };
+    auto mock {std::make_shared<SysInfoNetworkBSDWrapperMock>()};
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET6));
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:7348"));
@@ -103,8 +103,10 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
     for (auto& element : ifaddr.at("IPv6"))
     {
         EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348", element.at("network_ip").get_ref<const std::string&>());
-        EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff", element.at("network_netmask").get_ref<const std::string&>());
-        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000", element.at("network_broadcast").get_ref<const std::string&>());
+        EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff",
+                  element.at("network_netmask").get_ref<const std::string&>());
+        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000",
+                  element.at("network_broadcast").get_ref<const std::string&>());
         EXPECT_EQ(0, element.at("network_dhcp").get<uint32_t>());
         EXPECT_EQ(" ", element.at("network_metric").get_ref<const std::string&>());
     }
@@ -112,14 +114,14 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
 {
-    auto mock { std::make_shared<SysInfoNetworkBSDWrapperMock>() };
+    auto mock {std::make_shared<SysInfoNetworkBSDWrapperMock>()};
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_LINK));
     EXPECT_CALL(*mock, name()).Times(1).WillOnce(Return("eth01"));
     EXPECT_CALL(*mock, type()).Times(1).WillOnce(Return("ethernet"));
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
-    EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0, 1, 2, 3, 4, 5, 6, 7}));
+    EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats {0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("8.8.4.4"));
     EXPECT_CALL(*mock, gatewayV6()).Times(1).WillOnce(Return("fe80::1"));
@@ -160,21 +162,20 @@ TEST_F(SysInfoNetworkBSDTest, Test_Type_Tunnel_And_Virtual_Link_Types)
     struct ifaddrs addr {};
     addr.ifa_addr = reinterpret_cast<struct sockaddr*>(&sdl);
 
-    const std::vector<std::pair<int, std::string>> expectedTypes
-    {
-        { IFT_ETHER,    "ethernet" },
-        { IFT_GIF,      "tunnel"   },
-        { IFT_STF,      "tunnel"   },
-        { IFT_L2VLAN,   "vlan"     },
-        { IFT_BRIDGE,   "bridge"   },
-        { IFT_CELLULAR, "cellular" },
-        { IFT_OTHER,    "other"    },
+    const std::vector<std::pair<int, std::string>> expectedTypes {
+        {IFT_ETHER, "ethernet"},
+        {IFT_GIF, "tunnel"},
+        {IFT_STF, "tunnel"},
+        {IFT_L2VLAN, "vlan"},
+        {IFT_BRIDGE, "bridge"},
+        {IFT_CELLULAR, "cellular"},
+        {IFT_OTHER, "other"},
     };
 
     for (const auto& [linkType, expected] : expectedTypes)
     {
         sdl.sdl_type = linkType;
-        NetworkBSDInterface iface { &addr };
+        NetworkBSDInterface iface {&addr};
         EXPECT_EQ(expected, iface.type()) << "link type: " << linkType;
     }
 }
@@ -186,7 +187,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_Type_Unmapped_Link_Type_Returns_Unknown)
     addr.ifa_addr = reinterpret_cast<struct sockaddr*>(&sdl);
     sdl.sdl_type = IFT_SLIP;
 
-    NetworkBSDInterface iface { &addr };
+    NetworkBSDInterface iface {&addr};
     EXPECT_EQ(UNKNOWN_VALUE, iface.type());
 }
 
@@ -194,9 +195,9 @@ namespace
 {
     // Darwin pads each sockaddr of a routing message to 4 bytes, the other BSDs to sizeof(long)
 #ifdef __APPLE__
-    constexpr size_t SOCKADDR_ALIGN { 4 };
+    constexpr size_t SOCKADDR_ALIGN {4};
 #else
-    constexpr size_t SOCKADDR_ALIGN { sizeof(long) };
+    constexpr size_t SOCKADDR_ALIGN {sizeof(long)};
 #endif
 
     std::vector<char> sockaddrIn(const char* address)
@@ -205,7 +206,7 @@ namespace
         sa.sin_len = sizeof(sa);
         sa.sin_family = AF_INET;
         inet_pton(AF_INET, address, &sa.sin_addr);
-        const auto bytes { reinterpret_cast<const char*>(&sa) };
+        const auto bytes {reinterpret_cast<const char*>(&sa)};
         return std::vector<char>(bytes, bytes + sizeof(sa));
     }
 
@@ -222,14 +223,14 @@ namespace
             sa.sin6_addr.s6_addr[3] = scope;
         }
 
-        const auto bytes { reinterpret_cast<const char*>(&sa) };
+        const auto bytes {reinterpret_cast<const char*>(&sa)};
         return std::vector<char>(bytes, bytes + sizeof(sa));
     }
 
     // A netmask trimmed to its significant bytes, as the kernel sends it
     std::vector<char> netmask(const uint8_t length, const uint8_t family, const std::vector<char>& bytes = {})
     {
-        std::vector<char> sa { static_cast<char>(length), static_cast<char>(family) };
+        std::vector<char> sa {static_cast<char>(length), static_cast<char>(family)};
         sa.insert(sa.end(), bytes.begin(), bytes.end());
         sa.resize(length);
         return sa;
@@ -246,7 +247,8 @@ namespace
         for (const auto& sa : addresses)
         {
             body.insert(body.end(), sa.begin(), sa.end());
-            body.resize(body.size() + (sa.empty() ? SOCKADDR_ALIGN : (SOCKADDR_ALIGN - sa.size() % SOCKADDR_ALIGN) % SOCKADDR_ALIGN));
+            body.resize(body.size() +
+                        (sa.empty() ? SOCKADDR_ALIGN : (SOCKADDR_ALIGN - sa.size() % SOCKADDR_ALIGN) % SOCKADDR_ALIGN));
         }
 
         msg.rtm_msglen = static_cast<unsigned short>(sizeof(msg) + body.size());
@@ -254,17 +256,18 @@ namespace
         msg.rtm_flags = flags;
         msg.rtm_addrs = RTA_DST | RTA_GATEWAY | (addresses.size() > 2 ? RTA_NETMASK : 0);
 
-        const auto header { reinterpret_cast<const char*>(&msg) };
+        const auto header {reinterpret_cast<const char*>(&msg)};
         table.insert(table.end(), header, header + sizeof(msg));
         table.insert(table.end(), body.begin(), body.end());
     }
-}
+} // namespace
 
 TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_IPv6Default)
 {
     std::vector<char> table;
-    appendRoute(table, 4, RTF_UP | RTF_GATEWAY | RTF_HOST, { sockaddrIn6("2001:db8::5"), sockaddrIn6("fe80::1", 4) });
-    appendRoute(table, 4, RTF_UP | RTF_GATEWAY | RTF_STATIC, { sockaddrIn6("::"), sockaddrIn6("fe80::1", 4), netmask(0, 0) });
+    appendRoute(table, 4, RTF_UP | RTF_GATEWAY | RTF_HOST, {sockaddrIn6("2001:db8::5"), sockaddrIn6("fe80::1", 4)});
+    appendRoute(
+        table, 4, RTF_UP | RTF_GATEWAY | RTF_STATIC, {sockaddrIn6("::"), sockaddrIn6("fe80::1", 4), netmask(0, 0)});
 
     EXPECT_EQ("fe80::1", NetworkBSDInterface::parseGateway(table.data(), table.size(), 4, AF_INET6));
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(table.data(), table.size(), 4, AF_INET));
@@ -273,7 +276,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_IPv6Default)
 TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_IPv6GlobalNextHop)
 {
     std::vector<char> table;
-    appendRoute(table, 4, RTF_UP | RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("2001:db8::1"), netmask(0, 0) });
+    appendRoute(table, 4, RTF_UP | RTF_GATEWAY, {sockaddrIn6("::"), sockaddrIn6("2001:db8::1"), netmask(0, 0)});
 
     EXPECT_EQ("2001:db8::1", NetworkBSDInterface::parseGateway(table.data(), table.size(), 4, AF_INET6));
 }
@@ -281,8 +284,9 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_IPv6GlobalNextHop)
 TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_IPv4Default)
 {
     std::vector<char> table;
-    appendRoute(table, 4, RTF_UP | RTF_GATEWAY | RTF_STATIC, { sockaddrIn("0.0.0.0"), sockaddrIn("10.211.55.1"), netmask(0, 0) });
-    appendRoute(table, 4, RTF_UP | RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("fe80::1", 4), netmask(0, 0) });
+    appendRoute(
+        table, 4, RTF_UP | RTF_GATEWAY | RTF_STATIC, {sockaddrIn("0.0.0.0"), sockaddrIn("10.211.55.1"), netmask(0, 0)});
+    appendRoute(table, 4, RTF_UP | RTF_GATEWAY, {sockaddrIn6("::"), sockaddrIn6("fe80::1", 4), netmask(0, 0)});
 
     EXPECT_EQ("10.211.55.1", NetworkBSDInterface::parseGateway(table.data(), table.size(), 4, AF_INET));
     EXPECT_EQ("fe80::1", NetworkBSDInterface::parseGateway(table.data(), table.size(), 4, AF_INET6));
@@ -291,7 +295,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_IPv4Default)
 TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_OtherInterface)
 {
     std::vector<char> table;
-    appendRoute(table, 8, RTF_UP | RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("fe80::1", 8), netmask(0, 0) });
+    appendRoute(table, 8, RTF_UP | RTF_GATEWAY, {sockaddrIn6("::"), sockaddrIn6("fe80::1", 8), netmask(0, 0)});
 
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(table.data(), table.size(), 4, AF_INET6));
     EXPECT_EQ("fe80::1", NetworkBSDInterface::parseGateway(table.data(), table.size(), 8, AF_INET6));
@@ -300,17 +304,18 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_OtherInterface)
 TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_NotDefaultRoute)
 {
     std::vector<char> table;
-    const auto mask96 { netmask(16, AF_INET6, std::vector<char>(12, '\xff')) };
+    const auto mask96 {netmask(16, AF_INET6, std::vector<char>(12, '\xff'))};
     // ::/96 reject route via ::1 on lo0, as FreeBSD installs it
-    appendRoute(table, 1, RTF_UP | RTF_GATEWAY | RTF_REJECT | RTF_STATIC, { sockaddrIn6("::"), sockaddrIn6("::1"), mask96 });
+    appendRoute(
+        table, 1, RTF_UP | RTF_GATEWAY | RTF_REJECT | RTF_STATIC, {sockaddrIn6("::"), sockaddrIn6("::1"), mask96});
     // Same destination with a non-zero netmask and no reject flag
-    appendRoute(table, 1, RTF_UP | RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("::1"), mask96 });
+    appendRoute(table, 1, RTF_UP | RTF_GATEWAY, {sockaddrIn6("::"), sockaddrIn6("::1"), mask96});
     // Default route that discards traffic
-    appendRoute(table, 1, RTF_UP | RTF_GATEWAY | RTF_BLACKHOLE, { sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0) });
+    appendRoute(table, 1, RTF_UP | RTF_GATEWAY | RTF_BLACKHOLE, {sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0)});
     // Default route without RTF_GATEWAY
-    appendRoute(table, 1, RTF_UP, { sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0) });
+    appendRoute(table, 1, RTF_UP, {sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0)});
     // Default route that is not up
-    appendRoute(table, 1, RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0) });
+    appendRoute(table, 1, RTF_GATEWAY, {sockaddrIn6("::"), sockaddrIn6("::1"), netmask(0, 0)});
 
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(table.data(), table.size(), 1, AF_INET6));
 }
@@ -318,7 +323,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_NotDefaultRoute)
 TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_MalformedInput)
 {
     std::vector<char> table;
-    appendRoute(table, 4, RTF_UP | RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("fe80::1", 4), netmask(0, 0) });
+    appendRoute(table, 4, RTF_UP | RTF_GATEWAY, {sockaddrIn6("::"), sockaddrIn6("fe80::1", 4), netmask(0, 0)});
 
     // Message longer than the table
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(table.data(), table.size() - 1, 4, AF_INET6));
@@ -327,13 +332,13 @@ TEST_F(SysInfoNetworkBSDTest, Test_ParseGateway_MalformedInput)
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(table.data(), 0, 4, AF_INET6));
 
     // Message length too short to hold its header
-    auto zeroLength { table };
+    auto zeroLength {table};
     reinterpret_cast<rt_msghdr*>(zeroLength.data())->rtm_msglen = 0;
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(zeroLength.data(), zeroLength.size(), 4, AF_INET6));
 
     // Gateway address cut by the end of the message
     std::vector<char> cut;
-    appendRoute(cut, 4, RTF_UP | RTF_GATEWAY, { sockaddrIn6("::"), sockaddrIn6("fe80::1", 4) });
+    appendRoute(cut, 4, RTF_UP | RTF_GATEWAY, {sockaddrIn6("::"), sockaddrIn6("fe80::1", 4)});
     reinterpret_cast<rt_msghdr*>(cut.data())->rtm_msglen -= 8;
     EXPECT_EQ("", NetworkBSDInterface::parseGateway(cut.data(), cut.size() - 8, 4, AF_INET6));
 }
@@ -348,20 +353,20 @@ namespace
         std::string name;
 
         explicit FakeIPv4Entry(const std::string& ifName)
-            : name{ ifName }
+            : name {ifName}
         {
             address.sin_family = AF_INET;
             entry.ifa_name = const_cast<char*>(name.c_str());
             entry.ifa_addr = reinterpret_cast<sockaddr*>(&address);
         }
     };
-}
+} // namespace
 
 TEST_F(SysInfoNetworkBSDTest, Test_DhcpEnabledOnlyForInterfacesWithALease)
 {
-    FakeIPv4Entry leased { "en0" };
-    FakeIPv4Entry fixed { "en1" };
-    const auto leases { std::make_shared<const std::set<std::string>>(std::set<std::string> { "en0" }) };
+    FakeIPv4Entry leased {"en0"};
+    FakeIPv4Entry fixed {"en1"};
+    const auto leases {std::make_shared<const std::set<std::string>>(std::set<std::string> {"en0"})};
 
     EXPECT_EQ(1u, NetworkBSDInterface(&leased.entry, leases).dhcp());
     EXPECT_EQ(0u, NetworkBSDInterface(&fixed.entry, leases).dhcp());
@@ -372,11 +377,11 @@ TEST_F(SysInfoNetworkBSDTest, Test_DhcpIsUnknownForIPv6EvenOnALeasedInterface)
 {
     sockaddr_in6 address {};
     address.sin6_family = AF_INET6;
-    std::string name { "en0" };
+    std::string name {"en0"};
     ifaddrs entry {};
     entry.ifa_name = name.data();
     entry.ifa_addr = reinterpret_cast<sockaddr*>(&address);
-    const auto leases { std::make_shared<const std::set<std::string>>(std::set<std::string> { "en0" }) };
+    const auto leases {std::make_shared<const std::set<std::string>>(std::set<std::string> {"en0"})};
 
     EXPECT_EQ(0u, NetworkBSDInterface(&entry, leases).dhcp());
 }
@@ -389,13 +394,15 @@ namespace
         return CFStringCreateWithCString(nullptr, value, kCFStringEncodingUTF8);
     }
 
-    void addService(CFMutableDictionaryRef services, const char* serviceId, const char* interfaceName, const bool withLease)
+    void
+    addService(CFMutableDictionaryRef services, const char* serviceId, const char* interfaceName, const bool withLease)
     {
-        const std::string prefix { std::string { "State:/Network/Service/" } + serviceId };
+        const std::string prefix {std::string {"State:/Network/Service/"} + serviceId};
 
-        const auto ipv4Key { cfString((prefix + "/IPv4").c_str()) };
-        const auto name { cfString(interfaceName) };
-        const auto ipv4State { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+        const auto ipv4Key {cfString((prefix + "/IPv4").c_str())};
+        const auto name {cfString(interfaceName)};
+        const auto ipv4State {
+            CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)};
         CFDictionarySetValue(ipv4State, kSCPropInterfaceName, name);
         CFDictionarySetValue(services, ipv4Key, ipv4State);
         CFRelease(ipv4State);
@@ -404,35 +411,39 @@ namespace
 
         if (withLease)
         {
-            const auto dhcpKey { cfString((prefix + "/DHCP").c_str()) };
-            const auto dhcpState { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+            const auto dhcpKey {cfString((prefix + "/DHCP").c_str())};
+            const auto dhcpState {CFDictionaryCreateMutable(
+                nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)};
             CFDictionarySetValue(services, dhcpKey, dhcpState);
             CFRelease(dhcpState);
             CFRelease(dhcpKey);
         }
     }
-}
+} // namespace
 
 TEST_F(SysInfoNetworkBSDTest, Test_FindDhcpLeaseInterfaces)
 {
-    const auto services { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+    const auto services {
+        CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)};
     addService(services, "A", "en0", true);
     addService(services, "B", "en1", false);
     // A lease key of another service must not mark this interface.
     addService(services, "C", "en2", false);
-    const auto strayKey { cfString("State:/Network/Service/D/DHCP") };
-    const auto strayState { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+    const auto strayKey {cfString("State:/Network/Service/D/DHCP")};
+    const auto strayState {
+        CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)};
     CFDictionarySetValue(services, strayKey, strayState);
     CFRelease(strayState);
     CFRelease(strayKey);
 
-    EXPECT_EQ(std::set<std::string> { "en0" }, NetworkBSDInterface::findDhcpLeaseInterfaces(services));
+    EXPECT_EQ(std::set<std::string> {"en0"}, NetworkBSDInterface::findDhcpLeaseInterfaces(services));
     CFRelease(services);
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_FindDhcpLeaseInterfacesEmptyDictionary)
 {
-    const auto services { CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) };
+    const auto services {
+        CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks)};
     EXPECT_TRUE(NetworkBSDInterface::findDhcpLeaseInterfaces(services).empty());
     CFRelease(services);
 }

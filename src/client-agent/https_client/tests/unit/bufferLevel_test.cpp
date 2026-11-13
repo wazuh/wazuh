@@ -122,8 +122,8 @@ TEST(BufferLevelLadderTest, RefillAfterRecoveryRestartsTheDwell)
     ladder.observe(99, true, 0);
     ladder.observe(10, false, 5); // Back to NORMAL.
 
-    ladder.observe(99, true, 100);                          // FULL again, dwell restarts at 100.
-    EXPECT_FALSE(ladder.observe(99, true, 110).announce);   // Not 15 s yet.
+    ladder.observe(99, true, 100);                        // FULL again, dwell restarts at 100.
+    EXPECT_FALSE(ladder.observe(99, true, 110).announce); // Not 15 s yet.
     EXPECT_EQ(HC_BUFFER_FLOOD, ladder.observe(99, true, 115).level);
 }
 

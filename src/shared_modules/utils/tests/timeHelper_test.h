@@ -18,16 +18,15 @@
 
 class TimeUtilsTest : public ::testing::Test
 {
-    protected:
+protected:
+    TimeUtilsTest() = default;
+    virtual ~TimeUtilsTest() = default;
 
-        TimeUtilsTest() = default;
-        virtual ~TimeUtilsTest() = default;
+    void SetUp() override;
+    void TearDown() override;
 
-        void SetUp() override;
-        void TearDown() override;
-
-        bool m_hadTimezone {false};
-        std::string m_timezone;
+    bool m_hadTimezone {false};
+    std::string m_timezone;
 };
 
 #endif // TIME_HELPER_TESTS_H

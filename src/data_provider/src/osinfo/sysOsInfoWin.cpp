@@ -23,10 +23,11 @@ static std::string getVersion(const bool isMinor = false)
     std::string version;
 
     DWORD versionNumber {};
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
+    Utils::Registry currentVersion {
+        HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
-    if (IsWindows8OrGreater()
-            && currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
+    if (IsWindows8OrGreater() &&
+        currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
     {
         version = std::to_string(versionNumber);
     }
@@ -38,8 +39,8 @@ static std::string getVersion(const bool isMinor = false)
             MINOR_VERSION,
             MAX_VERSION
         };
-        const auto fullVersion{currentVersion.string("CurrentVersion")};
-        const auto majorAndMinor{Utils::split(fullVersion, '.')};
+        const auto fullVersion {currentVersion.string("CurrentVersion")};
+        const auto majorAndMinor {Utils::split(fullVersion, '.')};
 
         if (majorAndMinor.size() == MAX_VERSION)
         {
@@ -54,7 +55,8 @@ static std::string getBuild()
 {
     std::string build;
 
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
+    Utils::Registry currentVersion {
+        HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
     build = currentVersion.string("CurrentBuildNumber");
 
     return build;
@@ -68,7 +70,8 @@ static std::string getBuildRevision()
     {
         DWORD ubr {};
 
-        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
+        Utils::Registry currentVersion {
+            HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
         if (currentVersion.dword("UBR", ubr))
         {
@@ -81,9 +84,8 @@ static std::string getBuildRevision()
 
 static std::string getRelease(const std::string& build)
 {
-    static const std::string SERVICE_PACK_PREFIX{"Service Pack"};
-    static const std::map<std::string, std::string> BUILD_RELEASE_MAP
-    {
+    static const std::string SERVICE_PACK_PREFIX {"Service Pack"};
+    static const std::map<std::string, std::string> BUILD_RELEASE_MAP {
         {"10240", "1507"},
         {"10586", "1511"},
         {"14393", "1607"},
@@ -95,13 +97,14 @@ static std::string getRelease(const std::string& build)
         {"18363", "1909"},
     };
     std::string release;
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
+    Utils::Registry currentVersion {
+        HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
     if (IsWindows8OrGreater())
     {
         if (!currentVersion.string("ReleaseId", release))
         {
-            const auto it{BUILD_RELEASE_MAP.find(build)};
+            const auto it {BUILD_RELEASE_MAP.find(build)};
 
             if (it != BUILD_RELEASE_MAP.end())
             {
@@ -129,7 +132,8 @@ static std::string getRelease(const std::string& build)
 static std::string getDisplayVersion()
 {
     std::string display_version;
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
+    Utils::Registry currentVersion {
+        HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_READ | KEY_WOW64_64KEY};
 
     currentVersion.string("DisplayVersion", display_version);
 
@@ -139,26 +143,28 @@ static std::string getDisplayVersion()
 static std::string getName()
 {
     std::string name;
-    static const std::string MSFT_PREFIX{"Microsoft"};
-    constexpr auto SM_SERVER32_VALUE{89};//www.docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsystemmetrics
-    //https://learn.microsoft.com/en-us/windows/win32/winprog64/example-of-registry-reflection-and-redirection-on-wow64
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_WOW64_64KEY | KEY_READ};
+    static const std::string MSFT_PREFIX {"Microsoft"};
+    constexpr auto SM_SERVER32_VALUE {
+        89}; // www.docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsystemmetrics
+    // https://learn.microsoft.com/en-us/windows/win32/winprog64/example-of-registry-reflection-and-redirection-on-wow64
+    Utils::Registry currentVersion {
+        HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_WOW64_64KEY | KEY_READ};
 
     if (currentVersion.string("ProductName", name))
     {
         name = Utils::startsWith(name, MSFT_PREFIX) ? name : MSFT_PREFIX + " " + name;
 
-        const auto build { getBuild() };
+        const auto build {getBuild()};
         std::string errorMessage;
 
         try
         {
             size_t valueSize = 0;
-            const auto value { std::stoi(build, &valueSize) };
+            const auto value {std::stoi(build, &valueSize)};
 
             if (build.size() == valueSize)
             {
-                constexpr int FIRST_BUILD_WINDOWS11{ 22000 };
+                constexpr int FIRST_BUILD_WINDOWS11 {22000};
 
                 if (value >= FIRST_BUILD_WINDOWS11)
                 {
@@ -170,7 +176,6 @@ static std::string getName()
         }
         catch (...)
         {
-
         }
     }
     else
@@ -183,14 +188,15 @@ static std::string getName()
 
 static std::string getMachine()
 {
-    Utils::Registry environment{HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\Session Manager\Environment)"};
+    Utils::Registry environment {HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\Session Manager\Environment)"};
     return SysOsInfoProviderWindows::machineFromProcessorArchitecture(environment.string("PROCESSOR_ARCHITECTURE"));
 }
 
 static std::string getNodeName()
 {
     std::string nodeName;
-    Utils::Registry activeComputerName{HKEY_LOCAL_MACHINE, R"(System\CurrentControlSet\Control\ComputerName\ActiveComputerName)"};
+    Utils::Registry activeComputerName {HKEY_LOCAL_MACHINE,
+                                        R"(System\CurrentControlSet\Control\ComputerName\ActiveComputerName)"};
 
     if (!activeComputerName.string("ComputerName", nodeName))
     {
@@ -201,16 +207,16 @@ static std::string getNodeName()
 }
 
 SysOsInfoProviderWindows::SysOsInfoProviderWindows()
-    : m_majorVersion{getVersion()}
-    , m_minorVersion{getVersion(true)}
-    , m_build{getBuild()}
-    , m_buildRevision{getBuildRevision()}
-    , m_version{m_majorVersion + "." + m_minorVersion + "." + m_build}
-    , m_release{getRelease(m_build)}
-    , m_displayVersion{getDisplayVersion()}
-    , m_name{getName()}
-    , m_machine{getMachine()}
-    , m_nodeName{getNodeName()}
+    : m_majorVersion {getVersion()}
+    , m_minorVersion {getVersion(true)}
+    , m_build {getBuild()}
+    , m_buildRevision {getBuildRevision()}
+    , m_version {m_majorVersion + "." + m_minorVersion + "." + m_build}
+    , m_release {getRelease(m_build)}
+    , m_displayVersion {getDisplayVersion()}
+    , m_name {getName()}
+    , m_machine {getMachine()}
+    , m_nodeName {getNodeName()}
 {
 }
 std::string SysOsInfoProviderWindows::name() const
