@@ -12,7 +12,7 @@
 
 // Compiled only into indexer_client_testing (INDEXER_CLIENT_TESTING). Hooks are read under a mutex and copied before
 // the call, so a test may replace them while runtime threads run. A seam with no hook installed reads only its slot's
-// atomic flag (acquire) and never takes the mutex (G-diff E6e r2 P3-1): otherwise every seam on a hot path (stage(),
+// atomic flag (acquire) and never takes the mutex: otherwise every seam on a hot path (stage(),
 // the stripe flush) would serialize all producers through g_hooksMutex — a full barrier between a stripe's store of
 // `oldest` and its load of the armed deadline, and a happens-before edge TSAN would see between unrelated producers.
 
@@ -56,7 +56,7 @@ namespace
     Hook<std::function<void()>> g_beforePublishArmedDue;
     Hook<std::function<void()>> g_midAdmitBatch;
     Hook<std::function<void()>> g_inSettleBulk;
-    /// Issue 15: a plain atomic, no hook (encode() is on every producer's path).
+    /// A plain atomic, no hook (encode() is on every producer's path).
     std::atomic<std::size_t> g_encodeSizeSkew {0};
 
     template<class F>

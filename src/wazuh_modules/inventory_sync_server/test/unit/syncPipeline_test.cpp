@@ -171,7 +171,7 @@ TEST(SyncPipelineTest, ABulkSessionIsStagedFlushedAndAnswered200)
 }
 
 // The connector's real `_bulk` request counts are no longer drained by the pipeline: with indexer_client
-// they are read by pull at GET /metrics from the bucket's own counters (I140); metricsEndpoint_test.cpp's
+// they are read by pull at GET /metrics from the bucket's own counters; metricsEndpoint_test.cpp's
 // PublishesBucketMetrics pins that.
 
 TEST(SyncPipelineTest, GroupCommitBatchesWhateverQueuedBehindABlockedFlush)
@@ -285,7 +285,7 @@ TEST(SyncPipelineTest, FailedGroupCommitsAreCountedByCauseAndBlastRadius)
     }
     auto first = std::make_shared<FutureResponder>();
     ASSERT_TRUE(pipeline.enqueue(makeItem(deltaBody("doc-1"), first)));
-    // The retry budget ran out on a retryable condition: the agent is told to come back (I135).
+    // The retry budget ran out on a retryable condition: the agent is told to come back.
     EXPECT_EQ(503, first->get().status);
 
     // An untyped connector failure lands in the "other" bucket.
@@ -345,7 +345,7 @@ TEST(SyncPipelineTest, FlushFailureMapsTo503WhenTheCauseIsUnavailable)
                   ->get());
 }
 
-/// isAvailable() no longer decides the code after a failure (I135): the cause alone does. An untyped
+/// isAvailable() no longer decides the code after a failure: the cause alone does. An untyped
 /// failure answers 500 whatever the connector reports about itself.
 TEST(SyncPipelineTest, FlushFailureIgnoresWhatTheConnectorReportsAboutItself)
 {
@@ -636,7 +636,7 @@ TEST(SyncPipelineTest, ADeleteFailureIsVisibleToTheCaller)
     EXPECT_EQ(503, second->get().status) << "indexer unavailable at dispatch -> 503, nothing executed";
 }
 
-// --- The by-id half of a whole-agent deletion (I147, I147b, I147c, I147d; CA-E7c-2) -----------------
+// --- The by-id half of a whole-agent deletion -----------------
 //
 // A Group and its tickets cannot be faked, so these run a REAL pipeline worker over a real runtime on the
 // library's fake indexer, with the module's Client and `agent-state` bucket (testRealIndexer.hpp). The fake keeps
@@ -749,7 +749,7 @@ namespace
     }
 } // namespace
 
-/// Admission refused by the library (here: the Client is closing) is a 503 -- the I135 class of ClientClosed --
+/// Admission refused by the library (here: the Client is closing) is a 503 -- the failure class of ClientClosed --
 /// and nothing of the by-query half runs: the Group is refused before it.
 TEST(SyncPipelineTest, SubmitRefusedIs503)
 {
@@ -766,7 +766,7 @@ TEST(SyncPipelineTest, SubmitRefusedIs503)
 }
 
 /**
- * The wait: the worker cancels, commits ONE `_bulk` holding both deletes (one Group, I147d), runs the by-query, and
+ * The wait: the worker cancels, commits ONE `_bulk` holding both deletes (one Group), runs the by-query, and
  * answers 200 only once the by-id tickets resolved. The bulk is held, the by-query has run, and the caller still has
  * no answer.
  */
@@ -782,7 +782,7 @@ TEST(SyncPipelineTest, DeleteWaitsByIdTickets)
     ASSERT_TRUE(invsync::test::waitUntil([&] { return fixture.statesDbqs() == 1; }));
     EXPECT_FALSE(responder->answered()) << "a 200 before the by-id tickets would record a purge that has not happened";
 
-    // On the wire: the two deletes travelled together in the one `_bulk` (the Group, I147d); which of the bulk and
+    // On the wire: the two deletes travelled together in the one `_bulk` (the Group); which of the bulk and
     // the by-query reaches the indexer first is up to the runtime threads, and is not the contract.
     const auto received = fixture.real.bulk->received();
     ASSERT_EQ(1U, received.size());
@@ -828,8 +828,7 @@ TEST(SyncPipelineTest, ByIdDeadlineCancels)
     EXPECT_EQ(0U, fixture.notedAgents());
 }
 
-/// A by-id delete of a missing index (404 index_not_found_exception) is a success, like the by-query half's 404
-/// (I147b).
+/// A by-id delete of a missing index (404 index_not_found_exception) is a success, like the by-query half's 404.
 TEST(SyncPipelineTest, ByIdIndexMissingIsOk)
 {
     ByIdPipeline fixture;
@@ -922,7 +921,7 @@ TEST(SyncPipelineTest, ByIdDeadlineCancelsHeldDeletes)
 }
 
 /// A 404 that is NOT index_not_found_exception is a failure of the by-id half, never a success: a permanent item
-/// failure (ItemPermanent -> DocumentRejected), so 500 by the I135 table.
+/// failure (ItemPermanent -> DocumentRejected), so 500 by the cause-to-HTTP table.
 TEST(SyncPipelineTest, ByIdOther404Is500)
 {
     ByIdPipeline fixture;
@@ -972,7 +971,7 @@ TEST(SyncPipelineTest, DeleteDoesNotWaitMaxAge)
     EXPECT_LT(millisSince(start), 1000);
 }
 
-// --- Per-session outcomes of a group commit (I136, I135) ------------------------------------------
+// --- Per-session outcomes of a group commit ------------------------------------------
 
 namespace
 {
@@ -1004,7 +1003,7 @@ namespace
 
 /**
  * One flush, three sessions, three different results: the healthy one is answered 200 although the
- * indexer failed its batch-mates, the transient failure 503 and the rejection 500 (I135, I136).
+ * indexer failed its batch-mates, the transient failure 503 and the rejection 500.
  */
 TEST(SyncPipelineTest, PerSessionOutcome)
 {
@@ -1038,7 +1037,7 @@ TEST(SyncPipelineTest, PerSessionOutcome)
 /**
  * A connector without per-session results keeps the all-or-nothing contract of flush(): the seam's
  * default flushSessions() answers every session with the flush's own outcome, and a connector that
- * throws fails them all with its cause (I136).
+ * throws fails them all with its cause.
  */
 TEST(SyncPipelineTest, DefaultFlushSessionsAllOrNothing)
 {
@@ -1094,7 +1093,7 @@ TEST(SyncPipelineTest, DefaultFlushSessionsAllOrNothing)
 
 /**
  * An exception foreign to the connector while staging leaves the open batch in an unknown state: every
- * session of it is answered 500 and the staged operations are DISCARDED, never sent (I142).
+ * session of it is answered 500 and the staged operations are DISCARDED, never sent.
  */
 TEST(SyncPipelineTest, PoisonedBatchDiscards)
 {

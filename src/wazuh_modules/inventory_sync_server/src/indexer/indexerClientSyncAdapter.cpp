@@ -37,7 +37,7 @@ namespace invsync::indexer
         constexpr std::uint32_t DEFAULT_RETRY_ATTEMPTS {5};
         constexpr std::uint64_t KIB {1024};
         constexpr std::uint64_t AGENT_STATE_FLOOR {16 * KIB};
-        constexpr std::uint64_t AGENT_STATE_SLACK {RESULT_RESERVE_BYTES + 4 * KIB}; // reserve + headroom (I149b)
+        constexpr std::uint64_t AGENT_STATE_SLACK {RESULT_RESERVE_BYTES + 4 * KIB}; // reserve + headroom
         constexpr std::uint64_t DEFAULT_ASYNC_BULK_MAX_BYTES {4 * MIB};
         /// settleAbandoned()'s bound past the runtime's request timeout (as VD's abandon() and the sweeper's window).
         constexpr std::chrono::seconds ABANDON_MARGIN {5};
@@ -269,7 +269,7 @@ namespace invsync::indexer
     } // namespace
 
     /**
-     * States (I137b, I139, I142, I145, I145b):
+     * States:
      *  - open: a Group in Building, the chunk staging now (never cancelled: cancel(tag) does not see it).
      *  - pending: at most one committed chunk, with its GroupTicket; its Group was dropped right after commit().
      *  - abandoned: a pending chunk whose batch expired (deadline or closing): cancel(tag) was asked, not awaited; it
@@ -283,7 +283,7 @@ namespace invsync::indexer
         {
             SessionOutcome outcome;
             std::size_t unresolved {0}; ///< Ops added and not yet resolved.
-            bool ignoring {false};      ///< Failed while staging: its remaining ops are dropped (I142).
+            bool ignoring {false};      ///< Failed while staging: its remaining ops are dropped.
         };
 
         struct OpenChunk
@@ -313,7 +313,7 @@ namespace invsync::indexer
 
         std::vector<Session> sessions;
         std::optional<std::size_t> current; ///< The session being staged, once it added (or tried) an op.
-        std::optional<Deadline> deadline;   ///< The batch's, from its first add (I145).
+        std::optional<Deadline> deadline;   ///< The batch's, from its first add.
         std::uint64_t generation {0};
         OpenChunk open;
         PendingChunk pending;
@@ -369,7 +369,7 @@ namespace invsync::indexer
             pending = PendingChunk {};
         }
 
-        /// The batch ran out of time or the module is closing (I145, I145b): cancel the unresolved chunk without
+        /// The batch ran out of time or the module is closing: cancel the unresolved chunk without
         /// waiting (it stays pending, abandoned), drop the open one uncommitted, fail every unresolved session.
         void expire(const char* reason)
         {
@@ -522,7 +522,7 @@ namespace invsync::indexer
                 return;
             }
 
-            // I139: two ops of one key are never unresolved at once.
+            // two ops of one key are never unresolved at once.
             auto key = keyOf(index, id);
             if (open.keys.count(key) > 0)
             {
@@ -547,7 +547,8 @@ namespace invsync::indexer
                 op.tag = tag;
                 if (kind == indexer_client::Op::Kind::IndexVersionedScript)
                 {
-                    // A concurrent agent update must not drop the value (UPDATE_RETRY_ON_CONFLICT, 5.0.0 #41191).
+                    // A concurrent agent update must not drop the value (UPDATE_RETRY_ON_CONFLICT): a concurrent
+                    // versioned upsert can hit a version conflict, so the update op retries on conflict.
                     indexer_client::ConflictPolicy retry;
                     retry.kind = indexer_client::ConflictPolicy::Kind::Retry;
                     retry.retryOnConflict = UPDATE_RETRY_ON_CONFLICT;
@@ -557,7 +558,7 @@ namespace invsync::indexer
             };
 
             auto op = makeOp();
-            // What the library will charge for it, never less (I137b; indexer_client/chunking.hpp, D88).
+            // What the library will charge for it, never less (indexer_client/chunking.hpp).
             const auto estimate = indexer_client::estimateCharge(op, RESULT_RESERVE_BYTES);
             if (!open.sessions.empty() && open.bytes + estimate > options.capBytes && !commitOpen(*deadline, true))
             {
@@ -628,7 +629,7 @@ namespace invsync::indexer
             return options.runtime.shutdownDeadline().has_value();
         }
 
-        /// One request at most (a cancelled op is never sent again, I80): the runtime's request timeout + margin.
+        /// One request at most (a cancelled op is never sent again): the runtime's request timeout + margin.
         Clock::duration abandonBound() const
         {
             Clock::duration timeout = options.runtime.snapshot().requestTimeout;
@@ -663,7 +664,7 @@ namespace invsync::indexer
             return AbandonedWrite::Settled;
         }
 
-        /// D49: every pending write is resolved before a query goes out, within the call's own deadline.
+        /// every pending write is resolved before a query goes out, within the call's own deadline.
         void barrier(Deadline until, const char* what)
         {
             if (isClosing())

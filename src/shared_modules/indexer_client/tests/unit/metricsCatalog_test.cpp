@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The metrics catalog without a runtime (plan-E5c §Tests, I100, I103): LatencyHistogram::observe bucket by bucket,
+// The metrics catalog without a runtime: LatencyHistogram::observe bucket by bucket,
 // the cumulative publication, the sanitized and dense names of forEachMetric, and the README's catalog and
 // configuration row against what forEachMetric emits.
 
@@ -135,7 +135,7 @@ namespace
     }
 } // namespace
 
-// I103 (unit part of LatencyHistogramBuckets †): a sample lands in the first bucket whose bound covers its milliseconds
+// Unit part of LatencyHistogramBuckets: a sample lands in the first bucket whose bound covers its milliseconds
 // rounded up; a sample exactly on a bound stays in that bucket (a strict bound moves 1 ms to le_2). Mutant: strict.
 TEST(MetricsCatalogTest, LatencyHistogramBuckets)
 {
@@ -180,7 +180,7 @@ TEST(MetricsCatalogTest, LatencyHistogramBuckets)
     }
 }
 
-// I100 (unit part of CatalogNamesAreSaneAndStable): the sanitized names, and a dense catalog: every member of every
+// Unit part of CatalogNamesAreSaneAndStable: the sanitized names, and a dense catalog: every member of every
 // closed set, zeros included, with the same names whatever the values.
 TEST(MetricsCatalogTest, CatalogNamesAreSaneAndStable)
 {
@@ -245,7 +245,7 @@ TEST(MetricsCatalogTest, CatalogNamesAreSaneAndStable)
     EXPECT_EQ(moved.at("indexer_client.bucket.vd_scanner._.failed.invalid_state"), 3);
     EXPECT_EQ(moved.at("indexer_client.client.vd_scanner.callback_overruns"), 9);
 
-    // N27: an empty or moved-from client has no names.
+    // An empty or moved-from client has no names.
     EXPECT_TRUE(collect(ic::ClientMetrics {}).empty());
 
     // The runtime side: 7 + 8 + 10 names plus 31 per node, `<i>` the node's position; state 0/1/2.
@@ -265,7 +265,7 @@ TEST(MetricsCatalogTest, CatalogNamesAreSaneAndStable)
     }
 }
 
-// RF-18 / README sync: the README's catalog counts and every leaf name forEachMetric emits, and the configuration row
+// README sync: the README's catalog counts and every leaf name forEachMetric emits, and the configuration row
 // of log_summary_interval_ms (RuntimeConfigTest.LogSummaryIntervalKey checks the bounds and the 19 keys).
 TEST(MetricsCatalogTest, ReadmeMatchesCatalog)
 {
@@ -306,7 +306,7 @@ TEST(MetricsCatalogTest, ReadmeMatchesCatalog)
                              ", node " + std::to_string(counts["node"]) + ".";
     EXPECT_NE(text.find(line), std::string::npos) << "expected: " << line;
 
-    const auto metrics = section(text, "## Metrics (E5c)");
+    const auto metrics = section(text, "## Metrics");
     for (const auto& leaf : leaves)
     {
         // A closed-set member is listed in its set's row (`<set>.<cause>` in the catalog); latency bounds by range.

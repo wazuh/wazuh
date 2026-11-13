@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The metrics catalog (stage E5c, plan 18 I100-I104; contract: include/indexer_client/metrics.hpp).
+// The metrics catalog (contract: include/indexer_client/metrics.hpp).
 
 #include "indexer_client/metrics.hpp"
 
@@ -184,7 +184,7 @@ namespace indexer_client
     {
         if (!visitor || metrics.consumer.empty())
         {
-            return; // An empty or moved-from client (N27) has no names.
+            return; // An empty or moved-from client has no names.
         }
         const auto consumer = sanitizeMetricName(metrics.consumer);
         for (const auto& bucket : metrics.buckets)

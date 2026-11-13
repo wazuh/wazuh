@@ -13,10 +13,10 @@
 #ifndef _INDEXER_CLIENT_QUERY_ENGINE_HPP
 #define _INDEXER_CLIENT_QUERY_ENGINE_HPP
 
-// The I87 attempt loop shared by the queries (query.cpp) and the PIT (pit.cpp, stage E4b, I93; D51). NORMATIVE: the
+// The attempt loop shared by the queries (query.cpp) and the PIT (pit.cpp). NORMATIVE: the
 // loop, its clocks and its verdicts are the ones of query.hpp; this header only exposes them and adds two hooks.
 //
-// HOOKS (E4b, G-plan obj. 1 and 5). Both optional; neither may block nor call back into the engine.
+// HOOKS. Both optional; neither may block nor call back into the engine.
 //   preAttempt()  runs before every attempt (also the first, and after every wait). A returned cause aborts the call
 //                 at once with that cause and `reason`, without a request (PitExpired for an expired PIT).
 //   observer(e)   runs once per admitted attempt with how it ended:
@@ -87,7 +87,7 @@ namespace indexer_client::detail::query
     /// "/<indices><route>[?p1&p2...]"; with empty `indices`, "<route>[?...]" (`route` starts with '/').
     std::string target(const std::string& indices, std::string_view route, const std::vector<std::string>& params);
 
-    /// The I87 loop of one page (query.hpp): attempts, clocks, I82 verdicts, I86 conflicts, plus the hooks above.
+    /// The loop of one page (query.hpp): attempts, clocks, verdicts, conflicts, plus the hooks above.
     Outcome<QueryResponse> execute(const std::shared_ptr<ClientState>& client,
                                    const QueryOptions& options,
                                    Deadline deadline,

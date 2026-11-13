@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// deleteByQuery and updateByQuery end to end (plan 18, plan-E4a §Tests, I86, I88, 03 §4.16): routes, bodies, the
+// deleteByQuery and updateByQuery end to end: routes, bodies, the
 // conflict budget (its base shortened to 50 ms through the test hook) and the 200 outcomes over the real transport.
 
 #include <chrono>
@@ -53,7 +53,7 @@ namespace
         return r;
     }
 
-    /// maxAttempts = 2: a conflict that spent an I82 attempt would exhaust it before the third request.
+    /// maxAttempts = 2: a conflict that spent a retry attempt would exhaust it before the third request.
     ic::QueryOptions conflictOptions()
     {
         auto options = fastOptions();
@@ -62,10 +62,10 @@ namespace
     }
 } // namespace
 
-// I86: (base 50 ms) conflicts x2 and then clean ⇒ Ok in 3 requests with growing gaps; conflicts every time ⇒
-// VersionConflict after 3; a 503 after two conflicts is retried (a fresh I82 series); multi-index routes
+// (base 50 ms) conflicts x2 and then clean ⇒ Ok in 3 requests with growing gaps; conflicts every time ⇒
+// VersionConflict after 3; a 503 after two conflicts is retried (a fresh conflict series); multi-index routes
 // /a,b/_delete_by_query?conflicts=proceed and /a,b/_update_by_query?conflicts=proceed with the query as the body.
-// Mutant: a conflict retry spends the I82 budget.
+// Mutant: a conflict retry spends the retry budget.
 TEST_F(QueryTest, ByQueryConflictsRetryThenExhaust)
 {
     indexer_client::testing_hooks::setQueryConflictBaseMs(CONFLICT_BASE_MS);
@@ -111,7 +111,7 @@ TEST_F(QueryTest, ByQueryConflictsRetryThenExhaust)
     }
     EXPECT_EQ(delta(before, q::queryStats()).conflictRetries, q::CONFLICT_ATTEMPTS - 1);
 
-    // Conflicts x2, a 503, then clean: the 503 opens no new conflict and is retried under a fresh I82 series.
+    // Conflicts x2, a 503, then clean: the 503 opens no new conflict and is retried under a fresh conflict series.
     rules(*node,
           {times(conflict, 2),
            times(rule("POST", "/a,b/_delete_by_query", 503, errorBody("unavailable", "busy", 503)), 1),
@@ -122,9 +122,9 @@ TEST_F(QueryTest, ByQueryConflictsRetryThenExhaust)
     EXPECT_EQ(queries(*node).size(), 4u);
 }
 
-// 03 §4.16 end to end: a clean 200 returns the response; proceedOnConflicts = false drops conflicts=proceed and its
+// End to end: a clean 200 returns the response; proceedOnConflicts = false drops conflicts=proceed and its
 // 409-only failures are conflicts (retried); another failure ⇒ ItemPermanent with it in reason after one request;
-// timed_out ⇒ retried with an attempt (I82) and then Ok.
+// timed_out ⇒ retried with an attempt and then Ok.
 TEST_F(QueryTest, ByQueryOutcomesEndToEnd)
 {
     indexer_client::testing_hooks::setQueryConflictBaseMs(CONFLICT_BASE_MS);

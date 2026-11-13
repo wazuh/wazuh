@@ -241,7 +241,7 @@ memoised so a retry never rebuilds what already works:
 
 1. `AgentInFlightRegistry` — created FIRST (in the attempt's configuration snapshot) and reset
    LAST, because both the pipeline and the lane hold release listeners pointing into it.
-2. The `indexer_client` runtime handle — owned by modulesd's main thread (I128) and validated against
+2. The `indexer_client` runtime handle — owned by modulesd's main thread and validated against
    `<indexer>` before the fork; building the `Client` throws on nonsense but does NOT require the
    indexer to be reachable. That split is the startup gate's contract: **gate on "configuration is valid",
    never on "host is up"**, so the indexer is free to start after modulesd.
@@ -270,7 +270,7 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
 
 - **One `Client`, two buckets.** The module registers the consumer `inventory_sync_server` with the
   buckets `inventory` and `agent-state` (the runtime rejects a second `Client` of one consumer, so both
-  specs go in one `IndexerClientFactory(…, std::vector<BucketSpec>)` call, I148); one adapter per
+  specs go in one `IndexerClientFactory(…, std::vector<BucketSpec>)` call); one adapter per
   pipeline or scan-lane worker shares `inventory`. Each adapter
   takes `writer("inventory")` and `query()` once at construction (they are null after
   `requestClose()`, in which case construction throws).
@@ -279,18 +279,18 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
   and a WARN when it does not fit; retry attempts/duration/delay from the `indexer_sync_max_retry_*`
   options; overflow `Block` (2 s in production); 409 is success, except on the versioned upsert
   (`IndexVersionedScript`), which carries its own `Retry` policy: `retry_on_conflict` =
-  `UPDATE_RETRY_ON_CONFLICT` (5), and a 409 that survives it is requeued until the bucket's retry budget
-  fails the session (5.0.0 #41191); ambiguous 5xx is retried; not ordered.
+  `UPDATE_RETRY_ON_CONFLICT` (5) because a concurrent versioned upsert can hit a version conflict, so the update op retries on conflict; a 409 that survives it is requeued until the bucket's retry budget
+  fails the session; ambiguous 5xx is retried; not ordered.
 - **Chunks.** A worker stages adds in an open `Group`; before the add that would pass the per-worker
   cap (`chunkCap` = 0.8 * quota / (2 * (pipeline + lane workers)), defined in `indexer_client/chunking.hpp` and shared with the
   vulnerability scanner) the chunk is committed. At most one
   committed-or-abandoned chunk is unresolved per worker besides the open one; its results are
   harvested (ticket and Group dropped) before the next commit. Two operations on the same
-  `(index, _id)` are never unresolved at once (I139).
+  `(index, _id)` are never unresolved at once.
 - **Result per session.** `endSession()` and `flushSessions(n)` return a `SessionOutcome` for each
   session of the batch, built from the ranges of its own adds. Healthy sessions get `200` even when
-  another session of the batch fails (I136). An add refused by the library marks only its session
-  failed, without throwing (I142). `flushSessions` defaults to all-or-nothing over `flush()` for
+  another session of the batch fails. An add refused by the library marks only its session
+  failed, without throwing. `flushSessions` defaults to all-or-nothing over `flush()` for
   fakes that do not override it.
 - **Deadlines.** A batch's deadline starts at its first add and is `statefulBudget =
   clamp(d + 3 s, 5 s, 18 s)`; each query of an immediate session gets the same budget; the
@@ -300,7 +300,7 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
   deletion by-query's is `min(d, deleteBudget - 3 s)`, so a by-query's version conflict surfaces
   before the deadline. On expiry, only unresolved sessions fail
   (`503`); the open chunk is abandoned (`cancel(tag)` without waiting) and the next add opens a new
-  deadline (I145, I145b). The adapter's own later writes and by-queries still wait for it; a caller
+  deadline. The adapter's own later writes and by-queries still wait for it; a caller
   about to hand the agent to ANOTHER adapter calls `settleAbandoned()` first (the scan lane does).
   The pipeline never waits: before answering a failed session while `holdsAbandonedWrite()` is true it
   takes one more (reentrant) Pipeline count on the agent in the `AgentInFlightRegistry`, and drops it
@@ -309,12 +309,12 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
   included; only the scan lane parks the agent meanwhile.
 - **Stop.** The module sets a `closing` flag before `requestClose()`; every wait slices (250 ms) and
   returns when it flips. After the workers are joined the module calls `awaitClosed(now + 1 s)`;
-  what remains belongs to sessions already answered `503` (I141b).
+  what remains belongs to sessions already answered `503`.
 - **Failure mapping.** `translateCause` maps each library cause to one of the seam's classes, and
   `failureResponse`/`failureMetric` (`src/indexer/connectorFailure.hpp`) turn the class into the HTTP
   answer and the `sync.bulk.flush.failures.*` suffix. The table is in the operator reference:
   [Failure causes and HTTP answers](../../../docs/ref/modules/inventory-sync-server/architecture.md#failure-causes-and-http-answers).
-- **The `agent-state` bucket** (`agentStateBucketSpec`, I148, I149, I149b, I149c). Carries `POST /stats`,
+- **The `agent-state` bucket** (`agentStateBucketSpec`). Carries `POST /stats`,
   `POST /config` (one `post` each, by the endpoints) and the two by-id deletes of an agent deletion.
   `ordered`, overflow `Reject` (a full quota is a `503`, not a wait), 409 success, ambiguous 5xx `Retry`, and retry
   with **no** attempt or duration limit (the v1 async queue buffered through outages too; the quota bounds it).
@@ -323,12 +323,12 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
   `requested` = `indexer_async_max_queue_bytes` (0 → global / 4) and `top = max(global / 4, min(16 KiB, global / 2))`.
   The 16 KiB floor lets the two deletes of a deletion share one `Group`; the top leaves `inventory` the rest. When the
   bulk does not fit it is clipped to `quota - 6 KiB` (or `quota / 2`); a clipped bulk or a capped request logs a WARN.
-  `inventoryBucketSpec` then receives the **remainder** `global - agent-state quota` as its `quotaBudget` (I149c), so a
+  `inventoryBucketSpec` then receives the **remainder** `global - agent-state quota` as its `quotaBudget`, so a
   full `agent-state` can never starve `/stateful`. `agent-state` is built first. The options that no longer have an
   effect (`indexer_async_flush_interval_seconds`, `_request_timeout_seconds`, `_logger_queue_size`, `_logger_threads`,
   `indexer_monitoring_interval_seconds`) log one WARN at startup when they are not at their default.
 - **Health.** `IClient::health().anyUsable()` gates `/stateful`, `/stats`, `/config` and the deletion, and drives the
-  heartbeat's availability transitions log (I151). A `post` the bucket refuses (`QueueFull`, `Unavailable`, closing)
+  heartbeat's availability transitions log. A `post` the bucket refuses (`QueueFull`, `Unavailable`, closing)
   answers `503` with a throttled log per cause; `/stats` and `/config` still have no `sync.requests.total.*`.
 - **Metrics.** The 51 metrics of each bucket (`…inventory.*` and `…agent_state.*`; the name is sanitized, `-` → `_`)
   are published by pull in the module's `GET /metrics`;
@@ -337,7 +337,7 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
 
 ### The connector flush-interval override (previous connector)
 
-Before E7b the pipeline's and the lane's sync connectors were created with `flush_interval_seconds`
+Before the indexer_client adapter the pipeline's and the lane's sync connectors were created with `flush_interval_seconds`
 forced to `0` so that no timer flush could discard a buffer behind a worker's back. The indexer_client
 adapter has no timer flush at all: every chunk is committed by the worker that staged it and its
 results are harvested by that worker, so "200 means confirmed" holds by construction. The
@@ -489,8 +489,8 @@ sequenceDiagram
 ```
 
 Failure mapping is centralized in the worker and decided by the failure's cause alone, with no
-second `isAvailable()` query (I135): `503` for transient causes, `503` with `Retry-After` when a
-by-query ran out of its version-conflict allowance (D30: retryable contention, the agent re-sends
+second `isAvailable()` query: `503` for transient causes, `503` with `Retry-After` when a
+by-query ran out of its version-conflict allowance (retryable contention, the agent re-sends
 after the delay) and `500` otherwise (agent still retries; the log is operator-actionable). See
 [the adapter section](#the-indexer-adapter-indexer_client) and the operator table. A staging failure poisons the
 open batch — everything is answered through the same mapping and the connector buffer drained —
@@ -647,21 +647,21 @@ re-queue the deletion forever rather than fail it.
 
 The handler validates that body (→ `400`) and gates on indexer availability (→ `503`; the caller
 retries rather than losing the deletion), then **enqueues** a `SyncPipeline::Item` with `Kind::DeleteAgent` on the
-TARGET agent's shard. The whole deletion runs in that shard's **worker** (`SessionProcessor::executeDeleteAgent`,
-I147c), as an immediate: the batch is cut and answered first, then `until = now + deleteBudget` is fixed
-(`min(3 * d + 25 s, 540 s)`, I145) and, with `AgentDeletionDeps::byId` set by the facade:
+TARGET agent's shard. The whole deletion runs in that shard's **worker** (`SessionProcessor::executeDeleteAgent`),
+as an immediate: the batch is cut and answered first, then `until = now + deleteBudget` is fixed
+(`min(3 * d + 25 s, 540 s)`) and, with `AgentDeletionDeps::byId` set by the facade:
 
 1. `cancel(agent)` on the `agent-state` bucket (drops the agent's queued `/stats` and `/config` writes);
 2. **one `Group`** with the deletes of `AGENT_DELETION_SCOPE_BY_ID` (`wazuh-agent-config`, `wazuh-agent-stats`) tagged
-   with the agent and committed at once (I147d) — two loose `submit`s would each wait `bulk.maxAge` (5 s);
+   with the agent and committed at once — two loose `submit`s would each wait `bulk.maxAge` (5 s);
 3. the by-query over `AGENT_DELETION_SCOPE_BY_QUERY` (`wazuh-states-*`) through `deleteAgentByQuery`, which fixes its
-   own `now + deleteBudget` (I145b);
+   own `now + deleteBudget`;
 4. `Ticket::wait` on the Group until `until`, in slices of at most 250 ms that watch `closing` and `ready()`.
 
-By-id and by-query share the one absolute `until` (I147b). A by-id result `Failed(ItemPermanent)` with 404
+By-id and by-query share the one absolute `until`. A by-id result `Failed(ItemPermanent)` with 404
 `index_not_found_exception` counts as success (parity with the by-query's missing-index rule,
 `sessionProcessor.cpp`), without changing the library's classification. A refusal, a failure, the deadline or
-`closing` calls `cancel(agent)` without waiting and throws `ConnectorError` with the I135 class (→ `failureResponse`).
+`closing` calls `cancel(agent)` without waiting and throws `ConnectorError` with the failure class of its cause (→ `failureResponse`).
 On success the agent is `note()`d to the `AgentDeleteSweeper`. A missing index counts as success on both halves, so
 repeating a deletion is harmless and stays quiet — the callers' whole retry contract. Two overlapping deletions of
 one agent run one after the other on the same shard; `Item::byIdDeletes` no longer exists.
@@ -683,20 +683,20 @@ globally keeps the leak backstop intact for everyone else. It must stay above
 capacity module-side; this one has no queue, so the bound is the Task Manager's concurrency cap of 4
 for `agent_delete_indexer` — at most four deletions in flight.
 
-### The post-deletion sweep (`indexer/agentDeleteSweeper.*`, I146, I146b, I146c)
+### The post-deletion sweep (`indexer/agentDeleteSweeper.*`)
 
-`cancel(agent)` lifts the ambiguous-retry **pin** (D38) of a report that timed out on a node (IC README § Ordered
+`cancel(agent)` lifts the ambiguous-retry **pin** of a report that timed out on a node (IC README § Ordered
 buckets), so that node may still apply it after the delete reached another one: strict order is not claimed for the
 by-id half, and the sweeper covers the residue. `AgentDeleteSweeper(IQuery, window, deadline, closing)` has its own
 thread and condvar; the worker calls `note(agentId)` once the by-id deletes succeeded. A **fixed tick** runs at most
-one pass per `window` (= `MetricsSnapshot::requestTimeout + 5 s`, I150: margin for a 1–5 s `refresh_interval`), over
+one pass per `window` (= `MetricsSnapshot::requestTimeout + 5 s`: margin for a 1–5 s `refresh_interval`), over
 the ids whose note is at least one window old (each waits between W and 2W). A pass issues **one delete-by-query per
 index** (a missing index does not void the other) with `terms` on `_id`, `proceedOnConflicts`, ids in chunks of at
-most 10 000, **without `refresh`** (P21: the role may lack `indices:admin/refresh`), each with `deadline` =
+most 10 000, **without `refresh`** (the role may lack `indices:admin/refresh`), each with `deadline` =
 `deleteBudget`. `residual` = the documents deleted. A failed chunk's ids return once to the next pass, then are
 dropped (`dropped`); nothing is sent without due ids (at most `2 * ceil(n / 10 000)` DBQs per pass). `stop()` wakes,
 joins and drops what is pending (counted). Counters: `sync.agent_delete.sweep.{runs,failures,residual,dropped,forgotten}`
-(`common/metricNames.hpp`). Best effort (I36): zero residue is not guaranteed.
+(`common/metricNames.hpp`). Best effort: zero residue is not guaranteed.
 
 **An id enrolled again.** authd lets an operator reuse an explicit agent id (`POST /agents/insert` with `id`) as soon
 as the deletion task is terminal, which is the moment the worker `note()`s the id. Without more, a new agent with that
@@ -711,7 +711,7 @@ and its `index` replaces any late document of the old one (same `_id`). Two resi
 in flight with the id cannot be recalled, and a late write of the old agent landing after the new agent's first
 report survives until the new agent's next report replaces it.
 
-**Effects** (G-plan E7c obj. 11–12): a pin freezes the `agent-state` bucket for at most
+**Effects**: a pin freezes the `agent-state` bucket for at most
 `ambiguous_retry_window_ms`; with a full quota the deletes compete with `/stats` and `/config` (a refused deletion
 is a `503` the dispatcher retries); an idle bucket waits `bulk.maxAge` (5 s) to send, except the deletion's Group.
 

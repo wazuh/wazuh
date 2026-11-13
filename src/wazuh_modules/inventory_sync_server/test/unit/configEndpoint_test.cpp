@@ -482,7 +482,7 @@ TEST(ConfigEndpointTest, PostAcceptedIs200)
     EXPECT_TRUE(rig->writer->cancelled().empty()) << "/config never cancels anything";
 }
 
-/// With no node the client would use, the caller gets a 503 to retry, and nothing is posted (I151).
+/// With no node the client would use, the caller gets a 503 to retry, and nothing is posted.
 TEST(ConfigEndpointTest, NoUsableNodeIs503)
 {
     auto rig = std::make_shared<Rig>(/*usable=*/false);

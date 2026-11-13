@@ -1,7 +1,7 @@
 # Copyright (C) Wazuh Inc.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-"""E12 A6: the monitor attaches to THIS host's manager, never to a container's daemon of the same name.
+"""The monitor attaches to THIS host's manager, never to a container's daemon of the same name.
 
 With the e2e cluster pods up, every manager daemon (and the indexer) runs several times, each with
 the same /var/wazuh-manager/bin/... path as its exe; the old "newest wins" rule often picked a pod's

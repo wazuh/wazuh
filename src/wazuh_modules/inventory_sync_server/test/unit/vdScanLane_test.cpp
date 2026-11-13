@@ -571,7 +571,7 @@ TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnce
 
 /**
  * The scan succeeded, the INDEXING did not. That is not a scan failure and must not be reported as
- * one: the answer follows the failure's CAUSE alone (I135), never a second look at isAvailable().
+ * one: the answer follows the failure's CAUSE alone, never a second look at isAvailable().
  * A failure the connector does not classify is OUR problem (500); a transient one is an outage the
  * agent should back off from (503).
  *
@@ -1041,7 +1041,7 @@ TEST(VdScanLaneTest, TheFenceStillWaitsForAnotherThreadsScanOfTheAgent)
     coordinator.resumeAgent("001");
 }
 
-// --- A stopping scanner (E8a, I167c) -----------------------------------------------------------
+// --- A stopping scanner -----------------------------------------------------------
 //
 // VulnerabilityScannerFacade::stop() lowers isInitialized() first; from then on the adapter's scan() throws "VD
 // stopping" and its scanAgent() answers NotReady. The lane has to turn the first into a failed session (500, nothing

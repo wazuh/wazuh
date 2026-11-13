@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Threads and the spread of transfers over the K loops (plan-E2a-1 §Tests, lot A: CA-1, T1, I22c).
+// Threads and the spread of transfers over the K loops.
 
 #include <algorithm>
 #include <fstream>
@@ -54,9 +54,9 @@ namespace
     }
 } // namespace
 
-// CA-1/T1: K + M threads and not one more, sampled while min(64, 8·K) requests are held open by the fake (8 = the
+// K + M threads and not one more, sampled while min(64, 8·K) requests are held open by the fake (8 = the
 // per-host connection cap of each multi) and the rest wait inside curl. Numeric hosts: no resolver thread.
-// D127: only the new tasks named as runtime threads are counted. The fake's 64 workers are created by its server thread
+// Only the new tasks named as runtime threads are counted. The fake's 64 workers are created by its server thread
 // after FakeIndexer::start() returns (httplib sets is_running before it builds its pool), so under CPU load some of
 // them land after the base listing and the plain delta counted them (25 vs 5).
 TEST_F(TransportTest, ThreadsStayKPlusM)

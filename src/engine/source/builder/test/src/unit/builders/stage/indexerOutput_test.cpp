@@ -496,7 +496,7 @@ TEST_F(IndexerOutputOperationTest, validate_access_management_category)
     ASSERT_EQ(*result.payload(), *event);
 }
 
-// I183: in test mode the event is not indexed, and the trace says so
+// In test mode the event is not indexed, and the trace says so
 TEST_F(IndexerOutputOperationTest, TestModeDoesNotIndex)
 {
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
@@ -541,7 +541,7 @@ TEST_F(IndexerOutputOperationTest, TestModeStillValidates)
     EXPECT_THAT(result.trace(), ::testing::HasSubstr("exceeds 255 characters limit"));
 }
 
-// I189: with event processing off there is no connector, and the tester must still build the stage
+// With event processing off there is no connector, and the tester must still build the stage
 TEST_F(IndexerOutputOperationTest, TestModeWithoutConnectorBuilds)
 {
     auto builder = getIndexerOutputBuilder(std::shared_ptr<wiconnector::IWIndexerConnector> {});

@@ -331,10 +331,10 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         3600,
         60);
     /* Minimum 0, NOT 1: 0 keeps its documented meaning as "no explicit size" -- the agent-state
-     * bucket then takes a quarter of the indexer client's global quota (I149b) -- and
+     * bucket then takes a quarter of the indexer client's global quota -- and
      * getDefine_Int_default() calls merror_exit() on an out-of-range value, so a minimum of 1
      * would turn that documented setting into a fatal abort. Any value is capped at that quarter (or
-     * at 16 KiB within half of the global quota when the quarter is smaller, I149c). */
+     * at 16 KiB within half of the global quota when the quarter is smaller). */
     config->indexer_async_max_queue_bytes =
         (long long)getDefine_Int_default("wazuh_modules",
                                          "inventory_sync_server_indexer_async_max_queue_bytes", /* -> max_queue_bytes */
@@ -342,7 +342,7 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
                                          2147483647,
                                          64 * 1024 * 1024);
 
-    /* Ignored since the indexer client replaced the v1 session (I149): node health is probed by the
+    /* Ignored since the indexer client replaced the v1 session: node health is probed by the
      * process runtime ('wazuh_modules.indexer_client_probe_interval_ms'). Still read, with its old range,
      * so an existing setting neither aborts the start nor goes unnoticed (the module WARNs once). */
     config->indexer_monitoring_interval_seconds = getDefine_Int_default(
@@ -436,7 +436,7 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
             config.indexer = indexer_json;
 
             /* The process's indexer_client runtime, published by the main thread before any module
-             * thread exists (I128, I130); NULL without one, and the module's sync stage then fails
+             * thread exists; NULL without one, and the module's sync stage then fails
              * and retries on its heartbeat. Stable for the life of the process. */
             config.indexer_runtime = wm_indexer_runtime_ref();
 

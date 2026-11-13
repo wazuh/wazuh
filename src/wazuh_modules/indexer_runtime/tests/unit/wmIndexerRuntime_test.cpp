@@ -292,7 +292,7 @@ TEST_F(WmIndexerRuntime, RefOutlivesStaticState)
 }
 
 // A module thread whose join expired still runs while exit() runs the static destructors: the bridge's state and the
-// published reference must survive them (G-diff E7a, obj. 1). A plain TEST, so that nothing touches the bridge before
+// published reference must survive them. A plain TEST, so that nothing touches the bridge before
 // the child registers its exit handler: a static State would register its destructor later and be destroyed first.
 TEST(WmIndexerRuntimeExit, StateUsableDuringExit)
 {

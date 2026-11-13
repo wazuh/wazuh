@@ -10,9 +10,9 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Node health (plan 18, plan-E2b §Tests: CA-13, RF-16, T6, I24, I52-c/d/e, D36, D39, I57): the probe rounds against the
+// Node health: the probe rounds against the
 // fake, the passive signals, the selector, the aggregates and the edge-triggered logs, read through
-// detail::runtimeNodeSet() / detail::runtimeProber() and counted from the log function the library is given (I56).
+// detail::runtimeNodeSet() / detail::runtimeProber() and counted from the log function the library is given.
 
 #include <cstdarg>
 #include <cstdio>
@@ -291,7 +291,7 @@ protected:
     }
 };
 
-// CA-13, I57: green and yellow are Available, and the first round goes out at start (the interval is one hour).
+// Green and yellow are Available, and the first round goes out at start (the interval is one hour).
 TEST_F(HealthTest, ProbeGreenYellowAvailable)
 {
     auto green = startFake({healthRule("green")});
@@ -327,7 +327,7 @@ TEST_F(HealthTest, TheProbeRequestsTheHealthUrl)
     EXPECT_EQ(stateOf(0), State::Available);
 }
 
-// RF-16, I57: a node Down from the start still logs the first round (its previous state is Unknown, not Down); the
+// A node Down from the start still logs the first round (its previous state is Unknown, not Down); the
 // rounds that repeat it log nothing.
 TEST_F(HealthTest, FirstRoundLogsEvenIfDown)
 {
@@ -344,7 +344,7 @@ TEST_F(HealthTest, FirstRoundLogsEvenIfDown)
     EXPECT_EQ(m_logs->total(), 1u) << m_logs->dump();
 }
 
-// CA-13: a sustained 429 keeps the node Throttled in every round, never Down.
+// A sustained 429 keeps the node Throttled in every round, never Down.
 TEST_F(HealthTest, Probe429IsThrottledNeverDown)
 {
     auto fake = startFake({throttledRule(Durability::Transient)});
@@ -471,7 +471,7 @@ TEST_F(HealthTest, PermanentBreakerWarnsOnlyAfterThreeConsecutiveProbes)
     EXPECT_EQ(m_logs->count(LEVEL_WARN, "PERMANENT"), 2u) << m_logs->dump();
 }
 
-// CA-13: closed port, 503, invalid JSON, no `status`, a non-string `status` and `unknown` are all Down.
+// closed port, 503, invalid JSON, no `status`, a non-string `status` and `unknown` are all Down.
 TEST_F(HealthTest, ProbeDownOnTransport5xxOrBadBody)
 {
     auto fake = startFake({healthRule("green")});
@@ -504,7 +504,7 @@ TEST_F(HealthTest, ProbeDownOnTransport5xxOrBadBody)
     EXPECT_NE(reasonOf(0).find("connect (curl 7)"), std::string::npos) << reasonOf(0);
 }
 
-// CA-13: 401 (and 403) is Down with the credentials hint in Node.reason and in the WARN.
+// 401 (and 403) is Down with the credentials hint in Node.reason and in the WARN.
 TEST_F(HealthTest, Probe401IsDownWithCredentialsHint)
 {
     auto fake = startFake({healthRule("green")});
@@ -526,7 +526,7 @@ TEST_F(HealthTest, Probe401IsDownWithCredentialsHint)
     }
 }
 
-// G-diff E2b obj. 1: a node that stays Down logs once per distinct reason (503, then 401 without a green in between:
+// A node that stays Down logs once per distinct reason (503, then 401 without a green in between:
 // two WARN, the second with the credentials hint); the same reason again adds nothing.
 TEST_F(HealthTest, DownReasonChangeLogs)
 {
@@ -544,7 +544,7 @@ TEST_F(HealthTest, DownReasonChangeLogs)
     EXPECT_EQ(m_logs->count(LEVEL_WARN, DOWN), 2u) << m_logs->dump();
 }
 
-// G-diff E2b obj. 2: a red round pulls the healthy nodes down with the red reason, but a node already Down by its own
+// A red round pulls the healthy nodes down with the red reason, but a node already Down by its own
 // result keeps that reason (still its problem once red clears).
 TEST_F(HealthTest, RedKeepsOwnDownReason)
 {
@@ -566,7 +566,7 @@ TEST_F(HealthTest, RedKeepsOwnDownReason)
     EXPECT_EQ(reasonOf(1), "HTTP 401: check indexer credentials / permissions");
 }
 
-// CA-13, T6, I24: one node reports red, the other answers green first: both Down, clusterRed, one ERROR and one WARN
+// One node reports red, the other answers green first: both Down, clusterRed, one ERROR and one WARN
 // per node; twenty red rounds add nothing; back to green: both Available, one INFO «no longer red» and one per node.
 TEST_F(HealthTest, ClusterRedAllDownAndRecovers)
 {
@@ -613,7 +613,7 @@ TEST_F(HealthTest, ClusterRedAllDownAndRecovers)
     EXPECT_EQ(m_logs->total(), 6u) << m_logs->dump();
 }
 
-// CA-13: a passive Timeout puts the node Down at once, without waiting for the next probe (interval one hour).
+// A passive Timeout puts the node Down at once, without waiting for the next probe (interval one hour).
 TEST_F(HealthTest, PassiveTimeoutDownBeforeNextProbe)
 {
     auto fake = startFake({healthRule("green")});
@@ -628,7 +628,7 @@ TEST_F(HealthTest, PassiveTimeoutDownBeforeNextProbe)
     EXPECT_EQ(prober()->stats().rounds, 1u) << "no probe was involved";
 }
 
-// CA-13: only the probe brings a node back; a passive success never promotes.
+// Only the probe brings a node back; a passive success never promotes.
 TEST_F(HealthTest, OnlyProbeRestoresAvailable)
 {
     auto fake = startFake({healthRule("green")});
@@ -649,7 +649,7 @@ TEST_F(HealthTest, OnlyProbeRestoresAvailable)
     EXPECT_EQ(m_logs->count(LEVEL_INFO, AVAILABLE), 2u) << m_logs->dump();
 }
 
-// I52-c: the selector prefers Available, falls back to Throttled, and gives nothing when every node is Down.
+// The selector prefers Available, falls back to Throttled, and gives nothing when every node is Down.
 TEST_F(HealthTest, ChooserPrefersAvailable)
 {
     auto throttled = startFake({throttledRule(Durability::Transient)});
@@ -685,7 +685,7 @@ TEST_F(HealthTest, ChooserPrefersAvailable)
     EXPECT_EQ(nodes()->choose(), std::nullopt);
 }
 
-// I52-e: the strict aggregate (vulnerability scanner) and the lenient one (inventory sync).
+// The strict aggregate (vulnerability scanner) and the lenient one (inventory sync).
 TEST_F(HealthTest, AggregatesForVdAndInvsync)
 {
     auto first = startFake({healthRule("green")});
@@ -714,7 +714,7 @@ TEST_F(HealthTest, AggregatesForVdAndInvsync)
     EXPECT_FALSE(view.anyUsable());
 }
 
-// D36: a round failed for a local cause (TlsConfig, then ResponseTooLarge) is Down plus localFault with one ERROR; a
+// A round failed for a local cause (TlsConfig, then ResponseTooLarge) is Down plus localFault with one ERROR; a
 // clean round clears it with one INFO. Injected with applyRound after the first real round (interval one hour).
 TEST_F(HealthTest, LocalCauseIsLocalFault)
 {
@@ -751,8 +751,8 @@ TEST_F(HealthTest, LocalCauseIsLocalFault)
     }
 }
 
-// D39: every node Down by Tls (a CA that did not sign them) warns with the rotation hint once per episode, not once
-// per round nor once per process. The CA cannot change on a live runtime (I14), so the episode is broken with an
+// Every node Down by Tls (a CA that did not sign them) warns with the rotation hint once per episode, not once
+// per round nor once per process. The CA cannot change on a live runtime, so the episode is broken with an
 // injected green round and the next real round opens the second one.
 TEST_F(HealthTest, AllNodesTlsHintPerEpisode)
 {
@@ -783,7 +783,7 @@ TEST_F(HealthTest, AllNodesTlsHintPerEpisode)
     EXPECT_EQ(m_logs->count(LEVEL_ERROR, LOCAL_FAULT), 0u) << "Tls is the node's, not a local fault";
 }
 
-// RF-16: twenty identical rounds log one line per edge and nothing else.
+// Twenty identical rounds log one line per edge and nothing else.
 TEST_F(HealthTest, LogsOnlyOnTransitions)
 {
     auto fake = startFake({healthRule("green")});
@@ -805,7 +805,7 @@ TEST_F(HealthTest, LogsOnlyOnTransitions)
     EXPECT_EQ(m_logs->total(), 3u) << m_logs->dump();
 }
 
-// I57: a probe held longer than the interval makes the timer skip rounds; never two probes in flight to a node.
+// A probe held longer than the interval makes the timer skip rounds; never two probes in flight to a node.
 TEST_F(HealthTest, RoundsDoNotOverlap)
 {
     auto first = startFake({heldHealthRule("green")});
@@ -829,7 +829,7 @@ TEST_F(HealthTest, RoundsDoNotOverlap)
     EXPECT_EQ(stateOf(0), State::Available);
 }
 
-// I57: with a probe in flight and a 1 ms interval, shutdown stops the probe before the transport: no refused submit,
+// With a probe in flight and a 1 ms interval, shutdown stops the probe before the transport: no refused submit,
 // no result after the stop, no round afterwards, no transition for the Shutdown result, and it is quick (K = 2).
 TEST_F(HealthTest, ProbeStopsBeforeTransport)
 {
@@ -866,7 +866,7 @@ TEST_F(HealthTest, ProbeStopsBeforeTransport)
     EXPECT_EQ(m_logs->total(), 0u) << m_logs->dump();
 }
 
-// I57: each transition adds one to generation(), calls onTransition outside the NodeSet's mutex and counts in the
+// Each transition adds one to generation(), calls onTransition outside the NodeSet's mutex and counts in the
 // node's transitions.
 TEST_F(HealthTest, TransitionHookAndGeneration)
 {
@@ -931,7 +931,7 @@ TEST_F(HealthTest, TransitionHookAndGeneration)
     EXPECT_EQ(seen->generations, (std::vector<std::uint64_t> {2u, 3u}));
 }
 
-// I57: Client::health() lists the configured hosts in order, with their state and reason.
+// Client::health() lists the configured hosts in order, with their state and reason.
 TEST_F(HealthTest, ClientHealthReportsNodesInOrder)
 {
     auto throttled = startFake({throttledRule(Durability::Transient)});

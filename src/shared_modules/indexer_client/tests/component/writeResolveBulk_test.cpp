@@ -10,10 +10,10 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-E6e-1 (plan 18, stage E6e, A): WritePath::resolveBulk, the bulk resolution of the ops of post, against the
+// WritePath::resolveBulk, the bulk resolution of the ops of post, against the
 // per-op WritePath::resolve: the same counters, charge and CloseReport, the payload and RESULT_RESERVE released once,
-// `drained` read per chunk before its release (I99), a throw in the middle that still settles every claimed op, and
-// the ops it won as the only ones a bulk counts. G-diff E6e P3-2/P3-3: the cancel(tag) waiter completed by the bulk
+// `drained` read per chunk before its release, a throw in the middle that still settles every claimed op, and
+// the ops it won as the only ones a bulk counts. The cancel(tag) waiter completed by the bulk
 // settlement, a settlement that throws twice (Bucket::settleBulk's catch, then the per-op fallback), a bucket with no
 // client, and the ambiguous count driven by the real sender (failBatch → countAmbiguous and its WARN).
 
@@ -76,7 +76,7 @@ namespace
         results.push_back(result(ic::Status::Dropped, ic::Cause::Shutdown));
         results.push_back(result(ic::Status::Dropped, ic::Cause::ClientClosed));
         results.push_back(result(ic::Status::Failed, ic::Cause::Ambiguous, 502, {}, "ambiguous HTTP 502"));
-        results.push_back(result(ic::Status::Dropped, ic::Cause::Cancelled)); // `cancelled` too (I80).
+        results.push_back(result(ic::Status::Dropped, ic::Cause::Cancelled)); // `cancelled` too.
         return results;
     }
 
@@ -204,7 +204,7 @@ protected:
     void SetUp() override
     {
         BulkTest::SetUp();
-        indexer_client::setLogFunction(m_warns.function()); // Valid only while no runtime runs (I56).
+        indexer_client::setLogFunction(m_warns.function()); // Valid only while no runtime runs.
     }
 
     void TearDown() override
@@ -249,7 +249,7 @@ protected:
     }
 };
 
-// CA-E6e-1: one bucket resolved op by op, another with the same results in one bulk: the same snapshot (every
+// One bucket resolved op by op, another with the same results in one bulk: the same snapshot (every
 // counter), the same interval keys and sample, the same CloseReport; charge and global charge back to 0.
 TEST_F(WriteResolveBulk, SameCountsAsPerOp)
 {
@@ -291,7 +291,7 @@ TEST_F(WriteResolveBulk, SameCountsAsPerOp)
     EXPECT_TRUE(eventually([&] { return globalCharge() == 0; }, 5s)) << write_component::describe(m_path->stats());
 }
 
-// CA-E6e-1: an op already resolved (a sweep won it) is late for the bulk; the bulk releases the payload and the
+// An op already resolved (a sweep won it) is late for the bulk; the bulk releases the payload and the
 // RESULT_RESERVE of the others exactly once (a second bulk over the same ops wins none and moves no charge).
 TEST_F(WriteResolveBulk, ChargeAndReserveReleasedOnce)
 {
@@ -321,7 +321,7 @@ TEST_F(WriteResolveBulk, ChargeAndReserveReleasedOnce)
     expectInvariants(stats("w"));
 }
 
-// CA-E6e-1 (I99): requestClose() lands between two chunks of one bulk (seam midBulkSettle, SETTLE_CHUNK + TAIL ops,
+// requestClose() lands between two chunks of one bulk (seam midBulkSettle, SETTLE_CHUNK + TAIL ops,
 // TAIL < SETTLE_CHUNK): the first chunk was resolved before the close, the second after it, so CloseReport::drained
 // counts exactly the TAIL.
 TEST_F(WriteResolveBulk, DrainedCountedWhenCloseMidBulk)
@@ -357,7 +357,7 @@ TEST_F(WriteResolveBulk, DrainedCountedWhenCloseMidBulk)
     EXPECT_EQ(stats("w").retained, 0u);
 }
 
-// CA-E6e-1: a throw in the middle of a bulk (seam midBulkSettle, before the first and before the second chunk) still
+// A throw in the middle of a bulk (seam midBulkSettle, before the first and before the second chunk) still
 // settles every op it claimed — none stays claimed and retained — and the exception reaches the caller (the
 // completion's fallback); `retained`, charge and the global charge end at 0.
 TEST_F(WriteResolveBulk, ThrowMidBulkReleasesClaimed)
@@ -397,7 +397,7 @@ TEST_F(WriteResolveBulk, ThrowMidBulkReleasesClaimed)
     EXPECT_EQ(stats("w").resolvedOk, 2 * COUNT);
 }
 
-// CA-E6e-1 (I105b), G-diff E6e P3-3: through the production sender. A bucket with onAmbiguous5xx = Fail posts five
+// Through the production sender. A bucket with onAmbiguous5xx = Fail posts five
 // ops; the fake answers their bulk 502; before the completion handles it (seam beforeCompletion) a sweep wins two of
 // them (Dropped(Shutdown)). failBatch's bulk resolution wins only the other three, which are the only Failed(Ambiguous)
 // in the snapshot, the count of countAmbiguous (its WARN says 3, not 5) and the complement of the two late results.
@@ -452,7 +452,7 @@ TEST_F(WriteResolveBulk, AmbiguousCountsResolvedOnly)
     expectInvariants(s);
 }
 
-// G-diff E6e P3-2: a cancel(tag) that marks a delivered op after resolveBulk claimed it (seam midBulkSettle, before
+// A cancel(tag) that marks a delivered op after resolveBulk claimed it (seam midBulkSettle, before
 // the chunk is settled) registers a waiter that only Bucket::settleBulk's decrement completes: the ticket is ready
 // once resolveBulk returns. Mutant: settleBulk without its loop over the completed waiters.
 TEST_F(WriteResolveBulk, CancelWaiterCompletedBySettleBulk)
@@ -495,7 +495,7 @@ TEST_F(WriteResolveBulk, CancelWaiterCompletedBySettleBulk)
     expectInvariants(s);
 }
 
-// G-diff E6e P3-2: Bucket::settleBulk throws twice (seam inSettleBulk on the 3rd and 4th op counted): the first
+// Bucket::settleBulk throws twice (seam inSettleBulk on the 3rd and 4th op counted): the first
 // throw is caught inside it (the two ops settled so far are released all the same) and escapes resolveBulk; its
 // settlement's destructor retries the chunk, which throws again, and settles that op alone by the per-op calls
 // (settleOneAlone) before the rest goes by chunk. Every claimed op ends settled once. Mutant: settleOneAlone empty.
@@ -534,7 +534,7 @@ TEST_F(WriteResolveBulk, SettleThrowsTwiceFallsBackPerOp)
     expectInvariants(s);
 }
 
-// G-diff E6e P3-2: a bucket with no client (built directly) settles through resolveBulk all the same: no client
+// A bucket with no client (built directly) settles through resolveBulk all the same: no client
 // accounting (the no-client branch), the ops released once with their RESULT_RESERVE.
 TEST_F(WriteResolveBulk, BucketWithoutClientSettles)
 {

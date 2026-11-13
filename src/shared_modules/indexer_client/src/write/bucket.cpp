@@ -52,7 +52,7 @@ namespace indexer_client::detail::write
             return "unknown";
         }
 
-        /// E5c: emits a bucket's pending edge lines once the bucket mutex (declared after it) is dropped, whatever the
+        /// Emits a bucket's pending edge lines once the bucket mutex (declared after it) is dropped, whatever the
         /// return path.
         struct EmitPendingOnExit final
         {
@@ -78,7 +78,7 @@ namespace indexer_client::detail::write
             return std::string(text.substr(0, size));
         }
 
-        /// A refusal by a closed admission (E5c: the Shutdown part is kept apart for rejected[shutdown]).
+        /// A refusal by a closed admission (the Shutdown part is kept apart for rejected[shutdown]).
         void countClosedRefusal(BucketStats& stats, Cause cause) noexcept
         {
             ++stats.rejectedClosed;
@@ -94,7 +94,7 @@ namespace indexer_client::detail::write
             return static_cast<std::size_t>(value);
         }
 
-        /// E6e (B): K stripes for a bucket that stages (DropNewest, not ordered), 0 otherwise.
+        /// K stripes for a bucket that stages (DropNewest, not ordered), 0 otherwise.
         std::size_t stripeCountFor(const BucketSpec& spec) noexcept
         {
             if (spec.overflow.kind != Overflow::Kind::DropNewest || spec.ordered)
@@ -109,7 +109,7 @@ namespace indexer_client::detail::write
             return std::max<std::size_t>(1, std::min<std::size_t>(64, 2 * threads));
         }
 
-        /// E6e (B): the calling thread's stripe slot, taken in turn on its first post (any bucket: slot % K).
+        /// The calling thread's stripe slot, taken in turn on its first post (any bucket: slot % K).
         std::size_t stripeSlot() noexcept
         {
             static std::atomic<std::size_t> next {0};
@@ -183,19 +183,18 @@ namespace indexer_client::detail::write
     Bucket::~Bucket()
     {
         // No other reference exists, so no lock.
-        // I99 (N6), the last net: with the close fixed (admit has no window, a racing enqueueGroup refuses, a Client
-        // destroyed on a runtime thread sweeps) nothing is still queued here. If something is, every build (issue 15,
-        // D64: no assert, the manager's Release builds keep it live) logs an internal error and completes what is left
-        // (ticket or group slot; the callback is not called) and returns its charge to the global cap while the write
-        // path, owner of that budget, is alive. Only the ops' own charge: a ticket's armed
-        // reserve and a GroupState return theirs; an op with a callback or one of post (no ticket, no group) has nobody
-        // else to.
+        // The last net: with the close fixed (admit has no window, a racing enqueueGroup refuses, a Client
+        // destroyed on a runtime thread sweeps) nothing is still queued here. If something is, every build (no assert:
+        // the manager's Release builds keep it live) logs an internal error and completes what is left (ticket or group
+        // slot; the callback is not called) and returns its charge to the global cap while the write path, owner of
+        // that budget, is alive. Only the ops' own charge: a ticket's armed reserve and a GroupState return theirs; an
+        // op with a callback or one of post (no ticket, no group) has nobody else to.
         bool staged = !m_unstaged.empty();
         for (std::size_t i = 0; i < m_stripeCount && !staged; ++i)
         {
             staged = !m_stripes[i].ops.empty();
         }
-        // E6e (B): staged (or unstaged) post ops were never charged and have nobody to complete: only the usage error.
+        // Staged (or unstaged) post ops were never charged and have nobody to complete: only the usage error.
         const bool leftovers = !m_pending.empty() || !m_lane.empty() || staged;
         if (leftovers)
         {
@@ -218,7 +217,7 @@ namespace indexer_client::detail::write
                     }
                     if (op->reserveCharged && (op->callback || (!op->ticket && !op->group)))
                     {
-                        charge += RESULT_RESERVE; // No callback runs to return it, or a post op's (E6d).
+                        charge += RESULT_RESERVE; // No callback runs to return it, or a post op's.
                     }
                     OpResult result;
                     result.status = Status::Dropped;
@@ -240,7 +239,7 @@ namespace indexer_client::detail::write
                 m_budget.release(charge);
             }
         }
-        // D67: a delivered op whose batch was let go unresolved outlives its bucket. Whenever it resolves, it goes
+        // A delivered op whose batch was let go unresolved outlives its bucket. Whenever it resolves, it goes
         // through the branch of WritePath::resolve without a bucket, which returns only a post op's RESULT_RESERVE: its
         // payload charge goes back to the global cap here, once (payloadCharged; nothing else releases it once the
         // bucket is gone), claimed or not.
@@ -261,7 +260,7 @@ namespace indexer_client::detail::write
                 m_budget.release(delivered);
             }
         }
-        // The cancel(tag) waiters still registered can never reach 0 (I80).
+        // The cancel(tag) waiters still registered can never reach 0.
         for (auto& waiter : m_cancelWaiters)
         {
             if (waiter.ticket)
@@ -303,7 +302,7 @@ namespace indexer_client::detail::write
                           globalSurplus);
             if (admission.cause == Cause::None && !admission.dropNewest)
             {
-                // Charged under this same take of the mutex: the admission is open, so the op is queued (I99: no
+                // Charged under this same take of the mutex: the admission is open, so the op is queued (no
                 // reservation→append window for submit / post; a close after this point finds it pending).
                 const bool wasEmpty = m_pending.empty();
                 const std::uint64_t bytesBefore = m_pendingBytes;
@@ -379,7 +378,7 @@ namespace indexer_client::detail::write
                     result.notify = true;
                 }
             }
-            // A stripe that stays non-empty needs its deadline armed (nextDue reads `oldest`). D116: it asks loop 0
+            // A stripe that stays non-empty needs its deadline armed (nextDue reads `oldest`). It asks loop 0
             // only when no timer is known to fire by this stripe's deadline; otherwise the pass at the armed deadline
             // (or the one running now) reads this stripe and re-arms. m_armedDue is NO_OLDEST when none is armed and
             // while a pass runs (invalidateArmedDue), so then it always asks.
@@ -438,7 +437,7 @@ namespace indexer_client::detail::write
                         donePayload += payload;
                         continue;
                     }
-                    // G-diff E6e P3-1: an op is admitted whole or not at all. Its queue slot is the only allocation of
+                    // An op is admitted whole or not at all. Its queue slot is the only allocation of
                     // an admitted op, taken before any counter moves (deque::emplace_back: on a throw nothing changed);
                     // a drop's interval keys are undone below if they fail.
                     m_pending.emplace_back();
@@ -534,7 +533,7 @@ namespace indexer_client::detail::write
             }
             {
                 std::lock_guard<std::mutex> lock(stripe.mutex);
-                // G-diff E6e r2 P3-3: re-read under the stripe's mutex (where `oldest` is written): between the read
+                // Re-read under the stripe's mutex (where `oldest` is written): between the read
                 // above and this lock a producer may have flushed the stripe and another refilled it, with a later
                 // deadline that is not due yet.
                 const auto current = stripe.oldest.load(std::memory_order_relaxed);
@@ -708,7 +707,7 @@ namespace indexer_client::detail::write
     void Bucket::pushEdgeLocked(const EdgeLine& line) noexcept
     {
         // Queued under the mutex, after a charge already moved: a failed allocation loses the line, never the
-        // accounting (admit and the stripe flush stay all-or-nothing per op, G-diff E6e P3-1).
+        // accounting (admit and the stripe flush stay all-or-nothing per op,.
         try
         {
             m_edgeLines.push_back(line);
@@ -905,7 +904,7 @@ namespace indexer_client::detail::write
             {
                 if (indexer_client::detail::testing::onRuntimeThread())
                 {
-                    // RF-27: a runtime thread never sleeps on a quota it may be the one to free.
+                    // A runtime thread never sleeps on a quota it may be the one to free.
                     ++m_stats.reentrancy;
                     reservation.cause = Cause::Reentrancy;
                     break;
@@ -996,7 +995,7 @@ namespace indexer_client::detail::write
                 return reservation;
             }
             // The room this op lacks is held by Building groups (this bucket's or any bucket's): waiting for it could
-            // wait on a group that is never committed (03 §4.13), so it is QueueFull at once. m_mutex held.
+            // wait on a group that is never committed, so it is QueueFull at once. m_mutex held.
             const auto heldByGroups = [&]
             {
                 return m_building > m_spec.quotaBytes - charge || m_budget.building() > m_budget.cap() - charge;
@@ -1007,7 +1006,7 @@ namespace indexer_client::detail::write
             {
                 if (m_spec.overflow.kind != Overflow::Kind::Block)
                 {
-                    // Reject, DropNewest and DropOldest alike (I70): nothing is dropped or evicted for a group op.
+                    // Reject, DropNewest and DropOldest alike: nothing is dropped or evicted for a group op.
                     overflowLocked(refused);
                     ++m_stats.rejectedQueueFull;
                     reservation.cause = Cause::QueueFull;
@@ -1015,7 +1014,7 @@ namespace indexer_client::detail::write
                 }
                 if (indexer_client::detail::testing::onRuntimeThread())
                 {
-                    ++m_stats.reentrancy; // RF-27, as reserve().
+                    ++m_stats.reentrancy; // As reserve().
                     reservation.cause = Cause::Reentrancy;
                     return reservation;
                 }
@@ -1094,7 +1093,7 @@ namespace indexer_client::detail::write
         }
         if (op.owner == nullptr)
         {
-            op.owner = this; // A plain store (E6e D): no reference count of the bucket per op.
+            op.owner = this; // A plain store: no reference count of the bucket per op.
         }
         op.payloadCharged = true;
         op.seq = m_nextSeq++;
@@ -1127,7 +1126,7 @@ namespace indexer_client::detail::write
         const auto now = std::chrono::steady_clock::now();
         if (m_admission)
         {
-            // I99 (N2): refused, never queued. Each payload passes to the bucket's custody exactly as an accepted op's
+            // Refused, never queued. Each payload passes to the bucket's custody exactly as an accepted op's
             // (payloadCharged, retained), so the caller's WritePath::resolve releases it through releasePayload; the
             // `building` transfer above happened all the same.
             for (auto& op : ops)
@@ -1143,7 +1142,7 @@ namespace indexer_client::detail::write
             m_pending.push_back(std::move(op));
         }
         m_flushSeq = m_nextSeq - 1;
-        // Whatever the thresholds: the group leaves now (RF-7).
+        // Whatever the thresholds: the group leaves now.
         return !m_notified.exchange(true);
     }
 
@@ -1376,7 +1375,7 @@ namespace indexer_client::detail::write
         {
             due = m_lane.front()->notBefore;
         }
-        // E6e (B): the stripes' deadline (atomics only, never a stripe's mutex under this one).
+        // The stripes' deadline (atomics only, never a stripe's mutex under this one).
         if (const auto stripes = stripeDueLocked(); stripes && (!due || *stripes < *due))
         {
             due = stripes;
@@ -1422,7 +1421,7 @@ namespace indexer_client::detail::write
         const auto maxBytes = static_cast<std::uint64_t>(m_spec.bulk.maxBytes);
         const auto maxDocs = m_spec.bulk.maxDocs;
         std::uint64_t opsCap = 0; // Smallest batchCap of the ops taken (0 = none): split halves never merge again.
-        // Whether `op` joins the batch; a document is never split: the head always goes (I118: the DRR credit decides
+        // Whether `op` joins the batch; a document is never split: the head always goes (the DRR credit decides
         // whether the turn emits, not how large the batch is; `cap`, the sink's batch limit, never refuses it either).
         const auto fits = [&](const OpState& op)
         {
@@ -1595,7 +1594,7 @@ namespace indexer_client::detail::write
     {
         std::uint64_t released = 0;
         // The resolution won the claim, so no requeue writes them again: a resolved op whose completion waits on
-        // the pool keeps no last-error strings (RESULT_RESERVE, G-diff E3b-2 obj. 1).
+        // the pool keeps no last-error strings (RESULT_RESERVE).
         std::string().swap(op.lastReason);
         std::string().swap(op.lastItemErrorType);
         if (const auto it = m_delivered.find(&op); it != m_delivered.end())
@@ -1618,7 +1617,7 @@ namespace indexer_client::detail::write
         }
         if (withReserve)
         {
-            // E6d: a post op's RESULT_RESERVE, in this same take of the mutex.
+            // A post op's RESULT_RESERVE, in this same take of the mutex.
             released = RESULT_RESERVE;
             m_charge -= RESULT_RESERVE;
         }
@@ -1629,7 +1628,7 @@ namespace indexer_client::detail::write
             m_charge -= op.payload;
             --m_stats.retained;
             m_stats.retainedBytes -= op.payload;
-            // I80: the single decrement point, once per op (payloadCharged); only a marked op counted at its
+            // The single decrement point, once per op (payloadCharged); only a marked op counted at its
             // waiter's registration (seq < seqLimit) decrements it.
             if (!m_cancelWaiters.empty() && op.cancelled.load() && !op.tag.empty())
             {
@@ -1658,7 +1657,7 @@ namespace indexer_client::detail::write
     {
         std::shared_ptr<OpState> keep; // Dropped after the mutex: the op (and its TicketState) never dies under it.
         std::uint64_t released = 0;
-        std::vector<std::shared_ptr<CancelState>> cancelDone; // Completed after the mutex (I80).
+        std::vector<std::shared_ptr<CancelState>> cancelDone; // Completed after the mutex.
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             const auto before = m_charge;
@@ -1701,8 +1700,8 @@ namespace indexer_client::detail::write
                 for (std::size_t i = 0; i < count; ++i)
                 {
                     auto& item = items[i];
-                    // E6e (D), G-diff P3-5: the caller's bucket must be the op's, as WritePath::resolveWon checks.
-                    // Issue 15 (D64): no assert; logged, counted and settled here all the same.
+                    // The caller's bucket must be the op's, as WritePath::resolveWon checks.
+                    // No assert; logged, counted and settled here all the same.
                     if (item.op->owner != nullptr && item.op->owner != this)
                     {
                         internalError("settleBulk: an operation settled by a bucket other than its own");
@@ -1712,7 +1711,7 @@ namespace indexer_client::detail::write
                         item.result.status, item.result.cause, item.result.itemErrorType, item.result.reason);
                     if (item.result.status == Status::Dropped && item.result.cause == Cause::Cancelled)
                     {
-                        ++m_stats.cancelled; // I80: also under resolvedDropped (countCancelled).
+                        ++m_stats.cancelled; // Also under resolvedDropped (countCancelled).
                     }
                     std::shared_ptr<OpState> one;
                     released += releasePayloadLocked(*item.op, true, one, cancelDone);
@@ -1736,7 +1735,7 @@ namespace indexer_client::detail::write
                 }
             }
         }
-        m_budget.release(released); // One release per chunk (E6e A), not one per op.
+        m_budget.release(released); // One release per chunk, not one per op.
         for (const auto& ticket : cancelDone)
         {
             if (ticket)
@@ -1768,7 +1767,7 @@ namespace indexer_client::detail::write
 
     std::vector<std::shared_ptr<OpState>> Bucket::close(Cause cause)
     {
-        // E6e (B): the seal first (stripes flushed while the admission is open), then the bucket mutex.
+        // The seal first (stripes flushed while the admission is open), then the bucket mutex.
         auto leftovers = sealStripes();
         std::vector<std::shared_ptr<OpState>> pending; // Lane first, then pending (then what the stripes left).
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -1806,7 +1805,7 @@ namespace indexer_client::detail::write
 
     void Bucket::closeAdmission(Cause cause)
     {
-        // E6e (B): the seal first, so the flushed ops are below the flushSeq set here and drain at once.
+        // The seal first, so the flushed ops are below the flushSeq set here and drain at once.
         auto leftovers = sealStripes();
         std::lock_guard<std::mutex> lock(m_mutex);
         for (auto& op : leftovers)
@@ -1873,7 +1872,7 @@ namespace indexer_client::detail::write
     {
         if (status != Status::Ok)
         {
-            // E5c: the interval's (cause, itemErrorType) keys, first-come, at most SUMMARY_KEYS; the rest is `other`.
+            // The interval's (cause, itemErrorType) keys, first-come, at most SUMMARY_KEYS; the rest is `other`.
             auto& keys = m_interval.keys;
             const auto key = std::find_if(keys.begin(),
                                           keys.end(),
@@ -2163,7 +2162,7 @@ namespace indexer_client::detail::write
 
         std::vector<std::shared_ptr<OpState>> toHead;
         std::lock_guard<std::mutex> lock(m_mutex);
-        // I79: one pin for the whole batch; an op already pinned keeps its `until` (so does the batch: it was sliced
+        // One pin for the whole batch; an op already pinned keeps its `until` (so does the batch: it was sliced
         // under the pin gate, so its pinned ops share it).
         const bool setPin = m_spec.ordered && spec.pin == RequeueSpec::Pin::Set;
         TimePoint pinUntil = spec.pinUntil;
@@ -2200,7 +2199,7 @@ namespace indexer_client::detail::write
             }
             if (op->cancelled.load())
             {
-                // I80: never back to the lane; cancellation wins over exhaustion and close. Stays delivered until
+                // Never back to the lane; cancellation wins over exhaustion and close. Stays delivered until
                 // the caller resolves it Dropped(Cancelled) (releasePayload decrements the waiters).
                 result.cancelled.push_back(std::move(op));
                 continue;
@@ -2242,8 +2241,8 @@ namespace indexer_client::detail::write
             }
             if (spec.toHead)
             {
-                // A head op is due now by construction, so the lane head stays its minimum notBefore (G-diff E3b-1
-                // obj. 3): eligible/headBytes/nextDue read only the front.
+                // A head op is due now by construction, so the lane head stays its minimum notBefore:
+                // eligible/headBytes/nextDue read only the front.
                 op->notBefore = now;
             }
             if (spec.halve)
@@ -2263,7 +2262,7 @@ namespace indexer_client::detail::write
             }
             if (spec.countAttempt)
             {
-                ++m_stats.retries[at(retryCause(op->lastCause))]; // E5c: back to the lane with a counted attempt.
+                ++m_stats.retries[at(retryCause(op->lastCause))]; // Back to the lane with a counted attempt.
             }
             m_delivered.erase(delivered);
             if (spec.toHead)

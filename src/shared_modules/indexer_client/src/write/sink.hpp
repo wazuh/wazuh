@@ -13,8 +13,8 @@
 #ifndef _INDEXER_CLIENT_WRITE_SINK_HPP
 #define _INDEXER_CLIENT_WRITE_SINK_HPP
 
-// Where the scheduler hands batches (stage E3a, plan 18 I63). E3b replaces the production sink with the bulk sender;
-// E5a's limiter (sender.hpp, I98) is its capacity and its batchLimit.
+// Where the scheduler hands batches. The production sink is the bulk sender;
+// its limiter (sender.hpp) provides the capacity and the batchLimit.
 
 #include <cstddef>
 #include <cstdint>
@@ -34,13 +34,13 @@ namespace indexer_client::detail::write
         /// Batches the sink accepts now (loop 0 reads it before each dispatch). 0 stops the scheduler until the sink
         /// calls WritePath::sinkReady().
         virtual std::size_t capacity() = 0;
-        /// Wire bytes the next batch should not exceed (loop 0, read before each slice; I98); 0 = no limit. Never
+        /// Wire bytes the next batch should not exceed (loop 0, read before each slice); 0 = no limit. Never
         /// applied to the first op of a batch.
         virtual std::uint64_t batchLimit()
         {
             return 0;
         }
-        /// E5b (I99): cancels the transfers in flight of `bucket`'s batches (awaitClosed's sweep outside a runtime
+        /// Cancels the transfers in flight of `bucket`'s batches (awaitClosed's sweep outside a runtime
         /// shutdown); their late results are Ignore. No-op by default.
         virtual void cancelBucket(const Bucket& /*bucket*/) {}
         /// Takes the batch (loop 0). Every op is resolved exactly once through WritePath::resolve, from any thread.
@@ -50,7 +50,7 @@ namespace indexer_client::detail::write
         virtual void stop() = 0;
     };
 
-    /// Production sink of E3a: every op Failed(Unavailable) (today's stub semantics), unbounded capacity.
+    /// Fallback sink: every op Failed(Unavailable) (today's stub semantics), unbounded capacity.
     std::shared_ptr<BatchSink> makeUnavailableSink(std::weak_ptr<WritePath> path);
 } // namespace indexer_client::detail::write
 

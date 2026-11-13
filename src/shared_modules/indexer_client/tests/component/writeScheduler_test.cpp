@@ -11,7 +11,7 @@
  */
 
 // The scheduler: batches by threshold, DRR by weight, whole documents, and the thread budget with buckets
-// (plan-E3a §Tests: I63, I23, RF-3, T3a, CA-1/T1), and the DRR credit with debt (plan-E6c §Tests: I118, CA-E6c-1…4).
+// and the DRR credit with debt.
 
 #include <algorithm>
 #include <cstdio>
@@ -69,7 +69,7 @@ namespace
     }
 } // namespace
 
-// I63: a batch forms when the pending bytes reach bulk.maxBytes, when the pending docs reach bulk.maxDocs, and, for a
+// A batch forms when the pending bytes reach bulk.maxBytes, when the pending docs reach bulk.maxDocs, and, for a
 // single op under every threshold, when it reaches bulk.maxAge — and not before.
 TEST_F(WriteTest, ThresholdsFormBatches)
 {
@@ -155,7 +155,7 @@ TEST_F(WriteTest, DrrNoStarvation)
     expectInvariants(stats("heavy"));
 }
 
-// RF-3/I23: with a fixed capacity the bytes sent follow the weights within 10 %: 1:3, and 1:8 with bulk.maxBytes
+// With a fixed capacity the bytes sent follow the weights within 10 %: 1:3, and 1:8 with bulk.maxBytes
 // below quantum x weight (several batches per turn).
 TEST_F(WriteTest, DrrShareByWeight)
 {
@@ -210,7 +210,7 @@ TEST_F(WriteTest, DrrShareByWeight)
     }
 }
 
-// I23/I118 (CA-E6c-4): a document larger than three quanta is never split and leaves whole in its bucket's first turn
+// A document larger than three quanta is never split and leaves whole in its bucket's first turn
 // (any positive credit emits; no round is skipped before it); the debt it leaves (size - quantum) is kept while the
 // bucket is empty, so the next 100 B op leaves only after DRR fast-forwards the rounds that pay it, within 3 s.
 // Mutant: «slice bounded by the credit» (the head never fits, nothing leaves) or «emptying => credit = 0».
@@ -231,7 +231,7 @@ TEST_F(WriteTest, DocumentNeverSplitDebtCarries)
     }
     ASSERT_TRUE(sent) << "the document never left";
     EXPECT_EQ(m_path->scheduler()->stats().fastForwards, 0u)
-        << "the document left on the first turn (I118: credit > 0 suffices)";
+        << "the document left on the first turn (credit > 0 suffices)";
     auto batches = sink->take();
     ASSERT_EQ(batches.size(), 1u);
     ASSERT_EQ(batches[0].ops.size(), 1u);
@@ -251,7 +251,7 @@ TEST_F(WriteTest, DocumentNeverSplitDebtCarries)
     expectInvariants(stats("big"));
 }
 
-// I118 (CA-E6c-1): the credit decides whether a turn emits, not the batch size: with a 64 KiB quantum and bulk.maxBytes
+// The credit decides whether a turn emits, not the batch size: with a 64 KiB quantum and bulk.maxBytes
 // 512 KiB, the first batch of a bucket holding 2 MiB of 4 KiB documents reaches bulk.maxBytes (within one op).
 // Mutant: «slice bounded by the credit» (the batch stays <= 64 KiB).
 TEST_F(WriteTest, DrrDebtBulkReachesMaxBytes)
@@ -274,7 +274,7 @@ TEST_F(WriteTest, DrrDebtBulkReachesMaxBytes)
     expectInvariants(stats("b"));
 }
 
-// I118 (CA-E6c-2): with batches of two quanta (bulk.maxBytes 128 KiB, quantum 64 KiB) the bytes sent still follow the
+// With batches of two quanta (bulk.maxBytes 128 KiB, quantum 64 KiB) the bytes sent still follow the
 // weights 1:3 within 10 %, because a batch's bytes are charged in full (the credit may go negative) and the debt is
 // paid in later turns; no batch leaves a debt of bulk.maxBytes. Mutant: «credit = max(0, credit - bytes)» (≈ 2:1).
 TEST_F(WriteTest, DrrDebtShareByWeight)
@@ -315,7 +315,7 @@ TEST_F(WriteTest, DrrDebtShareByWeight)
     expectInvariants(stats("heavy"));
 }
 
-// I118 (CA-E6c-3): a bucket that empties keeps its debt (credit = min(credit, 0)): A sends one 512 KiB batch with a
+// A bucket that empties keeps its debt (credit = min(credit, 0)): A sends one 512 KiB batch with a
 // 64 KiB quantum and empties; refilled, it waits until its turns pay the debt, so B (batches of one quantum) sends >= 6
 // batches between A's two (traced: 7-8). Mutant: «emptying => credit = 0» (A leaves again after <= 2 of B's batches).
 TEST_F(WriteTest, DrrDebtKeptWhenEmpty)
@@ -368,14 +368,14 @@ TEST_F(WriteTest, DrrDebtKeptWhenEmpty)
     }
     ASSERT_TRUE(aAgain) << "A never sent again";
     EXPECT_GE(between, 6u) << "A's debt was forgiven when it emptied";
-    std::printf("[  I118    ] DrrDebtKeptWhenEmpty: %zu batches of B between A's two\n", between);
+    std::printf("[  DRR     ] DrrDebtKeptWhenEmpty: %zu batches of B between A's two\n", between);
     EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
     closeNow(*c);
     expectInvariants(stats("A"));
     expectInvariants(stats("B"));
 }
 
-// D65 (CA-E6d-6, I118): the debt is kept also when the bucket is found EMPTY AT THE HEAD OF ITS TURN (the ring site,
+// The debt is kept also when the bucket is found EMPTY AT THE HEAD OF ITS TURN (the ring site,
 // not the end-of-turn one of DrrDebtKeptWhenEmpty). A (maxDocs 1) sends one batch of its bulk.maxBytes (512 KiB) with
 // a 64 KiB quantum — a debt of 448 KiB — and keeps an op of tag "t" that cancel(tag) removes before A's next turn; B
 // takes that turn, empties, and the cursor reaches A empty. Then A gets 1 small op and B k ops: B sends exactly
@@ -467,7 +467,7 @@ TEST_F(WriteTest, DrrDebtKeptWhenEmptyAtTurnHead)
     const std::uint64_t expected = (debt + QUANTUM - 1) / QUANTUM;
     EXPECT_EQ(between, expected) << "B's batches before A (debt " << debt << ", quantum " << QUANTUM
                                  << "): 0 = A's debt was forgiven at the head of its turn";
-    std::printf("[  D65     ] DrrDebtKeptWhenEmptyAtTurnHead: %zu batches of B before A (expected %llu)\n",
+    std::printf("[  DRR     ] DrrDebtKeptWhenEmptyAtTurnHead: %zu batches of B before A (expected %llu)\n",
                 between,
                 static_cast<unsigned long long>(expected));
     EXPECT_EQ(m_path->scheduler()->stats().debtOverruns, 0u);
@@ -476,7 +476,7 @@ TEST_F(WriteTest, DrrDebtKeptWhenEmptyAtTurnHead)
     expectInvariants(stats("B"));
 }
 
-// CA-1/T1: C clients x B buckets writing through the scheduler and the production sink (the bulk sender, E3b-2, to a
+// C clients x B buckets writing through the scheduler and the production sink (the bulk sender, to a
 // fake node started before the base sample) add no thread: the runtime's own threads stay K + M (K = 1 and 3).
 TEST_F(BulkTest, ThreadsStayKPlusMWithBuckets)
 {
@@ -533,7 +533,7 @@ TEST_F(BulkTest, ThreadsStayKPlusMWithBuckets)
     }
 }
 
-// I23 (root fix, step 6): with a quantum tiny against the documents (1 byte against ~4 KB), DRR fast-forwards the idle
+// With a quantum tiny against the documents (1 byte against ~4 KB), DRR fast-forwards the idle
 // rounds instead of spinning through them on loop 0, and the share by weight holds.
 TEST_F(WriteTest, DrrTinyQuantumFastForwards)
 {
@@ -608,7 +608,7 @@ namespace
     };
 } // namespace
 
-// I63 (defect found in step 5, fixed by the root in step 6): an op whose maxAge expires while a scheduling pass runs
+// An op whose maxAge expires while a scheduling pass runs
 // (here a dispatch of another bucket lasting 100 ms on loop 0) was neither served nor given a timer; it is served.
 TEST_F(WriteTest, MaxAgeExpiringDuringAPassIsServed)
 {

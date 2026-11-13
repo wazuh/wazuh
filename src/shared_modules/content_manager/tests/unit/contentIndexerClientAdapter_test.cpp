@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The indexer_client adapter of IContentIndexer (E9, I153-I159) on a real runtime over the library's fake indexer.
+// The indexer_client adapter of IContentIndexer on a real runtime over the library's fake indexer.
 
 #include "fakes/realIndexerFixture.hpp"
 #include "mockIndexerClient.hpp"
@@ -87,7 +87,7 @@ namespace
     }
 } // namespace
 
-// ---------------------------------------------------------------- CA-E9-1
+// ---------------------------------------------------------------- PIT open and close
 
 TEST(ContentIndexerClientAdapter, OpenSearchClose)
 {
@@ -150,7 +150,7 @@ TEST(ContentIndexerClientAdapter, OpenSearchClose)
     EXPECT_EQ(env.pits->deleted(), 1U);
 }
 
-// ---------------------------------------------------------------- CA-E9-2 (CA-23)
+// ---------------------------------------------------------------- Retry of the same page on the same PIT
 
 TEST(ContentIndexerClientAdapter, RetriesSamePageSamePit)
 {
@@ -191,7 +191,7 @@ TEST(ContentIndexerClientAdapter, RetriesSamePageSamePit)
     adapter->closePit(pit);
 }
 
-// ---------------------------------------------------------------- CA-E9-3 (T7b)
+// ---------------------------------------------------------------- Slices of one PIT
 
 TEST(ContentIndexerClientAdapter, TwoSlicesOnePit)
 {
@@ -292,7 +292,7 @@ TEST(ContentIndexerClientAdapter, CloseDuringSearch)
     EXPECT_EQ(env.pits->requests(PitCall::Delete), 1U);
 }
 
-// ---------------------------------------------------------------- CA-E9-4
+// ---------------------------------------------------------------- Expired PIT
 
 TEST(ContentIndexerClientAdapter, ExpiredThrows)
 {
@@ -319,7 +319,7 @@ TEST(ContentIndexerClientAdapter, ExpiredThrows)
     EXPECT_NO_THROW(adapter->closePit(pit));
 }
 
-// I229: a content page (a PIT the adapter opened) takes responses up to max_response_bytes, not the query cap
+// A content page (a PIT the adapter opened) takes responses up to max_response_bytes, not the query cap
 // (max_response_bytes / QUERY_DOM_FACTOR); the probe (searchIndex, a plain query) keeps the query cap and fails with
 // a ResponseTooLargeError, typed by the library's Outcome::responseTooLarge and not by the reason's text; any other
 // final failure is a plain runtime_error.
@@ -524,7 +524,7 @@ TEST(ContentIndexerClientAdapter, CloseNeverThrows)
     EXPECT_EQ(env.pits->requests(PitCall::Delete), 1U);
 }
 
-// ---------------------------------------------------------------- CA-E9-6 (I158, I158b)
+// ---------------------------------------------------------------- No usable node, bounded by the probe
 
 TEST(ContentIndexerClientAdapter, NoUsableNodeBoundedByProbe)
 {
@@ -588,7 +588,7 @@ TEST(ContentIndexerClientAdapter, FailFastWithoutNode)
     adapterOptions.failFastWithoutNode = true;
     auto adapter = env.adapter(adapterOptions);
 
-    // The first probe round must be over: every node Down with its reason (I190b).
+    // The first probe round must be over: every node Down with its reason.
     ASSERT_TRUE(waitUntil(
         [&env]
         {
@@ -618,8 +618,8 @@ TEST(ContentIndexerClientAdapter, FailFastWithoutNode)
 
 TEST(ContentIndexerClientAdapter, FailFastMessageNamesEveryNode)
 {
-    // The whole text of the fail-fast error: the cause, then each node's url and reason, each after "; " (D103 must
-    // keep it as it is).
+    // The whole text of the fail-fast error: the cause, then each node's url and reason, each after "; " (the library
+    // must keep it as it is).
     indexer_client::HealthView view;
     view.nodes.push_back({"http://node-1:9200", indexer_client::HealthView::NodeState::Down, "connect: refused"});
     view.nodes.push_back({"http://node-2:9200", indexer_client::HealthView::NodeState::Down, "status 503"});
@@ -661,7 +661,8 @@ TEST(ContentIndexerClientAdapter, WaitsBeforeFirstProbe)
 
     ASSERT_FALSE(env.client->health().anyUsable()) << "the call must start before the first probe answered";
     ContentPit pit;
-    ASSERT_NO_THROW(pit = adapter->openPit({"idx"}, "5m", false)) << "before the first probe the I158b wait applies";
+    ASSERT_NO_THROW(pit = adapter->openPit({"idx"}, "5m", false))
+        << "before the first probe the wait for the first probe applies";
     EXPECT_TRUE(env.client->health().anyUsable());
     adapter->closePit(pit);
 }
@@ -791,7 +792,7 @@ TEST(ContentIndexerClientAdapter, ReleasesConsumerName)
     (void)pit;
 }
 
-// ---------------------------------------------------------------- G-diff additions (E9 step 5)
+// ---------------------------------------------------------------- Consumer name release
 
 TEST(ContentIndexerClientAdapter, ReleasesConsumerNameWithoutPit)
 {

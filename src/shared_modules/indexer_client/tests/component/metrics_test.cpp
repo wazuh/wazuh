@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The metrics snapshot over the runtime (plan-E5c §Tests, CA-15, CA-12, I100-I104, D48): every counter of the catalog
+// The metrics snapshot over the runtime: every counter of the catalog
 // moves with its own cause, the two scopes, the sanitized and stable names, the latency buckets end to end, the late
 // results, the query response bytes in flight and the memory bound with queries and a close.
 //
@@ -201,7 +201,7 @@ protected:
     }
 };
 
-// CA-15 (EveryCatalogCounterMoves †, closed sets): one scenario per member of RejectCause, DropCause, FailCause and
+// EveryCatalogCounterMoves (closed sets): one scenario per member of RejectCause, DropCause, FailCause and
 // RetryCause; each moves its own name by one and no other cause name of the client. Mutant: failed[] never incremented.
 TEST_F(MetricsTest, EveryCatalogCounterMoves)
 {
@@ -447,7 +447,7 @@ TEST_F(MetricsTest, EveryCatalogCounterMoves)
     m_path.reset(); // Shut down above: nothing is left to drain.
 }
 
-// CA-15 (EveryCatalogCounterMoves †, runtime side): over the fake, each step moves the node, query, PIT and bucket
+// EveryCatalogCounterMoves (runtime side): over the fake, each step moves the node, query, PIT and bucket
 // counters it names (a node counter moves with others: requests with every answer, so only "moved" is checked here).
 class MetricsBulkTest : public BulkTest
 {
@@ -595,7 +595,7 @@ TEST_F(MetricsBulkTest, EveryCatalogCounterMoves)
     step("usage error",
          [&]
          {
-             // A Client destroyed on a runtime thread: logged, counted, closed without waiting (I37).
+             // A Client destroyed on a runtime thread: logged, counted, closed without waiting.
              auto other = client("u", {});
              std::promise<void> done;
              auto holder = std::make_shared<std::shared_ptr<ic::Client>>(std::move(other));
@@ -610,7 +610,7 @@ TEST_F(MetricsBulkTest, EveryCatalogCounterMoves)
          {"indexer_client.runtime.usage_errors"});
 }
 
-// CA-15, I101: Client::metrics() brings only that consumer's buckets; RuntimeRef::snapshot() the nodes, the queries
+// Client::metrics() brings only that consumer's buckets; RuntimeRef::snapshot() the nodes, the queries
 // and the PITs and no bucket; traffic on one consumer leaves the other's counters at 0.
 TEST_F(MetricsBulkTest, ClientMetricsOnlyOwnBuckets)
 {
@@ -664,7 +664,7 @@ TEST_F(MetricsBulkTest, ClientMetricsOnlyOwnBuckets)
                   "indexer_client.node", "indexer_client.pit", "indexer_client.query", "indexer_client.runtime"}));
 }
 
-// I100 (component part): sanitized names, the clashes refused naming the field, and the set of names of a fresh
+// Component part: sanitized names, the clashes refused naming the field, and the set of names of a fresh
 // snapshot equal to the one after traffic.
 TEST_F(MetricsBulkTest, CatalogNamesAreSaneAndStable)
 {
@@ -715,11 +715,11 @@ TEST_F(MetricsBulkTest, CatalogNamesAreSaneAndStable)
     EXPECT_TRUE(empty.metrics().consumer.empty());
     EXPECT_TRUE(collect(empty.metrics()).empty());
     ic::Client moved(std::move(*c));
-    EXPECT_TRUE(collect(c->metrics()).empty()) << "a moved-from client has no names (N27)";
+    EXPECT_TRUE(collect(c->metrics()).empty()) << "a moved-from client has no names";
     EXPECT_EQ(names(collect(moved.metrics())), names(fresh));
 }
 
-// I103 (component part of LatencyHistogramBuckets †): bulk answers at 0, 40 and 300 ms; the bucket publishes them
+// Component part of LatencyHistogramBuckets: bulk answers at 0, 40 and 300 ms; the bucket publishes them
 // cumulative (coarse values: le_64 >= 2, le_512 = 3, le_inf = 3), with their sum and number.
 TEST_F(MetricsBulkTest, LatencyHistogramBuckets)
 {
@@ -749,7 +749,7 @@ TEST_F(MetricsBulkTest, LatencyHistogramBuckets)
     EXPECT_GE(get(collect(m_ref.snapshot()), "indexer_client.node.0.latency.le_inf"), 3);
 }
 
-// obj. 2 (LateResultCounted †): a completion with a 200 parked in seams::beforeCompletion(), the client closed and
+// LateResultCounted: a completion with a 200 parked in seams::beforeCompletion(), the client closed and
 // swept meanwhile; once released, its op counts as a late result, not as Ok. Mutant: lateResults never counted.
 TEST_F(MetricsBulkTest, LateResultCounted)
 {
@@ -786,7 +786,7 @@ TEST_F(MetricsBulkTest, LateResultCounted)
     EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::Shutdown), 1u);
 }
 
-// D48 (QueryResponseBytesInFlight): a 1 MiB answer, observed through the engine's observer hook (engine.hpp
+// QueryResponseBytesInFlight: a 1 MiB answer, observed through the engine's observer hook (engine.hpp
 // EngineHooks) between its delivery and the return to the consumer: the gauge holds it, is 0 afterwards, and the
 // peak keeps it.
 class MetricsQueryTest : public QueryTest
@@ -840,12 +840,12 @@ TEST_F(MetricsQueryTest, QueryResponseBytesInFlight)
     EXPECT_EQ(m_ref.snapshot().queries.responseBytesInFlight, 0u);
 }
 
-// CA-12 (MemoryBoundWithQueriesAndClose): the indexer down, every quota full, queries waiting for a node and a client
+// MemoryBoundWithQueriesAndClose: the indexer down, every quota full, queries waiting for a node and a client
 // closed halfway; the live heap (mallinfo2: in-use bytes of every arena plus mmapped blocks) measured against the
 // baseline before the load never exceeds Σ quotas (the charges' ceiling) + nodes × window × (bulk.maxBytes +
 // max_response_bytes) + MARGIN. MARGIN (2 MiB) is the fixed overhead of the scenario: thread-local parser buffers, curl
-// handles, query and close state and the sampler's vector. The in-flight term is RF-12's formula and only an upper
-// bound here (no bulk leaves for a down node). The test prints the measured peak and the bound. Skipped under the
+// handles, query and close state and the sampler's vector. The in-flight term is the memory-bound formula and only an
+// upper bound here (no bulk leaves for a down node). The test prints the measured peak and the bound. Skipped under the
 // sanitizers.
 TEST_F(MetricsBulkTest, MemoryBoundWithQueriesAndClose)
 {
@@ -945,7 +945,7 @@ TEST_F(MetricsBulkTest, MemoryBoundWithQueriesAndClose)
     const std::uint64_t charges = 3 * QUOTA;
     const std::uint64_t inFlight = NODES * WINDOW * (BULK + RESPONSE);
     const std::uint64_t bound = charges + inFlight + MARGIN;
-    std::printf("CA-12: accepted %llu ops, global charge at full %llu, measured peak %llu, bound %llu "
+    std::printf("memory bound: accepted %llu ops, global charge at full %llu, measured peak %llu, bound %llu "
                 "(charges %llu + in flight %llu + margin %llu)\n",
                 static_cast<unsigned long long>(accepted),
                 static_cast<unsigned long long>(fullCharge),

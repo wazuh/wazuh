@@ -28,7 +28,7 @@ namespace indexer_client
 {
     namespace
     {
-        constexpr const char* E1_UNAVAILABLE = "data path not implemented yet (E3b/E4)";
+        constexpr const char* STUB_UNAVAILABLE = "indexer client runtime stopped";
 
         class StubWriter final : public IWriter
         {
@@ -62,7 +62,7 @@ namespace indexer_client
             CancelTicket cancel(std::string_view /*tag*/) override
             {
                 auto state = std::make_shared<detail::CancelState>();
-                state->complete(Outcome<Unit>::failure(Cause::Unavailable, E1_UNAVAILABLE));
+                state->complete(Outcome<Unit>::failure(Cause::Unavailable, STUB_UNAVAILABLE));
                 return CancelTicket(std::move(state));
             }
 
@@ -74,7 +74,7 @@ namespace indexer_client
 
     namespace
     {
-        /// requestClose() (D43, I99): the flag, the queries and blocked producers woken (ClientClosed), the admission
+        /// requestClose(): the flag, the queries and blocked producers woken (ClientClosed), the admission
         /// of every bucket closed; the buckets keep draining. `sweep` (a Client destroyed on a runtime thread) also
         /// resolves what is queued now (WritePath::closeClient). Never blocks; takes no close mutex.
         void closeState(detail::ClientState& state, bool sweep)
@@ -87,7 +87,7 @@ namespace indexer_client
                     // Under the gate's mutex: a query that checked the flag is already waiting, so it sees this notify.
                     std::lock_guard<std::mutex> gate(state.queryGate->mutex);
                 }
-                state.queryGate->cv.notify_all(); // E4a: queries waiting on this client return ClientClosed.
+                state.queryGate->cv.notify_all(); // Queries waiting on this client return ClientClosed.
             }
             if (auto path = state.writePath.lock())
             {
@@ -95,7 +95,7 @@ namespace indexer_client
             }
         }
 
-        /// Σ retained of the client's buckets (pending + lane + delivered; I99 N4). Called under completionsMutex
+        /// Σ retained of the client's buckets (pending + lane + delivered). Called under completionsMutex
         /// (lock order completionsMutex -> bucket mutex).
         std::uint64_t retainedOf(const detail::ClientState& state)
         {
@@ -142,14 +142,14 @@ namespace indexer_client
         }
         if (detail::testing::onRuntimeThread())
         {
-            // Usage error (I37): a runtime thread must never wait for a client to drain. Logged and counted
+            // Usage error: a runtime thread must never wait for a client to drain. Logged and counted
             // (detail::testing::usageErrors()); never an abort, not even in debug builds.
             detail::countUsageError();
             std::fprintf(stderr,
                          "indexer_client: usage error: client '%s' destroyed from a runtime thread; "
                          "requesting close without waiting\n",
                          m_state->consumer.c_str());
-            // I99 (obj. 3): the old close, with the immediate sweep, so a usage error never loses a result or charge.
+            // The old close, with the immediate sweep, so a usage error never loses a result or charge.
             closeState(*m_state, true);
             return;
         }
@@ -163,7 +163,7 @@ namespace indexer_client
     {
         if (!m_state || m_state->closeRequested.load())
         {
-            return nullptr; // A closing client hands out no new handles (I37).
+            return nullptr; // A closing client hands out no new handles.
         }
         const auto found = std::find_if(m_state->buckets.cbegin(),
                                         m_state->buckets.cend(),
@@ -176,7 +176,7 @@ namespace indexer_client
         auto path = m_state->writePath.lock();
         if (!path || index >= m_state->bucketStates.size())
         {
-            // The runtime is gone (or never registered this client): the E1 stub answers Unavailable.
+            // The runtime is gone (or never registered this client): the stub writer answers Unavailable.
             return detail::makeStubWriter(m_state, found->name);
         }
         return detail::write::makeWriter(m_state, m_state->bucketStates[index], std::move(path));
@@ -188,7 +188,7 @@ namespace indexer_client
         {
             return nullptr;
         }
-        // With the runtime gone (or another epoch) every operation answers Shutdown without a request (I87 step 3).
+        // With the runtime gone (or another epoch) every operation answers Shutdown without a request.
         return detail::query::makeQuery(m_state);
     }
 
@@ -223,8 +223,8 @@ namespace indexer_client
         }
         requestClose();
         auto& state = *m_state;
-        // I99 (write/writer.hpp «Close»): serialized per client; the first call drains and sweeps, a concurrent one
-        // waits for it and a later one only waits for the completions. The counters are read live every time (N3).
+        // (write/writer.hpp «Close») Serialized per client; the first call drains and sweeps, a concurrent one
+        // waits for it and a later one only waits for the completions. The counters are read live every time.
         std::lock_guard<std::mutex> closeLock(state.closeMutex);
         if (!state.closeReport)
         {
@@ -257,7 +257,7 @@ namespace indexer_client
             if (path)
             {
                 // Outside completionsMutex (an inline completion relocks it). Inside a runtime shutdown the transfers
-                // are bounded by transport->stop; outside one they are cancelled (N5).
+                // are bounded by transport->stop; outside one they are cancelled.
                 const bool runtimeShutdown = detail::runtimeShutdownDeadline(state.runtime, state.epoch).has_value();
                 path->sweepClient(state, !runtimeShutdown); // Its Dropped are not part of `drained`.
             }
@@ -286,7 +286,7 @@ namespace indexer_client
     ClientMetrics Client::metrics() const
     {
         // metrics.hpp SCOPE: this consumer's buckets, each read under its own mutex; an empty or moved-from client
-        // gives an empty ClientMetrics (N27). The buckets outlive the runtime with the ClientState.
+        // gives an empty ClientMetrics. The buckets outlive the runtime with the ClientState.
         ClientMetrics metrics;
         if (!m_state)
         {

@@ -39,4 +39,4 @@ library.
   the 64 MiB `events` quota fills with 10-11 MiB of payload; with the 4 MiB watermark the backlog plus a whole P = 8
   burst stays near 47 MiB of charge, and a `static_assert` in `stageBench.cpp` keeps it under the quota. Larger
   `--event-file` events or more than 8 producers are not covered: a drop shows as `lost > 0` and the row is invalid.
-- The stage time is a diagnostic: the RNF-2 gate of plan 18 is the engine's end-to-end A/B (I208).
+- The stage time is a diagnostic: the performance gate is the engine's end-to-end A/B.

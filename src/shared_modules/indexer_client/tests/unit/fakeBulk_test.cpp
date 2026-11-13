@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Self-tests of the fake's dynamic `_bulk` responder (plan 18, E3b-1 step 5, FakeBulkResponder): every mode is
+// Self-tests of the fake's dynamic `_bulk` responder (FakeBulkResponder): every mode is
 // checked by parsing the answer the fake serves over HTTP.
 
 #include "bulkResponder.hpp"

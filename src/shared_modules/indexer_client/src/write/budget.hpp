@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_WRITE_BUDGET_HPP
 #define _INDEXER_CLIENT_WRITE_BUDGET_HPP
 
-// The runtime-wide cap of retained bytes and the set of buckets with blocked producers (stage E3a, plan 18 I62).
+// The runtime-wide cap of retained bytes and the set of buckets with blocked producers.
 
 #include <atomic>
 #include <cstddef>
@@ -35,11 +35,11 @@ namespace indexer_client::detail::write
 
         /// True and charged when `bytes` fit under the cap; false and nothing charged otherwise.
         bool tryReserve(std::uint64_t bytes) noexcept;
-        /// Returns `bytes`; then wakes the blocked producers through the registry (see Waiters). E5c: a charge that
+        /// Returns `bytes`; then wakes the blocked producers through the registry (see Waiters). A charge that
         /// crosses 70 % of the cap downwards re-arms both quota edges (runtime/logSummary.hpp).
         void release(std::uint64_t bytes);
 
-        /// E5c (runtime/logSummary.hpp QUOTA EDGES): emits the global cap's edge lines claimed by tryReserve (a CAS
+        /// (runtime/logSummary.hpp QUOTA EDGES) Emits the global cap's edge lines claimed by tryReserve (a CAS
         /// that reached 80 % of the cap, a refusal) while armed. Never called under a bucket mutex: Bucket::reserve and
         /// reserveForGroup call it after theirs is dropped, and the log summary's timer drains it too.
         void emitPendingLogs() noexcept;
@@ -47,7 +47,7 @@ namespace indexer_client::detail::write
         std::uint64_t charge() const noexcept;
         std::uint64_t cap() const noexcept;
 
-        /// Charge held by Building groups of every bucket (E3c-1 I74): a group add that cannot fit without other
+        /// Charge held by Building groups of every bucket: a group add that cannot fit without other
         /// Building groups' room never waits. Also part of charge(). addBuilding never wakes (the caller wakes the
         /// waiters with wakeWaiters(), holding no bucket mutex).
         void addBuilding(std::uint64_t bytes) noexcept;
@@ -71,10 +71,10 @@ namespace indexer_client::detail::write
         };
 
         const std::uint64_t m_cap;
-        const std::uint64_t m_threshold80; ///< 80 % and 70 % of m_cap, rounded down (E5c edges).
+        const std::uint64_t m_threshold80; ///< 80 % and 70 % of m_cap, rounded down (the quota edges).
         const std::uint64_t m_threshold70;
         std::atomic<std::uint64_t> m_charge {0};
-        // E5c quota edges: armed flags claimed with exchange (one line per crossing under concurrency), the claimed
+        // Quota edges: armed flags claimed with exchange (one line per crossing under concurrency), the claimed
         // lines waiting for emitPendingLogs(), and the charge each one saw.
         std::atomic<bool> m_armed80 {true};
         std::atomic<bool> m_armedFull {true};

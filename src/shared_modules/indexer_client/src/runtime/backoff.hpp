@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_BACKOFF_HPP
 #define _INDEXER_CLIENT_BACKOFF_HPP
 
-// The I66 backoff, shared by the bucket retry lane (E3b-1) and the query engine (E4a, I87).
+// The backoff, shared by the bucket retry lane and the query engine.
 
 #include <algorithm>
 #include <cstdint>
@@ -31,7 +31,7 @@ namespace indexer_client::detail
         return std::uniform_real_distribution<double>(-1.0, 1.0)(engine);
     }
 
-    /// I66: d = min(cap, base * 2^(attempts - 1)) with the exponent bounded (d = cap as soon as doubling reaches
+    /// D = min(cap, base * 2^(attempts - 1)) with the exponent bounded (d = cap as soon as doubling reaches
     /// it, so an unlimited policy never overflows), then d * (1 + jitter * u), clamped to [0, cap].
     inline Duration backoffDelay(const RetryPolicy& retry, std::uint32_t attempts, double u)
     {

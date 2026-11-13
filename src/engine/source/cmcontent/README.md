@@ -74,17 +74,16 @@ builds real registrations over the Engine's content indexer.
 `RetryPolicy::maxAttempts`, `waitSeconds` apart, stopping early on shutdown. A deferral, a
 configuration failure or a stop returns at once: retrying cannot change it within one run.
 
-**Which indexer the topics read through (E10a).** The topics read through `content_manager::makeContentIndexer` over the Engine's
-`indexer_client` `Client` `analysisd`, not through the v1 connector that still carries the event writes
-(see [`wiconnector`](../wiconnector/README.md); until E10b the Engine holds two connections, one log line per connection on each
-indexer outage). The Engine builds the options with `contentIndexerOptionsFor(requestTimeout, probeTimeout)` from the runtime's
-`request_timeout_ms` and `probe_timeout_ms` (D83): the call and page deadlines are above the former, the first-probe wait above the latter, never below the library's defaults.
+**Which indexer the topics read through.** The topics read through `content_manager::makeContentIndexer` over the Engine's
+`indexer_client` `Client` `analysisd`, the same connection as the event writes
+(see [`wiconnector`](../wiconnector/README.md)). The Engine builds the options with `contentIndexerOptionsFor(requestTimeout, probeTimeout)` from the runtime's
+`request_timeout_ms` and `probe_timeout_ms`: the call and page deadlines are above the former, the first-probe wait above the latter, never below the library's defaults.
 It sets `failFastWithoutNode`: once every node has been probed and none is usable, a content call fails at once with the library's cause
-instead of waiting `probeDeadline`; before the first probe round the wait stays (I190, I190b). Each attempt of a cycle with no node therefore fails in well under a second; the cycle keeps the retry waits of `runWithRetries`.
+instead of waiting `probeDeadline`; before the first probe round the wait stays. Each attempt of a cycle with no node therefore fails in well under a second; the cycle keeps the retry waits of `runWithRetries`.
 
 **Keep-alive.** `content_pit_keep_alive` (`analysisd.content_pit_keep_alive`) is validated when a topic is registered, with the library's
 `parseKeepAlive`: `<n><unit>`, unit `nanos|micros|ms|s|m|h|d` in lower case, `n` an integer of at least 1, surrounding spaces ignored
-(`5m`, `300s`, ` 5m ` accepted; `5M`, `1.5m`, `5` rejected, as OpenSearch does). A bad value fails the engine's start with an error naming it, instead of failing every content download later (D84).
+(`5m`, `300s`, ` 5m ` accepted; `5M`, `1.5m`, `5` rejected, as OpenSearch does). A bad value fails the engine's start with an error naming it, instead of failing every content download later.
 
 ### `rulesetSink.hpp` — assemble in memory, swap the route
 

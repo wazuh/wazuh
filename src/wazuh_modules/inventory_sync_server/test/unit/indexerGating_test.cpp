@@ -169,7 +169,7 @@ TEST_F(IndexerGatingTest, ValidIndexerConfigUnblocksTheSocket)
 }
 
 /**
- * CA-E7c-7: ONE Client with TWO bucket specs -- `inventory` and `agent-state` -- is built before the socket
+ * ONE Client with TWO bucket specs -- `inventory` and `agent-state` -- is built before the socket
  * accepts anything, and both sync connectors (the facade's slot and the VD lane's) run on it.
  */
 TEST_F(IndexerGatingTest, OneClientTwoBuckets)
@@ -198,7 +198,7 @@ TEST_F(IndexerGatingTest, OneClientTwoBuckets)
 }
 
 /**
- * CA-E7c-7: whatever the operator set, the `agent-state` spec the facade derives is one the library accepts and
+ * Whatever the operator set, the `agent-state` spec the facade derives is one the library accepts and
  * in which a whole-agent deletion's Group of two deletes fits (no GroupTooLarge). Each case runs a REAL
  * RuntimeRef::client() on a runtime with that global quota, the module's own derivation (agent-state first,
  * inventory from the rest), and one by-id delete Group on it.
@@ -268,7 +268,7 @@ TEST_F(IndexerGatingTest, AgentStateSpecAlwaysValid)
 }
 
 /**
- * CA-E7c-7: a Client that hands out no `agent-state` writer, or no query, fails the gate -- named, retried by the
+ * A Client that hands out no `agent-state` writer, or no query, fails the gate -- named, retried by the
  * heartbeat, the socket never opened -- instead of passing it with nothing to write through.
  */
 TEST_F(IndexerGatingTest, ClientWithoutWriterOrQueryFailsTheGate)
@@ -343,7 +343,7 @@ TEST_F(IndexerGatingTest, SyncConnectorFailureBlocksTheSocketAndNamesTheSyncConn
  * reportFailedStart() increments one shared attempt counter that drives the escalation cadence
  * ("60 attempts is about an hour"). Reporting more than once per attempt would halve that clock.
  */
-/// The heartbeat's health poll reads the Client's HealthView (health().anyUsable(), I151); its TRANSITIONS are
+/// The heartbeat's health poll reads the Client's HealthView (health().anyUsable()); its TRANSITIONS are
 /// the operator's only record of the indexer going away and coming back. Steady state must stay
 /// silent, or sixty lines an hour would say nothing new.
 TEST_F(IndexerGatingTest, HealthLogFromClient)
@@ -377,7 +377,7 @@ TEST_F(IndexerGatingTest, HealthLogFromClient)
         << "recovery must be as visible as the outage";
 }
 
-/// A3 (E12 A/B): every node is born Down with no reason until the Client's first probe round (I190b). A heartbeat
+/// A3: every node is born Down with no reason until the Client's first probe round. A heartbeat
 /// that lands before that round must not log "unreachable" -- the indexer is not known yet -- and must not latch
 /// the state, so the first heartbeat after the round still logs the real one, whichever it is.
 TEST_F(IndexerGatingTest, HealthLogIsSilentBeforeTheFirstProbeRound)
@@ -700,7 +700,7 @@ TEST_F(IndexerGatingTest, TheLaneRetriesWithAUsableClientAndCap)
 /**
  * Every sync connector the module builds -- the admission slot (and pipeline worker 0) and the VD lane's --
  * gets its own cancellation tag and the same chunk cap: the bucket's quota shared out over the pipeline
- * and scan-lane workers (I137b). There is no flush timer to configure any more: the workers own every
+ * and scan-lane workers. There is no flush timer to configure any more: the workers own every
  * flush and the client library owns the transport.
  */
 TEST_F(IndexerGatingTest, PipelineConnectorsAreBuiltWithATagAndTheLaneShareOfTheQuota)
@@ -728,7 +728,7 @@ TEST_F(IndexerGatingTest, PipelineConnectorsAreBuiltWithATagAndTheLaneShareOfThe
 }
 
 /**
- * CA-E7b-10, CA-E7c-7: with no runtime published (`indexer_runtime` NULL) the gate fails with a log line that
+ * With no runtime published (`indexer_runtime` NULL) the gate fails with a log line that
  * names the stage; nothing after it is built, the socket never opens, and the heartbeat retries.
  */
 TEST_F(IndexerGatingTest, NullRuntimeFailsGate)
@@ -758,7 +758,7 @@ TEST_F(IndexerGatingTest, NullRuntimeFailsGate)
 }
 
 /**
- * D73, D78: stop() lets go of the Client. The test installs an IndexerClientFactory that wraps the
+ * stop() lets go of the Client. The test installs an IndexerClientFactory that wraps the
  * production one and keeps a weak_ptr to what it built; the sync connectors are the real adapters, so any
  * holder of the Client left alive after stop() -- an adapter, the metrics slot, the facade -- shows.
  */
@@ -810,7 +810,7 @@ TEST_F(IndexerGatingTest, StopReleasesClient)
 }
 
 /**
- * I138: the sync request timeout is the client runtime's now, so a value other than modulesd's default
+ * the sync request timeout is the client runtime's now, so a value other than modulesd's default
  * is an option that does nothing -- the operator is told ONCE, at start, not on every heartbeat.
  */
 TEST_F(IndexerGatingTest, IgnoredSyncOptionWarns)
@@ -843,7 +843,7 @@ TEST_F(IndexerGatingTest, IgnoredSyncOptionWarns)
 }
 
 /**
- * I149: the `indexer_async_*` and monitoring options that no longer act warn ONCE, at start, naming each tuned one;
+ * the `indexer_async_*` and monitoring options that no longer act warn ONCE, at start, naming each tuned one;
  * a default (or <= 0) value is silent.
  */
 TEST_F(IndexerGatingTest, IgnoredAsyncOptionWarns)
@@ -881,7 +881,7 @@ TEST_F(IndexerGatingTest, IgnoredAsyncOptionWarns)
 }
 
 /**
- * CA-E7c-7: stop() stops the sweeper and joins its thread. The sweeper owns a thread from construction, so one
+ * Stop() stops the sweeper and joins its thread. The sweeper owns a thread from construction, so one
  * left behind would outlive the module (and its Client, whose query it holds): the process's thread count after
  * stop() is the one before start().
  */

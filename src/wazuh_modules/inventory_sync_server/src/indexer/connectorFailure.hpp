@@ -19,12 +19,12 @@
 namespace invsync::indexer
 {
 
-    /// The HTTP answer for a session that failed against the indexer (I135).
+    /// The HTTP answer for a session that failed against the indexer.
     struct FailureResponse
     {
         int status {500};
         const char* body {nullptr};
-        std::optional<std::string> retryAfter; ///< Set only for a by-query's exhausted conflicts (D30).
+        std::optional<std::string> retryAfter; ///< Set only for a by-query's exhausted conflicts.
     };
 
     constexpr auto FAILURE_UNAVAILABLE_BODY {R"({"error":"Service unavailable","code":503})"};
@@ -33,7 +33,7 @@ namespace invsync::indexer
         R"({"error":"indexer contention","code":503,"reason":"version_conflicts"})"};
 
     /**
-     * @brief The code the agent gets for a failure, decided by its cause alone (I135, P17).
+     * @brief The code the agent gets for a failure, decided by its cause alone.
      *
      * No re-query of isAvailable() after the fact: the cause already says whether the indexer was the
      * problem. 503 (the agent retries next cycle) for anything transient, 503 + `Retry-After` when a
@@ -57,7 +57,7 @@ namespace invsync::indexer
         return {500, FAILURE_INTERNAL_BODY, std::nullopt}; // LCOV_EXCL_LINE -- every enumerator is handled above
     }
 
-    /// Suffix of `sync.bulk.flush.failures.<suffix>` a failure counts under (I140).
+    /// Suffix of `sync.bulk.flush.failures.<suffix>` a failure counts under.
     inline const char* failureMetric(ConnectorError::Cause cause)
     {
         switch (cause)

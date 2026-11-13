@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.12.4)
 project(wm_indexer_runtime CXX)
 
 # Next to the other manager shared libs so modulesd's runtime rpath ($ORIGIN/../lib) resolves it. modulesd loads it
-# with so_get_module_handle (plan 18, I132): nothing in C links this library.
+# with so_get_module_handle: nothing in C links this library.
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 

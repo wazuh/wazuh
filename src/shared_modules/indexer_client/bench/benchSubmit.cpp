@@ -10,10 +10,10 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Submit microbenchmark (plan 18, E6c, RNF-2, I119; contract-bench §2): what one event costs the producer that hands it
+// Submit microbenchmark: what one event costs the producer that hands it
 // to the library: IWriter::post (the default) or IWriter::submit, of an IndexDataStream Op whose body is moved in
-// (`--api`, E6d I123). One invocation prints one `SUBMIT,` row. The v1 side (the v1 async connector) was removed with
-// the v1 library (E11d, I221); its number, measured with the v1 connector library, is kept in the README as a
+// (`--api`). One invocation prints one `SUBMIT,` row. The v1 side (the v1 async connector) was removed with
+// the v1 library; its number, measured with the v1 connector library, is kept in the README as a
 // reference.
 //
 // Regime: P producers run bursts of B ops at the same time (a generation counter under a mutex + cv releases them);
@@ -62,7 +62,7 @@ namespace
     constexpr auto MARK_TIMEOUT = std::chrono::seconds(30);      ///< A watermark (or the final drain) not reached.
     constexpr int PROBE_INTERVAL_MS {3600000};
     constexpr const char* INDEX_NAME {"bench-submit"};
-    /// E6e (D): with --indices 2 the odd ops of a burst go here (the engine alternates its raw and events indices).
+    /// With --indices 2 the odd ops of a burst go here (the engine alternates its raw and events indices).
     constexpr const char* INDEX_NAME_ALT {"bench-submit-raw"};
 
     /// --indices (1 or 2), set once by main before any producer starts.
@@ -78,8 +78,8 @@ namespace
         "usage: indexer_client_bench_submit [--api post|submit] [--producers N] [--cb none|noop]\n"
         "                                   [--handover move|view] [--events N] [--pair N] [--indices 1|2]\n"
         "                                   [--csv-header]\n"
-        "  --indices 2 (E6e): the ops alternate between two indices (default 1).\n"
-        "  --api (default post): IWriter::post (bucket with trustedBodies, the engine path, I125) or\n"
+        "  --indices 2: the ops alternate between two indices (default 1).\n"
+        "  --api (default post): IWriter::post (bucket with trustedBodies, the engine path) or\n"
         "  IWriter::submit (default bucket, the body is scanned); post has no callback, so it needs --cb none\n"
         "  (usage error otherwise, exit 2).\n"
         "  --events: per producer (multiple of 1000, > 5000; default 200000). Prints one 'SUBMIT,<csv>' line (see\n"
@@ -431,7 +431,7 @@ namespace
             spec.overflow.kind = indexer_client::Overflow::Kind::Reject;
             spec.bulk.maxBytes = BULK_BYTES;
             spec.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Fail;
-            // I125: --api post measures the engine path, whose bucket trusts its compact JSON bodies; submit keeps the
+            // --api post measures the engine path, whose bucket trusts its compact JSON bodies; submit keeps the
             // default scan of the body for a newline.
             spec.trustedBodies = api == "post";
             auto created = started.value.client("bench", {spec});

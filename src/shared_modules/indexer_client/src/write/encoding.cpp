@@ -164,8 +164,8 @@ namespace indexer_client::detail::write
             return Outcome<Encoded>::failure(Cause::InvalidArgument, std::move(why));
         }
 
-        /// Validation of I61 / RF-4; empty string when the op is valid, otherwise the reason (field first).
-        /// `indexKnownSafe`: the index equals the cached one of a shared head (I125), already validated: its checks
+        /// Validation of an op; empty string when the op is valid, otherwise the reason (field first).
+        /// `indexKnownSafe`: the index equals the cached one of a shared head, already validated: its checks
         /// are skipped (they would pass). `trustedBody`: BucketSpec::trustedBodies, the '\n' search is skipped.
         std::string validate(const Op& op, bool indexKnownSafe, bool trustedBody)
         {
@@ -225,7 +225,7 @@ namespace indexer_client::detail::write
                 }
             }
 
-            // E3c-2 I80: the tag is a cancellation key, never wire bytes; the reason never echoes it (D42).
+            // The tag is a cancellation key, never wire bytes; the reason never echoes it.
             if (op.tag.size() > MAX_TAG_SIZE)
             {
                 return "tag: longer than " + std::to_string(MAX_TAG_SIZE) + " bytes";
@@ -241,7 +241,7 @@ namespace indexer_client::detail::write
             return {};
         }
 
-        /// I73: the effective policy; empty when valid.
+        /// The effective policy; empty when valid.
         std::string validatePolicy(const ConflictPolicy& effective)
         {
             if (effective.kind == ConflictPolicy::Kind::Retry &&
@@ -311,7 +311,7 @@ namespace indexer_client::detail::write
                    (b.size() == a.size() || b[a.size()] == '.');
         }
 
-        /// I72/I73: WriteMode against the kind; empty when valid.
+        /// WriteMode against the kind; empty when valid.
         std::string validateMode(const Op& op)
         {
             const auto& paths = op.mode.preservedPaths;
@@ -340,7 +340,7 @@ namespace indexer_client::detail::write
                     (coversBySegments(paths[i], "state.document_version") ||
                      coversBySegments("state.document_version", paths[i])))
                 {
-                    // The index alone: a reason is never built from consumer bytes (D42).
+                    // The index alone: a reason is never built from consumer bytes.
                     return "mode: preservedPaths[" + std::to_string(i) +
                            "] would defeat the version guard of IndexVersionedScript";
                 }
@@ -356,7 +356,7 @@ namespace indexer_client::detail::write
             return {};
         }
 
-        /// E6e (D, I125): the per-thread cache over the HeadTables: THREAD_CACHE entries keyed by (generation, kind,
+        /// The per-thread cache over the HeadTables: THREAD_CACHE entries keyed by (generation, kind,
         /// index), the last one used checked first, replaced in turn. Only a fully valid op ever fills an entry, and
         /// `line` points into the table of `generation` (generations start at 1: 0 is an empty entry).
         struct HeadCacheEntry final
@@ -452,7 +452,7 @@ namespace indexer_client::detail::write
 
     std::uint64_t chargeSize(std::string_view head, const std::string& body) noexcept
     {
-        // An SSO body owns no heap: its inline capacity is not charged (I124b).
+        // An SSO body owns no heap: its inline capacity is not charged.
         static const std::size_t inlineCapacity = std::string().capacity();
         const std::uint64_t slack = body.capacity() > inlineCapacity ? body.capacity() - body.size() : 0;
         return wireSize(head, body) + slack;
@@ -498,7 +498,7 @@ namespace indexer_client::detail::write
     {
         if (full())
         {
-            // The table only grows: once full, no op takes the mutex again (G-diff E6e P2).
+            // The table only grows: once full, no op takes the mutex again.
             return find(kind, index);
         }
         std::lock_guard<std::mutex> lock(m_appendMutex);
@@ -532,7 +532,7 @@ namespace indexer_client::detail::write
 
     Outcome<Encoded> encode(Op&& op, const ConflictPolicy& effective, bool trustedBody, HeadTable* heads)
     {
-        // I125, E6e D: the kinds without `_id` share their action line through the write path's HeadTable, reached by
+        // The kinds without `_id` share their action line through the write path's HeadTable, reached by
         // the per-thread cache. A hit (same table, same kind, the same index byte for byte) skips the index checks:
         // the cached index passed them.
         const bool sharedKind =
@@ -591,7 +591,7 @@ namespace indexer_client::detail::write
 
         const bool preserving = op.mode.kind == WriteMode::Kind::ReplacePreserving;
         const bool versioned = op.kind == Op::Kind::IndexVersionedScript;
-        const bool scripted = versioned || preserving; // The update actions (I71).
+        const bool scripted = versioned || preserving; // The update actions.
 
         std::string_view prefix;
         bool withId = true;
@@ -628,8 +628,8 @@ namespace indexer_client::detail::write
         }
 
         // Exact size first: one allocation for `head`. The kinds without a script keep only their action line in it
-        // and take the document by move (I121: no copy, no reserve); the update actions copy it twice into `head`,
-        // which is their wire format (params.doc and the upsert, I71).
+        // and take the document by move (no copy, no reserve); the update actions copy it twice into `head`,
+        // which is their wire format (params.doc and the upsert).
         std::size_t size = prefix.size() + op.index.size();
         if (withId)
         {
@@ -651,7 +651,7 @@ namespace indexer_client::detail::write
             }
         }
 
-        size += seams::encodeSizeSkew(); // 0 outside the size-invariant cases (issue 15).
+        size += seams::encodeSizeSkew(); // 0 outside the size-invariant cases.
 
         std::string lines;
         lines.reserve(size);
@@ -701,7 +701,7 @@ namespace indexer_client::detail::write
         }
         if (lines.size() != size)
         {
-            // Issue 15 (D64): a bug in the size computation above, never an abort (the manager's Release builds keep
+            // A bug in the size computation above, never an abort (the manager's Release builds keep
             // assert live). The lines may be right or not: the op is refused before it is charged or queued.
             internalError("encode: the precomputed size of an operation and its encoded lines disagree; operation "
                           "refused");
@@ -750,7 +750,7 @@ namespace indexer_client::detail::write
         }
         else if (op.kind != Op::Kind::Delete)
         {
-            // The document itself, by move: its buffer (and its heap slack, charged by I124b) goes on the wire.
+            // The document itself, by move: its buffer (and its heap slack, charged with the payload) goes on the wire.
             encoded.body = std::move(op.body);
         }
         return Outcome<Encoded>::success(std::move(encoded));

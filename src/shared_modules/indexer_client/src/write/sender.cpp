@@ -36,7 +36,7 @@
 #include "write/scheduler.hpp"
 #include "write/writer.hpp"
 
-// The bulk sender (plan 18 I68; the normative rules are in sender.hpp). Handlers, pool tasks, transport callbacks and
+// The bulk sender (the normative rules are in sender.hpp). Handlers, pool tasks, transport callbacks and
 // the NodeSet hook capture the shared state (strongly, or weakly for the hook the NodeSet keeps forever), never
 // `this`. The sender's mutex is a leaf: nothing is called with it held except arithmetic on its own members, and no
 // OpState, Batch or TicketState reference is dropped under it.
@@ -51,13 +51,13 @@ namespace indexer_client::detail::write
             bool down {true}; ///< Mirrored from NodeSet (initially Down, like the NodeSet's view).
             std::uint32_t inFlight {0};
             TimePoint notBefore {};    ///< 429: nothing is sent to the node before it (in force when > now).
-            TimePoint notBeforeSet {}; ///< Burst marker (I98): the last bulk 429 that doubled pace or raised notBefore.
+            TimePoint notBeforeSet {}; ///< Burst marker: the last bulk 429 that doubled pace or raised notBefore.
             bool notBeforeEverSet {false};
             Duration pace {Duration {0}};
             std::uint64_t requests {0};
             std::uint64_t totalMicros {0};
             std::uint64_t failures {0};
-            // Limiter (E5a, I98; sender.hpp). `window` starts at nodeWindowMax (SenderShared's constructor).
+            // Limiter (sender.hpp). `window` starts at nodeWindowMax (SenderShared's constructor).
             double window {1};                ///< Real AIMD window; ⌊window⌋ requests may be in flight.
             std::uint64_t bulkTarget {0};     ///< Bytes; 0 = uncapped.
             TimePoint nextSendAt {};          ///< Pacing: nothing is sent to the node before it (in force when > now).
@@ -73,16 +73,16 @@ namespace indexer_client::detail::write
             std::uint64_t decreasesLatency {0};
             std::uint64_t increases {0};
             std::uint64_t paceRelaxed {0};
-            std::uint64_t throttled {0}; ///< E5c: request-level 429 answers.
-            std::uint64_t server5xx {0}; ///< E5c: HTTP answers with a 5xx status.
-            LatencyHistogram latency;    ///< E5c: timings.total of every HTTP answer.
+            std::uint64_t throttled {0}; ///< Request-level 429 answers.
+            std::uint64_t server5xx {0}; ///< HTTP answers with a 5xx status.
+            LatencyHistogram latency;    ///< Timings.total of every HTTP answer.
         };
 
         /// One request between its submit and its completion (for the cancellation of stop() and cancelBucket()).
         struct Flight final
         {
             std::uint64_t transferId {0}; ///< 0 until Transport::submit returned.
-            /// I99 (N5): the batch's bucket (identity only; the Batch holds it strongly) and a cancelBucket() that ran
+            /// The batch's bucket (identity only; the Batch holds it strongly) and a cancelBucket() that ran
             /// before the id was known (the task cancels it right after the submit, as cancelNow for stop()).
             const Bucket* bucket {nullptr};
             bool cancelRequested {false};
@@ -123,7 +123,7 @@ namespace indexer_client::detail::write
                 slots.resize(count);
                 for (auto& slot : slots)
                 {
-                    slot.window = static_cast<double>(nodeWindowMax); // I96: the window starts at its maximum.
+                    slot.window = static_cast<double>(nodeWindowMax); // The window starts at its maximum.
                 }
                 pinnedWaiting.resize(count);
             }
@@ -136,9 +136,9 @@ namespace indexer_client::detail::write
             const Duration retryAfterMax;
             const std::uint32_t paceRelaxAfter;
             const Duration latencyTarget;
-            const std::uint32_t nodeWindowMax;   ///< I98: the AIMD window's cap and start.
-            const std::uint64_t bulkMinBytes;    ///< I98: the bulk target's floor.
-            const Duration ambiguousRetryWindow; ///< I79: how long an ambiguous batch stays pinned to its node.
+            const std::uint32_t nodeWindowMax;   ///< The AIMD window's cap and start.
+            const std::uint64_t bulkMinBytes;    ///< The bulk target's floor.
+            const Duration ambiguousRetryWindow; ///< How long an ambiguous batch stays pinned to its node.
             std::vector<std::string> urls;
             std::vector<std::string> hosts;
 
@@ -153,7 +153,7 @@ namespace indexer_client::detail::write
             std::uint64_t mirroredGeneration {0};
             std::uint64_t nextFlight {0};
             std::unordered_map<std::uint64_t, Flight> flights;
-            /// I79: per node, the ordered buckets whose pinned batch found the node unusable (weak, deduplicated);
+            /// Per node, the ordered buckets whose pinned batch found the node unusable (weak, deduplicated);
             /// taken when the node is usable again (wakePinned).
             std::vector<std::vector<std::weak_ptr<Bucket>>> pinnedWaiting;
             SenderStats counters; ///< Without `nodes` (built from `slots` by stats()).
@@ -196,7 +196,7 @@ namespace indexer_client::detail::write
             return result;
         }
 
-        /// ⌊window⌋, the requests the node may have in flight (I98).
+        /// ⌊window⌋, the requests the node may have in flight.
         std::uint32_t windowSlots(const NodeSlot& slot)
         {
             return std::max<std::uint32_t>(1, static_cast<std::uint32_t>(slot.window));
@@ -204,14 +204,14 @@ namespace indexer_client::detail::write
 
         /// The node takes a bulk now: not Down (mirror), no notBefore nor nextSendAt in force, a free slot of its
         /// window; the mutex held. The ONE predicate of capacity(), batchLimit(), the choose filter and wakePinned
-        /// (D47).
+        ///.
         bool usableLocked(const SenderShared& shared, std::size_t node, TimePoint now)
         {
             const auto& slot = shared.slots[node];
             return !slot.down && slot.notBefore <= now && slot.nextSendAt <= now && slot.inFlight < windowSlots(slot);
         }
 
-        /// p95 of the node's ring, sorted[⌈0.95·n⌉ − 1], or nullopt below LATENCY_MIN_SAMPLES (I98); the mutex held.
+        /// p95 of the node's ring, sorted[⌈0.95·n⌉ − 1], or nullopt below LATENCY_MIN_SAMPLES; the mutex held.
         std::optional<std::chrono::microseconds> p95Locked(const NodeSlot& slot)
         {
             if (slot.ringSize < LATENCY_MIN_SAMPLES)
@@ -223,7 +223,7 @@ namespace indexer_client::detail::write
             return sorted[(95 * slot.ringSize + 99) / 100 - 1];
         }
 
-        /// I98 decrease (the caller checked «once per burst»): halves the window and the bulk target, `bytes` being the
+        /// Decrease (the caller checked «once per burst»): halves the window and the bulk target, `bytes` being the
         /// batch's (lastBatchBytes for the Throttled hook); the mutex held. The caller counts the origin.
         void decreaseLocked(const SenderShared& shared, NodeSlot& slot, std::uint64_t bytes, TimePoint now)
         {
@@ -233,7 +233,7 @@ namespace indexer_client::detail::write
             slot.lastDecreaseAt = now;
         }
 
-        /// I98 increase: window += 1 / window (cap nodeWindowMax); a capped bulk target grows by max(bulkMinBytes, a
+        /// Increase: window += 1 / window (cap nodeWindowMax); a capped bulk target grows by max(bulkMinBytes, a
         /// quarter) and is uncapped again at BULK_TARGET_UNCAPPED; the mutex held.
         void increaseLocked(const SenderShared& shared, NodeSlot& slot)
         {
@@ -254,10 +254,10 @@ namespace indexer_client::detail::write
             ++slot.increases;
         }
 
-        /// The buckets one wake-up of the scheduler announces (E6a, I109: one post per completion).
+        /// The buckets one wake-up of the scheduler announces (one post per completion).
         using WakeList = std::vector<std::shared_ptr<Bucket>>;
 
-        /// I79 (sender.hpp): for every node usable now, takes its pinnedWaiting list and tells each bucket that is
+        /// (sender.hpp) For every node usable now, takes its pinnedWaiting list and tells each bucket that is
         /// still alive (Bucket::pinnedNodeUsable); those that ask for the scheduler are appended to `wake`, which the
         /// caller posts once. The sender's mutex is only held to take the lists: the buckets are called without it.
         void takePinned(const std::shared_ptr<SenderShared>& shared, WakeList& wake)
@@ -330,7 +330,7 @@ namespace indexer_client::detail::write
             }
         }
 
-        /// The scheduler's single wake-up (E6a, I109): the pinned buckets whose node is usable (takePinned) and `wake`
+        /// The scheduler's single wake-up: the pinned buckets whose node is usable (takePinned) and `wake`
         /// (the buckets a completion's requeues asked for) go in ONE Scheduler::notifyAll(buckets), i.e. one post,
         /// instead of a notify per requeue and per pinned bucket plus WritePath::sinkReady(). Deferring a requeue's
         /// notify costs nothing: every pass re-arms the timer of every bucket (a Backoff requeue's due included).
@@ -358,7 +358,7 @@ namespace indexer_client::detail::write
             asio::post(shared->loop0, [shared]() { armTimer(shared); });
         }
 
-        /// Loop 0 only: (re)arms the timer at the earliest notBefore or nextSendAt in force (I98); a later one waits
+        /// Loop 0 only: (re)arms the timer at the earliest notBefore or nextSendAt in force; a later one waits
         /// for the next arm.
         void armTimer(const std::shared_ptr<SenderShared>& shared)
         {
@@ -414,9 +414,9 @@ namespace indexer_client::detail::write
 
         /// The NodeSet hook: mirrors every node's Down state from a consistent view (a hook from another thread may
         /// run late; the generation keeps an older view from overwriting a newer one), then wakes the scheduler.
-        /// E6a (I109b): also raises each slot's notBefore to the NodeSet's (a 429 with Retry-After from any path) and
+        /// Also raises each slot's notBefore to the NodeSet's (a 429 with Retry-After from any path) and
         /// arms the notBefore timer, so capacity() is 0 while the node is parked and the timer wakes the scheduler when
-        /// it ends (no dispatch spin, no lost wake-up). The max() leaves the I98 pacing state alone: the burst marker
+        /// it ends (no dispatch spin, no lost wake-up). The max() leaves the pacing state alone: the burst marker
         /// (notBeforeSet) moves with the Throttled branch's pace doubling, not with notBefore.
         void refreshMirror(const std::shared_ptr<SenderShared>& shared, bool wake = true)
         {
@@ -513,7 +513,7 @@ namespace indexer_client::detail::write
             }
             if (path)
             {
-                // E6e (A): the exhausted and the closed ops in one bulk resolution (per op for those not of post).
+                // The exhausted and the closed ops in one bulk resolution (per op for those not of post).
                 std::vector<BulkItem> settle;
                 settle.reserve(result.exhausted.size() + result.closed.size());
                 for (std::size_t i = 0; i < result.exhausted.size(); ++i)
@@ -525,7 +525,7 @@ namespace indexer_client::detail::write
                 }
                 if (!result.closed.empty())
                 {
-                    // I99 (N1): the sweep's cause, so during stop() every resolution is Dropped(Shutdown).
+                    // The sweep's cause, so during stop() every resolution is Dropped(Shutdown).
                     const auto cause = bucket->sweepCause().value_or(Cause::Shutdown);
                     for (const auto& op : result.closed)
                     {
@@ -536,7 +536,7 @@ namespace indexer_client::detail::write
                 {
                     path->resolveBulk(bucket, settle);
                 }
-                // I80: marked by cancel(tag); cancellation wins over exhaustion and close (bucket.hpp).
+                // Marked by cancel(tag); cancellation wins over exhaustion and close (bucket.hpp).
                 for (const auto& op : result.cancelled)
                 {
                     path->resolve(bucket, op, droppedResult(Cause::Cancelled));
@@ -545,7 +545,7 @@ namespace indexer_client::detail::write
                 {
                     if (deferred)
                     {
-                        deferred->push_back(bucket); // E6a (I109): one wake-up per completion, in its ready().
+                        deferred->push_back(bucket); // One wake-up per completion, in its ready().
                     }
                     else if (auto scheduler = path->scheduler())
                     {
@@ -605,7 +605,7 @@ namespace indexer_client::detail::write
         }
 
         /// Items verdict: one resolution or requeue per op, item i <-> op i.
-        /// An HTTP response: the requeues clear the ambiguous pin (I79; ignored by unordered buckets).
+        /// An HTTP response: the requeues clear the ambiguous pin (ignored by unordered buckets).
         void applyItems(SenderShared& shared,
                         const std::shared_ptr<WritePath>& path,
                         const Batch& batch,
@@ -615,7 +615,7 @@ namespace indexer_client::detail::write
             constexpr auto clear = RequeueSpec::Pin::Clear;
             std::string reason;
             auto items = classifyItems(result.body, batch.ops.size(), &reason);
-            // E5c: the ops whose resolution another one won (a sweep) or that come back closed (metrics.hpp).
+            // The ops whose resolution another one won (a sweep) or that come back closed (metrics.hpp).
             std::uint64_t late = 0;
             const auto countLate = [&batch, &late]()
             {
@@ -639,7 +639,7 @@ namespace indexer_client::detail::write
                 return;
             }
             std::vector<RequeueOp> retry;
-            // E6e (A): the resolutions of this bulk (Ok and Permanent items), settled together below.
+            // The resolutions of this bulk (Ok and Permanent items), settled together below.
             std::vector<BulkItem> settle;
             settle.reserve(batch.ops.size());
             for (std::size_t i = 0; i < batch.ops.size(); ++i)
@@ -649,7 +649,7 @@ namespace indexer_client::detail::write
                 switch (item.verdict)
                 {
                     case ItemVerdict::Conflict:
-                        // I73: the op's effective ConflictPolicy (OpState::conflictRetry). Retry ⇒ back to the lane
+                        // The op's effective ConflictPolicy (OpState::conflictRetry). Retry ⇒ back to the lane
                         // with the 409 as its last error (exhausted ⇒ Failed(RetryExhausted) with it); Success ⇒ Ok
                         // keeping the 409 and its type, as below.
                         if (op->conflictRetry)
@@ -727,7 +727,7 @@ namespace indexer_client::detail::write
             }
         }
 
-        /// I105: the reason of an op failed Ambiguous.
+        /// The reason of an op failed Ambiguous.
         std::string ambiguousReason(int httpStatus, bool responseTooLarge)
         {
             if (responseTooLarge)
@@ -737,9 +737,9 @@ namespace indexer_client::detail::write
             return "ambiguous HTTP " + std::to_string(httpStatus) + " (not resent)";
         }
 
-        /// FailBatch: resolves every op of the batch Failed(`cause`); the ops another resolution won count late (E5c,
-        /// metrics.hpp LATE RESULTS). An Ambiguous one counts the ops it did resolve for the bucket's WARN (I105b),
-        /// none when every op was late (a shutdown sweep won them all); `responseTooLarge` picks that WARN's wording.
+        /// FailBatch: resolves every op of the batch Failed(`cause`); the ops another resolution won count late
+        /// (metrics.hpp LATE RESULTS). An Ambiguous one counts the ops it did resolve for the bucket's WARN, none when
+        /// every op was late (a shutdown sweep won them all); `responseTooLarge` picks that WARN's wording.
         void failBatch(const std::shared_ptr<WritePath>& path,
                        const Batch& batch,
                        Cause cause,
@@ -751,7 +751,7 @@ namespace indexer_client::detail::write
             {
                 return;
             }
-            // E6e (A): one bulk resolution; countAmbiguous counts only the ops it won (resolved).
+            // One bulk resolution; countAmbiguous counts only the ops it won (resolved).
             std::vector<BulkItem> settle;
             settle.reserve(batch.ops.size());
             for (const auto& op : batch.ops)
@@ -810,12 +810,12 @@ namespace indexer_client::detail::write
                       HttpResult&& result)
         {
             auto outcome = classifyRequest(result, batch.ops.size());
-            // I105: the indexer may have applied this bulk; a bucket with onAmbiguous5xx = Fail resolves it
+            // The indexer may have applied this bulk; a bucket with onAmbiguous5xx = Fail resolves it
             // Failed(Ambiguous) instead of resending it. Ambiguous: a 500, 502 or 504 (503 stays Retry) and a response
             // over maxResponseBytes (the node answered: the bulk may be applied, so it is never Split and resent in
             // halves; the generated ids of an index without `_id` would duplicate). Decided here, before the slot
             // accounting (no Split counted) and before the try (no allocation), so an exception after it resolves
-            // instead of requeuing: a Fail batch is never resent (G-diff E6a obj. 4).
+            // instead of requeuing: a Fail batch is never resent.
             const bool responseTooLarge = result.cause == TransportCause::ResponseTooLarge;
             const bool ambiguous = batch.bucket && batch.bucket->spec().onAmbiguous5xx == AmbiguousPolicy::Fail &&
                                    (responseTooLarge ||
@@ -855,7 +855,7 @@ namespace indexer_client::detail::write
                     if (sentAt > slot.lastDecreaseAt)
                     {
                         // Only the regime after the last decrease: a request still in flight when it happened would
-                        // refill the emptied ring with the spike's samples and decrease again (G-diff obj. 1).
+                        // refill the emptied ring with the spike's samples and decrease again.
                         slot.ring[slot.ringNext] = latency;
                         slot.ringNext = (slot.ringNext + 1) % LATENCY_RING;
                         slot.ringSize = std::min(slot.ringSize + 1, LATENCY_RING);
@@ -863,9 +863,9 @@ namespace indexer_client::detail::write
                 }
                 else
                 {
-                    ++slot.failures; // I98: a transport failure is Down (CA-13), never a decrease.
+                    ++slot.failures; // A transport failure is Down, never a decrease.
                 }
-                // I98, in this order: the decrease (once per burst: only a request sent after the last one), then the
+                // In this order: the decrease (once per burst: only a request sent after the last one), then the
                 // increase, which a decrease in the same completion excludes. Item rejections never get here.
                 bool decreased = false;
                 if (outcome.verdict == RequestVerdict::Throttled)
@@ -877,7 +877,7 @@ namespace indexer_client::detail::write
                         slot.pace = slot.pace.count() == 0 ? shared->paceInitial
                                                            : std::min(slot.pace * 2, shared->retryAfterMax);
                         // The burst marker moves with the doubling, not with notBefore: a park mirrored from a query
-                        // or PIT 429 (refreshMirror) may already hold notBefore past now + wait (G-diff E6a obj. 1).
+                        // or PIT 429 (refreshMirror) may already hold notBefore past now + wait.
                         slot.notBeforeSet = now;
                         slot.notBeforeEverSet = true;
                     }
@@ -904,7 +904,7 @@ namespace indexer_client::detail::write
                     if (const auto p95 = p95Locked(slot); p95 && *p95 > shared->latencyTarget)
                     {
                         decreaseLocked(*shared, slot, batch.bytes, now);
-                        slot.ringSize = 0; // A fresh ring: the slow samples cannot decrease twice (G-plan obj. 2).
+                        slot.ringSize = 0; // A fresh ring: the slow samples cannot decrease twice.
                         slot.ringNext = 0;
                         ++slot.decreasesLatency;
                         decreased = true;
@@ -912,7 +912,7 @@ namespace indexer_client::detail::write
                 }
                 if (success)
                 {
-                    // I98 pacing: a 2xx of a request sent after the last notBeforeSet is a clean send; paceRelaxAfter
+                    // Pacing: a 2xx of a request sent after the last notBeforeSet is a clean send; paceRelaxAfter
                     // of them halve the pace, 0 below paceInitial. A 2xx never shortens a notBefore or a nextSendAt.
                     if (slot.pace.count() > 0 && slot.notBeforeEverSet && sentAt > slot.notBeforeSet &&
                         ++slot.cleanSends >= shared->paceRelaxAfter)
@@ -932,7 +932,7 @@ namespace indexer_client::detail::write
                 }
                 if (outcome.verdict == RequestVerdict::Split && http && result.status == 413)
                 {
-                    // I98: the node refused the payload; the next batches stay under half of it (not a decrease).
+                    // The node refused the payload; the next batches stay under half of it (not a decrease).
                     const auto half = std::max<std::uint64_t>(1, batch.bytes / 2);
                     slot.bulkTarget = slot.bulkTarget != 0 ? std::min(slot.bulkTarget, half) : half;
                 }
@@ -945,7 +945,7 @@ namespace indexer_client::detail::write
             }
             if (batch.bucket)
             {
-                // E5c: the bucket's bulk counters and latency, under its own mutex (never under the sender's).
+                // The bucket's bulk counters and latency, under its own mutex (never under the sender's).
                 const bool http = result.cause == TransportCause::None;
                 batch.bucket->countBulk(batch.bytes,
                                         http ? std::optional<std::uint64_t>(static_cast<std::uint64_t>(
@@ -954,7 +954,7 @@ namespace indexer_client::detail::write
                                         http && result.status >= 200 && result.status < 300);
             }
 
-            // I79 (sender.hpp): a completion with an HTTP response (a ResponseTooLarge included: the node answered)
+            // (sender.hpp) A completion with an HTTP response (a ResponseTooLarge included: the node answered)
             // clears the ambiguous pin; one without keeps it, except a Failover that may have sent, which pins the
             // batch of an ordered bucket to this node for ambiguousRetryWindow. Unordered buckets ignore the pin.
             const bool answered =
@@ -962,9 +962,9 @@ namespace indexer_client::detail::write
             const auto pin = answered ? RequeueSpec::Pin::Clear : RequeueSpec::Pin::Keep;
 
             auto path = shared->path.lock();
-            WakeList wake; // E6a (I109): the requeues' notify, deferred to the single ready() below.
+            WakeList wake; // The requeues' notify, deferred to the single ready() below.
             // Past the slot release nothing may leave the batch unresolved: an exception (bad_alloc in a requeue or a
-            // resolution, or the test seam) sends what is still unresolved back to the lane (G-diff E3b-2 obj. 6).
+            // resolution, or the test seam) sends what is still unresolved back to the lane.
             try
             {
                 seams::beforeCompletion();
@@ -996,7 +996,7 @@ namespace indexer_client::detail::write
                         auto failover = spec(outcome.mayHaveSent, RequeueSpec::Delay::Now, pin);
                         if (outcome.mayHaveSent && batch.bucket && batch.bucket->spec().ordered)
                         {
-                            // D38: a Tls failure that may have sent pins too (one window per batch on that node).
+                            // A Tls failure that may have sent pins too (one window per batch on that node).
                             failover.pin = RequeueSpec::Pin::Set;
                             failover.pinNode = node;
                             failover.pinUntil = now + shared->ambiguousRetryWindow;
@@ -1111,9 +1111,9 @@ namespace indexer_client::detail::write
                     return;
                 }
 
-                // I80 (sender.hpp): the ops cancel(tag) marked leave the batch (ops and bytes, so item i <-> op i
+                // (sender.hpp) The ops cancel(tag) marked leave the batch (ops and bytes, so item i <-> op i
                 // still holds) and resolve Dropped(Cancelled); no op of a cancelled tag is sent after cancel().
-                // I99 (N5): so do the ops a sweep already resolved (claimed; awaitClosed's drain end), unresolved.
+                // So do the ops a sweep already resolved (claimed; awaitClosed's drain end), unresolved.
                 seams::beforeAssembly();
                 if (std::any_of(batch->ops.begin(),
                                 batch->ops.end(),
@@ -1273,7 +1273,7 @@ namespace indexer_client::detail::write
                             {
                                 return;
                             }
-                            // I98: a transition to Throttled decreases only when a bulk left after the last decrease
+                            // A transition to Throttled decreases only when a bulk left after the last decrease
                             // (the bulk 429 that caused it already decreased; a probe or query 429 does here).
                             if (to == NodeSet::State::Throttled && index < shared->slots.size())
                             {
@@ -1304,7 +1304,7 @@ namespace indexer_client::detail::write
                 {
                     if (usableLocked(*m_shared, i, now))
                     {
-                        // I98: a paced node takes one send per interval (G-plan obj. 16).
+                        // A paced node takes one send per interval.
                         const auto& slot = m_shared->slots[i];
                         total += slot.pace.count() > 0 ? 1 : windowSlots(slot) - slot.inFlight;
                     }
@@ -1319,7 +1319,7 @@ namespace indexer_client::detail::write
                 {
                     return 0;
                 }
-                // I98: the smallest capped bulkTarget among the usable nodes; the node is chosen after the slice.
+                // The smallest capped bulkTarget among the usable nodes; the node is chosen after the slice.
                 const auto now = std::chrono::steady_clock::now();
                 std::uint64_t limit = 0;
                 for (std::size_t i = 0; i < m_shared->slots.size(); ++i)
@@ -1346,7 +1346,7 @@ namespace indexer_client::detail::write
                     stopped = shared->stopped;
                     flight = ++shared->nextFlight;
                 }
-                // I79 (sender.hpp): the ambiguous pin of an ordered bucket's batch. Every op of a pinned batch carries
+                // (sender.hpp) The ambiguous pin of an ordered bucket's batch. Every op of a pinned batch carries
                 // the same pin (bucket.hpp); the ops are delivered, so only this sender touches it now.
                 std::optional<std::size_t> pinNode;
                 TimePoint pinUntil {};
@@ -1368,7 +1368,7 @@ namespace indexer_client::detail::write
                 {
                     // The filter runs under the NodeSet's mutex and takes the sender's (the allowed order); the slot
                     // is taken in the same step, so capacity() sees it at once. A pinned batch admits its node only.
-                    // I98: taking the slot also sets the pacing (nextSendAt = now + pace), so the DRR cannot send a
+                    // Taking the slot also sets the pacing (nextSendAt = now + pace), so the DRR cannot send a
                     // second batch to the node inside the interval before the pool task runs.
                     const auto bytes = held->bytes;
                     node = shared->nodes->choose(
@@ -1394,7 +1394,7 @@ namespace indexer_client::detail::write
                 }
                 if (paced)
                 {
-                    armTimer(shared); // I98: loop 0; wakes the scheduler when nextSendAt ends.
+                    armTimer(shared); // Loop 0; wakes the scheduler when nextSendAt ends.
                 }
                 if (!node && pinned && !stopped && shared->nodes)
                 {
@@ -1433,7 +1433,7 @@ namespace indexer_client::detail::write
                     {
                         // The Down mirror may lag the NodeSet (its hook runs after the transition is logged):
                         // refreshed here, so capacity() drops to 0 at once instead of the scheduler re-slicing the
-                        // batch until the hook lands (G-diff E3b-2 obj. 4). No sender lock is held.
+                        // batch until the hook lands. No sender lock is held.
                         refreshMirror(shared, false);
                     }
                     requeueBatch(*shared,

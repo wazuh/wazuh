@@ -10,9 +10,9 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// TLS of the transport (plan 18, plan-E2a-2 §Tests: CA-19, I48, D22): handshakes against the HTTPS/mTLS fake with the
+// TLS of the transport: handshakes against the HTTPS/mTLS fake with the
 // material of <indexer>.ssl, the failures the node is blamed for, a cancel in the middle of a handshake, and every
-// configuration refusal of RuntimeOwner::start (InvalidConfig before any thread exists). E11e: the verification
+// configuration refusal of RuntimeOwner::start (InvalidConfig before any thread exists). The verification
 // policy of ssl.verify_certificates and the system CA store (the list of paths replaced through the systemCaPaths()
 // seam in every https case without a configured CA, so that no case depends on the machine's stores).
 
@@ -235,7 +235,7 @@ protected:
     void SetUp() override
     {
         indexer_client::testing_hooks::resetAll();
-        // The health probe would add its own requests to the traffic these cases count (E2b).
+        // The health probe would add its own requests to the traffic these cases count.
         indexer_client::testing_hooks::setProbeAutoStart(false);
         indexer_client::setLogFunction(m_logs->function(m_logs));
     }
@@ -295,7 +295,7 @@ protected:
         return collector->result(sent.key);
     }
 
-    /// I48: start() refuses the section with InvalidConfig whose reason carries every `part`, creates no thread and
+    /// start() refuses the section with InvalidConfig whose reason carries every `part`, creates no thread and
     /// leaves no runtime behind.
     void expectInvalidConfig(const Section& section, const std::vector<std::string>& parts)
     {
@@ -321,7 +321,7 @@ protected:
         return m_material.directory() + "/missing-ca.pem";
     }
 
-    /// The system CA stores tried, in order, when no CA is configured (E11e seam).
+    /// The system CA stores tried, in order, when no CA is configured (seam).
     static void systemStores(std::vector<std::string> paths)
     {
         indexer_client::testing_hooks::setSystemCaPaths(std::move(paths));
@@ -376,7 +376,7 @@ protected:
     }
 };
 
-// CA-19: a handshake against the configured CA; the transfer reports the TLS phase.
+// A handshake against the configured CA; the transfer reports the TLS phase.
 TEST_F(TransportTlsTest, TlsHandshakeWithConfiguredCa)
 {
     auto fake = startFake(serverTls());
@@ -394,7 +394,7 @@ TEST_F(TransportTlsTest, TlsHandshakeWithConfiguredCa)
     EXPECT_EQ(fake->requestCount(), 1u);
 }
 
-// CA-19: a CA that did not sign the server is the node's TLS failure (curl 60); verification is never off.
+// A CA that did not sign the server is the node's TLS failure (curl 60); verification is never off.
 TEST_F(TransportTlsTest, TlsBadCaFails)
 {
     auto fake = startFake(serverTls());
@@ -410,7 +410,7 @@ TEST_F(TransportTlsTest, TlsBadCaFails)
     EXPECT_EQ(fake->requestCount(), 0u);
 }
 
-// CA-19: a certificate signed by the good CA for another name fails the hostname check (curl 60).
+// A certificate signed by the good CA for another name fails the hostname check (curl 60).
 TEST_F(TransportTlsTest, TlsHostnameMismatchFails)
 {
     auto fake =
@@ -427,7 +427,7 @@ TEST_F(TransportTlsTest, TlsHostnameMismatchFails)
     EXPECT_EQ(fake->requestCount(), 0u);
 }
 
-// I48: every configured CA is trusted, not only the first: [foreign, good] as two files, and as one bundle file.
+// Every configured CA is trusted, not only the first: [foreign, good] as two files, and as one bundle file.
 TEST_F(TransportTlsTest, TlsSecondCaValid)
 {
     auto fake = startFake(serverTls());
@@ -449,7 +449,7 @@ TEST_F(TransportTlsTest, TlsSecondCaValid)
     EXPECT_EQ(fake->requestCount(), 2u);
 }
 
-// I48: mTLS with the configured client pair.
+// mTLS with the configured client pair.
 TEST_F(TransportTlsTest, TlsMutualOk)
 {
     auto fake = startFake(mutualTls());
@@ -463,7 +463,7 @@ TEST_F(TransportTlsTest, TlsMutualOk)
     EXPECT_EQ(fake->requestCount(), 1u);
 }
 
-// I48: the certificate file is leaf + intermediate; the whole file travels, so the server can build the chain.
+// The certificate file is leaf + intermediate; the whole file travels, so the server can build the chain.
 TEST_F(TransportTlsTest, TlsMutualChainInOneFile)
 {
     auto fake = startFake(mutualTls());
@@ -477,7 +477,7 @@ TEST_F(TransportTlsTest, TlsMutualChainInOneFile)
     EXPECT_EQ(fake->requestCount(), 1u);
 }
 
-// I48: an mTLS server and no pair. Under TLS 1.3 the server's alert arrives after the client's Finished, so curl may
+// An mTLS server and no pair. Under TLS 1.3 the server's alert arrives after the client's Finished, so curl may
 // report it as a handshake, send or receive failure; all of them are the node's.
 TEST_F(TransportTlsTest, TlsMutualMissingClientCertFails)
 {
@@ -497,7 +497,7 @@ TEST_F(TransportTlsTest, TlsMutualMissingClientCertFails)
     EXPECT_EQ(fake->requestCount(), 0u);
 }
 
-// I48: the transport demands TLS 1.2 or newer; a node capped at TLS 1.1 is a TLS failure.
+// The transport demands TLS 1.2 or newer; a node capped at TLS 1.1 is a TLS failure.
 TEST_F(TransportTlsTest, TlsMinimumVersion)
 {
     auto options = serverTls();
@@ -514,7 +514,7 @@ TEST_F(TransportTlsTest, TlsMinimumVersion)
     EXPECT_EQ(fake->requestCount(), 0u);
 }
 
-// D22: cancelling a transfer stuck in the TLS handshake (the server accepts, reads the ClientHello and stays silent):
+// Cancelling a transfer stuck in the TLS handshake (the server accepts, reads the ClientHello and stays silent):
 // the request was never about to be written, the easy leaves the multi and the connection closes at once.
 TEST_F(TransportTlsTest, CancelDuringTlsHandshake)
 {
@@ -554,9 +554,9 @@ TEST_F(TransportTlsTest, CancelDuringTlsHandshake)
         << " ms after cancel()";
 }
 
-// ---- I48: configuration refusals of RuntimeOwner::start (InvalidConfig, no thread) ----
+// ---- configuration refusals of RuntimeOwner::start (InvalidConfig, no thread) ----
 
-// E11e (rewritten): https without a configured CA is no longer a configuration error: the runtime starts with the
+// https without a configured CA is no longer a configuration error: the runtime starts with the
 // system store (here none) and warns.
 TEST_F(TransportTlsTest, TlsConfigHttpsWithoutCaStarts)
 {
@@ -580,7 +580,7 @@ TEST_F(TransportTlsTest, TlsConfigMalformedCa)
                         {m_material.malformedCa(), "malformed PEM content"});
 }
 
-// I48 (G-diff objection 1): a good CA followed by a malformed block. curl parses CAINFO_BLOB with
+// A good CA followed by a malformed block. curl parses CAINFO_BLOB with
 // PEM_X509_INFO_read_bio over the whole blob and refuses it (77 on every transfer); start() must refuse it first.
 TEST_F(TransportTlsTest, TlsConfigCaBundleTrailingGarbage)
 {
@@ -589,7 +589,7 @@ TEST_F(TransportTlsTest, TlsConfigCaBundleTrailingGarbage)
         {m_material.caThenMalformed(), "malformed PEM content"});
 }
 
-// I48 (G-diff objection 1): leaf + intermediate followed by a malformed block. curl reads SSLCERT_BLOB as a leaf and
+// Leaf + intermediate followed by a malformed block. curl reads SSLCERT_BLOB as a leaf and
 // then certificates until PEM_R_NO_START_LINE, and refuses anything else (58 on every transfer).
 TEST_F(TransportTlsTest, TlsConfigChainTrailingGarbage)
 {
@@ -600,7 +600,7 @@ TEST_F(TransportTlsTest, TlsConfigChainTrailingGarbage)
                         {m_material.chainThenMalformed(), "not a PEM certificate chain"});
 }
 
-// I48 (G-diff objection 3): each file is at most 1 MiB (here a valid CA padded to 1 MiB + 1 byte), and the CA files
+// Each file is at most 1 MiB (here a valid CA padded to 1 MiB + 1 byte), and the CA files
 // together stay below curl's blob limit (8 000 000 bytes; curl would refuse the blob with 43 on every transfer).
 TEST_F(TransportTlsTest, TlsConfigOversizedFile)
 {
@@ -673,13 +673,13 @@ TEST_F(TransportTlsTest, TlsConfigBadScheme)
                         {"ftp://127.0.0.1:21", "http or https"});
 }
 
-// I48: the material is validated whatever the scheme: a typo in the CA path does not wait for the day of https.
+// The material is validated whatever the scheme: a typo in the CA path does not wait for the day of https.
 TEST_F(TransportTlsTest, TlsConfigHttpHostsStillValidateCa)
 {
     expectInvalidConfig({{"http://127.0.0.1:9200"}, {missingPath()}, {}, {}}, {missingPath(), "cannot read"});
 }
 
-// I48: manager_config fills "" for absent members: certificate "" and key "" mean no mTLS, and the runtime starts.
+// manager_config fills "" for absent members: certificate "" and key "" mean no mTLS, and the runtime starts.
 TEST_F(TransportTlsTest, TlsConfigEmptyStringsMeanAbsent)
 {
     auto fake = startFake(serverTls());
@@ -692,7 +692,7 @@ TEST_F(TransportTlsTest, TlsConfigEmptyStringsMeanAbsent)
     EXPECT_EQ(result->status, 200) << toString(result->cause) << " curl " << result->curlCode;
 }
 
-// E11e (rewrites HttpsNotAdmittedWithoutConfiguredCa, defect A of E2a-2 step 5): https is admitted without a configured
+// https is admitted without a configured
 // CA, also towards a URL that is not a configured host, and its trust anchor is the system store loadTlsMaterial
 // located, never curl's compiled-in bundle: a store with another CA refuses the fake, one with the fake's CA accepts
 // it.
@@ -717,7 +717,7 @@ TEST_F(TransportTlsTest, HttpsAdmittedWithoutConfiguredCa)
     EXPECT_EQ(m_logs->count(LEVEL_INFO, "indexer TLS"), 0u) << "only http hosts: no notice\n" << m_logs->dump();
 }
 
-// ---- E11e CA-2: the system CA store (no CA configured, verify_certificates true) ----
+// ---- the system CA store (no CA configured, verify_certificates true) ----
 
 // The first EXISTING path wins, whatever the next ones hold: [missing, other CA, fake's CA] refuses the fake.
 TEST_F(TransportTlsTest, SystemStoreFirstExistingPathWins)
@@ -775,7 +775,7 @@ TEST_F(TransportTlsTest, ConfiguredCaBeatsSystemStore)
     EXPECT_EQ(m_logs->count(LEVEL_INFO, "system CA store"), 0u) << m_logs->dump();
 }
 
-// I216: the first existing store is broken: the handshake fails; neither the next store (the fake's valid CA) nor an
+// The first existing store is broken: the handshake fails; neither the next store (the fake's valid CA) nor an
 // unverified connection is tried.
 TEST_F(TransportTlsTest, BrokenStoreFailsClosed)
 {
@@ -787,7 +787,7 @@ TEST_F(TransportTlsTest, BrokenStoreFailsClosed)
     EXPECT_EQ(m_logs->count(LEVEL_WARN, "indexer TLS"), 0u) << m_logs->dump();
 }
 
-// I216, G-plan r2 P2-1: a store whose status() fails with something other than "does not exist" (here ELOOP) is picked
+// A store whose status() fails with something other than "does not exist" (here ELOOP) is picked
 // and fails closed, never read as "no store" (which would switch peer verification off).
 TEST_F(TransportTlsTest, UnreadableStoreFailsClosed)
 {
@@ -851,7 +851,7 @@ TEST_F(TransportTlsTest, ProductionPathListMatchesV1)
     EXPECT_EQ(indexer_client::detail::systemCaStorePaths(), v1);
 }
 
-// ---- E11e CA-3: no CA and no system store (v1 parity) ----
+// ---- no CA and no system store (v1 parity) ----
 
 // The runtime starts, the peer is not verified (the fake's CA is known nowhere) and one WARN names the paths and hosts.
 TEST_F(TransportTlsTest, NoCaNoStoreConnectsUnverifiedWithWarn)
@@ -883,7 +883,7 @@ TEST_F(TransportTlsTest, NoStoreStillChecksHost)
     EXPECT_EQ(fake->requestCount(), 0u);
 }
 
-// ---- E11e CA-4: verify_certificates false ----
+// ---- verify_certificates false ----
 
 // A foreign CA and a certificate for another name: connects all the same.
 TEST_F(TransportTlsTest, VerifyFalseAcceptsForeignCaAndHost)

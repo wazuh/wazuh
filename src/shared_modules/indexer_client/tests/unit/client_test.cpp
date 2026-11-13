@@ -89,7 +89,7 @@ protected:
 
 TEST_F(ClientTest, QueryWithoutUsableNodeIsUnavailable)
 {
-    // E4a: the host never answers (no node leaves Down), so every query ends Unavailable at its deadline.
+    // The host never answers (no node leaves Down), so every query ends Unavailable at its deadline.
     auto query = m_client->query();
     ASSERT_NE(query, nullptr);
     const QueryOptions options;
@@ -104,12 +104,12 @@ TEST_F(ClientTest, QueryWithoutUsableNodeIsUnavailable)
               Cause::Unavailable);
     EXPECT_EQ(query->updateByQuery({"idx"}, nlohmann::json::object(), options, soon()).cause, Cause::Unavailable);
     const auto exists = query->indexExists("idx", options, soon());
-    EXPECT_EQ(exists.cause, Cause::Unavailable) << "Unavailable is not 'false' (RF-14)";
+    EXPECT_EQ(exists.cause, Cause::Unavailable) << "Unavailable is not 'false'";
 }
 
 TEST_F(ClientTest, HealthListsTheConfiguredHost)
 {
-    // One node per configured host from start() on (E2b); its state is the probe's business (component suite).
+    // One node per configured host from start() on; its state is the probe's business (component suite).
     const auto health = m_client->health();
     ASSERT_EQ(health.nodes.size(), 1U);
     EXPECT_EQ(health.nodes[0].url, "http://127.0.0.1:1");
@@ -165,7 +165,7 @@ TEST_F(ClientTest, WaitsFromRuntimeThreadAreReentrancy)
     EXPECT_EQ(ticket, Cause::Reentrancy);
 
     // The same waits from the consumer thread: the empty group's commit is a success with no result; the cancel of a
-    // tag with nothing queued is a ready success (E3c-2).
+    // tag with nothing queued is a ready success.
     const auto committed = groupTicket.wait(soon());
     EXPECT_TRUE(committed.ok()) << toString(committed.cause);
     EXPECT_TRUE(committed.value.empty());
@@ -202,7 +202,7 @@ TEST_F(ClientTest, GroupCommitTwiceIsInvalidState)
 
 TEST_F(ClientTest, EmptyPitHandles)
 {
-    // E4b: no node ever answers, so pit() ends Unavailable; the empty Pit it carries (and one built over a state
+    // No node ever answers, so pit() ends Unavailable; the empty Pit it carries (and one built over a state
     // that was never created) answers InvalidState, never touching the network.
     auto query = m_client->query();
     ASSERT_NE(query, nullptr);
@@ -256,13 +256,13 @@ TEST_F(ClientTest, MoveAssignment)
     EXPECT_EQ(m_ref.snapshot().clients, 1u);
 }
 
-// An empty query is a 400 in OpenSearch 3.6 (D60): the default must be a valid one.
+// An empty query is a 400 in OpenSearch 3.6: the default must be a valid one.
 TEST(CursorQuery, DefaultQueryIsMatchAll)
 {
     EXPECT_EQ(CursorQuery {}.query, nlohmann::json::parse(R"({"match_all":{}})"));
 }
 
-// The names end up in logs and metric labels (E5): every cause has its own stable, lowercase name.
+// The names end up in logs and metric labels: every cause has its own stable, lowercase name.
 TEST(TypesTest, CauseNamesStableAndUnique)
 {
     std::set<std::string> names;

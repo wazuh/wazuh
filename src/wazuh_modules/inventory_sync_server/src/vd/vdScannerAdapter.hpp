@@ -62,12 +62,12 @@ namespace invsync::vd
             // configuration does not have VD enabled either (a test harness that skips start()
             // entirely, e.g. the testtool's --no-vd, or a real node with no
             // <vulnerability-detection> section) -- none of those is a "feed not ready"
-            // condition: those sessions skip the scan and index (D22's legitimate-skip row), so
+            // condition: those sessions skip the scan and index, so
             // they must pass this gate rather than wait on a feed that will never load.
             //
             // Otherwise -- either running (enabled, started, start() didn't fail), or not yet
             // started but this node's OWN config says it will be -- the real feed-readiness
-            // signal decides, once initialized. This is what lets the D17 gate -- and the
+            // signal decides, once initialized. This is what lets the startup gate -- and the
             // /scan/vd on-demand path, which re-checks this same gate before scanAgent() --
             // defer the ENTIRE startup window (both before start() begins, and while it is still
             // validating) with a retryable 503, instead of routing a session that merely arrived
@@ -97,7 +97,7 @@ namespace invsync::vd
             auto& scanner = TFacade::instance();
 
             // A scanner that is stopping fails the session (500, the agent retries) instead of
-            // skipping it: Skipped would index the inventory without scanning it (I167c). The
+            // skipping it: Skipped would index the inventory without scanning it. The
             // read order and the throw live in scanGate() (vdStopping.hpp), pinned by a fake.
             if (!scanGate(scanner))
             {
@@ -144,7 +144,7 @@ namespace invsync::vd
             // one level up, already deferred the enabled-but-starting case with a retryable 503
             // before calling scanAgent() at all) -- Skipped, not NotReady: this gate is what the QA
             // suite, the operator WARN and vd.scans.skipped hang off. A scanner that is stopping
-            // is NotReady instead (I167c): it does not throw, its caller has no `try`.
+            // is NotReady instead: it does not throw, its caller has no `try`.
             const auto gate = readVdGate(scanner);
             return onDemandVerdict(vdStopping(gate.started, gate.enabled, gate.startFailed, gate.initialized),
                                    gate.initialized,

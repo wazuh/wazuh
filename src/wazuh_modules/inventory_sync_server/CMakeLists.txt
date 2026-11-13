@@ -66,7 +66,7 @@ set_target_properties(inventory_sync_server PROPERTIES BUILD_RPATH_USE_ORIGIN TR
 if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(inventory_sync_server)
-  # D81: libstdc++'s assertions in the library under test, so an access through an empty std::optional (or out of a
+  # libstdc++'s assertions in the library under test, so an access through an empty std::optional (or out of a
   # vector's range) aborts the suite instead of reading garbage. Test builds only: release code is unchanged.
   target_compile_definitions(inventory_sync_server PRIVATE _GLIBCXX_ASSERTIONS)
   add_subdirectory(test)

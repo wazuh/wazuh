@@ -244,7 +244,7 @@ namespace invsync::vd
 
     void VdScanLane::respondConnectorFailure(Item& item, indexer::ConnectorError::Cause cause)
     {
-        // Decided by the cause alone (I135), never by re-asking isAvailable() after the fact. The
+        // Decided by the cause alone, never by re-asking isAvailable() after the fact. The
         // lane only stages and flushes documents, so the by-query contention answer (the one with a
         // Retry-After) cannot come out of here; its status and body still follow the table.
         const auto failure = indexer::failureResponse(cause, m_config.retryAfterSeconds);

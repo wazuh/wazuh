@@ -17,7 +17,7 @@
 
 #include "query/query.hpp"
 
-// E4a I84-I86, 03 §4.16: pure classifiers of a query response. Every parse goes through
+// Pure classifiers of a query response. Every parse goes through
 // nlohmann::json::parse(..., allow_exceptions = false); nothing here throws on a hostile body.
 
 namespace indexer_client::detail::query
@@ -111,9 +111,9 @@ namespace indexer_client::detail::query
             return fail(result, cause, errorReason(result.status, result.body));
         }
 
-        /// I84: the size cap, checked before parsing. `size * domFactor > max` without the multiplication (no
+        /// The size cap, checked before parsing. `size * domFactor > max` without the multiplication (no
         /// overflow): for integers it is `size > floor(max / domFactor)`. domFactor is QUERY_DOM_FACTOR, or 1 for the
-        /// pages of a PIT opened with PitOptions::wholeResponseCap (I229).
+        /// pages of a PIT opened with PitOptions::wholeResponseCap.
         bool tooLarge(const std::string& body, std::uint64_t maxResponseBytes, std::uint64_t domFactor) noexcept
         {
             return static_cast<std::uint64_t>(body.size()) > maxResponseBytes / domFactor;
@@ -332,7 +332,7 @@ namespace indexer_client::detail::query
         {
             if (isDelete && errorType(result.body) == INDEX_NOT_FOUND)
             {
-                // I85 / obj. 4: nothing to delete. Only the missing index; any other 404 stays a Client4xx.
+                // Nothing to delete. Only the missing index; any other 404 stays a Client4xx.
                 QueryResponse response;
                 response.httpStatus = static_cast<int>(result.status);
                 response.body = nlohmann::json::object();
@@ -368,7 +368,7 @@ namespace indexer_client::detail::query
                 }
                 if (!allConflicts)
                 {
-                    // The first failure in the reason (obj. 13(f): also an update with conflicts=proceed).
+                    // The first failure in the reason (also an update with conflicts=proceed).
                     const auto& first = failures->front();
                     return fail(result,
                                 Cause::ItemPermanent,
@@ -376,7 +376,7 @@ namespace indexer_client::detail::query
                                               failureType(first),
                                               first.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace)));
                 }
-                // obj. 5: conflicts=abort answers 200 with 409 failures; they feed the I86 budget.
+                // Conflicts=abort answers 200 with 409 failures; they feed the budget.
                 const auto counted = versionConflictsOf(body);
                 response.verdict = QueryVerdict::Conflict;
                 response.versionConflicts = counted > 0 ? counted : static_cast<std::uint64_t>(failures->size());
@@ -474,7 +474,7 @@ namespace indexer_client::detail::query
         {
             return response;
         }
-        // D52: allow_partial_search_results=false should turn a shard failure into a non-2xx; a 2xx that still
+        // Allow_partial_search_results=false should turn a shard failure into a non-2xx; a 2xx that still
         // reports one is never a page.
         const auto failures = shards->find("failures");
         std::string firstType;

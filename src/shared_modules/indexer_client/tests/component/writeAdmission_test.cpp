@@ -10,8 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Admission: the real charge, the four overflow policies, the global cap and the wake-ups (plan-E3a §Tests: CA-11,
-// CA-12, RF-17, RF-27, I62).
+// Admission: the real charge, the four overflow policies, the global cap and the wake-ups.
 
 #include <future>
 #include <stdexcept>
@@ -57,7 +56,7 @@ namespace
     };
 } // namespace
 
-// CA-12: the charge is the wire size plus RESULT_RESERVE; the payload is released at resolution and the reserve when
+// The charge is the wire size plus RESULT_RESERVE; the payload is released at resolution and the reserve when
 // the callback has run or, without a callback, when the last Ticket dies (never by wait()).
 TEST_F(WriteTest, ChargeIsWireBytesPlusReserve)
 {
@@ -125,7 +124,7 @@ TEST_F(WriteTest, ChargeIsWireBytesPlusReserve)
     expectInvariants(stats("b"));
 }
 
-// CA-12: the global cap binds across buckets whose quotas add up to more than it: the bucket that hits it applies its
+// The global cap binds across buckets whose quotas add up to more than it: the bucket that hits it applies its
 // own policy although its quota has room, and the global charge never exceeds the cap.
 TEST_F(WriteTest, GlobalCapAcrossBuckets)
 {
@@ -176,14 +175,14 @@ TEST_F(WriteTest, GlobalCapAcrossBuckets)
     EXPECT_EQ(stats("block").submitTimeout, 1u);
     EXPECT_LE(globalCharge(), cap);
 
-    closeNow(*c); // I99: the ops of a and b drain into the held sink, then the sweep drops them.
+    closeNow(*c); // The ops of a and b drain into the held sink, then the sweep drops them.
     for (const auto* name : {"a", "b", "dropNewest", "block"})
     {
         expectInvariants(stats(name));
     }
 }
 
-// CA-11/T4: Reject refuses (no ticket, no callback) and counts; room again admits.
+// Reject refuses (no ticket, no callback) and counts; room again admits.
 TEST_F(WriteTest, OverflowReject)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -215,14 +214,14 @@ TEST_F(WriteTest, OverflowReject)
     ASSERT_TRUE(results->waitTotal(3));
     ASSERT_TRUE(eventually([&] { return stats("b").charge == 0; }, 5s));
     EXPECT_TRUE(writer->submit(indexOp(id(4), 1000), results->callback(4)).accepted) << "room again";
-    closeNow(*c); // I99: the held sink never answers; the sweep resolves op 4.
+    closeNow(*c); // The held sink never answers; the sweep resolves op 4.
     ASSERT_TRUE(results->waitTotal(4));
     EXPECT_EQ(results->count(3), 0) << "a refused submit never calls back";
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 3u);
     expectInvariants(stats("b"));
 }
 
-// CA-11/T4: Block waits for room up to blockTimeout, then SubmitTimeout (counted).
+// Block waits for room up to blockTimeout, then SubmitTimeout (counted).
 TEST_F(WriteTest, OverflowBlockTimeout)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -253,7 +252,7 @@ TEST_F(WriteTest, OverflowBlockTimeout)
     expectInvariants(stats("b"));
 }
 
-// CA-11/T4: DropNewest accepts and drops the new op (QueueFull): without a callback the ticket is complete at once and
+// DropNewest accepts and drops the new op (QueueFull): without a callback the ticket is complete at once and
 // nothing is charged; with one only RESULT_RESERVE is charged until it runs, and if even that does not fit the submit
 // is refused. The pending ops are never touched.
 TEST_F(WriteTest, OverflowDropNewest)
@@ -316,7 +315,7 @@ TEST_F(WriteTest, OverflowDropNewest)
     expectInvariants(stats("b"));
 }
 
-// CA-11/T4: DropOldest evicts the oldest PENDING op (Dropped(QueueFull), counted), never one delivered to the sink;
+// DropOldest evicts the oldest PENDING op (Dropped(QueueFull), counted), never one delivered to the sink;
 // with nothing pending it falls back to DropNewest.
 TEST_F(WriteTest, OverflowDropOldest)
 {
@@ -372,7 +371,7 @@ TEST_F(WriteTest, OverflowDropOldest)
     expectInvariants(stats("b"));
 }
 
-// CA-11/I62: a producer blocked in Block wakes on a LOCAL release (its bucket's payload) and on a GLOBAL release
+// A producer blocked in Block wakes on a LOCAL release (its bucket's payload) and on a GLOBAL release
 // (another bucket's payload, with the cap the binding limit) and is admitted in < 500 ms, far from its 5 s timeout.
 TEST_F(WriteTest, OverflowBlockWakes)
 {
@@ -406,7 +405,7 @@ TEST_F(WriteTest, OverflowBlockWakes)
             << "ms until woken by the local release";
         EXPECT_EQ(*admitted, static_cast<int>(ic::Cause::None));
         m_path->resolve(bucketOf(*batches[0].ops[1]), batches[0].ops[1], TestSink::ok());
-        closeNow(*l); // The admitted op is still pending (I99: drained into the held sink, then swept).
+        closeNow(*l); // The admitted op is still pending (drained into the held sink, then swept).
         sink->take(); // That batch, already resolved by the sweep.
         ASSERT_TRUE(eventually([&] { return globalCharge() == 0; }, 5s));
         expectInvariants(stats("local", "l"));
@@ -442,12 +441,12 @@ TEST_F(WriteTest, OverflowBlockWakes)
             m_path->resolve(bucketOf(*batches[0].ops[k]), batches[0].ops[k], TestSink::ok());
         }
     }
-    closeNow(*g); // The waiter's op is still pending (I99: drained into the held sink, then swept).
+    closeNow(*g); // The waiter's op is still pending (drained into the held sink, then swept).
     expectInvariants(stats("filler", "g"));
     expectInvariants(stats("waiter", "g"));
 }
 
-// RF-17/I62: a producer asleep in Block wakes on requestClose() (ClientClosed) and on shutdown() (Shutdown) in
+// A producer asleep in Block wakes on requestClose() (ClientClosed) and on shutdown() (Shutdown) in
 // < 500 ms, counted as rejectedClosed. The quota is held by an op already delivered to the sink, which the close does
 // not sweep: no payload release can be what wakes the producer, only the close itself.
 TEST_F(WriteTest, BlockedProducerWakesOnClose)
@@ -501,7 +500,7 @@ TEST_F(WriteTest, BlockedProducerWakesOnClose)
     }
 }
 
-// CA-11: 8 producers on each of the 4 policies under pressure: the I62 invariants hold, every drop the producers saw
+// 8 producers on each of the 4 policies under pressure: the quota invariants hold, every drop the producers saw
 // is counted (droppedNewest + droppedOldest), every refusal too, and the pool's queue stays bounded by
 // quota / RESULT_RESERVE (each queued completion holds a reserve).
 TEST_F(WriteTest, NoDropWithoutCounter)
@@ -659,13 +658,13 @@ TEST_F(WriteTest, NoDropWithoutCounter)
     }
     // The pressure was real: each policy hit its quota. A DropOldest op that evicting every pending op would not make
     // fit (the rest of the charge in flight or held by reserves) is dropped as the newest, so that bucket's pressure is
-    // either counter; the eviction itself is OverflowDropOldest's (D69).
+    // either counter; the eviction itself is OverflowDropOldest's.
     EXPECT_GT(stats("reject").rejectedQueueFull, 0u);
     EXPECT_GT(stats("dropNewest").droppedNewest, 0u);
     EXPECT_GT(stats("dropOldest").droppedOldest + stats("dropOldest").droppedNewest, 0u);
 }
 
-// RF-27: with the quota full, a Block submit from a runtime thread (pool or network loop) returns Reentrancy at once
+// With the quota full, a Block submit from a runtime thread (pool or network loop) returns Reentrancy at once
 // instead of sleeping on a quota it may be the one to free; counted.
 TEST_F(WriteTest, BlockFromRuntimeThreadIsReentrancy)
 {
@@ -714,7 +713,7 @@ TEST_F(WriteTest, BlockFromRuntimeThreadIsReentrancy)
     expectInvariants(stats("b"));
 }
 
-// I62: an encoded op over bulk.maxBytes is PayloadTooLarge at submit (counted, no ticket, no callback); exactly
+// An encoded op over bulk.maxBytes is PayloadTooLarge at submit (counted, no ticket, no callback); exactly
 // maxBytes is admitted. A charge over the quota or over the global cap is PayloadTooLarge too: registration makes that
 // unreachable through the public API (maxBytes + RESULT_RESERVE <= quotaBytes <= cap), so it is checked on a Bucket.
 TEST_F(WriteTest, PayloadTooLargeAtSubmit)
@@ -765,7 +764,7 @@ TEST_F(WriteTest, PayloadTooLargeAtSubmit)
     }
 }
 
-// G-diff E3a obj. 1: an op without callback keeps its RESULT_RESERVE in the Ticket; when the bucket dies first (the
+// An op without callback keeps its RESULT_RESERVE in the Ticket; when the bucket dies first (the
 // Client and its writers are gone and only the Ticket is left), the last Ticket still returns it to the global cap.
 TEST_F(WriteTest, ReserveReturnedWhenBucketDies)
 {
@@ -784,14 +783,14 @@ TEST_F(WriteTest, ReserveReturnedWhenBucketDies)
         writer.reset();
     } // ~Client: requestClose + awaitClosed; then the ClientState and its Bucket die (only the ticket is left).
     // A scheduler pass on loop 0 holds the bucket (weak_ptr::lock) for its duration: it may outlive ~Client by a pass
-    // (E6c matrix: 1 failure in 463 under load). The bucket must go, not necessarily at once.
+    // (1 failure in 463 runs under load). The bucket must go, not necessarily at once.
     EXPECT_TRUE(eventually([&] { return m_path->stats().buckets.empty(); }, 2s)) << "the bucket is gone";
     EXPECT_EQ(globalCharge(), wr::RESULT_RESERVE) << "the ticket still holds the reserve";
     ticket = ic::Ticket {};
     EXPECT_EQ(globalCharge(), 0u) << "the last Ticket returns the reserve to the global cap";
 }
 
-// G-diff E3a obj. 6: DropOldest evicts TWO pending ops for one larger op, with a global surplus (freed > charge): the
+// DropOldest evicts TWO pending ops for one larger op, with a global surplus (freed > charge): the
 // bucket charge and the global charge agree afterwards (OverflowDropOldest only evicts 1:1 with equal sizes).
 TEST_F(WriteTest, DropOldestEvictsSeveralWithGlobalSurplus)
 {
@@ -832,7 +831,7 @@ TEST_F(WriteTest, DropOldestEvictsSeveralWithGlobalSurplus)
     expectInvariants(stats("b"));
 }
 
-// G-diff E3a obj. 3 (I63): a consumer callback that throws still returns its RESULT_RESERVE, leaves no completion
+// A consumer callback that throws still returns its RESULT_RESERVE, leaves no completion
 // in flight and does not take the pool thread down: a later op is served and its callback runs.
 TEST_F(WriteTest, CallbackThrowsStillReleasesReserve)
 {
@@ -866,7 +865,7 @@ TEST_F(WriteTest, CallbackThrowsStillReleasesReserve)
     EXPECT_EQ(report.value.callbacksInFlight, 0u);
 }
 
-// CA-E6d-2 (I122): 1 000 post() into a sink that resolves every op Ok: each is accepted (Posted carries no ticket); the
+// 1 000 post() into a sink that resolves every op Ok: each is accepted (Posted carries no ticket); the
 // result exists only in the counters — the client's metrics count ok = 1 000 — and the charge, RESULT_RESERVE included,
 // is 0 once they are resolved (nobody else returns a post op's reserve). Mutant m2: resolve keeps a post op's reserve.
 TEST_F(WriteTest, PostResolvesInMetrics)
@@ -906,7 +905,7 @@ TEST_F(WriteTest, PostResolvesInMetrics)
     expectInvariants(s);
 }
 
-// CA-E6d-2 (I122): post() refuses exactly as submit(): a '\n' in the body is InvalidArgument with a reason that names
+// post() refuses exactly as submit(): a '\n' in the body is InvalidArgument with a reason that names
 // the field first; a full Reject bucket is QueueFull; a Block bucket from a runtime thread is Reentrancy (at once);
 // after requestClose() it is ClientClosed. A refusal charges nothing.
 TEST_F(WriteTest, PostRefusals)
@@ -968,7 +967,7 @@ TEST_F(WriteTest, PostRefusals)
     expectInvariants(stats("block"));
 }
 
-// CA-E6d-2 (I122): with DropNewest or DropOldest full, post() is accepted and the overflow is only counted
+// With DropNewest or DropOldest full, post() is accepted and the overflow is only counted
 // (droppedNewest / droppedOldest + 1): the producer is never told. Σ charge returns to 0 once the rest resolve.
 TEST_F(WriteTest, PostDropPolicies)
 {
@@ -987,13 +986,13 @@ TEST_F(WriteTest, PostDropPolicies)
         {
             ASSERT_TRUE(writer->post(indexOp(id(key++), 1000)).accepted);
         }
-        // I209 (E6e B): a DropNewest bucket stages post(); the snapshot moves when the stripes are flushed.
+        // A DropNewest bucket stages post(); the snapshot moves when the stripes are flushed.
         m_path->flushStaged();
         EXPECT_EQ(stats(name).charge, 3 * one);
         const auto overflow = writer->post(indexOp(id(key++), 1000));
         EXPECT_TRUE(overflow.accepted) << ic::toString(overflow.cause);
         EXPECT_EQ(overflow.cause, ic::Cause::None);
-        m_path->flushStaged(); // I209.
+        m_path->flushStaged();
         EXPECT_TRUE(eventually([&] { return stats(name).charge == 3 * one; }, 5s)) << describe(stats(name));
         EXPECT_EQ(stats(name).retained, 3u);
     }
@@ -1012,11 +1011,11 @@ TEST_F(WriteTest, PostDropPolicies)
     expectInvariants(stats("oldest"));
 }
 
-// CA-E6d-2 (I122, obj. 6): posted ops, some delivered to the sink and one still queued, when the client is destroyed
+// Posted ops, some delivered to the sink and one still queued, when the client is destroyed
 // before any of them resolved: the close sweeps and resolves all of them while their bucket is still alive (a post op
 // has no ticket and no callback, so resolve returns its RESULT_RESERVE with its payload), the bucket then dies, the
 // sink's late answers find them already resolved (won == 0), and the global cap is back to 0. It does not reach the
-// branch of resolve without a bucket nor the reserve net of ~Bucket (G-diff E6d obj. 4; D66/D67).
+// branch of resolve without a bucket nor the reserve net of ~Bucket.
 TEST_F(WriteTest, PostReserveReturnedOnClientDestroyed)
 {
     ASSERT_NO_FATAL_FAILURE(start(1, 2, {{"drain_ms", "300"}}));
@@ -1044,7 +1043,7 @@ TEST_F(WriteTest, PostReserveReturnedOnClientDestroyed)
         EXPECT_EQ(globalCharge(), 5 * one);
         writer.reset();
     } // ~Client: requestClose + awaitClosed(now + drain_ms): the queued op and the delivered ones are swept.
-    for (auto& batch : sink->take()) // The close flushed the queued op into the sink (D43): keep only its OpState.
+    for (auto& batch : sink->take()) // The close flushed the queued op into the sink: keep only its OpState.
     {
         for (auto& op : batch.ops)
         {
@@ -1056,7 +1055,7 @@ TEST_F(WriteTest, PostReserveReturnedOnClientDestroyed)
     std::size_t won = 0;
     for (const auto& op : delivered)
     {
-        // The sink's late answer, after its bucket died (E6e D: no bucket to pass, the branch of D66b/D67b).
+        // The sink's late answer, after its bucket died (no bucket to pass).
         won += m_path->resolve(nullptr, op, TestSink::ok()) ? 1 : 0;
     }
     EXPECT_EQ(won, 0u) << "the close had resolved them";
@@ -1064,7 +1063,7 @@ TEST_F(WriteTest, PostReserveReturnedOnClientDestroyed)
     EXPECT_TRUE(eventually([&] { return globalCharge() == 0; }, 2s)) << "global " << globalCharge();
 }
 
-// D67: posted ops delivered to the sink, whose client is destroyed on a runtime thread (the close does not wait and
+// Posted ops delivered to the sink, whose client is destroyed on a runtime thread (the close does not wait and
 // what is delivered keeps its course) and whose batches the sink lets go unresolved: the bucket dies with them in
 // m_delivered. ~Bucket returns their payload to the global cap and their late resolution, through the branch of
 // resolve without a bucket, returns their RESULT_RESERVE: the global cap is back to 0, each charge returned once.
@@ -1135,7 +1134,7 @@ namespace
     }
 } // namespace
 
-// Issue 15 (D64): a bucket destroyed with operations still queued (the close makes it unreachable: forced here on a
+// A bucket destroyed with operations still queued (the close makes it unreachable: forced here on a
 // bucket built directly, never closed). No abort in any build: ~Bucket logs an internal error, counts it and a usage
 // error, and completes what is left as its comment says — the ticket gets Dropped(ClientClosed) — while the queued
 // post op has nobody to tell. Mutant: the assert back in ~Bucket (this case aborts the suite).
@@ -1167,7 +1166,7 @@ TEST_F(WriteInternalErrorTest, BucketDestroyedWithQueuedOpsCompletesThem)
     EXPECT_TRUE(posted->claimed.load());
 }
 
-// Issue 15 (D64): an op resolved through a bucket other than its own (OpState::owner) — WritePath::resolve, and
+// An op resolved through a bucket other than its own (OpState::owner) — WritePath::resolve, and
 // resolveBulk's Bucket::settleBulk for a post op. No abort in any build: each mismatch is logged and counted, and the
 // resolution goes on with the caller's bucket (two twin buckets, so the swapped charges still balance to 0). Mutant:
 // either assert back (this case aborts the suite).

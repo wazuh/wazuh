@@ -8,7 +8,7 @@
  * Foundation.
  */
 
-// Pins the two pure decisions of a stopping vulnerability scanner (E8a, I167c): vdStopping(), the predicate the
+// Pins the two pure decisions of a stopping vulnerability scanner: vdStopping(), the predicate the
 // adapter evaluates over the facade's four flags, and onDemandVerdict(), what an on-demand scan answers from it. Like
 // feedGateOpen(), they are driven without a live VulnerabilityScannerFacade.
 
@@ -120,7 +120,7 @@ TEST(VdStopping, OnDemandVerdictDoesNotCallTheScanOfAStoppingScanner)
     EXPECT_THROW(onDemandVerdict(false, true, throwing), std::runtime_error);
 }
 
-// ---- D90: the adapter's wiring of vdStopping(), through readVdGate()/throwIfVdStopping()/scanGate() over a fake
+// ---- The adapter's wiring of vdStopping(), through readVdGate()/throwIfVdStopping()/scanGate() over a fake
 // facade that records its reads. Mutants: arguments permuted (started/initialized; swapping started/enabled or
 // startFailed/initialized is equivalent), the throw removed, the read order changed, `initialized` read twice.
 

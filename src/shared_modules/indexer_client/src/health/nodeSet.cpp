@@ -21,8 +21,8 @@
 #include "json.hpp"
 #include "loggerHelper.h"
 
-// Node health (plan 18, I57): the probe table, the rounds, the passive signals, the selector, the per-node notBefore
-// (E6a, I109) and the edge-triggered logs. Every transition is computed under m_mutex; the log lines and the
+// Node health: the probe table, the rounds, the passive signals, the selector, the per-node notBefore
+// and the edge-triggered logs. Every transition is computed under m_mutex; the log lines and the
 // onTransition hook run after releasing it.
 
 namespace indexer_client::detail
@@ -54,14 +54,14 @@ namespace indexer_client::detail
             }
         };
 
-        /// Outcome of one probe result in the I57 table.
+        /// Outcome of one probe result in the table.
         struct Verdict final
         {
             NodeSet::State state {NodeSet::State::Down};
             std::string reason;
             bool permanent {false};
             bool red {false};
-            bool local {false}; ///< TlsConfig, LocalError, ResponseTooLarge: the runtime is at fault (D36).
+            bool local {false}; ///< TlsConfig, LocalError, ResponseTooLarge: the runtime is at fault.
         };
 
         bool isPermanent(const nlohmann::json& error)
@@ -358,7 +358,7 @@ namespace indexer_client::detail
             {
                 m_nodes[i].lastCause = round[i].cause;
                 m_nodes[i].lastCurlCode = round[i].curlCode;
-                park(i, round[i], now); // I109b: the probe's own 429 Retry-After parks the node too.
+                park(i, round[i], now); // The probe's own 429 Retry-After parks the node too.
                 // The node's own answer, also in a red round: the breaker is the node's, whatever the cluster says.
                 countPermanentBreaker(i, verdicts[i].state == State::Throttled && verdicts[i].permanent, pending);
                 if (red && verdicts[i].state == State::Down && !verdicts[i].red)
@@ -403,7 +403,7 @@ namespace indexer_client::detail
             std::lock_guard<std::mutex> lock(m_mutex);
             pending.hook = m_hook;
             auto& node = m_nodes[index];
-            // I109: a 429's Retry-After parks the node whatever its state (a Down node keeps it for when the probe
+            // A 429's Retry-After parks the node whatever its state (a Down node keeps it for when the probe
             // brings it back); only the transition below is Available-only.
             park(index, result, now);
             if (down)

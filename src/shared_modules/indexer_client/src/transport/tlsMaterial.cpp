@@ -10,9 +10,9 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Loading and validation of <indexer>.ssl (plan 18, I48) over the OpenSSL that libwazuhext exports. Nothing is written
+// Loading and validation of <indexer>.ssl over the OpenSSL that libwazuhext exports. Nothing is written
 // to disk: the files are read once and handed to curl as in-memory blobs by the loops. The system CA store (no CA
-// configured, E11e) is only located here, never read: curl loads it by path.
+// configured) is only located here, never read: curl loads it by path.
 
 #include "transport/tlsMaterial.hpp"
 
@@ -254,7 +254,7 @@ namespace indexer_client::detail
         }
 
         /// "Does not exist" is only ENOENT / ENOTDIR; anything else (EACCES, ELOOP, EIO...) picks the path, so that
-        /// a store this process cannot read fails the handshake instead of turning verification off (I216). Never
+        /// a store this process cannot read fails the handshake instead of turning verification off. Never
         /// access(R_OK): after the privilege drop it would turn an unreadable store into "no store".
         bool pathExists(const std::string& path)
         {
@@ -338,7 +338,7 @@ namespace indexer_client::detail
                                        "indexer ssl.certificate_authorities: the concatenated files are not valid PEM");
             }
 
-            // Verification policy (E11e, I207/I216): the v1's behaviour when updating from 5.0.
+            // Verification policy: the v1's behaviour when updating from 5.0.
             if (!ssl.verifyCertificates)
             {
                 material.verifyPeer = false;

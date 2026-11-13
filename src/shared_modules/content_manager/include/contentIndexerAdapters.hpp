@@ -25,7 +25,7 @@ namespace indexer_client
 
 namespace content_manager
 {
-    /// Time budgets of the indexer_client adapter's calls (I159b).
+    /// Time budgets of the indexer_client adapter's calls.
     struct ContentIndexerOptions
     {
         /// Whole openPit/search call. Above the client's request timeout (60 s by default), so a hung attempt can
@@ -33,27 +33,27 @@ namespace content_manager
         std::chrono::milliseconds callDeadline {120000};
         /// One page (QueryOptions::pageDeadline), from its first attempt.
         std::chrono::milliseconds pageDeadline {90000};
-        /// The pre-flight searchIndex probe, and any call while no indexer node is usable (I158b).
+        /// The pre-flight searchIndex probe, and any call while no indexer node is usable.
         std::chrono::milliseconds probeDeadline {10000};
         /// When every node was already probed and none is usable, fail a call at once with the library's cause
-        /// instead of waiting `probeDeadline` for one (I190, I190b). Before the first probe round the wait applies.
+        /// instead of waiting `probeDeadline` for one. Before the first probe round the wait applies.
         bool failFastWithoutNode {false};
     };
 
     /**
-     * @brief The call budgets for a host's runtime timeouts (D83, I158b, I159b): `callDeadline` and `pageDeadline`
+     * @brief The call budgets for a host's runtime timeouts: `callDeadline` and `pageDeadline`
      *        above @p requestTimeout, `probeDeadline` above @p probeTimeout; never below the defaults.
      */
     EXPORTED ContentIndexerOptions contentIndexerOptionsFor(std::chrono::milliseconds requestTimeout,
                                                             std::chrono::milliseconds probeTimeout);
 
     /**
-     * @brief Use a host's indexer_client Client as the content manager's indexer (I154).
+     * @brief Use a host's indexer_client Client as the content manager's indexer.
      *
      * The adapter keeps the Client alive for as long as any registration holds it, and so keeps the host's consumer
      * name reserved. PITs are managed by the library: a page retried after a transient failure reuses the same PIT
      * and cursor, and a released PIT is deleted in the background. While no indexer node is usable a call waits at
-     * most `probeDeadline` for one, without sending anything (I158b); failures are thrown with the library's cause.
+     * most `probeDeadline` for one, without sending anything; failures are thrown with the library's cause.
      *
      * The host's obligations: call requestClose() on its Client before it stops its content registrations, so a
      * call in flight returns at once instead of at its deadline; and drop every registration before creating a new

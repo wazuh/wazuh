@@ -10,9 +10,9 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The bucket's retry lane (plan-E3b-1 §Tests: I66, CA-8, CA-10, RF-6, RF-9): requeue specs, backoff and exhaustion,
+// The bucket's retry lane: requeue specs, backoff and exhaustion,
 // maxDuration from the first send, split halves, close and the sweep, DropOldest, nextDue/empty, the lane ahead of the
-// pending queue through the real scheduler, and the E3a invariants under a race.
+// pending queue through the real scheduler, and the write-path invariants under a race.
 //
 // Ops are admitted through a real runtime and handed to the test sink (Hold). The sink's capacity is 0 once the case
 // holds its batch, so the scheduler never slices again unless the case grants capacity: the case drives slice() and
@@ -180,7 +180,7 @@ protected:
     }
 };
 
-// CA-8, I66: Backoff puts notBefore in [d(1 - j), min(cap, d(1 + j))] with d = min(cap, base * 2^(attempts - 1)); at
+// Backoff puts notBefore in [d(1 - j), min(cap, d(1 + j))] with d = min(cap, base * 2^(attempts - 1)); at
 // maxAttempts the op is exhausted with its last error (still delivered until resolved); an unlimited bucket goes
 // through 40 requeues at d = cap without exhausting (and without overflowing the exponent).
 TEST_F(WriteRetryLaneTest, RequeueBackoffAndExhaust)
@@ -279,7 +279,7 @@ TEST_F(WriteRetryLaneTest, RequeueBackoffAndExhaust)
     ASSERT_TRUE(results->waitTotal(3));
 }
 
-// I66: maxDuration counts from the first send (the first slice), not from the submit: an op held in the queue longer
+// maxDuration counts from the first send (the first slice), not from the submit: an op held in the queue longer
 // than maxDuration still has its budget at its first retry, and is exhausted maxDuration after its first send.
 TEST_F(WriteRetryLaneTest, MaxDurationCountsFromFirstSend)
 {
@@ -320,10 +320,10 @@ TEST_F(WriteRetryLaneTest, MaxDurationCountsFromFirstSend)
     ASSERT_TRUE(results->waitTotal(1));
 }
 
-// G-diff E3b-2 obj. 3: a requeue whose LastError has cause None (none of the sender's requeues does since that
+// A requeue whose LastError has cause None (none of the sender's requeues does since that
 // objection, but the bucket must not depend on it) keeps the op's previous last error, so a maxDuration exhaustion
 // inside it still reports the real error; the exhausted op's error is handed out copied (exhaustedErrors), and the
-// resolution frees the op's last-error strings (obj. 1). Mutant: requeue overwrites last* with an empty error.
+// resolution frees the op's last-error strings. Mutant: requeue overwrites last* with an empty error.
 TEST_F(WriteRetryLaneTest, RequeueWithoutErrorKeepsLastError)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -360,7 +360,7 @@ TEST_F(WriteRetryLaneTest, RequeueWithoutErrorKeepsLastError)
     drain(bucket);
 }
 
-// I66: Now with and without an attempt, At(t) waits for t, toHead goes before every other lane op; the lane is
+// Now with and without an attempt, At(t) waits for t, toHead goes before every other lane op; the lane is
 // ordered by notBefore (stable) and `notify` is set when the lane was empty or its head moved earlier.
 TEST_F(WriteRetryLaneTest, RequeueSpecs)
 {
@@ -412,7 +412,7 @@ TEST_F(WriteRetryLaneTest, RequeueSpecs)
     ASSERT_TRUE(results->waitTotal(4));
 }
 
-// RF-9, I66: a batch of 4 split once (halve: batchCap = ceil(bytes / 2)) comes back as 2 + 2, never 4, even with a
+// A batch of 4 split once (halve: batchCap = ceil(bytes / 2)) comes back as 2 + 2, never 4, even with a
 // pending op behind; a half split again comes back one by one.
 TEST_F(WriteRetryLaneTest, SplitHalvesNeverRemerge)
 {
@@ -456,7 +456,7 @@ TEST_F(WriteRetryLaneTest, SplitHalvesNeverRemerge)
     ASSERT_TRUE(results->waitTotal(5));
 }
 
-// I66, RF-6: close() hands back the retry lane and then the pending queue (not the delivered ops).
+// close() hands back the retry lane and then the pending queue (not the delivered ops).
 TEST_F(WriteRetryLaneTest, CloseReturnsLaneAndPending)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -486,7 +486,7 @@ TEST_F(WriteRetryLaneTest, CloseReturnsLaneAndPending)
     EXPECT_EQ(results->countWith(ic::Status::Dropped, ic::Cause::ClientClosed), closed.size());
 }
 
-// I66, RF-6: a requeue after the close returns the ops in `closed` (still delivered, for the caller or the sweep to
+// A requeue after the close returns the ops in `closed` (still delivered, for the caller or the sweep to
 // resolve) and never puts them in the lane; an op already claimed is skipped.
 TEST_F(WriteRetryLaneTest, RequeueOnClosedBucket)
 {
@@ -517,7 +517,7 @@ TEST_F(WriteRetryLaneTest, RequeueOnClosedBucket)
     ASSERT_TRUE(results->waitTotal(3));
 }
 
-// CA-10, I66: with the retry lane holding half the quota, DropOldest evicts only pending ops (oldest first), never a
+// With the retry lane holding half the quota, DropOldest evicts only pending ops (oldest first), never a
 // lane op.
 TEST_F(WriteRetryLaneTest, DropOldestSparesRetryLane)
 {
@@ -561,7 +561,7 @@ TEST_F(WriteRetryLaneTest, DropOldestSparesRetryLane)
     expectInvariants(stats("b"));
 }
 
-// I66: nextDue = min(oldest pending + maxAge, lane head notBefore); empty() is false with only the lane.
+// nextDue = min(oldest pending + maxAge, lane head notBefore); empty() is false with only the lane.
 TEST_F(WriteRetryLaneTest, NextDueAndEmpty)
 {
     ASSERT_NO_FATAL_FAILURE(start());
@@ -602,7 +602,7 @@ TEST_F(WriteRetryLaneTest, NextDueAndEmpty)
     ASSERT_TRUE(results->waitTotal(2));
 }
 
-// I66, through the real scheduler: a due lane op leaves before the pending ones; a lane that is not due does not make
+// Through the real scheduler: a due lane op leaves before the pending ones; a lane that is not due does not make
 // the bucket eligible, and a bucket holding only a lane op is not dropped from the scheduler for good (its timer
 // brings it back at notBefore).
 TEST_F(WriteRetryLaneTest, LaneBeforePending)
@@ -615,7 +615,7 @@ TEST_F(WriteRetryLaneTest, LaneBeforePending)
     auto results = Results::create();
     auto writer = c->writer("b");
     // The lane op is due at t0, taken before anything is submitted: a scheduler pass takes its `now` once, so a
-    // notBefore of the requeue's own now() could still be later than the `now` of a pass already running (D68).
+    // notBefore of the requeue's own now() could still be later than the `now` of a pass already running.
     const auto t0 = now();
     auto batch = deliver(writer, results, 0, 1);
     ASSERT_EQ(batch.ops.size(), 1U);
@@ -672,9 +672,9 @@ TEST_F(WriteRetryLaneTest, LaneBeforePending)
     drain(late, {lateOp});
 }
 
-// I66: 8 threads — 2 producers, 4 workers slicing and then resolving or requeueing with random specs (resolving
-// what comes back exhausted or closed), a sweeper resolving delivered ops and a closer — keep the E3a invariants:
-// every accepted op gets exactly one callback, and the charge and retained ops return to 0.
+// 8 threads — 2 producers, 4 workers slicing and then resolving or requeueing with random specs (resolving
+// what comes back exhausted or closed), a sweeper resolving delivered ops and a closer — keep the write-path
+// invariants: every accepted op gets exactly one callback, and the charge and retained ops return to 0.
 TEST_F(WriteRetryLaneTest, RetryLaneInvariantsUnderRace)
 {
     ASSERT_NO_FATAL_FAILURE(start(1, 2));
@@ -813,7 +813,7 @@ TEST_F(WriteRetryLaneTest, RetryLaneInvariantsUnderRace)
     EXPECT_EQ(s.retained, 0U) << describe(s);
 }
 
-// G-diff E3b-1 obj. 3: `toHead` implies Now: a head op asked to wait (At later) is due now, so the lane head stays the
+// `toHead` implies Now: a head op asked to wait (At later) is due now, so the lane head stays the
 // minimum notBefore and nothing due hides behind it.
 TEST_F(WriteRetryLaneTest, ToHeadIsAlwaysDueNow)
 {
@@ -837,7 +837,7 @@ TEST_F(WriteRetryLaneTest, ToHeadIsAlwaysDueNow)
     }
 }
 
-// G-diff E3b-1 obj. 4: an op resolved while it waits in the retry lane (e.g. claimed by a sweep from an older
+// An op resolved while it waits in the retry lane (e.g. claimed by a sweep from an older
 // delivered() snapshot) leaves the lane: it is never sliced and sent again, and nothing stays charged.
 TEST_F(WriteRetryLaneTest, ResolveWhileInLaneLeavesIt)
 {

@@ -205,7 +205,7 @@ TEST_F(VdScannerAdapterScan, StoppingScanner_ThrowsAndNeverScans)
     facade.started = true;
     facade.enabled = true;
     facade.failed = false;
-    facade.initialized = false; // started, enabled, not failed, no longer initialized: stopping (I167c)
+    facade.initialized = false; // started, enabled, not failed, no longer initialized: stopping
 
     EXPECT_THROW(m_adapter.scan(m_fixture.session), std::runtime_error);
     EXPECT_EQ(facade.runCalls, 0);

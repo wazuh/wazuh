@@ -344,7 +344,7 @@ run exits. Pair it with `--keep-agents` so the documents survive after that too:
 
 The manager's engine, inventory sync server and vulnerability scanner write to the indexer through
 one sender. The A/B asks whether the new one (**v2**, `indexer_client`) sends at least as well as the
-one it replaced (**v1**, `indexer_connector`): requirement RNF-3. It is wired here and run by hand,
+one it replaced (**v1**, `indexer_connector`): v2 must not be slower. It is wired here and run by hand,
 with the manager free (nothing else may build or measure while it runs).
 
 **Sides.** Each build is installed once (Release; v1 is the merge-base of the branch's final HEAD,
@@ -413,7 +413,7 @@ manager **accepted** from the sender (`events_sent`, `events_accepted`, `events_
 (`AB_ENGINE_API_SOCKET`, `POST /metrics/dump`) at the end of the run (`engine_events_dropped`, `null`
 when the API did not answer; every run restarts the manager, so it is that run's count).
 
-**Verdict (I204).** The main metric is documents (`_count` per pattern, the same set of patterns on
+**Verdict.** The main metric is documents (`_count` per pattern, the same set of patterns on
 both sides); `index_total` (operations) is kept as a diagnostic, because the two builds may issue a
 different number of operations per document. Per verdict metric, `ab_report.py` takes the median of
 each side and the ratio v2/v1 (a time is inverted, so above 1.00 always favours v2):
@@ -425,7 +425,7 @@ each side and the ratio v2/v1 (a time is inverted, so above 1.00 always favours 
 | < 0.95 | `FAIL` |
 
 It applies **only** to documents/s and time to drain of `drain-engine` and sessions/s of
-`drain-syscollector`; everything else is reported with its spread. Guards keep it honest (I226):
+`drain-syscollector`; everything else is reported with its spread. Guards keep it honest:
 
 - **Same indexed fraction.** For a document drain (`drain-engine`) both sides must index the same
   fraction of the events the manager accepted: `indexed_fraction = docs_drained / events_accepted`,

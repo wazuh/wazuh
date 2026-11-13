@@ -264,7 +264,7 @@ TEST(PitPaginatorTest, SlicedFetchRunsEverySliceOnTheOneIndexerAtOnce)
     FakeIndexerQueryPort port;
 
     // Each slice's first search waits (bounded) until all three are in flight together, which can
-    // only happen if the workers really share the one instance concurrently (D1) rather than
+    // only happen if the workers really share the one instance concurrently rather than
     // queueing on it or on copies of it.
     std::mutex gateMutex;
     std::condition_variable gate;

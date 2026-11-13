@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_FAKE_HEALTH_RULES_HPP
 #define _INDEXER_CLIENT_TESTS_FAKE_HEALTH_RULES_HPP
 
-// Scripted answers of the fake indexer to the health probe (plan 18, I57): `GET /_cluster/health/wazuh-*,.wazuh-*` with
+// Scripted answers of the fake indexer to the health probe: `GET /_cluster/health/wazuh-*,.wazuh-*` with
 // OpenSearch's real bodies, the 429 shapes of a circuit breaker and the probe counters. Every helper returns a plain
 // Rule, so a test can still tune it (times, latency, retryAfter) before FakeIndexer::addRule().
 

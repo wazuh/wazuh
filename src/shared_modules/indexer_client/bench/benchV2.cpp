@@ -10,11 +10,11 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Benchmark harness, v2 side (plan 18, E2c, I58): the production indexer_client objects (no seams). The runtime is
+// Benchmark harness, v2 side: the production indexer_client objects (no seams). The runtime is
 // started with K = 1, M = 2 and a one-hour probe interval (one round at start, before the warm-up); `c` chains each
 // keep one POST /_bulk in flight, and every result callback (on the CPU pool) submits the chain's next request. One run
-// per invocation, printed as one CSV row (`ROW,` + the I58 columns). `--probe` answers D37 instead: 50 consecutive
-// probe rounds on a live TLS runtime and the connections they cost. `--path client` (E6c, D53) measures the whole
+// per invocation, printed as one CSV row (`ROW,` + the columns). `--probe` measures instead 50 consecutive
+// probe rounds on a live TLS runtime and the connections they cost. `--path client` measures the whole
 // Client/bucket write path instead of the transport: one bucket, `c` chains that each keep 4 MiB of 1.5 KiB documents
 // queued and replace every resolved one from its callback; the fake answers one item per document (items mode).
 
@@ -61,7 +61,7 @@ namespace
 
     constexpr int PROBE_INTERVAL_MS {3600000};
 
-    // --path client (E6c contract §4).
+    // --path client.
     constexpr std::size_t CLIENT_DOC_BYTES {1536};
     constexpr std::size_t CLIENT_BULK_BYTES {4u * 1024u * 1024u};
     constexpr std::size_t CLIENT_QUOTA_BYTES {256u * 1024u * 1024u};
@@ -280,7 +280,7 @@ namespace
         std::vector<TransportCause> m_causes;
     };
 
-    /// D37: a production Prober on the live runtime's transport (through RecordingTransport, which only reads each
+    /// A production Prober on the live runtime's transport (through RecordingTransport, which only reads each
     /// result's timings) runs `rounds` consecutive rounds, each waiting for the previous one to be applied. The
     /// runtime's own prober has applied its start round first, so its connection already exists.
     int runProbe(bench::BenchFake& fake, int rounds)
@@ -316,7 +316,7 @@ namespace
         for (std::size_t i = 0; i < timings.size(); ++i)
         {
             appConnectMsSum += static_cast<double>(timings[i].appConnect.count()) / 1000.0;
-            if (i >= 1 && timings[i].appConnect.count() != 0) // D37: rounds 2..N.
+            if (i >= 1 && timings[i].appConnect.count() != 0) // Rounds 2..N.
             {
                 ++appConnectNonZero;
             }
@@ -464,7 +464,7 @@ namespace
         return metrics.buckets.empty() ? indexer_client::BucketMetrics {} : metrics.buckets.front();
     }
 
-    /// --path client (contract §4): K = 1, M = 2, one bucket (maxBytes 4 MiB, quota 256 MiB, Reject, Retry). The
+    /// --path client: K = 1, M = 2, one bucket (maxBytes 4 MiB, quota 256 MiB, Reject, Retry). The
     /// warm-up window drains before the fake's counters are reset and the bucket's snapshot taken, so every bulk of the
     /// measured window is counted on both sides: valid <=> bytes (delta bulkBytes) == server_bytes, 0 errors, drained.
     int runClient(bench::BenchFake& fake,

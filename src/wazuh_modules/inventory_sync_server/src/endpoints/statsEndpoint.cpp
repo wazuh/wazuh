@@ -251,7 +251,7 @@ namespace invsync::endpoints::stats
             }
 
             // The document id IS the agent id, so each report replaces the previous one; the tag is the agent
-            // too, so a whole-agent deletion's cancel(agent) drops this write if it is still pending (RF-26).
+            // too, so a whole-agent deletion's cancel(agent) drops this write if it is still pending.
             indexer_client::Op op;
             op.kind = indexer_client::Op::Kind::Index;
             op.index = std::string {indexName()};
@@ -263,7 +263,7 @@ namespace invsync::endpoints::stats
             {
                 // The body was fine; the client did not admit the write (bucket full, no usable node, closing).
                 // A 400 would tell the agent to fix a payload that was never wrong; 503 tells it to retry. Before
-                // the indexer client this was a silent 200 (the async queue dropped the write later), I151.
+                // the indexer client this was a silent 200 (the async queue dropped the write later).
                 if (const auto decision = refusedThrottle.record())
                 {
                     LOGFN_WARN(logFn(),

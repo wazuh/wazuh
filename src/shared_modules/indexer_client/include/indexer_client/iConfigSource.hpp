@@ -22,7 +22,7 @@
 
 namespace indexer_client
 {
-    /// The only way configuration reaches the library (I26, I26b, I26c). The library never opens a file:
+    /// The only way configuration reaches the library. The library never opens a file:
     /// the engine wraps its own `conf` (env -> file -> default precedence), modulesd injects a key=value reader.
     class INDEXER_CLIENT_API IConfigSource
     {
@@ -53,8 +53,8 @@ namespace indexer_client
         /// `verify_certificates`); any other member is Cause::InvalidConfig.
         virtual std::string indexerSectionJson() const = 0;
 
-        /// The indexer user and password (I42). RuntimeOwner::start copies them and fails with InvalidConfig, before
-        /// creating any thread, when either is empty (RF-19, D24). The library never reads a keystore itself.
+        /// The indexer user and password. RuntimeOwner::start copies them and fails with InvalidConfig, before
+        /// creating any thread, when either is empty. The library never reads a keystore itself.
         virtual Credentials credentials() const = 0;
     };
 } // namespace indexer_client

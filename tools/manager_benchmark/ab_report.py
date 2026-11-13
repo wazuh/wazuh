@@ -3,11 +3,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
-ab_report.py — Collect and compare the indexer A/B runs (plan 18, E11c).
+ab_report.py — Collect and compare the indexer A/B runs.
 
 The A/B runs the same scenario against two builds of the manager, v1 (the pre-v2 sender) and
 v2 (the indexer_client one), in ABBA order, and asks whether v2 sends at least as well as v1
-(RNF-3, I15 as amended by I204).
+(the median ratio of each verdict metric must reach 0.95).
 
 Two subcommands:
 
@@ -33,7 +33,7 @@ Two subcommands:
       campaign), so results left by an earlier, longer or aborted campaign cannot reach the median.
       A missing --root is reported and exits 2 (incomplete), like any other missing data.
 
-The verdict (I204), per verdict metric, on the ratio of medians "v2 over v1, oriented so that
+The verdict, per verdict metric, on the ratio of medians "v2 over v1, oriented so that
 more than 1.00 is better for v2" (a time is inverted: v1/v2):
 
     ratio >= 1.00          PASS
@@ -46,7 +46,7 @@ no-regression runs (latency, CPU, RSS): their ratios are reported with no verdic
 verdict is FAIL if any verdict metric fails, INCOMPLETE if a side has no runs or mixes builds,
 INCOMPARABLE if the drain is not comparable (below), PASS otherwise.
 
-The guards that keep the ratio honest (I226):
+The guards that keep the ratio honest:
   * Drain comparability is the INDEXED FRACTION, not the raw document count. Remoted answers some
     stateless batches 503 under the burst and the sender does not retry them, and the ruleset may
     leave part of the sample unclassified (not indexed), so the two sides never index the same
@@ -82,7 +82,7 @@ import sys
 from typing import Any
 
 PASS_RATIO = 1.00
-NOISE_FLOOR = 0.95          # I204: the median ratio must reach it
+NOISE_FLOOR = 0.95          # the median ratio must reach it
 HIGH_SPREAD = 0.10          # (max - min) / median of one side above this: ask for N >= 5
 
 # Orientation: for these a bigger number is better, for the rest a smaller one is.
@@ -146,7 +146,7 @@ def index_total_delta(rows: list[dict[str, Any]]) -> int | None:
     """Indexing operations during the run: _stats' index_total is cumulative since the node started
     (a cleanup does not reset it), so the delta needs the baseline the FIRST sample took before the
     pause and the sender. Without it (that sample's _stats did not answer) the delta is unknown: None,
-    not the 0 a later baseline gives when the whole drain fits between two samples (E12 A6)."""
+    not the 0 a later baseline gives when the whole drain fits between two samples."""
     if not rows or rows[0]["index_total"] is None:
         return None
     last = [r["index_total"] for r in rows if r["index_total"] is not None][-1]
@@ -296,7 +296,7 @@ def collect(results_dir: str, side: str, scenario: str, index: str, kind: str,
 # compare
 # ---------------------------------------------------------------------------
 def classify(ratio: float) -> str:
-    """The I204 rule on an oriented ratio (more than 1.00 is better for v2)."""
+    """The pass rule on an oriented ratio (more than 1.00 is better for v2)."""
     r = round(ratio, 6)
     if r >= PASS_RATIO:
         return "PASS"
@@ -321,7 +321,7 @@ def spread(values: list[float]) -> float:
 
 def drain_guards(entry: dict[str, Any], v1_runs: list[dict[str, Any]], v2_runs: list[dict[str, Any]],
                  verdict_metrics: list[str]) -> bool:
-    """The comparability of a drain scenario (I226). Appends the reasons to entry["notes"], records
+    """The comparability of a drain scenario. Appends the reasons to entry["notes"], records
     the medians in entry["comparability"], and returns True when the verdict metrics are INCOMPARABLE."""
     if entry["kind"] != "drain" or not verdict_metrics or not v1_runs or not v2_runs:
         return False
@@ -496,7 +496,7 @@ def render_markdown(result: dict[str, Any]) -> str:
     lines = [
         "# Indexer A/B: v2 against v1",
         "",
-        f"Rule (I204): the median ratio v2/v1 of each verdict metric must reach {NOISE_FLOOR:.2f}; "
+        f"Rule: the median ratio v2/v1 of each verdict metric must reach {NOISE_FLOOR:.2f}; "
         "between 0.95 and 1.00 it is reported as within the noise. A time is inverted (v1/v2), so "
         "above 1.00 always favours v2.",
         "",

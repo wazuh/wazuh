@@ -10,8 +10,8 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Per-operation encoding at submit (plan-E3a §Tests: EncodingPerKind, EncodingRejectsInvalid; I61, RF-4) and, from
-// E3c-1 (I73, D42), the conflict policy on the wire, ReplacePreserving and the reason of a refused submit.
+// Per-operation encoding at submit (EncodingPerKind, EncodingRejectsInvalid) and
+// the conflict policy on the wire, ReplacePreserving and the reason of a refused submit.
 
 #include <atomic>
 #include <cstdint>
@@ -145,7 +145,7 @@ namespace
     }
 } // namespace
 
-// I61/RF-4: every kind gives the v1's bytes and its size is the charged payload; the versioned update carries the
+// Every kind gives the v1's bytes and its size is the charged payload; the versioned update carries the
 // document twice (params.doc and the upsert). Checked on encode() and through submit (the lines handed to the sink and
 // the bucket's charge).
 TEST_F(WriteTest, EncodingPerKind)
@@ -161,7 +161,7 @@ TEST_F(WriteTest, EncodingPerKind)
         EXPECT_EQ(wireOf(encoded.value).size(), c.expected.size());
         EXPECT_EQ(encoded.value.wire(), c.expected.size());
         EXPECT_TRUE(copy.body.empty()) << "the body is moved into the lines";
-        // I121: a kind without script carries its document as `body` (moved, not copied) and `head` is its action
+        // A kind without script carries its document as `body` (moved, not copied) and `head` is its action
         // line; a script kind and Delete keep every line in `head` and an empty `body`.
         const bool withBody = c.op.kind == ic::Op::Kind::Index || c.op.kind == ic::Op::Kind::IndexAutoId ||
                               c.op.kind == ic::Op::Kind::IndexDataStream;
@@ -217,7 +217,7 @@ TEST_F(WriteTest, EncodingPerKind)
     }
 }
 
-// I61: what the encoding refuses is InvalidArgument at submit, counted, without a ticket nor a callback; the reason
+// What the encoding refuses is InvalidArgument at submit, counted, without a ticket nor a callback; the reason
 // names the field. The boundary values are accepted.
 TEST_F(WriteTest, EncodingRejectsInvalid)
 {
@@ -314,12 +314,12 @@ TEST_F(WriteTest, EncodingRejectsInvalid)
     expectInvariants(stats("b"));
 }
 
-// ---- E3c-1 I73: the conflict policy on the wire and ReplacePreserving (encoding.hpp is normative).
+// ---- the conflict policy on the wire and ReplacePreserving (encoding.hpp is normative).
 
-// The frozen wire vectors of ReplacePreserving (I71, I72): written out literally, byte for byte, except the script
-// sources, which are the exported constants (OpenSearch caches the compiled script per source; E6 runs these same
-// vectors against a real OpenSearch, D45). Paths `case` and `a.b`, an `_id` that needs escaping (001"x), version 42.
-// External linkage: bulkConflict_test.cpp checks the body the fake receives against these same vectors.
+// The frozen wire vectors of ReplacePreserving: written out literally, byte for byte, except the script
+// sources, which are the exported constants (OpenSearch caches the compiled script per source; the OpenSearch suite
+// runs these same vectors against a real OpenSearch). Paths `case` and `a.b`, an `_id` that needs escaping (001"x),
+// version 42. External linkage: bulkConflict_test.cpp checks the body the fake receives against these same vectors.
 namespace preserving_vectors
 {
     const std::string DOC_INDEX = "wazuh-states-a";
@@ -394,10 +394,10 @@ namespace
     }
 } // namespace
 
-// I73: only an update action carries retry_on_conflict, and only with an effective Retry: IndexVersionedScript +
-// Retry{5} ⇒ `…"_id":"x","retry_on_conflict":5}}`; with Success the line is E3a's (v1 parity); Index, IndexAutoId,
-// IndexDataStream and Delete + Retry keep their line. Through submit, the op's onConflict overrides the bucket's both
-// ways. Mutants: retry_on_conflict on every action / never.
+// Only an update action carries retry_on_conflict, and only with an effective Retry: IndexVersionedScript +
+// Retry{5} ⇒ `…"_id":"x","retry_on_conflict":5}}`; with Success the line is the plain one (v1 parity); Index,
+// IndexAutoId, IndexDataStream and Delete + Retry keep their line. Through submit, the op's onConflict overrides the
+// bucket's both ways. Mutants: retry_on_conflict on every action / never.
 TEST_F(WriteTest, EncodingConflictRetryLine)
 {
     const std::string doc = R"({"agent":{"id":"001"}})";
@@ -411,7 +411,7 @@ TEST_F(WriteTest, EncodingConflictRetryLine)
         EXPECT_EQ(wireOf(encoded.value).substr(0, retryLine.size()), retryLine);
         EXPECT_EQ(wireOf(encoded.value), withRetryOnConflict(v1, 5));
         EXPECT_EQ(wireOf(encoded.value).substr(retryLine.size()), v1.substr(v1.find('\n') + 1))
-            << "the body line is E3a's";
+            << "the body line is the plain one";
     }
     {
         const auto encoded = wr::encode(ic::Op(versionedOp), retryPolicy(100));
@@ -423,7 +423,7 @@ TEST_F(WriteTest, EncodingConflictRetryLine)
         success.kind = ic::ConflictPolicy::Kind::Success; // retryOnConflict is ignored without Retry.
         const auto encoded = wr::encode(ic::Op(versionedOp), success);
         ASSERT_TRUE(encoded.ok()) << encoded.reason;
-        EXPECT_EQ(wireOf(encoded.value), v1) << "Success: the line of E3a (v1 parity)";
+        EXPECT_EQ(wireOf(encoded.value), v1) << "Success: the plain line (v1 parity)";
     }
     // The other kinds: a 409 follows the policy, the line never changes (an index/create/delete line with the
     // parameter is a 400 for the whole request).
@@ -484,7 +484,7 @@ TEST_F(WriteTest, EncodingConflictRetryLine)
     expectInvariants(stats("retry"));
 }
 
-// I71, I72: Index / IndexVersionedScript + ReplacePreserving{case, a.b} ⇒ the frozen vectors (an `update` with the
+// Index / IndexVersionedScript + ReplacePreserving{case, a.b} ⇒ the frozen vectors (an `update` with the
 // constant source, the paths in params, the document as params.doc and as the upsert), with and without Retry; the
 // paths keep their given order; the charge is the vector's size. Mutant: the paths embedded in the source.
 TEST_F(WriteTest, EncodingPreservingShapes)
@@ -504,7 +504,7 @@ TEST_F(WriteTest, EncodingPreservingShapes)
             EXPECT_TRUE(op.body.empty()) << "the body is moved into the lines";
             EXPECT_EQ(occurrences(wireOf(encoded.value), preserving_vectors::DOC), 2u) << "params.doc and the upsert";
             EXPECT_EQ(encoded.value.wire(), expected.size());
-            EXPECT_TRUE(encoded.value.body.empty()) << "a script kind keeps every line in head (I121)";
+            EXPECT_TRUE(encoded.value.body.empty()) << "a script kind keeps every line in head";
             EXPECT_EQ(encoded.value.head, expected);
         }
     }
@@ -555,7 +555,7 @@ TEST_F(WriteTest, EncodingPreservingShapes)
     expectInvariants(stats("b"));
 }
 
-// I72, I73: every negative of encoding.hpp is InvalidArgument with the field first, on encode() and through submit
+// Every negative of encoding.hpp is InvalidArgument with the field first, on encode() and through submit
 // (counted, nothing charged, no callback, `reason` = encode's); the boundaries are accepted.
 TEST_F(WriteTest, EncodingPreservingRejects)
 {
@@ -648,7 +648,7 @@ TEST_F(WriteTest, EncodingPreservingRejects)
         EXPECT_FALSE(submit.accepted);
         EXPECT_EQ(submit.cause, ic::Cause::InvalidArgument);
         EXPECT_EQ(submit.reason.rfind(b.field, 0), 0u) << submit.reason;
-        EXPECT_EQ(submit.reason, expected.reason) << "submit carries encode's reason (D42)";
+        EXPECT_EQ(submit.reason, expected.reason) << "submit carries encode's reason";
         EXPECT_FALSE(submit.ticket.ready());
     }
     auto s = stats("b");
@@ -694,7 +694,7 @@ TEST_F(WriteTest, EncodingPreservingRejects)
     expectInvariants(stats("b"));
 }
 
-// D42: every refused submit says why. InvalidArgument names the field first (encode's reason); QueueFull and
+// Every refused submit says why. InvalidArgument names the field first (encode's reason); QueueFull and
 // PayloadTooLarge carry a non-empty reason; an accepted submit carries none. Replaces
 // PerOpConflictPolicyRefusedUntilE3c: a per-op onConflict is no longer refused (EncodingConflictRetryLine covers its
 // effect), and the op with it is accepted, charged and resolved like any other.
@@ -738,7 +738,7 @@ TEST_F(WriteTest, SubmitCarriesReason)
     EXPECT_FALSE(tooLarge.reason.empty()) << "PayloadTooLarge carries a reason";
     EXPECT_NE(tooLarge.reason, ic::toString(ic::Cause::PayloadTooLarge)) << tooLarge.reason;
 
-    // A per-op onConflict is accepted (E3c-1): the op is charged and resolved like any other.
+    // A per-op onConflict is accepted: the op is charged and resolved like any other.
     for (int i = 0; i < 2; ++i)
     {
         auto op = indexOp("x" + std::to_string(i), 1000);
@@ -782,14 +782,14 @@ namespace
     }
 } // namespace
 
-// I125 (a), E6e (D): the kinds without `_id` share their action line through the write path's HeadTable, reached by a
+// The kinds without `_id` share their action line through the write path's HeadTable, reached by a
 // thread_local cache keyed by (table generation, kind, index). On one thread: A, A again, B, an unsafe index, A, and A
 // as the other kind without `_id`. Every encoding is the frozen vector; the second A shares the first's head, B and the
 // other kind do not; the unsafe index is still refused (a hit never skips the validation of a different index). Mutant
 // m7 (the cache hits without comparing the index).
 TEST_F(WriteTest, SharedHeadIndexChange)
 {
-    wr::HeadTable heads; // E6e (D): the write path's table, here the case's.
+    wr::HeadTable heads; // The write path's table, here the case's.
     const std::string doc = R"({"agent":{"id":"001"},"event":{"n":1}})";
     const std::string a = "wazuh-events-shared-a";
     const std::string b = "wazuh-events-shared-b";
@@ -853,7 +853,7 @@ TEST_F(WriteTest, SharedHeadIndexChange)
     expectVector(other.value, v1Create(b, doc));
 }
 
-// I125 (a), G-diff E6d obj. 3: a cache hit skips only the index checks, never the policy nor the mode. With the cache
+// A cache hit skips only the index checks, never the policy nor the mode. With the cache
 // warm for (IndexDataStream, A), an op on A with an invalid effective policy (Retry with retryOnConflict 0) and another
 // with an invalid mode (ReplacePreserving on IndexDataStream) are InvalidArgument naming their field, and a valid op
 // on A still hits afterwards. Mutant: the `if (hit)` shortcut moved above validatePolicy/validateMode.
@@ -892,7 +892,7 @@ TEST_F(WriteTest, SharedHeadHitStillValidatesPolicyAndMode)
     EXPECT_EQ(wireOf(again.value), v1Create(a, doc));
 }
 
-// I125 (a): only the kinds without `_id` share a head. Index (with `_id`), Delete and the script kinds on the index
+// Only the kinds without `_id` share a head. Index (with `_id`), Delete and the script kinds on the index
 // just cached keep their own lines (`sharedHead` empty) and give the frozen vectors.
 TEST_F(WriteTest, SharedHeadOnlyWithoutId)
 {
@@ -937,7 +937,7 @@ TEST_F(WriteTest, SharedHeadOnlyWithoutId)
         << wireOf(preserved.value);
 }
 
-// I125 (a), E6e (D): the cache is per thread over one table. Two threads encode 10 000 IndexDataStream ops each, at the
+// The cache is per thread over one table. Two threads encode 10 000 IndexDataStream ops each, at the
 // same time, each into its own index: every Encoded has the bytes of its own index (no head of the other thread), and
 // within a thread they all share one head.
 TEST_F(WriteTest, SharedHeadPerThread)
@@ -1010,7 +1010,7 @@ TEST_F(WriteTest, SharedHeadPerThread)
     EXPECT_NE(heads[0], heads[1]) << "each index has its own line";
 }
 
-// I125 (b): BucketSpec::trustedBodies (default false). A body with a raw '\n' is InvalidArgument ("body:") in a default
+// BucketSpec::trustedBodies (default false). A body with a raw '\n' is InvalidArgument ("body:") in a default
 // bucket through post, submit and Group::add, and accepted as is in a trusted bucket (its lines carry the body
 // verbatim); an empty body is InvalidArgument either way. The same on wr::encode's trustedBody argument. Mutant m8
 // (trustedBodies ignored: always scans).
@@ -1107,7 +1107,7 @@ TEST_F(WriteTest, TrustedBodiesSkipScan)
     expectInvariants(stats("b"));
 }
 
-// Issue 15 (D64): the precomputed size of the lines and the encoded bytes disagree (a library bug, forced here by the
+// The precomputed size of the lines and the encoded bytes disagree (a library bug, forced here by the
 // seam encodeSizeSkew). No abort in any build (the manager's Release builds keep assert live): the op is refused
 // InvalidState before it is charged or queued, an ERROR line says why, testing_hooks::internalErrors() counts it, and
 // `op` is untouched. Through submit the refusal is counted with the bucket's InvalidArgument ones. Mutant: the assert

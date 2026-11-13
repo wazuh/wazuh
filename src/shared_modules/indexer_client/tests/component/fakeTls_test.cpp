@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Self-tests of the fake's TLS side (plan 18, E2a-2 step 4): the material factory, the HTTPS and mTLS servers, the
+// Self-tests of the fake's TLS side: the material factory, the HTTPS and mTLS servers, the
 // TLS 1.1 cap and the decoded Authorization header, driven by cpp-httplib's own SSLClient.
 
 #include "fakeIndexer.hpp"

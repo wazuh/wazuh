@@ -279,7 +279,7 @@ int main(int argc, char* argv[])
     // Load the configuration (types and ranges are checked here, as `-t` does)
     auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath()));
     // The internal options as read now, before the privilege drop, for the indexer client's configuration source
-    // (I191): standalone never reads the file, so its map stays empty (environment only).
+    // Standalone never reads the file, so its map stays empty (environment only).
     std::map<std::string, std::string> indexerFileOptions;
     try
     {
@@ -345,9 +345,9 @@ int main(int argc, char* argv[])
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     /// The Engine's indexer_client runtime and its Client `analysisd` (reads: content and remote configuration).
-    /// Owned by the main thread: started and stopped here, and its exit handlers run here too (I37, I191).
+    /// Owned by the main thread: started and stopped here, and its exit handlers run here too.
     std::shared_ptr<wiconnector::EngineIndexerRuntime> indexerRuntime;
-    /// The content registrations' indexer: the runtime's Client (I184); the v1 connector only writes until E10b.
+    /// The content registrations' indexer: the runtime's Client.
     std::shared_ptr<content_manager::IContentIndexer> contentIndexer;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<dumper::Dumper> dumper;
@@ -496,7 +496,7 @@ int main(int argc, char* argv[])
         // Check if event processing is enabled
         const bool enableProcessing = confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING);
 
-        // Indexer runtime, second stop phase (I191): registered before the scheduler's handler, so it runs after the
+        // Indexer runtime, second stop phase: registered before the scheduler's handler, so it runs after the
         // scheduler joined its threads. It waits for the Client without draining and joins the runtime; on its own
         // (the runtime never reached beginStop()) it runs both phases.
         if (enableProcessing)
@@ -537,8 +537,8 @@ int main(int argc, char* argv[])
                                              ? standAloneConfig()
                                              : base::managerConfig::sectionJson("indexer");
 
-                // The v1 write options the engine keeps (I187, I188): validated here as before, then they size the
-                // `events` and `raw` buckets (I194, I196).
+                // The v1 write options the engine keeps: validated here as before, then they size the
+                // `events` and `raw` buckets.
                 const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
 
                 // Their ranges are checked by confManager.load() (conf.cpp), as `-t` does; the v1's request timeout
@@ -546,12 +546,12 @@ int main(int argc, char* argv[])
                 const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
                 const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
                 const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
-                // Error-logger sizing of the v1: ignored with a WARN if not the default (I187).
+                // Error-logger sizing of the v1: ignored with a WARN if not the default.
                 const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
                 const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
 
                 // Reads (content and remote configuration) go through the engine's indexer_client runtime, started
-                // here on the main thread, after goDaemon() and the privilege drop (I37). Its lines reach the
+                // here on the main thread, after goDaemon() and the privilege drop. Its lines reach the
                 // engine's log under the daemon's own tag, as the content updater's lines; the function must be set
                 // before the runtime starts.
                 const auto standalone = base::process::isStandaloneModeEnable();
@@ -632,21 +632,21 @@ int main(int argc, char* argv[])
                 }
                 const auto& runtimeConfig = started.value;
 
-                // Content downloads: the Client, with budgets above the runtime's timeouts (D83) and an immediate
-                // failure while every probed node is down (I190, I190b), so an outage does not hold the scheduler.
+                // Content downloads: the Client, with budgets above the runtime's timeouts and an immediate
+                // failure while every probed node is down, so an outage does not hold the scheduler.
                 auto contentOptions =
                     content_manager::contentIndexerOptionsFor(runtimeConfig.requestTimeout, runtimeConfig.probeTimeout);
                 contentOptions.failFastWithoutNode = true;
                 contentIndexer = content_manager::makeContentIndexer(indexerRuntime->client(), contentOptions);
 
-                // Writes: the `events` and `raw` buckets of the same Client (E10b, I193); reads as above.
+                // Writes: the `events` and `raw` buckets of the same Client; reads as above.
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(
                     indexerRuntime->client(), runtimeConfig.requestTimeout, indexerRuntime->queueCapacityBytes());
 
-                // First stop phase (I191): registered after the scheduler's handler, so it runs before the
+                // First stop phase: registered after the scheduler's handler, so it runs before the
                 // scheduler stops. It closes the Client's admission (a read in flight returns ClientClosed, so no
                 // scheduler thread stays inside a call) and then releases the connector's writers and reader; the
-                // router and tester workers were joined before (I196b).
+                // router and tester workers were joined before.
                 exitHandler.add(
                     [indexerRuntime = indexerRuntime, indexerConnector]()
                     {

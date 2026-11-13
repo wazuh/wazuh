@@ -10,11 +10,11 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The ambiguous 5xx of a bucket (plan-E6a §Tests CA-E6a-2, I105/I105b): a `_bulk` answered 500, 502 or 504 may have
+// The ambiguous 5xx of a bucket: a `_bulk` answered 500, 502 or 504 may have
 // been applied, so a bucket with onAmbiguous5xx = Fail resolves its ops Failed(Ambiguous) without resending them and
 // logs one WARN per edge (the first one after a 2xx bulk); 503 stays retried and Retry keeps the previous behaviour.
 // Every case runs the production sink over the real transport against one fake (bulkFixture.hpp); the WARN is written
-// by the completion after its ops are resolved (it counts the ops it resolved, G-diff E6a obj. 4), so the cases wait
+// by the completion after its ops are resolved (it counts the ops it resolved), so the cases wait
 // for it (warned()) instead of reading it as soon as the results are in.
 
 #include <algorithm>
@@ -128,7 +128,7 @@ protected:
     void SetUp() override
     {
         BulkTest::SetUp();
-        indexer_client::setLogFunction(m_logs.function()); // Valid only while no runtime runs (I56).
+        indexer_client::setLogFunction(m_logs.function()); // Valid only while no runtime runs.
     }
 
     void TearDown() override
@@ -154,7 +154,7 @@ protected:
     }
 };
 
-// CA-E6a-2: a bucket with onAmbiguous5xx = Fail and a bulk of 4 ops answered 500, 502 or 504 ⇒ the 4 ops
+// A bucket with onAmbiguous5xx = Fail and a bulk of 4 ops answered 500, 502 or 504 ⇒ the 4 ops
 // Failed(Ambiguous) with that httpStatus, exactly one request (never resent), failed.ambiguous = 4 and one WARN naming
 // the bucket, the status and the ops. Mutant: the Fail policy ignored (the 5xx retried until it succeeds).
 TEST_F(BulkAmbiguousTest, FailPolicyResolves500502504)
@@ -193,7 +193,7 @@ TEST_F(BulkAmbiguousTest, FailPolicyResolves500502504)
     }
 }
 
-// CA-E6a-2: 503 is not ambiguous: a Fail bucket retries it (three 503, then 200 ⇒ Ok after four requests), with no
+// 503 is not ambiguous: a Fail bucket retries it (three 503, then 200 ⇒ Ok after four requests), with no
 // failed.ambiguous and no WARN.
 TEST_F(BulkAmbiguousTest, FailPolicyStillRetries503)
 {
@@ -213,7 +213,7 @@ TEST_F(BulkAmbiguousTest, FailPolicyStillRetries503)
     EXPECT_EQ(m_logs.count(WARN, warnOf("b")), 0u);
 }
 
-// CA-E6a-2: the default policy (Retry) keeps resending an ambiguous 5xx: three 502, then 200 ⇒ Ok after four requests,
+// The default policy (Retry) keeps resending an ambiguous 5xx: three 502, then 200 ⇒ Ok after four requests,
 // with no failed.ambiguous and no WARN.
 TEST_F(BulkAmbiguousTest, RetryPolicyUnchanged)
 {
@@ -235,7 +235,7 @@ TEST_F(BulkAmbiguousTest, RetryPolicyUnchanged)
     EXPECT_EQ(m_logs.count(WARN, warnOf("b")), 0u);
 }
 
-// CA-E6a-2, I105b: the WARN is an edge. Fail, 2xx, Fail ⇒ two WARN (the 2xx re-arms it); Fail, Fail ⇒ one, while
+// The WARN is an edge. Fail, 2xx, Fail ⇒ two WARN (the 2xx re-arms it); Fail, Fail ⇒ one, while
 // failed.ambiguous counts every op. Mutant: a 2xx that never re-arms (one WARN in the first bucket).
 TEST_F(BulkAmbiguousTest, WarnRearmsAfter2xx)
 {
@@ -271,7 +271,7 @@ TEST_F(BulkAmbiguousTest, WarnRearmsAfter2xx)
     EXPECT_EQ(results->countWith(ic::Status::Failed, ic::Cause::Ambiguous), 4u);
 }
 
-// G-diff E6a obj. 4: the Fail decision is taken before the completion's exception guard, so a completion that throws
+// The Fail decision is taken before the completion's exception guard, so a completion that throws
 // (seam beforeCompletion) resolves the batch Failed(Ambiguous) instead of the usual requeue with an attempt: exactly
 // one request, never resent. Mutant: the catch requeues an ambiguous batch (requeueAfterFailure; the op ends Ok after a
 // second request).
@@ -311,7 +311,7 @@ TEST_F(BulkAmbiguousTest, FailPolicyNeverResentAfterCompletionException)
     EXPECT_TRUE(m_logs.warned(WARN, warnOf("b") + "502 for a bulk of 2 operations", 1u));
 }
 
-// G-rama round 2 (plan 18, Codex): a `_bulk` whose response goes over max_response_bytes was answered by the node, so
+// A `_bulk` whose response goes over max_response_bytes was answered by the node, so
 // the indexer may have applied it. A bucket with onAmbiguous5xx = Fail and a bulk of 4 data-stream ops (no `_id`, as
 // the engine's events) ⇒ exactly one request, the 4 ops Failed(Ambiguous) with reason "ambiguous response over
 // maxResponseBytes (not resent)", failed.ambiguous = 4, no split and one WARN that names the cap (not the status); a

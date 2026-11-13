@@ -230,7 +230,7 @@ TEST_F(WIndexerConnectorTest, ClientWithoutABucketIsRejected)
 }
 
 /****************************************************************************************
- * index(): the buckets (I193), the moved body (I121), refusals (I196b)
+ * index(): the buckets, the moved body, refusals
  ****************************************************************************************/
 
 TEST_F(WIndexerConnectorTest, IndexPostsToEvents)
@@ -298,7 +298,7 @@ TEST_F(WIndexerConnectorTest, RefusedPostIsNotCountedTwice)
 }
 
 /****************************************************************************************
- * Metrics (I185, I195, I197)
+ * Metrics
  ****************************************************************************************/
 
 TEST_F(WIndexerConnectorTest, MetricsSumBothBuckets)
@@ -310,13 +310,13 @@ TEST_F(WIndexerConnectorTest, MetricsSumBothBuckets)
 
     EXPECT_EQ(connector->getQueueSize(), 1500U);                         // Σ retainedBytes.
     EXPECT_EQ(connector->getDroppedEvents(), 3U + 5 + 7 + 11 + 13 + 17); // Σ dropped + failed + rejected.
-    // The fullest bucket (I218): events, 5096 over its 64 MiB quota.
+    // The fullest bucket: events, 5096 over its 64 MiB quota.
     EXPECT_DOUBLE_EQ(connector->getQueueUsagePercent(), 5096.0 * 100.0 / static_cast<double>(BUCKET_QUOTA));
 }
 
 TEST_F(WIndexerConnectorTest, MetricsPercentOnlyEventsFullIs100)
 {
-    // I218: the live run's case, the raw bucket idle and events at its quota: 100, not half of the capacity.
+    // the live run's case, the raw bucket idle and events at its quota: 100, not half of the capacity.
     indexer_client::ClientMetrics metrics;
     metrics.buckets = {bucketMetrics("events", 0, BUCKET_QUOTA, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
     EXPECT_CALL(*client, metrics()).WillOnce(Return(metrics));
@@ -327,7 +327,7 @@ TEST_F(WIndexerConnectorTest, MetricsPercentOnlyEventsFullIs100)
 
 TEST_F(WIndexerConnectorTest, MetricsPercentIsTheFullestBucket)
 {
-    // I218: both half-full or less, the larger one. A sum would report 30 + 40 = 70.
+    // both half-full or less, the larger one. A sum would report 30 + 40 = 70.
     indexer_client::ClientMetrics metrics;
     metrics.buckets = {bucketMetrics("events", 0, BUCKET_QUOTA / 10 * 3, 0, 0, 0),
                        bucketMetrics("raw", 0, BUCKET_QUOTA / 10 * 4, 0, 0, 0)};
@@ -340,7 +340,7 @@ TEST_F(WIndexerConnectorTest, MetricsPercentIsTheFullestBucket)
 
 TEST_F(WIndexerConnectorTest, MetricsPercentIs100WhenTheGlobalBudgetIsFull)
 {
-    // I218: quota = global (indexer_queue_max_bytes = 0), so capacity = min(2 x global, global) = global. Both buckets
+    // quota = global (indexer_queue_max_bytes = 0), so capacity = min(2 x global, global) = global. Both buckets
     // at half their quota fill the global budget and the library drops (`GlobalFull`): 100, not 50.
     indexer_client::ClientMetrics metrics;
     metrics.buckets = {bucketMetrics("events", 0, BUCKET_QUOTA / 2, 0, 0, 0),
@@ -354,7 +354,7 @@ TEST_F(WIndexerConnectorTest, MetricsPercentIs100WhenTheGlobalBudgetIsFull)
 
 TEST_F(WIndexerConnectorTest, MetricsPercentCountsTheGlobalBudgetWhenItBinds)
 {
-    // I218: quota = global, 30 % + 40 % of it: the shared budget (70) is fuller than the fullest bucket (40).
+    // quota = global, 30 % + 40 % of it: the shared budget (70) is fuller than the fullest bucket (40).
     indexer_client::ClientMetrics metrics;
     metrics.buckets = {bucketMetrics("events", 0, BUCKET_QUOTA / 10 * 3, 0, 0, 0),
                        bucketMetrics("raw", 0, BUCKET_QUOTA / 10 * 4, 0, 0, 0)};
@@ -368,7 +368,7 @@ TEST_F(WIndexerConnectorTest, MetricsPercentCountsTheGlobalBudgetWhenItBinds)
 
 TEST_F(WIndexerConnectorTest, MetricsPercentIgnoresABucketWithoutQuota)
 {
-    // I218: a quota of 0 is skipped, not divided by; the other bucket still counts.
+    // a quota of 0 is skipped, not divided by; the other bucket still counts.
     indexer_client::ClientMetrics metrics;
     metrics.buckets = {bucketMetrics("events", 0, 4096, 0, 0, 0), bucketMetrics("raw", 0, BUCKET_QUOTA / 4, 0, 0, 0)};
     metrics.buckets[0].quotaBytes = 0;
@@ -462,7 +462,7 @@ TEST_F(WIndexerConnectorTest, MetricsPercentWithoutCapacityIsZero)
 }
 
 /****************************************************************************************
- * shutdown() (I186, I196b)
+ * shutdown()
  ****************************************************************************************/
 
 TEST_F(WIndexerConnectorTest, WritersExpireAfterShutdown)
@@ -540,7 +540,7 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexing)
 }
 
 /****************************************************************************************
- * getEngineRemoteConfig through the engine's indexer_client Client (E10a)
+ * getEngineRemoteConfig through the engine's indexer_client Client
  ****************************************************************************************/
 
 namespace
@@ -699,7 +699,7 @@ TEST_F(WIndexerConnectorTest, RemoteConfNoUsableNodeFailsAtOnce)
 TEST_F(WIndexerConnectorTest, RemoteConfNoUsableNodeMessage)
 {
     // The whole text the operator reads when every node was probed and none is usable: each node's url and reason, in
-    // order, separated by "; " (D103 must keep it as it is).
+    // order, separated by "; " (the library must keep it as it is).
     indexer_client::HealthView view;
     view.nodes.push_back({"http://node-1:9200", indexer_client::HealthView::NodeState::Down, "connect: refused"});
     view.nodes.push_back({"http://node-2:9200", indexer_client::HealthView::NodeState::Down, "status 503"});
@@ -731,7 +731,7 @@ TEST_F(WIndexerConnectorTest, RemoteConfWaitsForTheFirstProbe)
 
 TEST_F(WIndexerConnectorTest, RemoteConfWaitBeforeTheFirstProbeIsCapped)
 {
-    // Before the first probe round the wait for a node is capped like the content adapter's probeDeadline (I158b),
+    // Before the first probe round the wait for a node is capped like the content adapter's probeDeadline,
     // so one read does not hold a scheduler thread for a whole request timeout (45 s here).
     ON_CALL(*client, health()).WillByDefault(Return(healthOf(indexer_client::HealthView::NodeState::Down, "")));
     indexer_client::Deadline deadline;

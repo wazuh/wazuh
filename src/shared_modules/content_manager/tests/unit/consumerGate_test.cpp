@@ -315,7 +315,7 @@ TEST_F(ConsumerGateTest, EscalationStartsAtTheThresholdAndThenRepeatsOnACadence)
         ConsumerGate::shouldEscalateForTest(ConsumerGate::WARN_AFTER_ATTEMPTS + ConsumerGate::REPEAT_EVERY_ATTEMPTS));
 }
 
-// D93: an Unreachable answer (here the Client closed mid-probe) is cached for min(cacheTtl, 1 s), not the whole TTL:
+// An Unreachable answer (here the Client closed mid-probe) is cached for min(cacheTtl, 1 s), not the whole TTL:
 // the next start() probes again as soon as that second is over, and a Ready answer keeps the full TTL. Mutants: the
 // Unreachable answer cached for the whole TTL; not cached at all.
 TEST_F(ConsumerGateTest, ReprobesAfterShortTtl)
@@ -351,7 +351,7 @@ TEST_F(ConsumerGateTest, ReprobesAfterShortTtl)
     EXPECT_EQ(port.state()->indexSearches.size(), 2U) << "a Ready answer keeps the full TTL";
 }
 
-// D93: N topics of one consumer over an indexer that stays down share one probe per short-TTL window. Mutant: the
+// N topics of one consumer over an indexer that stays down share one probe per short-TTL window. Mutant: the
 // Unreachable answer not cached (one probe per topic).
 TEST_F(ConsumerGateTest, OneProbePerTtlWhileDown)
 {

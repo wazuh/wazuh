@@ -44,7 +44,7 @@ static int flag_foreground = 0;         // Running in foreground.
 static int flag_test_config = 0;        // -t: test the configuration and exit.
 
 /*
- * Self-pipe between wm_handler() and the main thread (plan 18, E7a, I129). The handler only writes one byte here; the
+ * Self-pipe between wm_handler() and the main thread. The handler only writes one byte here; the
  * main thread, which owns the indexer client runtime, reads it in wm_wait_shutdown_signal() and runs the whole shutdown
  * in wm_shutdown_run(). Both ends are non-blocking: the handler never blocks on a full pipe, and the reader drains it.
  */
@@ -201,8 +201,8 @@ int main(int argc, char **argv)
     wm_after_startup_gate();
 
 #ifndef CLIENT
-    // The indexer client runtime starts on this thread, its owner, before any module thread exists (I128). A failure
-    // is already logged and modulesd goes on without a runtime (I131).
+    // The indexer client runtime starts on this thread, its owner, before any module thread exists. A failure
+    // is already logged and modulesd goes on without a runtime.
     wm_indexer_runtime_start();
 #endif
 
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
     w_create_thread(wmcom_main, NULL);
 
     // Modules run until a shutdown signal arrives. The handler only wakes this thread, which then runs the orderly
-    // stop + timed-join + exit itself (I129): the runtime's begin_shutdown/shutdown must run on its owner thread, and
+    // stop + timed-join + exit itself: the runtime's begin_shutdown/shutdown must run on its owner thread, and
     // no other thread joins the module threads (two concurrent joins of the same thread return EINVAL/ESRCH, which
     // were misreported as shutdown timeouts). wm_shutdown_run() returns only for an unknown signal.
     for (;;) {
@@ -380,7 +380,7 @@ void wm_cleanup()
 {
 #ifndef CLIENT
     // Only the owner thread may shut the runtime down; an exit() from any other thread leaves it to the process
-    // teardown (D71). Before the children are killed, so no request is still in flight towards them.
+    // teardown. Before the children are killed, so no request is still in flight towards them.
     if (pthread_equal(pthread_self(), wm_main_thread)) {
         wm_indexer_runtime_shutdown();
     }
@@ -431,7 +431,7 @@ void wm_signals_configure()
 
 /*
  * Async-signal-safe: it only stores into sig_atomic_t variables and write()s one byte to the non-blocking self-pipe. No
- * mutex, logging, sleep, stop() or exit here: the shutdown runs on the main thread (wm_shutdown_run(), I129).
+ * mutex, logging, sleep, stop() or exit here: the shutdown runs on the main thread (wm_shutdown_run()).
  */
 void wm_handler(int signum)
 {
@@ -523,7 +523,7 @@ void wm_after_startup_gate(void)
 {
     if (startup_gate_wait_for_ready(ARGV0) != STARTUP_GATE_READY) {
         mdebug1("'%s' shutdown requested while waiting for the startup gate; exiting without starting.", ARGV0);
-        // The shutdown that interrupted the gate runs the same sequence as any other: no plain exit(0) (I129).
+        // The shutdown that interrupted the gate runs the same sequence as any other: no plain exit(0).
         wm_shutdown_run(wm_wait_shutdown_signal());
     }
 }

@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_FAKE_BULK_RESPONDER_HPP
 #define _INDEXER_CLIENT_TESTS_FAKE_BULK_RESPONDER_HPP
 
-// Dynamic `_bulk` answers of the fake indexer (plan 18, E3b-1 step 5). The responder parses the NDJSON it receives
+// Dynamic `_bulk` answers of the fake indexer. The responder parses the NDJSON it receives
 // and answers one item per operation with OpenSearch's real body
 // (`{"took":…,"errors":…,"items":[{"index":{"_index":…,"_id":…,"status":…,"result":…}}]}`), scripted by position;
 // on demand it serves an unreadable body, one item too many or too few, or a whole-request answer (413, 429 with
@@ -180,7 +180,7 @@ namespace indexer_client::testing
         bool hold {false};
         /// Delay before answering (after the hold), as Rule::latency does.
         std::chrono::milliseconds latency {0};
-        /// Items: a request holding more ops than this gets 413 with an empty body instead (E3b-2 Split413).
+        /// Items: a request holding more ops than this gets 413 with an empty body instead (the Split413 case).
         std::optional<std::size_t> maxOps;
 
         /// Every op succeeds.

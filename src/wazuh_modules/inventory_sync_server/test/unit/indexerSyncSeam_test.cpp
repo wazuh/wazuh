@@ -22,7 +22,7 @@
  * Pins the expanded IIndexerConnectorSync seam: every method the sync pipeline will use (F2) is
  * callable through the interface and observable on the fake's shared event record. The production
  * adapter over indexer_client is covered by indexerClientSyncAdapter_test.cpp on a real runtime; what needs
- * pinning here is the seam's shape -- which no longer carries any bulk-statistics accessor (D79: the bucket's own
+ * pinning here is the seam's shape -- which no longer carries any bulk-statistics accessor (the bucket's own
  * counters are read by pull) -- and the fake's bookkeeping, because the pipeline tests are built on top of both.
  */
 

@@ -24,7 +24,7 @@
 #include "write/group.hpp"
 #include "write/sender.hpp"
 
-// The write path of a runtime (plan 18 I62/I63). Lock discipline: WritePath::m_mutex only guards its own members and
+// The write path of a runtime. Lock discipline: WritePath::m_mutex only guards its own members and
 // is never held while calling into a bucket, the scheduler or the sink; a bucket's mutex is a leaf (bucket.hpp);
 // tickets and callbacks are completed with no lock held.
 
@@ -32,7 +32,7 @@ namespace indexer_client::detail::write
 {
     namespace
     {
-        /// The fixed reason of a refused submit (D42): never a consumer string (group.cpp has the add() twin).
+        /// The fixed reason of a refused submit: never a consumer string (group.cpp has the add() twin).
         const char* refusalReason(Cause cause)
         {
             switch (cause)
@@ -100,7 +100,7 @@ namespace indexer_client::detail::write
 
             void run()
             {
-                // I99, the callback cutoff (writer.hpp «Close»): decided under completionsMutex, so once awaitClosed
+                // The callback cutoff (writer.hpp «Close»): decided under completionsMutex, so once awaitClosed
                 // moved the cutoff under the same mutex no callback starts and callbacksRunning is exact.
                 bool started = true;
                 const auto runtimeCutoff = path ? path->callbackCutoff() : TimePoint::max();
@@ -154,7 +154,7 @@ namespace indexer_client::detail::write
 
                 if (ticket)
                 {
-                    ticket->complete(Outcome<OpResult>::success(result)); // Past the cutoff too (RF-6).
+                    ticket->complete(Outcome<OpResult>::success(result)); // Past the cutoff too.
                 }
                 if (!started)
                 {
@@ -171,7 +171,7 @@ namespace indexer_client::detail::write
                 }
                 if (client)
                 {
-                    // k4-1: every callback is timed (E5c publishes the overruns and the maximum).
+                    // Every callback is timed (the metrics publish the overruns and the maximum).
                     const auto took = std::chrono::steady_clock::now() - begin;
                     const auto micros = std::chrono::duration_cast<std::chrono::microseconds>(took).count();
                     if (took > client->callbackBudget)
@@ -182,7 +182,7 @@ namespace indexer_client::detail::write
                     while (micros > seen && !client->callbackMaxDurationMicros.compare_exchange_weak(seen, micros))
                     {
                     }
-                    // E5c: the maximum of the current log summary interval (exchanged with 0 by the summary).
+                    // The maximum of the current log summary interval (exchanged with 0 by the summary).
                     seen = client->callbackIntervalMaxMicros.load();
                     while (micros > seen && !client->callbackIntervalMaxMicros.compare_exchange_weak(seen, micros))
                     {
@@ -234,7 +234,7 @@ namespace indexer_client::detail::write
                 {
                     if (!withCallback)
                     {
-                        // Nothing charged and no pool task: the ticket is completed here (I62).
+                        // Nothing charged and no pool task: the ticket is completed here.
                         m_bucket->countResolved(Status::Dropped, Cause::QueueFull);
                         ticket->complete(Outcome<OpResult>::success(dropped(Cause::QueueFull)));
                         return submit;
@@ -255,7 +255,7 @@ namespace indexer_client::detail::write
                 return submit;
             }
 
-            /// I122: submit without a Ticket and without a callback. Its RESULT_RESERVE goes back at its resolution
+            /// Submit without a Ticket and without a callback. Its RESULT_RESERVE goes back at its resolution
             /// (WritePath::resolve, inside Bucket::releasePayload); its outcome is only counted (bucket snapshot,
             /// CloseReport).
             Posted post(Op request) override
@@ -268,7 +268,7 @@ namespace indexer_client::detail::write
                 }
                 if (m_stages && op->tag.empty())
                 {
-                    // E6e (B, I209/I210): DropNewest, not ordered, no tag: staged in this thread's stripe and admitted
+                    // DropNewest, not ordered, no tag: staged in this thread's stripe and admitted
                     // with the rest of it; closing or an op that can never fit falls through to admit().
                     const auto staged = m_bucket->stage(op);
                     if (staged.staged)
@@ -305,7 +305,7 @@ namespace indexer_client::detail::write
                 return Group(makeGroup(m_client, m_bucket, m_path));
             }
 
-            /// I80 (bucket.hpp): the bucket removes the pending and lane ops of the tag and marks the delivered ones;
+            /// (bucket.hpp) The bucket removes the pending and lane ops of the tag and marks the delivered ones;
             /// the removed ones resolve Dropped(Cancelled) here, outside its mutex. With nothing delivered the ticket
             /// completes at once; otherwise the bucket completes it at the last resolution of a marked op. Never
             /// blocks.
@@ -313,7 +313,7 @@ namespace indexer_client::detail::write
             {
                 auto state = std::make_shared<CancelState>();
                 // An empty tag is "no tag" (OpState::tag): it would cancel every untagged op. A tag that submit refuses
-                // can match nothing. Both are refused with the field first, never echoing the tag (D42).
+                // can match nothing. Both are refused with the field first, never echoing the tag.
                 if (const char* why = invalidCancelTag(tag); why != nullptr)
                 {
                     state->complete(Outcome<Unit>::failure(Cause::InvalidArgument, why));
@@ -341,10 +341,10 @@ namespace indexer_client::detail::write
             }
 
         private:
-            /// submit / post, before the bucket (E6d): the effective conflict policy (I73: the op's when set, else the
-            /// bucket's) and encode(); then the whole OpState (payload = charge, I124b; head, body, firstSubmit with
-            /// the call's only clock read, bucket, conflict, tag and key, I79/I80) built outside the bucket's mutex.
-            /// Null with `cause` and `reason` (the field first, D42) on InvalidArgument.
+            /// submit / post, before the bucket: the effective conflict policy (the op's when set, else the
+            /// bucket's) and encode(); then the whole OpState (payload = charge; head, body, firstSubmit with
+            /// the call's only clock read, bucket, conflict, tag and key) built outside the bucket's mutex.
+            /// Null with `cause` and `reason` (the field first) on InvalidArgument.
             std::shared_ptr<OpState> prepare(Op&& request, Cause& cause, std::string& reason)
             {
                 const auto& spec = m_bucket->spec();
@@ -359,14 +359,14 @@ namespace indexer_client::detail::write
                 }
                 auto op = std::make_shared<OpState>();
                 op->head = std::move(outcome.value.head);
-                op->cachedHead = outcome.value.cachedHead; // I125: the write path's action line, if any.
-                op->body = std::move(outcome.value.body);  // The moved-in document (I121): no copy.
+                op->cachedHead = outcome.value.cachedHead; // The write path's action line, if any.
+                op->body = std::move(outcome.value.body);  // The moved-in document: no copy.
                 op->payload = chargeSize(op->headView(), op->body);
                 op->reserveCharged = true;
                 op->firstSubmit = std::chrono::steady_clock::now();
-                op->owner = m_bucket.get(); // E6e (D): a plain pointer for the owner check; no weak count per op.
+                op->owner = m_bucket.get(); // A plain pointer for the owner check; no weak count per op.
                 op->conflictRetry = effective.kind == ConflictPolicy::Kind::Retry;
-                // encode() only moved the body out: the tag and the key fields are still the request's (I79, I80).
+                // encode() only moved the body out: the tag and the key fields are still the request's.
                 op->tag = std::move(request.tag);
                 op->hasKey = spec.ordered && !request.id.empty(); // `_id` iff the kind has one.
                 op->keyHash = op->hasKey ? orderedKeyHash(request.index, request.id) : 0;
@@ -398,7 +398,7 @@ namespace indexer_client::detail::write
             std::shared_ptr<ClientState> m_client;
             std::shared_ptr<Bucket> m_bucket;
             std::shared_ptr<WritePath> m_path;
-            const bool m_stages; ///< E6e (B): post() stages (Bucket::stages()).
+            const bool m_stages; ///< Post() stages (Bucket::stages()).
         };
     } // namespace
 
@@ -500,7 +500,7 @@ namespace indexer_client::detail::write
         }
         if (replaced)
         {
-            replaced->stop(); // Outside the mutex: the production sender cancels its transfers and its timer (E3b-2).
+            replaced->stop(); // Outside the mutex: the production sender cancels its transfers and its timer.
         }
     }
 
@@ -529,9 +529,9 @@ namespace indexer_client::detail::write
 
     void WritePath::resolveWon(const std::shared_ptr<Bucket>& bucket, OpState& op, OpResult result)
     {
-        // E6e (D): the caller's bucket must be the op's (a wrong one would corrupt the accounting in silence). Issue 15
-        // (D64): no assert (the manager's Release builds keep it live); a mismatch is logged and counted, and the
-        // resolution goes on with the caller's bucket (the op's own is not reachable from a plain pointer).
+        // The caller's bucket must be the op's (a wrong one would corrupt the accounting in silence). No assert (the
+        // manager's Release builds keep it live); a mismatch is logged and counted, and the resolution goes on with the
+        // caller's bucket (the op's own is not reachable from a plain pointer).
         if (bucket && op.owner != nullptr && op.owner != bucket.get())
         {
             internalError("resolve: an operation resolved through a bucket other than its own");
@@ -540,7 +540,7 @@ namespace indexer_client::detail::write
         auto ticket = std::move(op.ticket);
         auto callback = std::move(op.callback);
         const bool reserveCharged = op.reserveCharged;
-        // E6d: an op of post (no ticket, callback nor group) returns its RESULT_RESERVE here; the others through the
+        // An op of post (no ticket, callback nor group) returns its RESULT_RESERVE here; the others through the
         // callback's completion, the last Ticket or the GroupState.
         const bool returnReserve = reserveCharged && !ticket && !callback && !op.group;
         // The client of the CloseReport accounting is its bucket's (1:1): a submitted, posted or group op alike. A
@@ -555,7 +555,7 @@ namespace indexer_client::detail::write
         {
             result.itemErrorType.resize(OpResult::MAX_ITEM_ERROR_TYPE);
         }
-        // I99 (writer.hpp «Close»): the client's accounting goes before the payload is released. Σ retained of the
+        // (writer.hpp «Close») The client's accounting goes before the payload is released. Σ retained of the
         // client reaches 0 only once every resolution of the drain is counted and its completion is outstanding, so
         // awaitClosed's second wait (outstandingCompletions == 0) covers the callback of the last drained op.
         const bool withCompletion = client && callback && !op.group;
@@ -596,7 +596,7 @@ namespace indexer_client::detail::write
             bucket->countResolved(result.status, result.cause, result.itemErrorType, result.reason);
             if (result.status == Status::Dropped && result.cause == Cause::Cancelled)
             {
-                bucket->countCancelled(1); // I80: also under resolvedDropped.
+                bucket->countCancelled(1); // Also under resolvedDropped.
             }
             bucket->releasePayload(op, returnReserve);
             seams::afterPayloadReleased(); // ResolutionOutstandingBeforeReleased.
@@ -610,7 +610,7 @@ namespace indexer_client::detail::write
             if (returnReserve)
             {
                 // The bucket's own charge died with it; the global cap's did not. A delivered op's payload went back
-                // in ~Bucket (D67).
+                // in ~Bucket.
                 m_budget.release(RESULT_RESERVE);
             }
         }
@@ -625,7 +625,7 @@ namespace indexer_client::detail::write
 
         if (op.group)
         {
-            // A group op (I74): no ticket, no callback, no pool task. Its slot is filled (the last one completes the
+            // A group op: no ticket, no callback, no pool task. Its slot is filled (the last one completes the
             // GroupTicket) and the op lets its GroupState go, with no lock held: it may be the last holder, whose
             // destructor returns the group's reserves; the OpState itself may still live on in a batch.
             resolveInGroup(op, std::move(result));
@@ -654,13 +654,13 @@ namespace indexer_client::detail::write
         completion->releaseReserve = reserveCharged; // Already outstanding for its client (above).
         if (m_poolDetached.load() || !m_postToPool([completion]() { completion->run(); }))
         {
-            completion->run(); // The pool no longer accepts: complete inline (I63).
+            completion->run(); // The pool no longer accepts: complete inline.
         }
     }
 
     namespace
     {
-        /// E6e (A): the post ops a resolveBulk claimed, settled chunk by chunk; whatever is still unsettled when the
+        /// The post ops a resolveBulk claimed, settled chunk by chunk; whatever is still unsettled when the
         /// bulk throws is settled by the destructor (noexcept), so no claimed op stays retained.
         class BulkSettlement final
         {
@@ -705,7 +705,7 @@ namespace indexer_client::detail::write
                 return m_settled == m_claimed;
             }
 
-            /// One chunk: the client's accounting (before the release, I99), then the bucket's settlement, then the
+            /// One chunk: the client's accounting (before the release), then the bucket's settlement, then the
             /// drain's wake-up.
             void settleChunk()
             {
@@ -716,7 +716,7 @@ namespace indexer_client::detail::write
             }
 
         private:
-            /// I99 (WritePath::resolve): droppedClientClosed / droppedShutdown, and `drained` when the close was
+            /// (WritePath::resolve) droppedClientClosed / droppedShutdown, and `drained` when the close was
             /// requested before the release, for the items not accounted yet up to `end`. Returns closeRequested.
             bool accountUpTo(std::size_t end) noexcept
             {
@@ -843,7 +843,7 @@ namespace indexer_client::detail::write
         }
         while (!settlement.done())
         {
-            seams::midBulkSettle(); // CA-E6e-1 ThrowMidBulkReleasesClaimed: the destructor settles the rest.
+            seams::midBulkSettle(); // ThrowMidBulkReleasesClaimed: the destructor settles the rest.
             settlement.settleChunk();
         }
         return won;
@@ -1047,7 +1047,7 @@ namespace indexer_client::detail
         else
         {
             // The bucket died first (its Client and writers are gone, a Ticket outlived them): its own charge no
-            // longer matters, but the runtime-wide cap must get the reserve back (G-diff E3a obj. 1).
+            // longer matters, but the runtime-wide cap must get the reserve back.
             alive->budget().release(write::RESULT_RESERVE);
         }
     }

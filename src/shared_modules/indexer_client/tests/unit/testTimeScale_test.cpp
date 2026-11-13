@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The single time scale of the suites (plan 18, I113, testTimeScale.hpp): what INDEXER_CLIENT_TEST_TIME_SCALE accepts,
+// The single time scale of the suites (testTimeScale.hpp): what INDEXER_CLIENT_TEST_TIME_SCALE accepts,
 // and that a bad value aborts the run. A global environment checks the variable before the first case, so a bad value
 // stops the whole binary at once (and --gtest_list_tests, which runs no environment, still works). It does not call
 // timeScale() for a valid value: the cache stays empty for the death test's child.
@@ -67,7 +67,7 @@ TEST(TestTimeScale, ParseInvalid)
 }
 
 // The scale the run asked for is the one scaled() applies (the CI jobs set 2): a timeScale() that ignored the variable
-// would only show as timing flakes under load (D57 reproduces only on a loaded host, plan 18 E6b).
+// would only show as timing flakes under load (it reproduces only on a loaded host).
 TEST(TestTimeScale, EnvironmentReachesScaled)
 {
     const auto requested = parseTimeScale(std::getenv(TIME_SCALE_ENV));

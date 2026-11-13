@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// D108 (plan 18, E11d): the failures of the old connector's qa (test_efficacy_log.py) against a real OpenSearch, end to
+// The failures of the old connector's qa (test_efficacy_log.py) against a real OpenSearch, end to
 // end through the public API: a document the strict mapping rejects, the shard limit and a missing index with
 // auto-creation disabled; then (issues 26 and 27) a bulk over the node's http.max_content_length, split until
 // everything lands, and a node that is stopped and started again. Each case that changes a cluster setting does it
@@ -286,7 +286,7 @@ namespace
     }
 } // namespace
 
-// Issue 26: a node started with a low `http.max_content_length` (SMALL_URL_ENV) answers 413 to a bulk over it before
+// A node started with a low `http.max_content_length` (SMALL_URL_ENV) answers 413 to a bulk over it before
 // reading its body. The client splits the batch in halves until each fits, so every operation of a group three times
 // the limit ends Ok, the index holds every document once, and more than one bulk went out; a single document over the
 // limit is never split: Failed(PayloadTooLarge), with the node's 413, and not indexed.
@@ -445,7 +445,7 @@ namespace
     }
 } // namespace
 
-// Issue 27: the node of the suite (CONTAINER_ENV) is stopped and started again. While it is down, a submit returns at
+// The node of the suite (CONTAINER_ENV) is stopped and started again. While it is down, a submit returns at
 // once and nothing reports success; operations of a client closed during the outage end Dropped(ClientClosed) without
 // waiting for the node; the ones still queued land once it is back. What was indexed before the outage is still there,
 // and resending every id leaves one document per id. The node is started again whatever happens (NodeControl, before

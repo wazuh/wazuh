@@ -65,7 +65,7 @@ namespace indexer_client
             config.*Field = Duration {static_cast<Duration::rep>(value)};
         }
 
-        /// The single schema of the internal-options family (RF-18). Mirrored by the table in the module README.
+        /// The single schema of the internal-options family. Mirrored by the table in the module README.
         constexpr std::array<SchemaEntry, 19> kSchema {{
             {"network_threads", "count", 1, 64, 1, &setU32<&RuntimeConfig::networkThreads>},
             {"cpu_threads", "count", 1, 64, 2, &setU32<&RuntimeConfig::cpuThreads>},
@@ -123,7 +123,7 @@ namespace indexer_client
             }
             return 0;
         }
-        // I98 (G-diff obj. 7): a decrease never yields a target at or above the uncapped mark, so bulk_min_bytes stays
+        // A decrease never yields a target at or above the uncapped mark, so bulk_min_bytes stays
         // below it.
         static_assert(schemaMax("bulk_min_bytes") != 0 &&
                           schemaMax("bulk_min_bytes") < detail::write::BULK_TARGET_UNCAPPED,

@@ -13,12 +13,12 @@
 #ifndef _INDEXER_CLIENT_QUERY_HPP
 #define _INDEXER_CLIENT_QUERY_HPP
 
-// Query engine (stage E4a, plan 18 I81-I88). NORMATIVE: this header is the contract of every IQuery operation; the
+// Query engine. NORMATIVE: this header is the contract of every IQuery operation; the
 // implementation (query.cpp) and its tests follow it. Nothing here is public API.
 //
-// EXECUTION (I87). Every operation runs synchronously on the calling consumer thread; no runtime thread ever runs a
+// EXECUTION. Every operation runs synchronously on the calling consumer thread; no runtime thread ever runs a
 // query and no task is posted for it, so a query never blocks the IoLoops or the CPU pool.
-//   1. onRuntimeThread() ⇒ Reentrancy (RF-27), before anything else.
+//   1. onRuntimeThread() ⇒ Reentrancy, before anything else.
 //   2. Validation, without a request ⇒ InvalidArgument with the field first in `reason`: every index non-empty,
 //      only [A-Za-z0-9_.*-] (v1 isSafeIndexName), not only dots (libcurl collapses "." and "..") and not starting
 //      with '_'; a non-empty index list; retry as validateBucket (base > 0, cap >= base, jitter in [0, 1], maxAttempts
@@ -41,29 +41,29 @@
 // result on the client's QueryGate (the transport callback captures the attempt state by shared_ptr: it may land
 // after the engine returned) → NodeSet::report(node, result) → classifyRequest(result, 1) and the operation's
 // classifier (queryResponse.hpp). No node to choose ⇒ wait max(50 ms, min(retry.base, probeInterval)) and choose
-// again, without an attempt; a node parked by a 429 Retry-After (NodeSet::earliestNotBefore(), I109) ends that wait
+// again, without an attempt; a node parked by a 429 Retry-After (NodeSet::earliestNotBefore()) ends that wait
 // early, so a read whose usable nodes are all parked waits for the first one within its deadline instead of failing.
 //
-// VERDICTS (I82, the I65 table). Failover ⇒ another attempt at once (counted only with mayHaveSent). Throttled ⇒ wait
+// VERDICTS (the table). Failover ⇒ another attempt at once (counted only with mayHaveSent). Throttled ⇒ wait
 // max(retryAfter, backoffDelay(retry, ++throttles)) without an attempt: `throttles` grows the exponent so a 429 storm
 // without Retry-After backs off. Retry (408, 5xx, 401, 403, TlsConfig, LocalError, timed_out) ⇒ an attempt and
-// backoffDelay(retry, attempts) (runtime/backoff.hpp, I66). maxAttempts or maxDuration (from the page's first
+// backoffDelay(retry, attempts) (runtime/backoff.hpp). maxAttempts or maxDuration (from the page's first
 // attempt) exhausted ⇒ Failed(RetryExhausted), the last cause in reason. FailBatch ⇒ its cause. Conflict (DBQ/UBQ,
-// I86) ⇒ its own budget: CONFLICT_ATTEMPTS attempts, CONFLICT_BASE doubled up to CONFLICT_CAP, exhausted ⇒
-// VersionConflict with the counts in reason; each conflict retry opens a fresh I82 series (independent clocks).
+// conflict) ⇒ its own budget: CONFLICT_ATTEMPTS attempts, CONFLICT_BASE doubled up to CONFLICT_CAP, exhausted ⇒
+// VersionConflict with the counts in reason; each conflict retry opens a fresh retry series (independent clocks).
 //
 // WAKE-UP. Every wait (result, backoff, no node) sleeps on the client's QueryGate (runtimeInternal.hpp): one mutex and
 // condition variable shared by the runtime and all its clients. The transport callback, Client::requestClose() and
 // RuntimeState::stopAndJoin() (before writePath->stop(); it also sets `stopping`) notify it. Woken by a close: cancel
-// the attempt in flight and return ClientClosed (Shutdown when the gate is stopping). No busy wait (RNF-4).
+// the attempt in flight and return ClientClosed (Shutdown when the gate is stopping). No busy wait.
 //
-// RESPONSES (I84). A 2xx body with body.size() * QUERY_DOM_FACTOR > maxResponseBytes ⇒ Failed(ItemPermanent)
+// RESPONSES. A 2xx body with body.size() * QUERY_DOM_FACTOR > maxResponseBytes ⇒ Failed(ItemPermanent)
 // "response too large for a query" without parsing (the effective wire cap of a query is maxResponseBytes /
 // QUERY_DOM_FACTOR); an unparsable 2xx body ⇒ Failed(ItemPermanent). A 4xx reason = the OpenSearch error type and at
 // most REASON_BODY_BYTES of the body, within OpResult::MAX_REASON.
 //
-// ROUTES (I88). QueryOptions.expandWildcardsAll adds expand_wildcards=all to every one of them.
-//   search(i, body)       POST /<i>/_search; the whole response. 404 index_not_found_exception ⇒ NotFound (I85);
+// ROUTES. QueryOptions.expandWildcardsAll adds expand_wildcards=all to every one of them.
+//   search(i, body)       POST /<i>/_search; the whole response. 404 index_not_found_exception ⇒ NotFound;
 //                         any other 404 ⇒ Client4xx.
 //   searchAfter(i, b, f)  pages of search; f(response) on the consumer thread for every page, the empty one included
 //                         (an exception from f propagates, no request pending); stops with f = false (⇒ Ok), no hits,
@@ -71,14 +71,14 @@
 //   deleteByQuery(is, q)  POST /<i1,i2>/_delete_by_query[?conflicts=proceed]; body q. 404 index_not_found_exception ⇒
 //                         Ok({}); any other 404 ⇒ Client4xx.
 //   updateByQuery(is, q)  POST /<i1,i2>/_update_by_query?conflicts=proceed; body q. 404 index_not_found ⇒ NotFound.
-//   indexExists(i)        HEAD /<i>; 200 ⇒ true, 404 ⇒ false, the rest by I82 (I83). Never false on an outage.
-//   pit(...)              the managed PIT of pit.hpp (E4b), on execute() (engine.hpp).
+//   indexExists(i)        HEAD /<i>; 200 ⇒ true, 404 ⇒ false, the rest by the retry rules. Never false on an outage.
+//   pit(...)              the managed PIT of pit.hpp, on execute() (engine.hpp).
 //
 // STATS. queryStats() counts requests, failovers, throttles, Unavailable results, responses the classifier refused
 // for size (QueryResponse::tooLarge) and conflict retries: process-wide since process start, never reset (they survive
-// shutdown() + start()); E5 publishes them and decides whether they reset per runtime (D48/D50).
+// shutdown() + start()); the metrics publish them and decide whether they reset per runtime.
 //
-// E4b (D51, done): execute(), RouteSpec, Classifier and target() live in engine.hpp; the PIT classifier
+// execute(), RouteSpec, Classifier and target() live in engine.hpp; the PIT classifier
 // (queryResponse.hpp) turns search_context_missing_exception into PitExpired; DELETE with a body is covered by
 // transportConnections_test.
 
@@ -101,7 +101,7 @@ namespace indexer_client::detail::query
     /// page 5.74, DBQ 3.5-5.2, UBQ 3.5-5.2 ⇒ ceil(6.19 × 1.25) = 8.
     constexpr std::uint64_t QUERY_DOM_FACTOR = 8;
 
-    /// I86: the v1 conflict budget of DBQ/UBQ (SYNC:430-457).
+    /// The v1 conflict budget of DBQ/UBQ (SYNC:430-457).
     constexpr std::uint32_t CONFLICT_ATTEMPTS = 3;
     constexpr Duration CONFLICT_BASE {Duration {3000}};
     constexpr Duration CONFLICT_CAP {Duration {15000}};
@@ -124,7 +124,7 @@ namespace indexer_client::detail::query
         std::uint64_t unavailable {0};
         std::uint64_t tooLarge {0};
         std::uint64_t conflictRetries {0};
-        /// D48 (E5c, metrics.hpp QUERIES): gauge and process-wide peak of the response bytes in the engine.
+        /// (metrics.hpp QUERIES) Gauge and process-wide peak of the response bytes in the engine.
         std::uint64_t responseBytesInFlight {0};
         std::uint64_t peakResponseBytesInFlight {0};
     };

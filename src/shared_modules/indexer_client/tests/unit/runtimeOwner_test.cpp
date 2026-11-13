@@ -597,7 +597,7 @@ TEST_F(RuntimeOwnerTest, FailedStartLeavesNoThreads)
     EXPECT_EQ(settledTasks().size(), before.size() + 2);
 }
 
-// RF-19, D24: credentials are mandatory (also with http hosts). A missing one fails the start with InvalidConfig
+// Credentials are mandatory (also with http hosts). A missing one fails the start with InvalidConfig
 // before any thread exists, and the reason never carries the value that was given.
 TEST_F(RuntimeOwnerTest, MissingCredentialsUser)
 {

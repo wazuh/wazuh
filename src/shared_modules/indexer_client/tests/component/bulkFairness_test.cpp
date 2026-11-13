@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-3, T3 (plan-E3c-2 §Tests, step 6b): a bucket whose every item is rejected does not starve another bucket on the
+// A bucket whose every item is rejected does not starve another bucket on the
 // same node. Item rejections are the rejecting bucket's own business (its retry lane and its backoff); the node keeps
 // serving everybody. The production sender runs over the real transport against one fake node (bulkFixture.hpp) that
 // answers B's `_bulk` after 20 ms, so the node's throughput is set by its window (node_window_max bulks in flight), not
@@ -50,7 +50,7 @@ namespace
     }
 } // namespace
 
-// CA-3, T3: one node. Phase 1: B alone for 10 s (its baseline, after a 1 s warm-up). Phase 2: B goes on and A joins
+// One node. Phase 1: B alone for 10 s (its baseline, after a 1 s warm-up). Phase 2: B goes on and A joins
 // with A_OPS ops whose every item is `cluster_block_exception` (item Retry), unlimited attempts and a 200 ms backoff,
 // for another 10 s (DRR quantum 4 KiB): B completes >= 0.9 x its baseline and A's retries keep growing (counted at the
 // middle and at the end of the phase). A is then cancelled by tag. Small documents (16 B bodies), batches of 20 for B.
@@ -76,7 +76,7 @@ TEST_F(BulkTest, ItemRejectionsDoNotStarveOtherBucket)
                                  }
                              });
     // A small DRR quantum (4 KiB, two of B's batches): A gets a turn, hence a retry, every two of B's batches (with
-    // the default 1 MiB the turn of B would end only at DRR_MAX_BATCHES_PER_TURN, I97b).
+    // the default 1 MiB the turn of B would end only at DRR_MAX_BATCHES_PER_TURN).
     ASSERT_NO_FATAL_FAILURE(startOn({a.url()}, std::chrono::milliseconds(3600000), {{"drr_quantum_bytes", "4096"}}));
     auto bSpec = bucketSpec("b", 1u << 20, ic::Overflow::Kind::Block, 0, 20, ic::Duration {5});
     auto aSpec = bucketSpec("a", 1u << 20, ic::Overflow::Kind::Reject, 0, A_OPS, ic::Duration {5});
@@ -145,7 +145,7 @@ TEST_F(BulkTest, ItemRejectionsDoNotStarveOtherBucket)
 
     producing.store(false);
     producer.join();
-    std::printf("[ CA-3     ] B completed %llu alone, %llu with A rejected (%.3f); A's bulks %zu at mid-phase, %zu at "
+    std::printf("[ FAIRNESS ] B completed %llu alone, %llu with A rejected (%.3f); A's bulks %zu at mid-phase, %zu at "
                 "the end\n",
                 static_cast<unsigned long long>(baseline),
                 static_cast<unsigned long long>(withA),

@@ -387,8 +387,8 @@ namespace invsync::sync
         // deleteByQuery is IMMEDIATE, not staged: it returns once the indexer applied it, so "200
         // answered" means "deletes applied" -- and, since the worker serves this agent's sessions
         // in order, a follow-up SyncData of the same agent (a full resync's second request) cannot
-        // overtake the deletes. The connector first waits for every write it still has pending
-        // (D49), so neither can the deletes overtake an earlier session's documents. The flush()
+        // overtake the deletes. The connector first waits for every write it still has pending,
+        // so neither can the deletes overtake an earlier session's documents. The flush()
         // below sends nothing then; it stays as a harmless no-op so a connector that does stage
         // keeps the same durability contract.
         for (const auto& index : indices)
@@ -408,7 +408,7 @@ namespace invsync::sync
         using Clock = std::chrono::steady_clock;
         using indexer::ConnectorError;
 
-        // The two halves of a whole-agent deletion, both on the agent's own shard worker (I147c), so two deletions
+        // The two halves of a whole-agent deletion, both on the agent's own shard worker, so two deletions
         // of one agent never overlap and both are ordered behind the agent's in-flight sessions.
         //
         // BY-ID (AGENT_DELETION_SCOPE_BY_ID: `wazuh-agent-config`, `wazuh-agent-stats`, whose `_id` IS the agent id).
@@ -416,13 +416,14 @@ namespace invsync::sync
         // never sent before an earlier op of its (index, _id) has a final outcome. So:
         //  1. cancel(agent), not awaited: the agent's pending reports are dropped, an in-flight one is marked (it is
         //     never requeued; if its bulk succeeds it stays applied, and the ordered key keeps our delete behind it).
-        //  2. ONE Group with both deletes, tagged with the agent and committed at once (I147d), so a refused add
+        //  2. ONE Group with both deletes, tagged with the agent and committed at once, so a refused add
         //     leaves nothing half-queued. A client closing between the adds and commit() is seen only in the
         //     ticket, after the by-query: harmless, the deletion is idempotent and answers 503 either way.
         //  3. Its ticket is awaited after the by-query, inside the same budget (`until`).
         //
-        // The residual, named rather than implied (obj. 11): cancel(agent) also lifts the ambiguous-retry pin of a
-        // report that timed out on a node (IC README § Ordered buckets, the D38 window, and § Cancellation), so the
+        // The residual, named rather than implied: cancel(agent) also lifts the ambiguous-retry pin of a
+        // report that timed out on a node (IC README § Ordered buckets, the ambiguous-retry window,
+        // and § Cancellation), so the
         // ordered key no longer holds our delete behind it. That node may still apply the report after the delete
         // reached another one, and the document reappears. The sweeper note()d below deletes such late documents
         // by id one window later, best effort.
@@ -476,8 +477,8 @@ namespace invsync::sync
         // so this worker's connector deletes it in order.
         //
         // deleteAgentByQuery is immediate, exactly like executeCleans()'s deleteByQuery: it returns once applied
-        // (the durability of the 200), after the connector waited for every write it still had pending (D49), and
-        // it bounds itself with the deletion route's budget (I145, I145b) instead of an agent request's. A 404 for a
+        // (the durability of the 200), after the connector waited for every write it still had pending, and
+        // it bounds itself with the deletion route's budget instead of an agent request's. A 404 for a
         // not-yet-created index counts as success inside the connector, so re-running a delete is harmless (that is
         // the dispatcher's retry contract). The trailing flush() is the same harmless no-op as in executeCleans().
         //
@@ -542,7 +543,7 @@ namespace invsync::sync
             {
                 // Ok covers Deleted and NotFound (deleting an absent document is the idempotent retry). A missing
                 // INDEX is a permanent item failure to the library, but here it means there is nothing to delete
-                // -- the same answer the by-query half gives a 404 (I147b).
+                // -- the same answer the by-query half gives a 404.
                 const bool indexMissing = result.status == indexer_client::Status::Failed &&
                                           result.cause == indexer_client::Cause::ItemPermanent &&
                                           result.httpStatus == 404 &&

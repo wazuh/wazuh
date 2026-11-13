@@ -25,7 +25,7 @@
 namespace indexer_client
 {
     /// IConfigSource over the text of an internal-options file (`key=value` lines, `#` comments) plus the `<indexer>`
-    /// section JSON given by the caller. The caller reads the file (modulesd's C side, E7); this class only parses
+    /// section JSON given by the caller. The caller reads the file (modulesd's C side); this class only parses
     /// text.
     class INDEXER_CLIENT_API KeyValueConfigSource final : public IConfigSource
     {
@@ -38,7 +38,7 @@ namespace indexer_client
         parse(std::string_view text, std::string indexerSectionJson, Credentials credentials);
 
         KeyValueConfigSource() = default;
-        /// Wipes its copy of the password (I55, best effort: a copy handed out by credentials() is the caller's).
+        /// Wipes its copy of the password (best effort: a copy handed out by credentials() is the caller's).
         ~KeyValueConfigSource() override;
         KeyValueConfigSource(const KeyValueConfigSource&) = default;
         KeyValueConfigSource& operator=(const KeyValueConfigSource&) = default;

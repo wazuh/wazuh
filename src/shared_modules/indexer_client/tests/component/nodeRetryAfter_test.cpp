@@ -10,12 +10,12 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The NodeSet's notBefore (plan 18, plan-E6a step 3, I109/I109b, CA-E6a-4): a 429 with Retry-After from any path
+// The NodeSet's notBefore: a 429 with Retry-After from any path
 // (report() in any state, a probe round, a bulk, a query) parks the node for every consumer; choose() skips it; a read
 // whose usable nodes are all parked waits for the first one within its deadline. Oracles: NodeSet::notBefore() and
 // earliestNotBefore(), choose(), the recorded requests (path, arrival time) and the query Outcome. detail::NodeSet is
 // hidden in the .so the utest links, so these cases live in the component suite. The cases that need the sender's
-// mirror of notBefore belong to step 4.
+// mirror of notBefore belong to the sender's suites.
 
 #include <chrono>
 #include <cstdint>
@@ -110,7 +110,7 @@ class NodeRetryAfterTest : public BulkTest
 {
 };
 
-// I109: report() parks a node from a 429 with Retry-After whatever its state (Available, Throttled, Down), with max():
+// report() parks a node from a 429 with Retry-After whatever its state (Available, Throttled, Down), with max():
 // a shorter one never moves it back, a longer one raises it; a 429 without Retry-After or a 2xx leaves it alone. A
 // Down node's notBefore is kept but earliestNotBefore() ignores it; choose() skips the parked nodes.
 TEST_F(NodeRetryAfterTest, ReportInAnyState)
@@ -173,7 +173,7 @@ TEST_F(NodeRetryAfterTest, ReportInAnyState)
     EXPECT_EQ(set->choose([](std::size_t) { return true; }), std::nullopt);
 }
 
-// I109b: the probe's own 429 with Retry-After parks the node too. Both nodes Throttled (B without Retry-After): the
+// The probe's own 429 with Retry-After parks the node too. Both nodes Throttled (B without Retry-After): the
 // round robin would alternate; the parked A is skipped.
 TEST_F(NodeRetryAfterTest, ProbeRetryAfter)
 {
@@ -209,7 +209,7 @@ TEST_F(NodeRetryAfterTest, ProbeRetryAfter)
     ASSERT_LT(now() - before, 1500ms) << "the picks must end well before Retry-After";
 }
 
-// CA-E6a-4 (RF-9): a bulk 429 with Retry-After: 2 on A parks A for the queries too, even once the probe has it
+// A bulk 429 with Retry-After: 2 on A parks A for the queries too, even once the probe has it
 // Available again; they all go to B. Mutant: report() ignores retryAfter (the round robin sends a query to A).
 TEST_F(NodeRetryAfterTest, BulkThrottleParksNodeForQuery)
 {
@@ -245,7 +245,7 @@ TEST_F(NodeRetryAfterTest, BulkThrottleParksNodeForQuery)
     EXPECT_EQ(searches(*b.fake).size(), 6u);
 }
 
-// CA-E6a-4 (I109): A Down and B parked by a bulk 429 with Retry-After: 2 ⇒ a query with a deadline and a pageDeadline
+// A Down and B parked by a bulk 429 with Retry-After: 2 ⇒ a query with a deadline and a pageDeadline
 // past Retry-After waits for B's notBefore and succeeds on B; never Unavailable, never sent early.
 TEST_F(NodeRetryAfterTest, AllParkedQueryWaits)
 {
@@ -285,7 +285,7 @@ TEST_F(NodeRetryAfterTest, AllParkedQueryWaits)
     EXPECT_EQ(results->result(0)->status, ic::Status::Ok);
 }
 
-// I109: a Retry-After past the consumer's deadline ⇒ the query ends Unavailable at its deadline (no request), not
+// A Retry-After past the consumer's deadline ⇒ the query ends Unavailable at its deadline (no request), not
 // after Retry-After. B is parked for 10 s by an earlier query's 429.
 TEST_F(NodeRetryAfterTest, QueryRetryAfterBounded)
 {
@@ -349,7 +349,7 @@ namespace
     }
 } // namespace
 
-// CA-E6a-4 (I109b, step 4): the only node is parked by a query's 429 with Retry-After: 2. The sender mirrors the
+// The only node is parked by a query's 429 with Retry-After: 2. The sender mirrors the
 // NodeSet's notBefore (refreshMirror), so its capacity is 0: no `_bulk` reaches the node during those 2 s and loop 0
 // does not spin (runs <= MAX_RUNS, as OrderedNoIdleSpin); the sender's notBefore timer sends the batch once the wait
 // ends, without a probe round. Mutant: the mirror without notBefore (dispatch finds no node, requeues and re-slices
@@ -389,7 +389,7 @@ TEST_F(NodeRetryAfterTest, QueryThrottleParksOnlyNodeBulkWaitsNoSpin)
     EXPECT_EQ(probeRounds(), rounds) << "a probe round was needed";
 }
 
-// CA-E6a-4 (I109): two nodes; a query's 429 with Retry-After: 2 parks A for the bulk sender too, even once the probe
+// Two nodes; a query's 429 with Retry-After: 2 parks A for the bulk sender too, even once the probe
 // has A Available again (the round robin would alternate): every batch goes to B within the 2 s. Mutant: report()
 // ignores retryAfter.
 TEST_F(NodeRetryAfterTest, QueryThrottleParksNodeForBulk)
@@ -437,7 +437,7 @@ namespace
     }
 } // namespace
 
-// G-diff E6a obj. 1 (I98 with the I109b mirror): a park mirrored from a query's 429 must not break the pacing burst.
+// A park mirrored from a query's 429 must not break the pacing burst.
 // One node, its whole window (4) of one-op batches held, each scripted as a 429 without Retry-After; a query's 429 with
 // Retry-After: 3 parks the node (mirrored into the sender's notBefore, beyond now + pace); then the four 429 are
 // released: one burst doubles the pace once (pace == paceInitial, not x8), and once the park ends the batches go out

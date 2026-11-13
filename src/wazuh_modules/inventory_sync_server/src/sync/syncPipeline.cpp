@@ -76,7 +76,7 @@ namespace invsync::sync
         m_bulkSessionsTotal = m_metrics->getOrCreateCounter(
             invsync::metrics::BULK_SESSIONS_TOTAL, "Sessions answered 200 by group-commit flushes", "count");
         // sync.indexer.bulk.requests / bulk.bytes.total / conflict.retries are pull metrics of the
-        // facade now (read from the indexer client's own counters, I140); only the exhausted
+        // facade now (read from the indexer client's own counters); only the exhausted
         // conflicts are an outcome the pipeline decides.
         m_indexerConflictExhausted =
             m_metrics->getOrCreateCounter(invsync::metrics::INDEXER_CONFLICT_EXHAUSTED,
@@ -305,7 +305,7 @@ namespace invsync::sync
 
     void SyncPipeline::respondFailure(Item& item, indexer::ConnectorError::Cause cause)
     {
-        // Decided by the cause alone (I135): the cause already says whether the indexer was the
+        // Decided by the cause alone: the cause already says whether the indexer was the
         // problem, so nothing re-asks isAvailable() after the fact.
         const auto failure = indexer::failureResponse(cause, m_config.conflictRetryAfterSeconds);
         if (cause == indexer::ConnectorError::Cause::ConflictsExhausted)
@@ -363,7 +363,7 @@ namespace invsync::sync
 
         // The whole durability contract in one call: flushSessions() sends the staged operations on
         // THIS thread and answers, per session in staging order, whether the indexer took ALL of
-        // that session's operations (I136) -- REQ-SYNC-4 without registerNotify. A session answers
+        // that session's operations -- REQ-SYNC-4 without registerNotify. A session answers
         // for its own operations only: one rejected document no longer fails its batch-mates.
         std::vector<indexer::SessionOutcome> outcomes;
         // LCOV_EXCL_START -- flushSessions() reports indexer failures in its outcomes; this guards a
@@ -605,7 +605,7 @@ namespace invsync::sync
                 flushAndRespond(shard, batch, batchBytes, connector);
 
                 // The deletion's budget starts once the batch is answered, not at admission: it bounds
-                // this deletion's own I/O (the by-query and the by-id wait share it, I145), not the time
+                // this deletion's own I/O (the by-query and the by-id wait share it), not the time
                 // the item spent queued or the flush of earlier sessions.
                 const auto until = std::chrono::steady_clock::now() + m_config.agentDeletion.budget;
 
@@ -671,7 +671,7 @@ namespace invsync::sync
             if (stagingFailed)
             {
                 // Only an exception foreign to the connector lands here (a staging rejection marks
-                // its session instead of throwing, I142), so the open batch's staging state is
+                // its session instead of throwing), so the open batch's staging state is
                 // unknown: answer everything 500 and discard what is staged rather than send it.
                 // The agents re-POST; idempotence is what makes this recovery safe.
                 std::vector<Item> failed;
@@ -707,7 +707,7 @@ namespace invsync::sync
             }
 
             // Closes this session's range, so the batch's flushSessions() can answer it for its own
-            // operations (I136). Only after a staged outcome: a session that staged nothing is not
+            // operations. Only after a staged outcome: a session that staged nothing is not
             // in the batch.
             connector.endSession();
             batch.push_back(std::move(item));

@@ -61,7 +61,7 @@ namespace invsync::indexer
     };
 
     /**
-     * @brief The outcome of one session of a group commit (I136).
+     * @brief The outcome of one session of a group commit.
      *
      * `ok` is true only when every operation the session staged was confirmed; otherwise `cause` is
      * the session's class (Unavailable wins over the permanent ones: a transient failure is the one a
@@ -85,7 +85,7 @@ namespace invsync::indexer
     /**
      * @brief Seam over the module's writer, IndexerClientSyncAdapter (built on indexer_client).
      *
-     * The only connector seam left in the module (E7c): POST /stats, POST /config and the by-id half of a deletion
+     * The only connector seam left in the module: POST /stats, POST /config and the by-id half of a deletion
      * write through the Client's `agent-state` bucket directly, and keep no seam of their own.
      *
      * The seam exposes exactly what the sync pipeline needs and nothing more: `scopeLock`,
@@ -124,7 +124,7 @@ namespace invsync::indexer
         /**
          * @brief The same delete-by-query, for a whole-agent deletion: its caller (the Task Manager,
          *        through the deletion route) waits far longer than an agent's `/stateful` request, so
-         *        the implementation may give it a longer budget (I145). Defaults to deleteByQuery().
+         *        the implementation may give it a longer budget. Defaults to deleteByQuery().
          */
         virtual void
         deleteAgentByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName)
@@ -142,13 +142,13 @@ namespace invsync::indexer
         /// @brief Sends the staged bulk operations now, on the caller's thread. Throws on failure.
         virtual void flush() = 0;
 
-        /// @brief Closes the range of the session staged since the previous call (I136). A session
+        /// @brief Closes the range of the session staged since the previous call. A session
         ///        that staged nothing is never closed. Default: nothing to track.
         virtual void endSession() {}
 
         /**
          * @brief Sends what is staged and answers one outcome per closed session, in endSession()
-         *        order (I136). Never throws for an indexer failure: that is in the outcomes.
+         *        order. Never throws for an indexer failure: that is in the outcomes.
          *
          * The default keeps a connector without per-session results all-or-nothing, as flush() is:
          * every session succeeds or every one carries the flush's cause.

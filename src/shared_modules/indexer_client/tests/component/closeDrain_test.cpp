@@ -10,13 +10,13 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Client close and runtime shutdown with one deadline (plan-E5b §Tests, I99; write/writer.hpp «Close» is the
-// contract): requestClose() only closes the admission and the buckets keep draining (D43), awaitClosed(D) sweeps at
+// Client close and runtime shutdown with one deadline (write/writer.hpp «Close» is the
+// contract): requestClose() only closes the admission and the buckets keep draining, awaitClosed(D) sweeps at
 // drainEnd and returns with no callback starting afterwards, the callback cutoff and its counters, and the shutdown
-// sequence of E7/E10 (beginShutdown → requestClose → awaitClosed(shutdownDeadline()) → shutdown()) from the owner
-// thread. CloseDrainTest runs the production sink over the real transport against one fake node (bulkFixture.hpp);
-// CloseDrainSinkTest drives the test sink (writeFixture.hpp) where only the pool's timing matters. Time bounds of the
-// plan are scaled(). Every wait is bounded; every case ends with the charge and the retained ops at 0
+// sequence of the consumers' close (beginShutdown → requestClose → awaitClosed(shutdownDeadline()) → shutdown()) from
+// the owner thread. CloseDrainTest runs the production sink over the real transport against one fake node
+// (bulkFixture.hpp); CloseDrainSinkTest drives the test sink (writeFixture.hpp) where only the pool's timing matters.
+// Time bounds are scaled(). Every wait is bounded; every case ends with the charge and the retained ops at 0
 // (TearDown).
 
 #include <algorithm>
@@ -316,7 +316,7 @@ class CloseDrainSinkTest : public WriteTest
 {
 };
 
-// D43, CA-17: 205 ops with maxDocs 100 and maxAge 1 h (the last 5 under every threshold; the two full batches held by
+// 205 ops with maxDocs 100 and maxAge 1 h (the last 5 under every threshold; the two full batches held by
 // the fake), requestClose() and awaitClosed(now + 10 s): the 205 end Ok in < 2 s, all counted as drained; a submit
 // afterwards is ClientClosed. Mutant: requestClose() neither moves flushSeq nor notifies (the 5 wait for maxAge).
 TEST_F(CloseDrainTest, RequestCloseDrainsPending)
@@ -351,7 +351,7 @@ TEST_F(CloseDrainTest, RequestCloseDrainsPending)
     expectInvariants(stats("b"));
 }
 
-// I99 obj. 1: with only the admission closed a requeue keeps retrying: the node answers 503 for 1 s after
+// With only the admission closed a requeue keeps retrying: the node answers 503 for 1 s after
 // requestClose() and then 200; every op ends Ok after at least one retry and nothing is dropped. Mutant:
 // closeAdmission() also closes the bucket (m_closed), so the first requeue hands the ops back as closed.
 TEST_F(CloseDrainTest, CloseDrainRetriesDuringDrain)
@@ -400,10 +400,10 @@ TEST_F(CloseDrainTest, CloseDrainRetriesDuringDrain)
     expectInvariants(stats("b"));
 }
 
-// I99 obj. 2 (N2), CA-E6d-5: 50 pending ops (maxAge 1 h; node_window_max 1 and another bucket's batch held, so they
+// 50 pending ops (maxAge 1 h; node_window_max 1 and another bucket's batch held, so they
 // cannot leave) and one submit racing requestClose() from another thread, with no seam: the racing op is either
 // refused (ClientClosed, no callback) or accepted and then drained Ok like the 50 — never dropped, and never closing
-// the bucket (the old sweep of E3a) — so drained + droppedClientClosed == 51 + accepted(50). A submit or post started
+// the bucket (the former sweep) — so drained + droppedClientClosed == 51 + accepted(50). A submit or post started
 // after requestClose() returned is ClientClosed. The charge and the retained ops end at 0.
 TEST_F(CloseDrainTest, SubmitRacesCloseKeepsDrain)
 {
@@ -473,7 +473,7 @@ TEST_F(CloseDrainTest, SubmitRacesCloseKeepsDrain)
     expectInvariants(stats("b"));
 }
 
-// CA-E6d-3 (I122): 205 posted ops (the last 5 under every threshold, the two full batches held by the fake), then
+// 205 posted ops (the last 5 under every threshold, the two full batches held by the fake), then
 // requestClose() + awaitClosed(): CloseReport::drained counts all 205 although no Ticket or callback ties them to the
 // client, and the snapshot leaves none without a result (ok = 205, retained 0). Mutant m3: resolve finds no client
 // for a post op (drained 0).
@@ -509,7 +509,7 @@ TEST_F(CloseDrainTest, PostDrainedOnClose)
     ASSERT_TRUE(eventually([this] { return globalCharge() == 0; }, scaled(5000ms)));
 }
 
-// I99 obj. 3: two Clients destroyed from callbacks (runtime threads) with 20 pending ops each, whose `_bulk` the fake
+// Two Clients destroyed from callbacks (runtime threads) with 20 pending ops each, whose `_bulk` the fake
 // would hold: every op is resolved at once (Dropped(ClientClosed), nothing sent), the charge returns to 0 and each
 // destruction is a counted usage error. Mutant: ~Client on a runtime thread only closes the admission (the ops would
 // drain into the held node and stay unresolved).
@@ -563,7 +563,7 @@ TEST_F(CloseDrainTest, RuntimeThreadDestroyResolvesAll)
     ASSERT_TRUE(eventually([this] { return globalCharge() == 0; }, scaled(5000ms))) << describe(m_path->stats());
 }
 
-// CA-17: callback_budget_ms 2000 and D = now + 6 s (drainEnd = D - 4 s); the node holds its only window slot with 4
+// callback_budget_ms 2000 and D = now + 6 s (drainEnd = D - 4 s); the node holds its only window slot with 4
 // delivered ops and 50 more wait: awaitClosed returns in [drainEnd, drainEnd + 500 ms] with the 50
 // Dropped(ClientClosed) and the 4 Dropped(Shutdown), their transfer cancelled; the late answer changes nothing. Mutant:
 // the sweep at D.
@@ -616,7 +616,7 @@ TEST_F(CloseDrainTest, AwaitClosedSweepsAtDrainEnd)
     expectInvariants(stats("b"));
 }
 
-// I99 obj. 6 (CA-24): an op in the lane with notBefore = now + 10 s (a 429 with Retry-After: 10) and
+// An op in the lane with notBefore = now + 10 s (a 429 with Retry-After: 10) and
 // awaitClosed(now + 2 s): Dropped(ClientClosed) at drainEnd (1.6 s), not at 10 s, and never sent again before its
 // backoff.
 TEST_F(CloseDrainTest, CloseWithBackoffBeyondDrainEnd)
@@ -645,7 +645,7 @@ TEST_F(CloseDrainTest, CloseWithBackoffBeyondDrainEnd)
     expectInvariants(stats("b"));
 }
 
-// T12: cpu_threads 1, a 429 storm on one bucket and, on another, a callback of 3 x callbackBudget that is running at
+// cpu_threads 1, a 429 storm on one bucket and, on another, a callback of 3 x callbackBudget that is running at
 // the cutoff: awaitClosed returns by D with callbacksInFlight = 1; the storm's ops, swept at drainEnd and queued
 // behind the slow callback, never start theirs (callbacksSkipped >= 1); every callback of the client started before
 // awaitClosed returned. Mutant: no cutoff check (the cutoff decided without completionsMutex needs the seam:
@@ -707,7 +707,7 @@ TEST_F(CloseDrainTest, StormWithSlowCallbackAtDeadline)
 
     ASSERT_TRUE(eventually([&] { return results->count(0) == 1; }, scaled(5000ms)));
     ASSERT_TRUE(eventually([&] { return stats("storm").retained == 0; }, scaled(1000ms)));
-    const auto again = c->awaitClosed(in(scaled(2000ms))); // The counters, once the worker is free (N3).
+    const auto again = c->awaitClosed(in(scaled(2000ms))); // The counters, once the worker is free.
     ASSERT_TRUE(again.ok());
     EXPECT_GE(again.value.callbacksSkipped, 1u) << describe(again.value);
     EXPECT_EQ(again.value.callbacksSkipped + log->size(), 21u) << "every completion is a start or a skip";
@@ -716,7 +716,7 @@ TEST_F(CloseDrainTest, StormWithSlowCallbackAtDeadline)
     EXPECT_EQ(again.value.droppedClientClosed + again.value.droppedShutdown, 20u) << "queued or in flight at drainEnd";
 }
 
-// I99 obj. 7: D = now - 1 s with 10 completions queued behind a held worker (cpu_threads 1): awaitClosed returns in
+// D = now - 1 s with 10 completions queued behind a held worker (cpu_threads 1): awaitClosed returns in
 // < 100 ms, and once the worker is free every Ticket is complete and the 10 callbacks were skipped.
 TEST_F(CloseDrainSinkTest, AwaitClosedDeadlinePast)
 {
@@ -758,7 +758,7 @@ TEST_F(CloseDrainSinkTest, AwaitClosedDeadlinePast)
     EXPECT_EQ(results->total(), 0u) << "a callback ran past the cutoff";
 }
 
-// I99 obj. 7c: D - now = 100 ms with callbackBudget 200 ms (< 2 x budget): the sweep lands near now + 50 ms and the
+// D - now = 100 ms with callbackBudget 200 ms (< 2 x budget): the sweep lands near now + 50 ms and the
 // cutoff near now + 75 ms. Client x: its worker is free at + 55 ms, so its callback starts; client y: free at + 95 ms,
 // so its callback is skipped. The Ticket without callback completes at the sweep.
 TEST_F(CloseDrainSinkTest, ShortDeadlineHalves)
@@ -854,7 +854,7 @@ TEST_F(CloseDrainSinkTest, CallbackOverrunCounted)
     EXPECT_EQ(report.value.callbackOverruns, 1u) << describe(report.value);
 }
 
-// G-diff E5b obj. 1: a resolution is outstanding before it stops being retained. Ops A and B of one client are held by
+// A resolution is outstanding before it stops being retained. Ops A and B of one client are held by
 // the sink; after requestClose() A is resolved on another thread and parked right after its payload was released
 // (seam afterPayloadReleased), then B is resolved: Σ retained is 0 and the drain predicate holds while A is parked.
 // awaitClosed(now + 10 s) must still wait for A's completion: it does not return while A is parked, both callbacks
@@ -898,7 +898,7 @@ TEST_F(CloseDrainSinkTest, ResolutionOutstandingBeforeReleased)
     EXPECT_EQ(report->value.drained, 2u) << describe(report->value);
 }
 
-// G-diff E5b obj. 4: the cutoff gate decides and marks under completionsMutex. One completion is parked inside the
+// The cutoff gate decides and marks under completionsMutex. One completion is parked inside the
 // gate (seam inCallbackGate, after the comparison with the cutoff still open, before the mark) and its callback blocks
 // once started; awaitClosed(now - 1 s) from the owner thread must not return while the gate is open, and when it
 // returns the callback is counted as started (callbacksInFlight 1, nothing skipped). Mutant: the cutoff decided
@@ -939,7 +939,7 @@ TEST_F(CloseDrainSinkTest, CutoffGateHoldsAwaitClosed)
     EXPECT_NE(started->load(), 0) << "the callback never ran";
 }
 
-// T8, CA-17: three healthy consumers with N = (rate measured over 2 s) x 0.5 x the 5 s budget ops in total;
+// Three healthy consumers with N = (rate measured over 2 s) x 0.5 x the 5 s budget ops in total;
 // beginShutdown(now + 5 s), requestClose() on the three, awaitClosed(shutdownDeadline()) on each and shutdown():
 // every op Ok, nothing dropped, all within 5 s. Mutant: awaitClosed does not wait for the drain.
 TEST_F(CloseDrainTest, OneBeginShutdownThreeConsumersHealthy)
@@ -1020,7 +1020,7 @@ TEST_F(CloseDrainTest, OneBeginShutdownThreeConsumersHealthy)
     }
     EXPECT_EQ(ic::RuntimeOwner::shutdown(), ic::Cause::None);
     const auto took = now() - t0;
-    // On a failure: skipped > 0 with nothing dropped is a lost callback (G-diff obj. 1); dropped > 0 is a drain that
+    // On a failure: skipped > 0 with nothing dropped is a lost callback; dropped > 0 is a drain that
     // did not fit the budget (the calibration).
     std::string seen;
     for (const auto& report : reports)
@@ -1041,7 +1041,7 @@ TEST_F(CloseDrainTest, OneBeginShutdownThreeConsumersHealthy)
                 millis(took));
 }
 
-// T8, CA-17: the node is down (it holds every `_bulk`) and callbacks are running (one of them 1 s long): with
+// The node is down (it holds every `_bulk`) and callbacks are running (one of them 1 s long): with
 // beginShutdown(now + 2 s), requestClose() x 3, awaitClosed(D) x 3 and shutdown(), every op has a result, shutdown()
 // returns before D + margin and no callback started past its client's cutoff. The awaitClosed calls are sequential
 // with one D, so each later one has less left: its cutoff is D - callbackBudget only while D - call >= 2 x budget,
@@ -1163,7 +1163,7 @@ namespace
     }
 } // namespace
 
-// T8: SIGUSR1 blocked on the test (owner) thread before the fake, the runtime and the load exist, so only the owner
+// SIGUSR1 blocked on the test (owner) thread before the fake, the runtime and the load exist, so only the owner
 // can take it; its handler only sets a flag and writes an eventfd; kill(getpid()) during the load. The owner thread,
 // waiting on the eventfd, runs beginShutdown / requestClose / awaitClosed / shutdown(): it is not a runtime thread
 // (seams' tid registry) and shutdown() is None.
@@ -1254,7 +1254,7 @@ TEST_F(CloseDrainTest, SignalDuringActivityOwnerThread)
     ::close(efd);
 }
 
-// CA-17: a producer blocked on a full quota (Overflow::Block) and a query in its backoff after a 503: requestClose()
+// A producer blocked on a full quota (Overflow::Block) and a query in its backoff after a 503: requestClose()
 // from the test thread wakes both with ClientClosed in < 500 ms.
 TEST_F(CloseDrainTest, BlockedProducerAndQueryUnblock)
 {
@@ -1315,7 +1315,7 @@ TEST_F(CloseDrainTest, BlockedProducerAndQueryUnblock)
     EXPECT_EQ(searches(), 1u);
 }
 
-// T18, I99 obj. 12: K = 1. A callback calls requestClose() on its own client (returns at once; its pending ops
+// K = 1. A callback calls requestClose() on its own client (returns at once; its pending ops
 // drain); another destroys the last handle of its Client (a counted usage error, no deadlock, no self-join); a third
 // waits on a Ticket (Reentrancy at once). Two concurrent awaitClosed() on one client return the same CloseReport.
 TEST_F(CloseDrainTest, CallbackCloseAndDestroyK1)
@@ -1427,7 +1427,7 @@ TEST_F(CloseDrainTest, CallbackCloseAndDestroyK1)
     }
 }
 
-// I99: cpu_threads 1 with the worker held until past the runtime cutoff, 1 000 completions of a live client queued
+// cpu_threads 1 with the worker held until past the runtime cutoff, 1 000 completions of a live client queued
 // behind it, and shutdown() with a short deadline: it returns before deadline + margin, the callbacks past
 // stopDeadline - callbackBudget are skipped and every Ticket is complete. Mutant: stop() sets no callbackCutoff.
 TEST_F(CloseDrainSinkTest, ShutdownCutsCallbacksOfLiveClients)

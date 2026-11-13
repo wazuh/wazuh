@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_FAKE_TEST_TIME_SCALE_HPP
 #define _INDEXER_CLIENT_TESTS_FAKE_TEST_TIME_SCALE_HPP
 
-// The single time scale of the module's suites (plan 18, I113): every time bound of a test («< 1 s», a wait, an
+// The single time scale of the module's suites: every time bound of a test («< 1 s», a wait, an
 // observation window) goes through scaled(), which multiplies it by INDEXER_CLIENT_TEST_TIME_SCALE (an integer 1-20,
 // 1 when unset or empty) and by 3 under TSAN. The CI sets the variable per job (coverage, ASAN, TSAN); a value that is
 // not an integer in range aborts the run instead of silently testing with 1. The environment is read on the first

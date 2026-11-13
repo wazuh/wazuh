@@ -43,7 +43,7 @@ namespace invsync::test_hooks
      * Never called in production; modulesd only ever calls inventory_sync_server_start()/_stop().
      */
 
-    /// The module's Client (I144, I148): (opaque runtime, {`inventory`, `agent-state`} bucket specs) -> IClient.
+    /// The module's Client: (opaque runtime, {`inventory`, `agent-state`} bucket specs) -> IClient.
     using IndexerClientFactory = invsync::indexer::IndexerClientFactory;
     /// One worker's sync connector over that Client: (client, adapter options, closing flag, tag).
     using IndexerConnectorSyncFactory = invsync::indexer::IndexerConnectorSyncFactory;

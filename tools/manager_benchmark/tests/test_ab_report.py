@@ -4,7 +4,7 @@
 
 # run test: python3 -m pytest tests/test_ab_report.py -v
 
-"""Tests for the indexer A/B: the verdict rule (I204), the drain maths, collect, and the dry runs.
+"""Tests for the indexer A/B: the verdict rule, the drain maths, collect, and the dry runs.
 
 The verdict tests build sides at 0.90, 0.97 and 1.02 of each other: the three places around the
 0.95 / 1.00 thresholds that CA-E11c-2 names. The dry-run tests run the real scripts with
@@ -31,7 +31,7 @@ SCRIPTS = ("ab_indexer.sh", "ab_report.py", "indexer_ingest_probe.sh", "indexer_
 
 
 def idx_env(tmp_path, **extra):
-    """The indexer credentials and CA a real (non dry) run needs: there is no default (P-9)."""
+    """The indexer credentials and CA a real (non dry) run needs: there is no default."""
     ca = tmp_path / "indexer-ca.pem"
     ca.write_text("not a real CA: the stubs never verify it\n")
     return dict({"INDEXER_USER": "bench", "INDEXER_PASSWORD": "pw", "INDEXER_CACERT": str(ca)}, **extra)
@@ -49,7 +49,7 @@ def clean_env(**extra):
 def run(side, scenario, metrics, kind="drain", verdict=("docs_per_s_drain",), warmup=False, index="1",
         dropped=0, fraction=0.5):
     """One collected run. A drain run is comparable by default: it records indexer.events.dropped = 0
-    and indexes `fraction` of the events remoted accepted (I226). Every run of a side measured the
+    and indexes `fraction` of the events remoted accepted. Every run of a side measured the
     same binaries: one provenance sha256 per side."""
     doc = {"side": side, "scenario": scenario, "index": index, "kind": kind, "warmup": warmup,
            "verdict_metrics": list(verdict), "metrics": dict(metrics),
@@ -178,7 +178,7 @@ def test_a_side_that_indexed_a_smaller_fraction_is_incomparable_not_a_win():
 
 
 def test_the_smoke_case_fewer_documents_but_the_same_fraction_is_judged():
-    """I226, the E12 smoke: v2 got more 503s from remoted (98,000 events accepted against 100,000), so it
+    """v2 got more 503s from remoted (98,000 events accepted against 100,000), so it
     drained 1.4 % fewer documents, but both sides indexed exactly half of what reached the engine."""
     entry = ab.compare(drained(50000, 49000, v1_accepted=100000, v2_accepted=98000))["scenarios"]["drain-engine"]
     assert entry["verdict"] == "PASS"
@@ -681,7 +681,7 @@ def test_prepare_manager_side_dry_run_says_what_is_missing(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Round 2 of the G-diff: campaigns, wait_quiet, docker pause, missing results dir, sizing, patterns
+# Campaigns, wait_quiet, docker pause, missing results dir, sizing, patterns
 # ---------------------------------------------------------------------------
 def write_stub(path, body):
     path.write_text("#!/usr/bin/env bash\n" + body)
@@ -786,7 +786,7 @@ def probe_harness(tmp_path, sequence, quiet=2, timeout=30, floor=1):
 
 
 def test_wait_quiet_has_no_expected_end_only_quiet(tmp_path):
-    """I226: no total is known ahead, so even a count equal to everything the sender sent waits for the quiet."""
+    """No total is known ahead, so even a count equal to everything the sender sent waits for the quiet."""
     fields, calls = probe_harness(tmp_path, [1, 2, 3, 3, 3, 3], quiet=3)
     assert fields == {"rc": "0", "end": "quiet", "final": "3"} and calls == 6
     src = open(os.path.join(BENCH, "ab_indexer.sh")).read()
@@ -865,7 +865,7 @@ def test_the_drain_backlog_fits_both_queues():
         assert f"analysisd.indexer_queue_max_bytes={quota}" in text
     v2 = open(os.path.join(BENCH, "ab_options", "v2.conf")).read()
     assert "analysisd.indexer_client_global_quota_bytes=2147483648" in v2
-    assert "wazuh_modules.indexer_client_global_quota_bytes" not in v2   # modulesd's key does not reach the engine (I227)
+    assert "wazuh_modules.indexer_client_global_quota_bytes" not in v2   # modulesd's key does not reach the engine
     assert events == 100000
     assert events * (3072 + 2048) <= quota // 2          # v2, 3 KiB payload: under half the quota
     assert events * 3072 <= quota // 2                   # v1 charges the payload only
@@ -896,10 +896,10 @@ def test_drain_syscollector_waits_on_the_inventory_indices_only(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# E12 (I226): the lock the daemons inherited, the probe's address, the cleaner's password, the drain record
+# The lock the daemons inherited, the probe's address, the cleaner's password, the drain record
 # ---------------------------------------------------------------------------
 def test_the_daemons_a_run_starts_do_not_inherit_the_measure_lock(tmp_path):
-    """A1 of the E12 smoke: `flock LOCK bash ...` without -o left the lock's descriptor open in the manager
+    """`flock LOCK bash ...` without -o left the lock's descriptor open in the manager
     daemons that prepare_manager.sh --side restarts, so the lock stayed taken after the campaign. Here the
     restore stub leaves a detached daemon behind; once the campaign is over the lock must be free."""
     work = bench_copy(tmp_path)
@@ -930,7 +930,7 @@ def print_url(env_extra):
 
 
 def test_the_probe_address_comes_from_the_manager_config_else_127_0_0_1(tmp_path):
-    """A2 of the E12 smoke: `localhost` is not in the e2e node's certificate (IP:127.0.0.1, DNS:wazuh-indexer)."""
+    """`localhost` is not in the e2e node's certificate (IP:127.0.0.1, DNS:wazuh-indexer)."""
     conf = tmp_path / "wazuh-manager.conf"
     conf.write_text("<wazuh_config><indexer><hosts><host>https://10.1.2.3:9200</host>"
                     "<host>https://10.9.9.9:9200</host></hosts></indexer></wazuh_config>\n")
@@ -1071,7 +1071,7 @@ def test_a_drain_campaign_whose_engine_dropped_or_did_not_answer_is_incomparable
 
 
 def test_a_failed_agent_cleanup_aborts_the_run(tmp_path):
-    """D111: a cleanup that leaves bench-* agents makes the next enrollment answer 409: the run is not measured."""
+    """A cleanup that leaves bench-* agents makes the next enrollment answer 409: the run is not measured."""
     work = bench_copy(tmp_path)
     env = drain_stubs(tmp_path, work)
     env["AB_CLEANUP_FAIL"] = "1"
@@ -1089,7 +1089,7 @@ def sessions_drain(v1_docs, v2_docs, v1_abandoned=32, v2_abandoned=32):
 
 
 def test_a_sessions_drain_that_retained_fewer_documents_is_incomparable_not_a_win():
-    """The E12 campaign: v2's inventory sync answered 503 while the indexer was paused, the sender gave up
+    """A campaign: v2's inventory sync answered 503 while the indexer was paused, the sender gave up
     after its retry budget, and v2 indexed 10,000-22,000 documents against v1's 36,000: its higher
     sessions/s measured how fast it rejected. That must not read as a PASS."""
     entry = ab.compare(sessions_drain([36000] * 4, [22000, 18000, 22000, 10000], 32, 54))["scenarios"]["drain-syscollector"]
@@ -1121,7 +1121,7 @@ def test_collect_counts_the_abandoned_sessions(tmp_path):
 
 
 def test_syscollector_drain_scenario_never_abandons_a_session():
-    """I227: the syscollector A/B drain must not abandon sessions shed with 503 during the pause (the 2026-10-27
+    """The syscollector A/B drain must not abandon sessions shed with 503 during the pause (the 2026-10-27
     campaign was INCOMPARABLE because the sender gave up after ~5 s of 503s): retries are unbounded, cut by drain."""
     scenario = json.load(open(os.path.join(BENCH, "scenarios", "ab_drain_syscollector_debian.json")))
     retry = scenario["defaults"]["retry"]
@@ -1130,7 +1130,7 @@ def test_syscollector_drain_scenario_never_abandons_a_session():
 
 
 # ---------------------------------------------------------------------------
-# E12 retomada: P-9 (no default indexer credential, no silent -k), A2 (readiness), A6 (index_total)
+# No default indexer credential and no silent -k, readiness, index_total
 # ---------------------------------------------------------------------------
 def run_probe(tmp_path, env_extra, args=("--once", "--patterns", "wazuh-events*")):
     log = tmp_path / "curl.log"
@@ -1149,7 +1149,7 @@ def argv_lines(log):
 
 @pytest.mark.parametrize("partial", [{}, {"INDEXER_USER": "admin"}, {"INDEXER_PASSWORD": "pw"}])
 def test_the_probe_without_credentials_fails_and_never_tries_admin_admin(tmp_path, partial):
-    """P-9: no INDEXER_USER/INDEXER_PASSWORD pair and no credentials file -> a clear error, exit 1, no request."""
+    """No INDEXER_USER/INDEXER_PASSWORD pair and no credentials file -> a clear error, exit 1, no request."""
     out, log = run_probe(tmp_path, dict(partial, INDEXER_CACERT=str(idx_env(tmp_path)["INDEXER_CACERT"])))
     assert out.returncode == 1, out.stdout + out.stderr
     assert ("no indexer credentials" in out.stderr) if not partial else ("set both INDEXER_USER" in out.stderr)
@@ -1295,7 +1295,7 @@ def test_a_deferred_agent_deletion_is_retried_not_fatal(tmp_path):
 
 
 def test_index_total_delta_needs_the_pre_pause_baseline(tmp_path):
-    """A6: the E12 v2 drain-engine run: the first sample's _stats did not answer (the pause raced it), the
+    """A v2 drain-engine run: the first sample's _stats did not answer (the pause raced it), the
     whole drain fitted between two samples, so every complete row read 506301 and the delta came out 0."""
     probe = tmp_path / "probe.csv"
     probe.write_text("epoch,pattern,count,index_total\n"

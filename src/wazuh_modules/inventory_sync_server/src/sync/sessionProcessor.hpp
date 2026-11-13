@@ -46,7 +46,7 @@ namespace invsync::sync
     SessionKind classify(const ValidatedSession& session) noexcept;
 
     /**
-     * @brief The by-id half of a whole-agent deletion (I147, I147b, I147c, I147d), handed to every worker.
+     * @brief The by-id half of a whole-agent deletion, handed to every worker.
      *
      * Default-constructed (`byId == false`) the deletion runs only its by-query half -- what unit tests built on the
      * sync fakes alone exercise. In production the facade sets `byId` and the weak handles: an expired `agentState`
@@ -55,10 +55,10 @@ namespace invsync::sync
     struct AgentDeletionDeps
     {
         bool byId {false};
-        std::weak_ptr<indexer_client::IWriter> agentState;  ///< The `agent-state` bucket's writer (I148).
-        std::weak_ptr<indexer::AgentDeleteSweeper> sweeper; ///< note()d once the by-id deletes succeeded (I146).
-        std::shared_ptr<const std::atomic<bool>> closing;   ///< The module's closing flag (I141); null = never.
-        std::chrono::milliseconds budget {70000};           ///< Budgets::deletion: by-query + by-id wait (I145).
+        std::weak_ptr<indexer_client::IWriter> agentState;  ///< The `agent-state` bucket's writer.
+        std::weak_ptr<indexer::AgentDeleteSweeper> sweeper; ///< note()d once the by-id deletes succeeded.
+        std::shared_ptr<const std::atomic<bool>> closing;   ///< The module's closing flag; null = never.
+        std::chrono::milliseconds budget {70000};           ///< Budgets::deletion: by-query + by-id wait.
         std::chrono::milliseconds slice {250};              ///< Granularity of the by-id wait (closing, ready()).
     };
 
@@ -122,18 +122,18 @@ namespace invsync::sync
 
         /**
          * @brief The whole-agent deletion behind POST /_internal/agents/delete (design doc 04), run on the agent's
-         *        shard worker so two deletions of one agent never overlap (I147c). Immediate-style: the caller must
+         *        shard worker so two deletions of one agent never overlap. Immediate-style: the caller must
          *        have cut and answered the batch first, and computes `until` (= now + deletion.budget) right after.
          *
          * With `deletion.byId`: cancel(agent) on `agent-state` (drops the agent's pending /stats and /config writes),
-         * then ONE Group with the deletes of AGENT_DELETION_SCOPE_BY_ID tagged with the agent and committed at once
-         * (I147d). Then the by-query over AGENT_DELETION_SCOPE_BY_QUERY (this cluster's `wazuh-states-*`) through
-         * deleteAgentByQuery, which bounds itself (I145b). Then the Group's ticket is waited until `until`, in slices
+         * then ONE Group with the deletes of AGENT_DELETION_SCOPE_BY_ID tagged with the agent and committed at once.
+         *Then the by-query over AGENT_DELETION_SCOPE_BY_QUERY (this cluster's `wazuh-states-*`) through
+         * deleteAgentByQuery, which bounds itself. Then the Group's ticket is waited until `until`, in slices
          * that watch `closing` and ready(). A by-id result Failed(ItemPermanent) with 404 index_not_found_exception
-         * counts as success (I147b), like a missing index on the by-query half. On a refusal, a failure, the
-         * deadline or closing it cancel(agent)s without waiting and throws ConnectorError with the I135 class; on
-         * success it note()s the agent to the sweeper. State documents written inside the index refresh interval
-         * can survive the by-query: see the note on the implementation.
+         * counts as success, like a missing index on the by-query half. On a refusal, a failure, the
+         * deadline or closing it cancel(agent)s without waiting and throws ConnectorError with the failure class of its
+         * cause; on success it note()s the agent to the sweeper. State documents written inside the index refresh
+         * interval can survive the by-query: see the note on the implementation.
          */
         ProcessOutcome executeDeleteAgent(const std::string& agentId,
                                           indexer::IIndexerConnectorSync& connector,

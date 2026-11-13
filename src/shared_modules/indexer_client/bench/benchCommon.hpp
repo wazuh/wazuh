@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_BENCH_COMMON_HPP
 #define _INDEXER_CLIENT_BENCH_COMMON_HPP
 
-// Helpers shared by both benchmark executables (plan 18, E2c, I58): command line, the 4 MiB bulk body, CPU time from
+// Helpers shared by both benchmark executables: command line, the 4 MiB bulk body, CPU time from
 // /proc, the affinity and the libwazuhext the process really mapped (provenance), and the CSV row.
 
 #include <openssl/evp.h>
@@ -262,7 +262,7 @@ namespace bench
         return hex.str();
     }
 
-    /// One CSV row (I58 column order). Empty optional = empty field (the v1 has no transfer timings).
+    /// One CSV row (the harness's column order). Empty optional = empty field (the v1 has no transfer timings).
     struct Row final
     {
         std::string mode;

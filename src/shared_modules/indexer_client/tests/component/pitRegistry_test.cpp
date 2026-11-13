@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The PIT registry end to end (plan 18, plan-E4b §Tests; contract: src/query/pit.hpp CREATE slots, LIFETIME AND
+// The PIT registry end to end (contract: src/query/pit.hpp CREATE slots, LIFETIME AND
 // DELETE, SHUTDOWN, STATS): the open-PIT cap, the reservation of a creation of unknown result, the DELETE with its
 // retries and its expiry, and the shutdown drain, over the real transport and the fake indexer's PitResponder.
 
@@ -45,7 +45,7 @@ namespace
     }
 } // namespace
 
-// I91, T19: maxOpenPits = 2. The first creation's answer is cut after it was sent (the PIT may exist) and the
+// maxOpenPits = 2. The first creation's answer is cut after it was sent (the PIT may exist) and the
 // failover attempt creates: Ok, reserved = 1, open = 1; one more pit() ⇒ QueueFull without a request; once the
 // keepAlive passed, pitStats().reserved = 0 without another pit(), and a pit() gets in. Mutant: no reservation.
 TEST_F(PitTest, LostCreateReserves)
@@ -147,7 +147,7 @@ TEST_F(PitTest, RefusedCreate2xxReserves)
     }
 }
 
-// I91: a creation held by the fake and abandoned, (1) by its Deadline ⇒ Unavailable, (2) by requestClose() ⇒
+// A creation held by the fake and abandoned, (1) by its Deadline ⇒ Unavailable, (2) by requestClose() ⇒
 // ClientClosed: each leaves one reservation until its keepAlive, then none. Mutant: a cancelled attempt frees its slot.
 TEST_F(PitTest, CancelledCreateReserves)
 {
@@ -195,7 +195,7 @@ TEST_F(PitTest, CancelledCreateReserves)
     EXPECT_EQ(q::pitStats().open, 0u);
 }
 
-// I89: maxOpenPits = 2: a creation answered 400 leaves open + reserved as it was; with two open the third pit() ⇒
+// maxOpenPits = 2: a creation answered 400 leaves open + reserved as it was; with two open the third pit() ⇒
 // QueueFull without a request (refusedFull + 1); once one is released and deleted (bounded poll) open = 1 and a
 // pit() gets in.
 TEST_F(PitTest, PitCapRefuses)
@@ -246,7 +246,7 @@ TEST_F(PitTest, PitCapRefuses)
     EXPECT_EQ(pits->requests(PitCall::Create), 4u);
 }
 
-// I90: the DELETE answered 503 twice and then 200: confirmed, deleteRetries = 2, deletesPending 0, the slot free;
+// The DELETE answered 503 twice and then 200: confirmed, deleteRetries = 2, deletesPending 0, the slot free;
 // every DELETE carries {"pit_id": id} with the id renewed by a search, spaced by the 1 s backoff. Mutant: no retry.
 TEST_F(PitTest, DeleteRetriesUntilConfirmed)
 {
@@ -367,7 +367,7 @@ TEST_F(PitTest, DeleteUnsuccessfulUntilExpiry)
     EXPECT_GE(pitDeletes(*node).size(), 2u) << "never retried";
 }
 
-// I90: the node fails every DELETE (connection cut; the probe brings it back every 300 ms): the DELETE is retried until
+// The node fails every DELETE (connection cut; the probe brings it back every 300 ms): the DELETE is retried until
 // lastUse + keepAlive (never past it, never expired before it), then deletesExpired + 1, the slot free, and no request
 // afterwards; deleteRetries counts the requests sent after the first, never a wait without a usable node.
 TEST_F(PitTest, DeleteExpiresWithoutIndexer)
@@ -425,7 +425,7 @@ TEST_F(PitTest, DeleteExpiresWithoutIndexer)
     EXPECT_EQ(pitDeletes(*node).size(), deletes.size()) << "a request after the expiry";
 }
 
-// I93 (SHUTDOWN): two live Pits at shutdown() ⇒ two DELETEs confirmed before it returns, and their later destruction
+// SHUTDOWN: two live Pits at shutdown() ⇒ two DELETEs confirmed before it returns, and their later destruction
 // sends nothing; with a DELETE held by the fake, the drain waits for it until DRAIN_STOP_MARGIN before the deadline
 // (drain_ms 2 s), shutdown() returns before that deadline (never scaled) and the held one counts as expired.
 TEST_F(PitTest, ShutdownDeletesOpenPits)
@@ -488,7 +488,7 @@ TEST_F(PitTest, ShutdownDeletesOpenPits)
     one.reset();
 }
 
-// G-diff E6a obj. 8 (I109): the DELETE of a PIT whose only node is parked is rescheduled to the end of the park
+// The DELETE of a PIT whose only node is parked is rescheduled to the end of the park
 // (NodeSet::earliestNotBefore()), not to min(delete backoff, probe interval): one node, a PIT open, the node parked for
 // 300 ms by a 429 with Retry-After reported to the NodeSet (what a query's 429 does; a Retry-After header counts whole
 // seconds, which the 1 s ± 50 % delete backoff could not be told apart from), then the last handle goes ⇒ the one

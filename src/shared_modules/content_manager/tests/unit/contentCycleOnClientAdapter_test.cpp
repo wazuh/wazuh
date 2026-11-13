@@ -11,7 +11,7 @@
  */
 
 // The content cycle (PitSession -> PitPaginator -> ContentCycle) on the indexer_client adapter, over a real runtime
-// and the library's fake indexer (E9, CA-22 content, CA-23 consumer side: T14, T19).
+// and the library's fake indexer (content side and consumer side).
 
 #include "components/contentCycle.hpp"
 #include "fakes/fakeIndexerQueryPort.hpp"
@@ -112,7 +112,7 @@ namespace
     }
 } // namespace
 
-// ---------------------------------------------------------------- CA-22 (content)
+// ---------------------------------------------------------------- Content side
 
 TEST(ContentCycleOnClientAdapter, FullDownload)
 {
@@ -141,7 +141,7 @@ TEST(ContentCycleOnClientAdapter, FullDownload)
 TEST(ContentCycleOnClientAdapter, TooLargePagesAreHalved)
 {
     CycleOnAdapter harness;
-    // Content pages are capped by max_response_bytes itself (I229): any page asking for more than 12 hits gets a
+    // Content pages are capped by max_response_bytes itself: any page asking for more than 12 hits gets a
     // 100000-byte body, over the 80000 of max_response_bytes.
     const std::string padded = R"({"took":1,"hits":{"hits":[]},"pad":")" + std::string(100000, 'x') + R"("})";
     harness.env.pits->intercept(
@@ -247,7 +247,7 @@ TEST(ContentCycleOnClientAdapter, RestartFromToken)
     EXPECT_EQ(harness.env.pits->requests(PitCall::Delete), 1U);
 }
 
-// ---------------------------------------------------------------- CA-23 (T14, T19)
+// ---------------------------------------------------------------- Consumer side
 
 TEST(ContentCycleOnClientAdapter, ExpiredMidwayResumes)
 {

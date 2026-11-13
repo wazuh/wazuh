@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_TESTS_OPENSEARCH_SUPPORT_HPP
 #define _INDEXER_CLIENT_TESTS_OPENSEARCH_SUPPORT_HPP
 
-// Suite against a real OpenSearch (plan 18, E6b, I110). Gate: without INDEXER_CLIENT_OPENSEARCH_URL every case is
+// Suite against a real OpenSearch. Gate: without INDEXER_CLIENT_OPENSEARCH_URL every case is
 // skipped, except under GITHUB_ACTIONS, where a missing URL fails (the workflow must never go green by skipping).
 // With the URL, requireCluster() polls /_cluster/health and fails when the cluster does not answer in the budget (once
 // per run: later cases fail at once). The global setup DELETES every `ic-e6b-*` index left by an earlier run; never
@@ -43,9 +43,9 @@ namespace indexer_client::opensearch
     constexpr const char* URL_ENV = "INDEXER_CLIENT_OPENSEARCH_URL";
     constexpr const char* INDEX_PREFIX = "ic-e6b-";
     constexpr const char* MEASURE = "E6B-MEASURE ";
-    /// Issue 26: a node whose `http.max_content_length` is low (CI and README: 16kb).
+    /// A node whose `http.max_content_length` is low (CI and README: 16kb).
     constexpr const char* SMALL_URL_ENV = "INDEXER_CLIENT_OPENSEARCH_SMALL_URL";
-    /// Issue 27: the docker container (name or id) of the URL_ENV node; never the e2e `wazuh-indexer`.
+    /// The docker container (name or id) of the URL_ENV node; never the e2e `wazuh-indexer`.
     constexpr const char* CONTAINER_ENV = "INDEXER_CLIENT_OPENSEARCH_CONTAINER";
 
     /// The gate and the probe. `url` null or empty ⇒ GTEST_SKIP, or FAIL when GITHUB_ACTIONS is set (`env` names the

@@ -57,7 +57,7 @@ size_t getTotalHits(const nlohmann::json& hits)
 /// budget overrun the page by its 1 s grace before it reports the node, and the call must not cut that short.
 constexpr std::chrono::milliseconds REMOTE_CONF_DEADLINE_MARGIN {5000};
 /// While no node is usable yet (before the first probe round), the most a read waits for one, as the content adapter's
-/// probeDeadline does (I158b): it must not hold a scheduler thread for a whole request timeout.
+/// probeDeadline does: it must not hold a scheduler thread for a whole request timeout.
 constexpr std::chrono::milliseconds REMOTE_CONF_NODE_WAIT {10000};
 
 /// The remote configuration query, the same body the v1 connector sent.
@@ -110,7 +110,7 @@ json::Json engineConfigFromHits(const nlohmann::json& hits)
 }
 
 /// The remote configuration through the engine's Client: one attempt, a page deadline of the request timeout and an
-/// immediate failure once every node was probed and none is usable (I190, I190b). Every failure throws.
+/// immediate failure once every node was probed and none is usable. Every failure throws.
 json::Json remoteConfigFromClient(indexer_client::IClient& reader, std::chrono::milliseconds requestTimeout)
 {
     if (const auto why = reader.health().noUsableAfterProbes())
@@ -334,7 +334,7 @@ void WIndexerConnector::refreshLocked()
     {
         totals.retainedBytes += bucket.retainedBytes;
         charge += bucket.charge;
-        // I218: each bucket against its own quota (the runtime keeps it <= the global quota); a bucket without a
+        // Each bucket against its own quota (the runtime keeps it <= the global quota); a bucket without a
         // quota adds nothing (no division by zero).
         if (bucket.quotaBytes != 0)
         {
@@ -354,7 +354,7 @@ void WIndexerConnector::refreshLocked()
             totals.dropped += count;
         }
     }
-    // I218: the global budget drops too (`GlobalFull`) when it binds (2 x quota > global, e.g. a quota of 0), so the
+    // The global budget drops too (`GlobalFull`) when it binds (2 x quota > global, e.g. a quota of 0), so the
     // sum against the capacity also counts. When the global quota does not bind it never exceeds the fullest bucket.
     if (m_queueCapacityBytes != 0)
     {

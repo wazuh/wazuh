@@ -32,7 +32,7 @@
 #include "write/sink.hpp"
 #include "write/writer.hpp"
 
-// The DRR scheduler (plan 18, I63/I23). Everything below "loop 0 only" is created, read, changed and destroyed only by
+// The DRR scheduler. Everything below "loop 0 only" is created, read, changed and destroyed only by
 // handlers running on network loop 0 (the Prober's pattern): the ring, the cursor, the credits and the maxAge timers.
 // Other threads only append to the notification list and post a pass; posts capture the shared state, never `this`.
 
@@ -47,10 +47,10 @@ namespace indexer_client::detail::write
         struct Entry final
         {
             BucketKey bucket;
-            /// DRR deficit; may go negative (debt, I118), kept across turns and when the bucket empties.
+            /// DRR deficit; may go negative (debt), kept across turns and when the bucket empties.
             std::int64_t credit {0};
             bool inTurn {false};         ///< The turn was cut by the sink's capacity: resume it without new credit.
-            std::size_t turnBatches {0}; ///< Batches of the current turn (weight x DRR_MAX_BATCHES_PER_TURN, I97b).
+            std::size_t turnBatches {0}; ///< Batches of the current turn (weight x DRR_MAX_BATCHES_PER_TURN).
             bool inRing {false};
             std::unique_ptr<asio::steady_timer> timer; ///< maxAge timer, armed from the oldest pending op.
             std::optional<TimePoint> due;              ///< Expiry the timer is armed for (none when idle).
@@ -70,11 +70,11 @@ namespace indexer_client::detail::write
             const std::uint64_t quantum;
 
             std::atomic<std::uint64_t> runs {0};
-            std::atomic<std::uint64_t> posts {0}; ///< notify/notifyAll calls, before coalescing (E6a).
+            std::atomic<std::uint64_t> posts {0}; ///< notify/notifyAll calls, before coalescing.
             std::atomic<std::uint64_t> batches {0};
             std::atomic<std::uint64_t> timerFires {0};
             std::atomic<std::uint64_t> fastForwards {0};
-            /// I118 invariant violations (credit <= -maxBytes after a batch).
+            /// Invariant violations (credit <= -maxBytes after a batch).
             std::atomic<std::uint64_t> debtOverruns {0};
 
             std::mutex mutex; ///< Guards the three members below.
@@ -115,10 +115,10 @@ namespace indexer_client::detail::write
         }
 
         /// Loop 0 only: arms (or re-arms) `entry`'s timer to the bucket's nextDue() (oldest pending op + maxAge, or the
-        /// retry-lane head's notBefore, whichever comes first; E3b-2). An
+        /// retry-lane head's notBefore, whichever comes first). An
         /// already-due expiry is not armed (arming it would spin while the sink has no capacity, which
         /// WritePath::sinkReady() ends) and is reported: an op that expired during the pass was not eligible when the
-        /// pass read the buckets, so the caller runs another pass for it. E6e (B): the stripes' deadline does not
+        /// pass read the buckets, so the caller runs another pass for it. The stripes' deadline does not
         /// wait for capacity, so with nextDue already past the timer is armed at Bucket::stripeDue() when that one is
         /// still ahead (no spin: it is in the future, and the pass it wakes flushes that stripe).
         bool armTimer(const std::shared_ptr<SchedulerShared>& shared, Entry& entry, const Bucket& bucket, TimePoint now)
@@ -130,7 +130,7 @@ namespace indexer_client::detail::write
                 if (*due <= now)
                 {
                     dueNow = true;
-                    // G-diff E6e r2 P2: an expired pending head (or a committed group's, TimePoint::min()) would
+                    // An expired pending head (or a committed group's, TimePoint::min()) would
                     // otherwise mask the stripes' later deadline and leave staged ops waiting for sink capacity.
                     // Read after invalidateArmedDue like nextDue's: the same half of stage()'s Dekker pair.
                     due = bucket.stripeDue();
@@ -140,12 +140,12 @@ namespace indexer_client::detail::write
                     }
                 }
             }
-            // D116: from the nextDue read above (the stripes' `oldest`) to the publish below, m_armedDue stays
+            // From the nextDue read above (the stripes' `oldest`) to the publish below, m_armedDue stays
             // invalidated, so a stripe that becomes non-empty in between notifies (another pass reads it).
             seams::beforePublishArmedDue(); // StageRacingPassArmsDeadline: a post staged in this window.
             if (due == entry.due)
             {
-                bucket.publishArmedDue(due); // D116: still armed at it (invalidated at the pass start).
+                bucket.publishArmedDue(due); // Still armed at it (invalidated at the pass start).
                 return dueNow;
             }
             entry.due = due;
@@ -177,7 +177,7 @@ namespace indexer_client::detail::write
                     }
                     runPass(shared);
                 });
-            bucket.publishArmedDue(due); // D116: after the timer is armed.
+            bucket.publishArmedDue(due); // After the timer is armed.
             return dueNow;               // An expired nextDue is still reported (armed at the stripes' deadline only).
         }
 
@@ -200,7 +200,7 @@ namespace indexer_client::detail::write
         }
 
         /// Loop 0 only: every bucket in the ring had a turn and none could emit (credit <= 0: a quantum small against
-        /// the documents, or a debt being paid back, I118). Adds at once the credit of the k - 1 empty rounds classic
+        /// the documents, or a debt being paid back). Adds at once the credit of the k - 1 empty rounds classic
         /// DRR would still spin through, k being the fewest rounds after which some bucket has credit > 0; the next
         /// turn adds the k-th. Same outcome, no spin.
         void fastForward(SchedulerShared& shared)
@@ -263,7 +263,7 @@ namespace indexer_client::detail::write
             return false;
         }
 
-        /// Loop 0 only. DRR over the ring (I63, I118): returns when the ring is exhausted (no eligible bucket left) or
+        /// Loop 0 only. DRR over the ring: returns when the ring is exhausted (no eligible bucket left) or
         /// when the sink has no capacity (the cursor stays on the bucket whose turn was cut).
         void drr(const std::shared_ptr<SchedulerShared>& shared, BatchSink& sink, TimePoint now)
         {
@@ -281,7 +281,7 @@ namespace indexer_client::detail::write
                 {
                     if (bucket && bucket->empty() && it != shared->entries.end())
                     {
-                        it->second.credit = std::min<std::int64_t>(it->second.credit, 0); // The debt is kept (I118).
+                        it->second.credit = std::min<std::int64_t>(it->second.credit, 0); // The debt is kept.
                     }
                     removeFromRing(*shared, index);
                     continue;
@@ -312,7 +312,7 @@ namespace indexer_client::detail::write
                     }
                     if (entry.turnBatches >= maxBatches && otherEligible(*shared, index, now))
                     {
-                        yielded = true; // I97b: another bucket waits; the leftover credit is kept, capped below.
+                        yielded = true; // Another bucket waits; the leftover credit is kept, capped below.
                         break;
                     }
                     if (sink.capacity() == 0)
@@ -320,14 +320,14 @@ namespace indexer_client::detail::write
                         capacityExhausted = true;
                         break;
                     }
-                    // Up to bulk.maxBytes (and the sink's batchLimit), whatever the credit (I118).
+                    // Up to bulk.maxBytes (and the sink's batchLimit), whatever the credit.
                     auto batch = bucket->slice(now, sink.batchLimit());
                     if (batch.ops.empty())
                     {
                         stuck = true; // Never expected (slice always takes the head of an eligible bucket).
                         break;
                     }
-                    // No floor: the excess over the credit is a debt the next turns pay back (I118). Every document
+                    // No floor: the excess over the credit is a debt the next turns pay back. Every document
                     // fits in bulk.maxBytes (admission) and the turn emits only with credit > 0, so the debt stays
                     // above -bulk.maxBytes; reaching it is a bug, counted (the tests require 0) and never corrected in
                     // silence. No assert: the manager's Release builds keep asserts live (no NDEBUG).
@@ -357,7 +357,7 @@ namespace indexer_client::detail::write
                 }
                 else if (bucket->empty())
                 {
-                    entry.credit = std::min<std::int64_t>(entry.credit, 0); // The debt is kept (I118).
+                    entry.credit = std::min<std::int64_t>(entry.credit, 0); // The debt is kept.
                     removeFromRing(*shared, index);
                 }
                 else if (stuck || !bucket->eligible(now))
@@ -406,7 +406,7 @@ namespace indexer_client::detail::write
                     entry.bucket = key;
                 }
             }
-            // E6e (B): the stripes whose deadline passed are flushed first, with no lock held and whatever the sink's
+            // The stripes whose deadline passed are flushed first, with no lock held and whatever the sink's
             // capacity (a staged op never waits for the indexer to be admitted); their dedup flag is cleared below
             // with the others, since this pass reads the buckets afterwards.
             const auto start = std::chrono::steady_clock::now();
@@ -418,7 +418,7 @@ namespace indexer_client::detail::write
                 {
                     bucket->flushDueStripes(start);
                     bucket->clearNotified();
-                    bucket->invalidateArmedDue(); // D116: republished by armTimer below.
+                    bucket->invalidateArmedDue(); // Republished by armTimer below.
                     ++it;
                 }
                 else
@@ -459,7 +459,7 @@ namespace indexer_client::detail::write
             {
                 if (auto bucket = entry.bucket.lock())
                 {
-                    // E6e (B): a stripe deadline that passed during the pass is flushed here, so armTimer never sees
+                    // A stripe deadline that passed during the pass is flushed here, so armTimer never sees
                     // one already due (it would not re-arm it without capacity); a flush that crossed a threshold
                     // asks for another pass.
                     if (bucket->flushDueStripes(after))

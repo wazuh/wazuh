@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The ordered shutdown (plan-E2a-1 §Tests, lot A: D28, T20, I38b).
+// The ordered shutdown.
 
 #include <dlfcn.h>
 #include <netdb.h>
@@ -86,7 +86,7 @@ extern "C" int getaddrinfo(const char* node, const char* service, const struct a
     return real(node, service, hints, res);
 }
 
-// D28: 10 000 results queued in a blocked CPU pool and transfers still in flight when the shutdown starts. The
+// 10 000 results queued in a blocked CPU pool and transfers still in flight when the shutdown starts. The
 // transport stops within its 2 s deadline (it never waits for the pool), the pool is drained afterwards, and every
 // id is delivered exactly once, the in-flight ones as Shutdown.
 TEST_F(TransportTest, ShutdownWithInternalBacklog)
@@ -171,9 +171,9 @@ TEST_F(TransportTest, ShutdownWithInternalBacklog)
     EXPECT_EQ(transport->stats().undelivered, 0u) << "a result the pool refused: its callback never ran";
 }
 
-// D28: eight threads keep submitting while the runtime shuts down. Every admitted id gets exactly one result, every
+// Eight threads keep submitting while the runtime shuts down. Every admitted id gets exactly one result, every
 // refusal none, and each submitter, still running when the shutdown begins, ends refused with Shutdown. (ASAN clean
-// in the sanitizer sibling, I47b.)
+// in the sanitizer sibling.)
 TEST_F(TransportTest, ShutdownWithConcurrentSubmitters)
 {
     constexpr std::size_t SUBMITTERS = 8;
@@ -271,7 +271,7 @@ TEST_F(TransportTest, ShutdownWithConcurrentSubmitters)
     std::cout << "[ INFO     ] admitted " << admitted << ", resolved by the stop " << shutdownResults << std::endl;
 }
 
-// T20, I38b: a transfer stuck in name resolution (getaddrinfo hung for this one name) does not hold the shutdown:
+// A transfer stuck in name resolution (getaddrinfo hung for this one name) does not hold the shutdown:
 // the multi is cleaned up with CURLMOPT_QUICK_EXIT, so curl does not join its resolver thread.
 TEST_F(TransportTest, ShutdownWithHungResolver)
 {

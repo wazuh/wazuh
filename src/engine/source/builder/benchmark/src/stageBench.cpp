@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Stage benchmark of the indexer output (plan 18, E10b, I198; I119, I126): what one event costs the router worker
+// Stage benchmark of the indexer output: what one event costs the router worker
 // that runs the real `wazuh-indexer` stage (indexerOutputBuilder) over wiconnector::WIndexerConnector on the engine's
 // indexer_client runtime (EngineIndexerRuntime with the `events` and `raw` buckets), writing to an in-process fake
 // that accepts every document (IC/bench/benchFake.hpp, items mode). The v1 side (a frozen copy of the v1
-// wrapper over the v1 async connector) was removed with the v1 library (E11d, I221).
+// wrapper over the v1 async connector) was removed with the v1 library.
 //
 // --mode stage times the stage's operation (index name from its placeholder, event->str(), index()); --mode index
 // times IWIndexerConnector::index() alone, with the index name and the body prepared outside the stopwatch and moved
 // in.
 //
-// Regime (IC/bench/benchSubmit.cpp, E6c/E6d): P producers run bursts of B ops at the same time; each one times its own
+// Regime (IC/bench/benchSubmit.cpp): P producers run bursts of B ops at the same time; each one times its own
 // burst (steady_clock and CLOCK_THREAD_CPUTIME_ID). Between bursts one coordinator polls the backlog every 200 us until
 // it falls below the watermark W; nobody polls during a burst. The backlog is payload bytes: the sum of the buckets'
 // retainedBytes (not their charge, which adds the 2048-byte result reserve of every op; staged ops, up to 64 per
@@ -20,7 +20,7 @@
 // The event: the decoded output of src/engine/test/integration_tests/tester/features/api.feature:69 (engine-it,
 // decoder/other-test-message/0), the stage definition of ruleset/outputs/indexer.yml:19.
 //
-// I208: the RNF-2 gate is the engine's end-to-end A/B (E12, RNF-3); this stage time is a diagnostic.
+// The performance gate is the engine's end-to-end A/B; this stage time is a diagnostic.
 
 #include <time.h>
 #include <unistd.h>

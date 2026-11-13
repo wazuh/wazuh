@@ -59,7 +59,7 @@ public:
     /// ten keeps the condition visible for hours without becoming the log.
     static constexpr std::size_t REPEAT_EVERY_ATTEMPTS {10};
 
-    /// Longest an `Unreachable` answer is reused: `min(cacheTtl, UNREACHABLE_TTL)` (D93). Still a
+    /// Longest an `Unreachable` answer is reused: `min(cacheTtl, UNREACHABLE_TTL)`. Still a
     /// cache, so the topics of one consumer over a dead indexer cost one probe per second, not N.
     static constexpr std::chrono::seconds UNREACHABLE_TTL {1};
 

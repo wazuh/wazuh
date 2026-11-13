@@ -13,14 +13,14 @@
 #ifndef _INDEXER_CLIENT_BENCH_FAKE_HPP
 #define _INDEXER_CLIENT_BENCH_FAKE_HPP
 
-// In-process fake indexer shared by both benchmark executables (plan 18, E2c, I58; port of the E0b spike fake).
+// In-process fake indexer shared by both benchmark executables (a port of the spike fake).
 // It counts bytes, requests and distinct TCP connections without keeping any body, answers `/_cluster/health` with
 // `green` and `/_cat/health` with `[{"status":"green"}]` (the v1 health monitor), keeps the headers of the first
-// `/_bulk` after each resetCounters() and answers `/_bulk` with a fixed status. Two `/_bulk` bodies (E6c, contract
+// `/_bulk` after each resetCounters() and answers `/_bulk` with a fixed status. Two `/_bulk` bodies (contract
 // §1): the fixed `items:[]` (default, the transport benches) or, with setItems(true), one `{"<action>":{"status":201,
 // "result":"created"}}` item per action line of the request (the even lines, counted without parsing JSON), which the
 // v2 write path needs to resolve its ops; only the items mode counts the documents (action lines) received, so the
-// fixed mode of E2c costs what it cost. The test fake (tests/fake/fakeIndexer.hpp) is not reused: it records every
+// fixed mode costs what it always cost. The test fake (tests/fake/fakeIndexer.hpp) is not reused: it records every
 // request under a mutex.
 
 #include <external/cpp-httplib/httplib.h>

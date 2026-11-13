@@ -39,7 +39,7 @@ namespace invsync::endpoints::delete_agent
      *    through the indexer client's `agent-state` bucket, which is `ordered`: an op is never sent
      *    before an earlier op of its (index, _id) has a final outcome. The worker cancel()s the agent's
      *    pending writes there, then commits the two by-id deletes as one Group on that same bucket and
-     *    waits for their results (I147c, I147d). The ordering is what keeps a report the bucket had
+     *    waits for their results. The ordering is what keeps a report the bucket had
      *    already admitted from outliving the agent; a by-id delete also needs no refresh, unlike a
      *    delete-by-query that could not see a document not yet refreshed.
      *
@@ -76,7 +76,7 @@ namespace invsync::endpoints::delete_agent
      * write the id into the payload, and would work in a test while failing in production.
      *
      * WHAT `completed` COVERS. Both halves: the state documents were deleted and flushed, and the
-     * two by-id deletes resolved (a missing index counts as deleted, I147b). There is no FIFO left to
+     * two by-id deletes resolved (a missing index counts as deleted). There is no FIFO left to
      * fire and forget into: a by-id failure, the deletion budget running out or the module closing
      * answers 503 and the dispatcher retries -- deleting an absent document is a no-op everywhere in
      * the chain, so a retry of an already-purged agent is free.

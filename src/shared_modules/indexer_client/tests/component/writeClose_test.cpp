@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// Close and shutdown of the write path, and the production sink (plan-E3a §Tests: I63; since E3b-2 the bulk sender).
+// Close and shutdown of the write path, and the production sink (the bulk sender).
 
 #include <future>
 #include <string>
@@ -33,7 +33,7 @@ namespace
         return "c" + std::string(7 - digits.size(), '0') + digits;
     }
 
-    /// One call of a race round (CA-E6d-5).
+    /// One call of a race round.
     struct RaceCall final
     {
         std::uint64_t key {0};
@@ -88,7 +88,7 @@ namespace
     }
 } // namespace
 
-// I63, CA-E6d-5 (no seam): submit() and post() from one thread racing requestClose() (200 rounds) or shutdown() (20
+// No seam: submit() and post() from one thread racing requestClose() (200 rounds) or shutdown() (20
 // rounds) from another, the close landing after 0-3 calls. Oracle, every round: an accepted call has exactly one
 // result, Ok or Dropped(ClientClosed|Shutdown) (submit: its callback; post: the bucket's counters); a refused one has
 // the close cause and no callback; every call started after requestClose() returned is ClientClosed (after shutdown():
@@ -175,7 +175,7 @@ TEST_F(WriteTest, SubmitRacesClose)
         c->requestClose();
         closed.store(true, std::memory_order_release);
         producer.join();
-        // D43: the bucket keeps draining into the held sink; resolve Ok until nothing of the round is retained.
+        // The bucket keeps draining into the held sink; resolve Ok until nothing of the round is retained.
         EXPECT_TRUE(eventually(
             [&]
             {
@@ -203,7 +203,7 @@ TEST_F(WriteTest, SubmitRacesClose)
         auto c = client("racing", {spec});
         auto results = Results::create();
         std::vector<std::vector<int>> accepted(PRODUCERS, std::vector<int>(PER_PRODUCER, -1));
-        // The handles are taken before any producer starts: a closing client hands out none (I37), and under a
+        // The handles are taken before any producer starts: a closing client hands out none, and under a
         // sanitizer on a loaded host a producer thread may only start after requestClose() below.
         std::vector<std::shared_ptr<ic::IWriter>> writers;
         for (std::size_t p = 0; p < PRODUCERS; ++p)
@@ -234,7 +234,7 @@ TEST_F(WriteTest, SubmitRacesClose)
         {
             producer.join();
         }
-        // I99: the held sink never answers, so nothing drains; at drainEnd the queued ops are Dropped(ClientClosed)
+        // The held sink never answers, so nothing drains; at drainEnd the queued ops are Dropped(ClientClosed)
         // and those delivered to the sink Dropped(Shutdown).
         const auto report = c->awaitClosed(now() + 1s);
         ASSERT_TRUE(report.ok());
@@ -250,7 +250,7 @@ TEST_F(WriteTest, SubmitRacesClose)
                 }
             }
         }
-        // Whether the close lands before the last submit is timing (G-diff E3a obj. 4): only the exactly-once and the
+        // Whether the close lands before the last submit is timing: only the exactly-once and the
         // no-callback-when-refused properties are asserted; the seam blocks above pin the race deterministically.
         EXPECT_GT(acceptedCount, 0u);
         ASSERT_TRUE(results->waitTotal(acceptedCount, 5s));
@@ -320,7 +320,7 @@ TEST_F(WriteTest, SubmitRacesClose)
     }
 }
 
-// I63, I99: requestClose() + awaitClosed() resolve the client's retained ops at drainEnd (the held sink drains
+// requestClose() + awaitClosed() resolve the client's retained ops at drainEnd (the held sink drains
 // nothing): pending Dropped(ClientClosed), delivered to the sink Dropped(Shutdown), and report a callback still running
 // as callbacksInFlight; shutdown() resolves another client's retained ops Dropped(Shutdown). Charge 0, and the sink's
 // late resolutions lose.
@@ -360,7 +360,7 @@ TEST_F(WriteTest, CloseAndShutdownResolveRetained)
 
         c->requestClose();
         EXPECT_EQ(writer->submit(indexOp(id(99))).cause, ic::Cause::ClientClosed);
-        EXPECT_EQ(stats("b").retained, 13u) << "requestClose() only closes the admission (D43)";
+        EXPECT_EQ(stats("b").retained, 13u) << "requestClose() only closes the admission";
         // A short deadline (300 ms < 2 x callbackBudget): drainEnd = now + 150 ms, cutoff = now + 225 ms.
         const auto t0 = now();
         const auto report = c->awaitClosed(t0 + 300ms);
@@ -408,7 +408,7 @@ TEST_F(WriteTest, CloseAndShutdownResolveRetained)
     }
 }
 
-// I63: the sink holds a batch; shutdown() resolves each op of it (and the pending ones) Dropped(Shutdown) exactly
+// The sink holds a batch; shutdown() resolves each op of it (and the pending ones) Dropped(Shutdown) exactly
 // once, in < 2 s; the tickets are complete and the sink was stopped.
 TEST_F(WriteTest, ShutdownWithHeldBatch)
 {
@@ -448,7 +448,7 @@ TEST_F(WriteTest, ShutdownWithHeldBatch)
     expectInvariants(stats("b"));
 }
 
-// I63, E3b-2: without replacing the sink, the production sink is the bulk sender: every op is written (Ok) to the
+// Without replacing the sink, the production sink is the bulk sender: every op is written (Ok) to the
 // configured node and the charge returns to 0.
 TEST_F(BulkTest, DefaultSinkIsTheBulkSender)
 {

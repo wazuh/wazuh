@@ -45,16 +45,16 @@ struct Config
 };
 
 /**
- * @brief The Engine's writes and its remote configuration read, on the Engine's indexer_client Client (E10b).
+ * @brief The Engine's writes and its remote configuration read, on the Engine's indexer_client Client.
  *
- * index() posts each event to the `events` bucket, or to `raw` for RAW_EVENTS_INDEX (I193), with the index and the
+ * index() posts each event to the `events` bucket, or to `raw` for RAW_EVENTS_INDEX, with the index and the
  * body moved into the operation and no lock: the writers are fixed in the constructor. A refused post is logged on the
  * edge and counted only by the library (`rejected` in the bucket's metrics). shutdown() releases the writers and the
  * reader; an index() after it discards the event and counts it in getDroppedEvents(). No index() may run concurrently
- * with shutdown() (I196b): the router and tester workers are joined before the indexer stops.
+ * with shutdown(): the router and tester workers are joined before the indexer stops.
  *
  * The three queue metrics and the per-bucket ones (getBucketMetric()) read one cached snapshot of Client::metrics(),
- * refreshed at most once per second (I197).
+ * refreshed at most once per second.
  */
 class WIndexerConnector : public IWIndexerConnector
 {
@@ -66,14 +66,14 @@ public:
     ~WIndexerConnector() override;
 
     /**
-     * @brief Writes and reads through the engine's Client (E10b, I193, I196, I196b): index() posts to the `events` or
+     * @brief Writes and reads through the engine's Client: index() posts to the `events` or
      *        `raw` bucket without a lock; shutdown() releases the writers and the reader. No index() may run
      *        concurrently with shutdown(): the router and tester workers are joined before the indexer stops.
      *
      * @param client The engine's Client with the `events` and `raw` buckets. Must not be null.
      * @param requestTimeout The runtime's `request_timeout_ms` (remote configuration reads).
      * @param queueCapacityBytes min(Σ bucket quotas, global quota): the budget the buckets share, the second term of
-     *        getQueueUsagePercent() (I197, I218); 0 reports 0.0.
+     *        getQueueUsagePercent(); 0 reports 0.0.
      * @throws std::runtime_error if @p client is null or lacks a bucket
      */
     WIndexerConnector(std::shared_ptr<indexer_client::IClient> client,
@@ -91,18 +91,18 @@ public:
     json::Json getEngineRemoteConfig() override;
 
     /**
-     * @brief Σ `retainedBytes` of `events` and `raw` (I195); 0 once shut down.
+     * @brief Σ `retainedBytes` of `events` and `raw`; 0 once shut down.
      */
     uint64_t getQueueSize() override;
 
     /**
-     * @brief Σ `dropped` + `failed` + `rejected` of `events` and `raw` (I185), plus the events discarded after
+     * @brief Σ `dropped` + `failed` + `rejected` of `events` and `raw`, plus the events discarded after
      *        shutdown(). After shutdown() the bucket part is the last snapshot taken.
      */
     uint64_t getDroppedEvents() override;
 
     /**
-     * @brief max(the fullest bucket, the shared budget) × 100, capped at 100 (I197, I218): max over `events` and
+     * @brief max(the fullest bucket, the shared budget) × 100, capped at 100: max over `events` and
      *        `raw` of `charge` / `quotaBytes`, and Σ `charge` / @p queueCapacityBytes. 100 means a bucket or the global
      *        budget is full, i.e. new events are being dropped; a bucket without a quota counts as 0. 0.0 once shut
      *        down or without a capacity.
@@ -123,7 +123,7 @@ public:
     double getBucketMetric(const std::string& name);
 
     /**
-     * @brief Releases the writers and the Client. Must not run concurrently with index() (I196b).
+     * @brief Releases the writers and the Client. Must not run concurrently with index().
      *
      * The engine calls it after the Client's requestClose() (EngineIndexerRuntime::beginStop()), so a remote
      * configuration read in flight returns ClientClosed.
@@ -136,7 +136,7 @@ private:
     {
         std::uint64_t retainedBytes {0};
         std::uint64_t dropped {0};
-        double usagePercent {0.0}; ///< max(fullest bucket, Σ charge / capacity) × 100, uncapped (I218).
+        double usagePercent {0.0}; ///< max(fullest bucket, Σ charge / capacity) × 100, uncapped.
     };
 
     /// The cached totals, refreshed when older than METRICS_TTL and the Client is still held.

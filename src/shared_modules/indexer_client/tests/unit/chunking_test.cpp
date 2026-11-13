@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-E11b-1 (D88): the arithmetic invsync and VD share to cut their writes into Groups (indexer_client/chunking.hpp).
+// The arithmetic invsync and VD share to cut their writes into Groups (indexer_client/chunking.hpp).
 // The values are the ones both consumers pinned before the extraction. That the estimate covers the library's real
 // charge is the component case ChunkingCharge.EstimateCoversRealCharge.
 

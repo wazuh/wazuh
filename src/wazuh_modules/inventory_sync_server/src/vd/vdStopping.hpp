@@ -20,7 +20,7 @@ namespace invsync::vd
 {
 
     /**
-     * @brief Whether the vulnerability scanner is stopping or stopped (I167c).
+     * @brief Whether the vulnerability scanner is stopping or stopped.
      *
      * Pure, next to feedGateOpen(), so the decision is pinned by a unit test without a live
      * VulnerabilityScannerFacade. A scanner that ran here (started, enabled, its start() did not
@@ -38,7 +38,7 @@ namespace invsync::vd
     bool vdStopping(bool started, bool enabled, bool startFailed, bool initialized);
 
     /**
-     * @brief Verdict of an on-demand scan (`scanAgent()`), pure (I167c).
+     * @brief Verdict of an on-demand scan (`scanAgent()`), pure.
      *
      * A stopping scanner answers NotReady (503, the task retries) rather than throwing: the lane's
      * caller of scanAgent() has no `try` (vdScanLane.cpp). A scanner that never runs here (not
@@ -51,7 +51,7 @@ namespace invsync::vd
      */
     AgentScanOutcome onDemandVerdict(bool stopping, bool initialized, const std::function<AgentScanOutcome()>& scan);
 
-    /// The four facade flags vdStopping() decides on, read once (D90).
+    /// The four facade flags vdStopping() decides on, read once.
     struct VdGate
     {
         bool started {false};
@@ -61,7 +61,7 @@ namespace invsync::vd
     };
 
     /**
-     * @brief Reads the gate's flags off @p state in the order the decision needs (D90).
+     * @brief Reads the gate's flags off @p state in the order the decision needs.
      *
      * hasStarted() first: its acquire load orders the other reads after it; isInitialized() next, so a stop() that
      * lowers it between the two reads is seen as stopping, never as a legitimate skip. Sequenced statements, not
@@ -80,7 +80,7 @@ namespace invsync::vd
         return gate;
     }
 
-    /// @throws std::runtime_error when @p gate says the scanner is stopping (I167c): the session fails (500, the
+    /// @throws std::runtime_error when @p gate says the scanner is stopping: the session fails (500, the
     ///         agent retries) instead of being indexed unscanned.
     inline void throwIfVdStopping(const VdGate& gate)
     {
@@ -91,7 +91,7 @@ namespace invsync::vd
     }
 
     /**
-     * @brief The gate of a session's scan(): throws when stopping, else whether the scanner runs here (D90).
+     * @brief The gate of a session's scan(): throws when stopping, else whether the scanner runs here.
      *
      * @return The `initialized` read by readVdGate() (never a second read): false means Skipped.
      */

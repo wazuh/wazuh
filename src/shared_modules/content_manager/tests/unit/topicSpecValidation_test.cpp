@@ -105,7 +105,7 @@ TEST(TopicSpecValidationTest, RejectsAnUnusableSource)
 
 TEST(TopicSpecValidation, RejectsBadKeepAlive)
 {
-    // Verified against OpenSearch (D84): upper-case units, fractions and a bare number are refused.
+    // Verified against OpenSearch: upper-case units, fractions and a bare number are refused.
     for (const auto* bad : {"5M", "1.5m", "5", "0ms", "m", "5 m", "5x", "   "})
     {
         expectRejected(cursorSpec(), [bad](TopicSpec& s) { s.source.pitKeepAlive = bad; }, "source.pitKeepAlive");

@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// The per-operation conflict policy and ReplacePreserving end to end (plan-E3c-1 §Tests: I73, CA-9, CA-28, T15): the
+// The per-operation conflict policy and ReplacePreserving end to end: the
 // effective policy (the op's onConflict, else the bucket's) on the wire and in the verdict of a 409 item, and the
 // frozen ReplacePreserving vectors as the fake receives them. Every case runs the production sink over the real
 // transport against a fake node (bulkFixture.hpp); every wait is bounded; every case ends with the charge and the
@@ -134,7 +134,7 @@ namespace
     }
 } // namespace
 
-// CA-9, T15: a bucket with Success and an op with its own Retry{3}: the line carries retry_on_conflict 3, the 409 goes
+// A bucket with Success and an op with its own Retry{3}: the line carries retry_on_conflict 3, the 409 goes
 // back to the lane and the second send's 200 resolves it Ok (two sends, one result). Mutant: the 409 treated with the
 // bucket's policy (OpState::conflictRetry ignored).
 TEST_F(BulkTest, ConflictRetryThenOk)
@@ -169,7 +169,7 @@ TEST_F(BulkTest, ConflictRetryThenOk)
     expectInvariants(stats("b"));
 }
 
-// CA-9: Success keeps the 409: Ok with httpStatus 409 and the item's type after one send, for a Success bucket without
+// Success keeps the 409: Ok with httpStatus 409 and the item's type after one send, for a Success bucket without
 // onConflict and for an op whose own Success overrides a Retry bucket. Mutant: Success requeued like Retry.
 TEST_F(BulkTest, ConflictSuccessKeeps409)
 {
@@ -200,12 +200,13 @@ TEST_F(BulkTest, ConflictSuccessKeeps409)
     EXPECT_FALSE(eventually([&] { return a.bulk->answered() > 2; }, 200ms)) << "nothing sent again";
     const auto bodies = bulkBodies(a);
     ASSERT_EQ(bodies.size(), 2u);
-    EXPECT_EQ(bodies[1].find("retry_on_conflict"), std::string::npos) << "the op's Success: the line of E3a";
+    EXPECT_EQ(bodies[1].find("retry_on_conflict"), std::string::npos)
+        << "the op's Success: the plain line, without retry_on_conflict";
     expectInvariants(stats("b"));
     expectInvariants(stats("r"));
 }
 
-// CA-9: Retry with maxAttempts = 2 against a node that always answers 409 ⇒ Failed(RetryExhausted) after two sends,
+// Retry with maxAttempts = 2 against a node that always answers 409 ⇒ Failed(RetryExhausted) after two sends,
 // with the 409 and its type as the last error.
 TEST_F(BulkTest, ConflictRetryExhausts)
 {
@@ -231,7 +232,7 @@ TEST_F(BulkTest, ConflictRetryExhausts)
     expectInvariants(stats("b"));
 }
 
-// CA-9: a bucket with Retry{4} and an IndexVersionedScript without onConflict: the line carries retry_on_conflict 4;
+// A bucket with Retry{4} and an IndexVersionedScript without onConflict: the line carries retry_on_conflict 4;
 // 409 and then 200 ⇒ Ok after two sends. Mutant: the effective policy ignores the bucket's.
 TEST_F(BulkTest, BucketRetryOnWire)
 {
@@ -259,8 +260,8 @@ TEST_F(BulkTest, BucketRetryOnWire)
     expectInvariants(stats("b"));
 }
 
-// CA-9: ConflictPolicy::Retry in a BucketSpec registers (1 and MAX_RETRY_ON_CONFLICT) and its writer accepts ops; 101
-// is refused, naming the field. Since E3c-2 an ordered bucket with Retry registers too and writes.
+// ConflictPolicy::Retry in a BucketSpec registers (1 and MAX_RETRY_ON_CONFLICT) and its writer accepts ops; 101
+// is refused, naming the field. An ordered bucket with Retry registers too and writes.
 TEST_F(BulkTest, BucketRetryPolicyRegisters)
 {
     const auto a = startNode();
@@ -279,7 +280,7 @@ TEST_F(BulkTest, BucketRetryPolicyRegisters)
     EXPECT_EQ(above.cause, ic::Cause::InvalidArgument);
     EXPECT_THAT(above.reason, HasSubstr("onConflict.retryOnConflict must be <= 100")) << above.reason;
     EXPECT_EQ(m_ref.snapshot().clients, 1u) << "the refused client took no consumer name";
-    // E3c-2: an ordered bucket with Retry registers too, and its op ends Ok.
+    // An ordered bucket with Retry registers too, and its op ends Ok.
     auto orderedSpec = fastBucket("b", 1, 5, retryPolicy(4));
     orderedSpec.ordered = true;
     auto ordered = m_ref.client("ordered", {orderedSpec});
@@ -293,7 +294,7 @@ TEST_F(BulkTest, BucketRetryPolicyRegisters)
     expectInvariants(stats("b", "ordered"));
 }
 
-// CA-28: the fake receives the frozen ReplacePreserving vectors (one batch, in submit order) and each op gets its
+// The fake receives the frozen ReplacePreserving vectors (one batch, in submit order) and each op gets its
 // item's outcome: updated, noop, created, and a 409 kept by Success; a second round with `errors:false` reads the
 // items all the same.
 TEST_F(BulkTest, PreservingOutcomes)

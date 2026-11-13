@@ -140,7 +140,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     const auto missingFieldTrace = name + " -> Couldn't get field ";
     const auto tooLongTrace = name + " -> Index name '";
 
-    // In test mode nothing is indexed (I183), so the stage builds without a connector (event processing off, I189)
+    // In test mode nothing is indexed, so the stage builds without a connector (event processing off)
     const auto isTestMode = buildCtx->isTestMode();
     auto wic = iConnector.lock();
     if (!wic && !isTestMode)

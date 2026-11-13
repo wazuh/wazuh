@@ -119,12 +119,12 @@ namespace invsync::endpoints::stats
      * The returned handler replies inline: the write is a post() into the `agent-state` bucket, which has
      * no per-op result to wait for. 200 means the client ADMITTED the op; a refusal (QueueFull, Unavailable,
      * ClientClosed...) answers 503 so the agent retries -- there is no async queue left to absorb it, and
-     * the former silent 200 on a dropped write is gone (I151).
+     * the former silent 200 on a dropped write is gone.
      *
      * @param client The module's indexer client, held WEAKLY and locked per request: only its health()
-     *               gates the write (any node not Down, I151), so an outage answers 503 up front.
-     * @param writer The `agent-state` bucket's writer (an `ordered` bucket shared with the agent deletion,
-     *               I148), taken once by the facade and held WEAKLY too.
+     *               gates the write (any node not Down), so an outage answers 503 up front.
+     * @param writer The `agent-state` bucket's writer (an `ordered` bucket shared with the agent deletion),
+     *               taken once by the facade and held WEAKLY too.
      *
      * Weak, not a reference and not a shared_ptr, and the reason is not defensiveness:
      *

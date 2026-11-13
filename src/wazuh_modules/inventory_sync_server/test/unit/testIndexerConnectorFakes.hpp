@@ -259,7 +259,7 @@ namespace invsync::test
         /// drive the endpoints' 503 gate and the facade's health log without a network.
         std::atomic<bool> m_clientUsable {true};
         /// Whether the fake Client's first probe round is over. While false a Down node carries no reason, as a
-        /// real node does before the first round (I190b); once true a Down node says why.
+        /// real node does before the first round; once true a Down node says why.
         std::atomic<bool> m_clientProbed {true};
         /// The bucket specs each fake Client was built with, in build order. Guarded by m_mutex.
         std::vector<std::vector<indexer_client::BucketSpec>> m_clientBucketSpecs;
@@ -625,7 +625,7 @@ namespace invsync::test
     };
 
     /**
-     * @brief Stand-in for the module's indexer Client (I144, I148): the two bucket writers, the query handle and
+     * @brief Stand-in for the module's indexer Client: the two bucket writers, the query handle and
      *        a health view the test drives.
      *
      * The facade's startup gate builds a Client through the IndexerClientFactory and takes the `agent-state`
@@ -700,7 +700,7 @@ namespace invsync::test
     };
 
     /// The production IndexerClientFactory as the facade wires it: a null runtime or a refused
-    /// RuntimeRef::client() throws, which is what fails the sync stage of the startup gate (I131).
+    /// RuntimeRef::client() throws, which is what fails the sync stage of the startup gate.
     /// Kept here so a test can wrap it (IndexerGating.StopReleasesClient) and so the reset restores it.
     inline invsync::indexer::IndexerClientFactory productionIndexerClientFactory()
     {

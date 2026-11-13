@@ -17,15 +17,15 @@
 namespace wiconnector
 {
 
-/// The engine's consumer name on its runtime (one Client per process, I154, I189).
+/// The engine's consumer name on its runtime (one Client per process).
 constexpr auto ENGINE_INDEXER_CONSUMER {"analysisd"};
 
-/// The engine's buckets (I193, I194).
+/// The engine's buckets.
 constexpr auto ENGINE_EVENTS_BUCKET {"events"};
 constexpr auto ENGINE_RAW_BUCKET {"raw"};
 
 /**
- * @brief The v1 write options the engine keeps (I187, I188), as `conf` read them, for the `events` and `raw` buckets.
+ * @brief The v1 write options the engine keeps, as `conf` read them, for the `events` and `raw` buckets.
  */
 struct EngineWriteOptions
 {
@@ -39,7 +39,7 @@ struct EngineWriteOptions
 };
 
 /**
- * @brief The `events` and `raw` bucket specs for @p options under @p config (I194, I196): DropNewest, unlimited retry,
+ * @brief The `events` and `raw` bucket specs for @p options under @p config: DropNewest, unlimited retry,
  *        `onAmbiguous5xx = Fail`, trusted bodies, weights 2 and 1, the same quota (0 or above the global cap ⇒ the
  * global cap), bulk.maxBytes clipped to quota − RESULT_RESERVE_BYTES.
  *
@@ -50,18 +50,18 @@ indexer_client::Outcome<std::vector<indexer_client::BucketSpec>> engineBucketSpe
     const EngineWriteOptions& options, const indexer_client::RuntimeConfig& config, std::vector<std::string>& warnings);
 
 /**
- * @brief The engine's indexer_client runtime and its one Client (I37, I189, I191).
+ * @brief The engine's indexer_client runtime and its one Client.
  *
  * Every call must come from the thread that called start() (the runtime's owner: the engine's main thread). The stop
- * is in two phases so the engine can place them around its scheduler (I191): beginStop() before the scheduler stops —
+ * is in two phases so the engine can place them around its scheduler: beginStop() before the scheduler stops —
  * fixes the shutdown deadline and closes the Client's admission, so a read in flight returns ClientClosed — and
- * finishStop() after it — joins the runtime, which discards what is queued (I186) and logs it in its last summary,
+ * finishStop() after it — joins the runtime, which discards what is queued and logs it in its last summary,
  * then waits for the Client and releases it. finishStop() alone runs both phases; each phase runs once.
  */
 class EngineIndexerRuntime final
 {
 public:
-    /// How long the stop may take in all (I186: queued work is discarded, nothing is drained).
+    /// How long the stop may take in all (queued work is discarded, nothing is drained).
     static constexpr std::chrono::milliseconds STOP_BUDGET {3000};
 
     EngineIndexerRuntime() = default;
@@ -78,7 +78,7 @@ public:
                                                                  const indexer_client::IConfigSource& source);
 
     /**
-     * @brief As start(process, source), with the `events` and `raw` buckets built from @p options (E10b).
+     * @brief As start(process, source), with the `events` and `raw` buckets built from @p options.
      *
      * @param warnings Receives the notes of engineBucketSpecs(), to be logged as WARN.
      */
@@ -87,8 +87,8 @@ public:
                                                                  const EngineWriteOptions& options,
                                                                  std::vector<std::string>& warnings);
 
-    /// min(Σ bucket quotas, global quota): bounds each bucket's quota in `indexer.queue.usage.percent` (I197,
-    /// I218); 0 before start().
+    /// min(Σ bucket quotas, global quota): bounds each bucket's quota in `indexer.queue.usage.percent`; 0 before
+    /// start().
     std::uint64_t queueCapacityBytes() const;
 
     /// The Client (null before start() succeeded and after finishStop()).

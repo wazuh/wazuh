@@ -31,7 +31,7 @@ target_link_libraries(wIndexerConnector_wIndexerConnector
     # registerIndexerMetrics() takes the fastmetrics IManager.
     fastmetrics::ifastmetrics
     PRIVATE
-    # Keystore::get (D101): keystore_core is keystore without its Log::GLOBAL_LOG_FUNCTION, which the engine defines
+    # Keystore::get: keystore_core is keystore without its Log::GLOBAL_LOG_FUNCTION, which the engine defines
     # (base) and assigns, so the keystore logs reach the engine's sink.
     keystore_core
 )

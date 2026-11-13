@@ -13,7 +13,7 @@
 #ifndef _INDEXER_CLIENT_LOG_SUMMARY_HPP
 #define _INDEXER_CLIENT_LOG_SUMMARY_HPP
 
-// Edge-triggered and summarized logging (stage E5c, plan 18 I102/I104, RF-16, CA-16). NORMATIVE.
+// Edge-triggered and summarized logging. NORMATIVE.
 //
 // EMISSION. Every line is decided under the mutex that owns its state and emitted after that mutex is dropped (the
 // NodeSet's `pending.lines` pattern, health/nodeSet.cpp): the process log function has its own lock and does I/O. No
@@ -21,7 +21,7 @@
 // submitting thread that crossed the edge, once per crossing, when it leaves Bucket::reserve()/reserveForGroup(),
 // with no mutex held; the summary's timer drains whatever is still pending (e.g. what a Block left behind).
 //
-// AMBIGUOUS EDGE (E6a, plan 18 I105/I105b). One more edge, per bucket: the first Failed(Ambiguous) (a 500/502/504, or a
+// AMBIGUOUS EDGE. One more edge, per bucket: the first Failed(Ambiguous) (a 500/502/504, or a
 // response over max_response_bytes, which the WARN names instead of a status) after a 2xx _bulk of the bucket (or since
 // its creation) ⇒ WARN; the next 2xx _bulk re-arms it (Bucket::countBulk). Unlike the quota edges
 // it is NOT written by a submitting thread: the completion thread of the _bulk decides it under the bucket mutex
@@ -45,7 +45,7 @@
 //     The interval's length is printed in whole seconds, rounded up, never below 1.
 //   - per client: the delta of callbackOverruns and the maximum duration of the interval (WARN), through the weak
 //     client registry of RuntimeState (written by RuntimeRef::client(), erased by releaseClientName). The body keeps
-//     no client reference while it emits. D133: a client whose name is released once the stop began (a shutdown
+//     no client reference while it emits. A client whose name is released once the stop began (a shutdown
 //     deadline fixed or the admission closed: the close order runs awaitClosed before shutdown()) is kept by the
 //     runtime and summarized like a live one until stopAndJoin drops it right after the last summary.
 //   - a WARN when a PIT delete expired (given up) in the interval, with the id truncated.
@@ -68,7 +68,7 @@ namespace indexer_client::detail
 
 namespace indexer_client::detail::logging
 {
-    /// Keys (cause, itemErrorType) tracked per bucket and interval before `other` (CA-16).
+    /// Keys (cause, itemErrorType) tracked per bucket and interval before `other`.
     constexpr std::size_t SUMMARY_KEYS = 8;
     /// Bytes of the sample reason logged at DEBUG.
     constexpr std::size_t SAMPLE_REASON_MAX = 256;

@@ -24,7 +24,7 @@
 #include "query/queryResponse.hpp"
 #include "runtime/runtimeInternal.hpp"
 
-// The managed PIT over the query engine (stage E4b, I93). NORMATIVE contract: pit.hpp (CREATE, STATE, SEARCH, EXPIRY,
+// The managed PIT over the query engine. NORMATIVE contract: pit.hpp (CREATE, STATE, SEARCH, EXPIRY,
 // LIFETIME); the registry (slots, deletes, drain) is pitRegistry.cpp's.
 
 namespace indexer_client::detail::query
@@ -211,7 +211,7 @@ namespace indexer_client::detail::query
                 }
                 if (pit->expired.load())
                 {
-                    // Another cursor saw the expiry while this answer was in flight: never a page (T19).
+                    // Another cursor saw the expiry while this answer was in flight: never a page.
                     g_stale.fetch_add(1, std::memory_order_relaxed);
                     QueryResponse stale;
                     stale.verdict = QueryVerdict::Fail;
@@ -306,7 +306,7 @@ namespace indexer_client::detail::query
         const auto keepAlive = pitOptions.keepAlive;
         const auto wholeResponseCap = pitOptions.wholeResponseCap;
         EngineHooks hooks;
-        // I89/I91: one slot per attempt; a slot no attempt settled (a "no node" wait) is kept for the next one.
+        // One slot per attempt; a slot no attempt settled (a "no node" wait) is kept for the next one.
         hooks.preAttempt = [slots, registry]() -> std::optional<PreAttemptAbort>
         {
             if (slots->held)
@@ -356,7 +356,7 @@ namespace indexer_client::detail::query
                 case AttemptEvent::Kind::Failed:
                     if (event.result && event.result->mayHaveSent)
                     {
-                        owner->reserve(addSaturated(now(), keepAlive)); // The PIT may exist: an orphan (I91).
+                        owner->reserve(addSaturated(now(), keepAlive)); // The PIT may exist: an orphan.
                     }
                     else
                     {

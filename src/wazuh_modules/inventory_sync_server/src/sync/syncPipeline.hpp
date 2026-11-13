@@ -51,7 +51,7 @@ namespace invsync::sync
         /// the competing writer cannot keep the conflict alive longer than its own allowance, so
         /// the facade feeds the connector's `max_retry_duration_seconds` here.
         int conflictRetryAfterSeconds {15};
-        /// The by-id half of a whole-agent deletion; default = by-query only (I147c).
+        /// The by-id half of a whole-agent deletion; default = by-query only.
         AgentDeletionDeps agentDeletion;
         /// How long a worker keeps the agents of a failed batch held in the registry while its connector
         /// still holdsAbandonedWrite(): one request at most, so the runtime's request timeout + 5 s.
@@ -70,7 +70,7 @@ namespace invsync::sync
      *
      * Workers GROUP-COMMIT (design doc 03 §7): bulk sessions stage and their responses wait; the
      * flush happens when the staged bytes reach `bulkFlushBytes` or the shard's queue drains, and
-     * only then is the batch answered -- each session by the outcome of ITS operations (I136), so a
+     * only then is the batch answered -- each session by the outcome of ITS operations, so a
      * rejected document fails its own session and not its batch-mates. Under low load the queue is
      * empty after every session (flush-per-request latency); under a burst of small sessions the
      * bulks grow on their own and the indexer sees a few large requests instead of a thousand tiny
@@ -182,7 +182,7 @@ namespace invsync::sync
         /// Pops the first queued item whose agent the registry lets this lane take (front, when
         /// no registry). Returns false when nothing is dispatchable RIGHT NOW.
         bool popDispatchable(Shard& shard, Item& item);
-        /// Answers one item for a connector failure, by its cause alone (I135): 503 for anything
+        /// Answers one item for a connector failure, by its cause alone: 503 for anything
         /// transient, 503 + Retry-After when a by-query ran out of its version-conflict allowance,
         /// 500 otherwise. Never re-asks isAvailable().
         void respondFailure(Item& item, indexer::ConnectorError::Cause cause);
@@ -195,7 +195,7 @@ namespace invsync::sync
         void holdForAbandonedWrite(Shard& shard, indexer::IIndexerConnectorSync& connector, const std::string& agentId);
         /// Drops the holds once the write resolved, the bound passed, or @p force (the worker is exiting).
         void releaseAbandonedHolds(Shard& shard, indexer::IIndexerConnectorSync& connector, bool force);
-        /// Flushes the open batch and answers each session by its own outcome (I136).
+        /// Flushes the open batch and answers each session by its own outcome.
         void flushAndRespond(Shard& shard,
                              std::vector<Item>& batch,
                              std::size_t& batchBytes,

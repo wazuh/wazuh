@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// CA-28 against a real OpenSearch (D45): the Painless of ReplacePreserving, its version guard, `"upsert":{}` (I71),
+// Against a real OpenSearch: the Painless of ReplacePreserving, its version guard, `"upsert":{}`,
 // retry_on_conflict under two concurrent clients, and the per-item outcomes of a bulk.
 
 #include <atomic>
@@ -167,7 +167,7 @@ TEST_F(OpenSearchPreserve, OlderVersionIsNoop)
 
 TEST_F(OpenSearchPreserve, UpsertEmptyCreatesAgentDoc)
 {
-    // I71 / D45: is `"upsert":{}` equivalent to the library's `"upsert":<doc>` for a missing document? The raw line is
+    // Is `"upsert":{}` equivalent to the library's `"upsert":<doc>` for a missing document? The raw line is
     // written by hand with the production script; the library's line goes to another id; both must create the doc.
     const nlohmann::json doc = {{"agent", {{"id", "002"}}}, {"os", {{"name", "windows"}}}, {"n", 7}};
     const nlohmann::json action = {{"update", {{"_index", m_index}, {"_id", "raw-empty-upsert"}}}};
@@ -306,7 +306,7 @@ TEST_F(OpenSearchPreserve, ConcurrentRetryOnConflict)
     EXPECT_EQ(updated, n1 + n2 - 1);
     EXPECT_EQ(other, 0);
     EXPECT_EQ(failed, 0);
-    // Informative only: retry_on_conflict = 1 (the library's minimum, I73) lets the server absorb almost every
+    // Informative only: retry_on_conflict = 1 (the library's minimum) lets the server absorb almost every
     // conflict, so whether a 409 reaches the client in MAX_ROUNDS is chance (measured: 0-2). The client's own retry of
     // a 409 is pinned by the fake's suites; here the contract is that no write is lost or duplicated.
     RecordProperty("client_visible_409", std::to_string(conflicts1 + conflicts2));

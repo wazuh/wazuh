@@ -10,7 +10,7 @@
  * SPDX-License-Identifier: GPL-2.0-only OR AGPL-3.0-or-later
  */
 
-// What a finished transfer is classified as (plan-E2a-1 §Tests, lot B: RF-9, D27, §4.15): the curl → cause table on
+// What a finished transfer is classified as: the curl → cause table on
 // real failures, a multi error, and the response cap.
 
 #include <atomic>
@@ -52,7 +52,7 @@ namespace
     }
 } // namespace
 
-// RF-9: each real failure gets its exact cause and nodeAttributable: refused connection, timeout, a connection the
+// Each real failure gets its exact cause and nodeAttributable: refused connection, timeout, a connection the
 // server closes without answering, a body cut short (Content-Length and chunked), and a complete response with no
 // body.
 TEST_F(TransportTest, ClassifiesExactly)
@@ -122,7 +122,7 @@ TEST_F(TransportTest, ClassifiesExactly)
     fake.releaseHeld();
 }
 
-// D27: a failed curl_multi_socket_action is the library's problem, never the node's: every transfer of the multi
+// A failed curl_multi_socket_action is the library's problem, never the node's: every transfer of the multi
 // (the one that triggered it and one already in flight) fails once as LocalError, and the loop keeps working.
 TEST_F(TransportTest, MultiErrorIsLocal)
 {
@@ -197,7 +197,7 @@ namespace
     }
 } // namespace
 
-// §4.15: a response of exactly max_response_bytes is delivered whole.
+// A response of exactly max_response_bytes is delivered whole.
 TEST_F(TransportTest, ResponseCapAtLimit)
 {
     const auto result =

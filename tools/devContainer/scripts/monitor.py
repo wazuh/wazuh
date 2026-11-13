@@ -277,7 +277,7 @@ def find_process_by_target(target: ProcessTarget) -> psutil.Process | None:
         has a fresh create_time().
       - Lowest PID within the same generation (parent over its workers).
 
-    Before any of that, two rules keep the monitor on THIS host's manager (E12 A6: with the e2e
+    Before any of that, two rules keep the monitor on THIS host's manager (with the e2e
     cluster pods up, "newest" was often a pod's daemon -- an RSS of 11.5 GB for one run):
       - a process in another mount namespace (a container) is never a candidate;
       - when the target has a pidfile glob and a candidate's PID is in those pidfiles, only the

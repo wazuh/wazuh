@@ -12,7 +12,7 @@
 // up-front availability gate, and the deferred execution on the target agent's pipeline shard --
 // with a REAL SyncPipeline over the fake connector, so what runs here is what runs in production.
 //
-// The route only gates and enqueues (I147c): both halves of the deletion -- the by-id deletes on the `agent-state`
+// The route only gates and enqueues: both halves of the deletion -- the by-id deletes on the `agent-state`
 // bucket and the by-query -- run on the agent's shard worker, which answers AT COMPLETION. The 200 means the
 // delete-by-query has run AND flushed and the by-id deletes resolved, which is what lets the Task Manager record
 // the deletion as `completed` and have that mean purged. The by-id half itself is syncPipeline_test.cpp's
@@ -198,7 +198,7 @@ TEST(DeleteAgentEndpoint, ExpiredPipelineIs503)
 }
 
 /**
- * CA-E7c-2: the route validates, gates and enqueues -- nothing else. The by-id half (cancel, the Group of two
+ * The route validates, gates and enqueues -- nothing else. The by-id half (cancel, the Group of two
  * deletes) is the WORKER's, so while the worker is parked behind an earlier session's flush the writer has seen
  * nothing and the caller has no answer; once the worker gets to the item it cancels, asks for its Group and --
  * the scripted writer's Group refuses every add -- cancels again and answers a failure.
