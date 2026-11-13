@@ -1486,7 +1486,7 @@ void getDefine_Int_default_hard_link_is_refused(void **state)
     assert_int_equal(link("./defines_target.conf", "./local_internal_options.conf"), 0);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root.");
+                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root and not writable by others.");
 
     assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
 }
@@ -1498,7 +1498,7 @@ void getDefine_Int_default_fifo_is_refused(void **state)
     assert_int_equal(mkfifo("./local_internal_options.conf", 0600), 0);
 
     expect_string(__wrap__merror, formatted_msg,
-                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root.");
+                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root and not writable by others.");
 
     assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
 }
@@ -1515,7 +1515,20 @@ void getDefine_Int_default_other_owner_is_refused(void **state)
     use_fake_euid = true;
 
     expect_string(__wrap__merror, formatted_msg,
-                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root.");
+                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root and not writable by others.");
+
+    assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
+}
+
+void getDefine_Int_default_group_writable_is_refused(void **state)
+{
+    (void)state;
+
+    write_file("./local_internal_options.conf", "agent.good_value=9\n");
+    assert_int_equal(chmod("./local_internal_options.conf", 0666), 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1120): Ignoring file './local_internal_options.conf': it must be a regular file owned by root and not writable by others.");
 
     assert_int_equal(getDefine_Int_default("agent", "good_value", 0, 10, 5), 5);
 }
@@ -1744,6 +1757,7 @@ int main(void) {
         cmocka_unit_test_teardown(getDefine_Int_default_hard_link_is_refused, teardown_defines_links),
         cmocka_unit_test_teardown(getDefine_Int_default_fifo_is_refused, teardown_defines_links),
         cmocka_unit_test_teardown(getDefine_Int_default_other_owner_is_refused, teardown_defines_links),
+        cmocka_unit_test_teardown(getDefine_Int_default_group_writable_is_refused, teardown_defines_links),
         cmocka_unit_test_teardown(getDefine_Int_default_invalid_line_logs_line_number, teardown_defines_links),
 #endif
     };

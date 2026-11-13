@@ -113,7 +113,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     }
 
     if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1 ||
-        (st.st_uid != 0 && st.st_uid != geteuid())) {
+        (st.st_uid != 0 && st.st_uid != geteuid()) || (st.st_mode & (S_IWGRP | S_IWOTH))) {
         merror(DEFINES_FILE_REFUSED, defines_file);
         close(fd);
         return (NULL);
