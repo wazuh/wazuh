@@ -482,6 +482,9 @@ list(APPEND shared_tests_names "test_cluster_utils")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND shared_tests_names "test_logging_config")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+# No debug_op wrappers: it reads back what the real logger writes.
+list(APPEND shared_tests_names "test_debug_op")
+list(APPEND shared_tests_flags " ")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
