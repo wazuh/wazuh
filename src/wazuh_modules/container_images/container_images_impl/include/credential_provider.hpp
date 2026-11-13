@@ -18,6 +18,22 @@
 
 namespace containerimages
 {
+    /// @brief Overwrite a string's characters and empty it.
+    ///
+    /// Written through a volatile pointer: a plain fill into a buffer that is freed next
+    /// is a dead store, and a compiler is entitled to remove it.
+    inline void scrubString(std::string& text)
+    {
+        volatile char* data {const_cast<volatile char*>(text.data())};
+
+        for (std::size_t index = 0; index < text.size(); ++index)
+        {
+            data[index] = '\0';
+        }
+
+        text.clear();
+    }
+
     /// @brief A credential value that clears its storage when it goes out of scope.
     ///
     /// This does not make a secret unrecoverable from a core dump, and it is not claimed
@@ -75,16 +91,7 @@ namespace containerimages
         private:
             void scrub()
             {
-                // volatile so the writes are not optimized away as dead stores, which is
-                // exactly what a compiler is entitled to do to a buffer about to be freed.
-                volatile char* data {const_cast<volatile char*>(m_value.data())};
-
-                for (std::size_t index = 0; index < m_value.size(); ++index)
-                {
-                    data[index] = '\0';
-                }
-
-                m_value.clear();
+                scrubString(m_value);
             }
 
             std::string m_value;

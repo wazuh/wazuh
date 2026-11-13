@@ -96,6 +96,7 @@ namespace
 void container_images_set_registry_options(const char** registryHosts,
                                            const char** registryUserKeys,
                                            const char** registryPasskeyKeys,
+                                           const char** registryRegions,
                                            const unsigned int registryAuthCount,
                                            const char* caBundle)
 {
@@ -122,6 +123,11 @@ void container_images_set_registry_options(const char** registryHosts,
             if (registryPasskeyKeys != nullptr && registryPasskeyKeys[i] != nullptr)
             {
                 credentials.passkeyKey = registryPasskeyKeys[i];
+            }
+
+            if (registryRegions != nullptr && registryRegions[i] != nullptr)
+            {
+                credentials.region = registryRegions[i];
             }
 
             g_registryAuth.push_back(std::move(credentials));

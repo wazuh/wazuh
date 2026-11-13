@@ -27,10 +27,15 @@ typedef struct wm_container_images_reference_t {
 
 // Credentials for one registry, named by keystore key rather than by value: no
 // credential is ever written into ossec.conf.
+//
+// An Amazon ECR entry (aws set) names the AWS access key id and secret access key keys,
+// which are held in user_key and passkey_key, and optionally a region.
 typedef struct wm_container_images_registry_t {
     char *host;                         // Registry host, e.g. "ghcr.io"
-    char *user_key;                     // Keystore key holding the user name
-    char *passkey_key;                  // Keystore key holding the access token
+    char *user_key;                     // Keystore key holding the user name, or the AWS access key id
+    char *passkey_key;                  // Keystore key holding the access token, or the AWS secret access key
+    char *region;                       // AWS region the credential belongs to; empty when not configured
+    unsigned int aws:1;                 // Entry was written with the AWS tags
 } wm_container_images_registry_t;
 
 typedef struct wm_container_images_t {

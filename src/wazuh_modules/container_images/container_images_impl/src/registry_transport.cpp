@@ -170,7 +170,7 @@ namespace containerimages
                                     HttpResponse& response,
                                     std::string& error)
     {
-        return perform(url, headers, nullptr, response, error);
+        return perform(url, headers, nullptr, nullptr, response, error);
     }
 
     bool CurlRegistryTransport::getWithBasicAuth(const std::string& url,
@@ -184,7 +184,7 @@ namespace containerimages
         // the lifetime of the transport.
         std::string credentials {user + ":" + password.value()};
 
-        const auto result {perform(url, headers, &credentials, response, error)};
+        const auto result {perform(url, headers, &credentials, nullptr, response, error)};
 
         // Written through a volatile pointer. A std::fill into a buffer that is freed on
         // the next line is a dead store, and a compiler is entitled to remove it; this is
@@ -200,9 +200,19 @@ namespace containerimages
         return result;
     }
 
+    bool CurlRegistryTransport::post(const std::string& url,
+                                     const std::vector<std::string>& headers,
+                                     const std::string& body,
+                                     HttpResponse& response,
+                                     std::string& error)
+    {
+        return perform(url, headers, nullptr, &body, response, error);
+    }
+
     bool CurlRegistryTransport::perform(const std::string& url,
                                         const std::vector<std::string>& headers,
                                         const std::string* basicCredentials,
+                                        const std::string* postBody,
                                         HttpResponse& response,
                                         std::string& error)
     {
@@ -251,7 +261,9 @@ namespace containerimages
         curl_easy_setopt(handle, CURLOPT_PROTOCOLS_STR, ALLOWED_PROTOCOLS);
         curl_easy_setopt(handle, CURLOPT_REDIR_PROTOCOLS_STR, ALLOWED_PROTOCOLS);
 
-        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
+        // A POST is never redirected. It carries a signature made for one host, and
+        // replaying it elsewhere is what a redirect would do.
+        curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, postBody == nullptr ? 1L : 0L);
         curl_easy_setopt(handle, CURLOPT_MAXREDIRS, MAX_REDIRECTS);
 
         // Left off deliberately, and named here so nobody turns it on to "fix" an
@@ -272,6 +284,18 @@ namespace containerimages
         {
             curl_easy_setopt(handle, CURLOPT_HTTPAUTH, static_cast<long>(CURLAUTH_BASIC));
             curl_easy_setopt(handle, CURLOPT_USERPWD, basicCredentials->c_str());
+        }
+
+        if (postBody != nullptr)
+        {
+            curl_easy_setopt(handle, CURLOPT_POST, 1L);
+            curl_easy_setopt(handle, CURLOPT_POSTFIELDS, postBody->c_str());
+            curl_easy_setopt(handle, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(postBody->size()));
+
+            // No content decoding, as for a blob: no Accept-Encoding is offered and nothing
+            // that arrives is rewritten before it is read. The answer is a small JSON document.
+            curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, nullptr);
+            curl_easy_setopt(handle, CURLOPT_HTTP_CONTENT_DECODING, 0L);
         }
 
         curl_slist* headerList {nullptr};

@@ -49,9 +49,12 @@ EXPORTED void container_images_init(const unsigned int interval,
 /// Registry options, set before container_images_start() and only when a registry
 /// reference is configured. Kept apart from container_images_init() so the existing
 /// initialization contract does not change for a module that configures no registry.
+/// For an Amazon ECR host the user and passkey keys are the access key id and secret access
+/// key key names, and the region may be NULL or empty.
 EXPORTED void container_images_set_registry_options(const char** registryHosts,
                                                     const char** registryUserKeys,
                                                     const char** registryPasskeyKeys,
+                                                    const char** registryRegions,
                                                     const unsigned int registryAuthCount,
                                                     const char* caBundle);
 
@@ -75,6 +78,7 @@ typedef void (*container_images_init_func)(const unsigned int interval,
 typedef void (*container_images_set_registry_options_func)(const char** registryHosts,
                                                            const char** registryUserKeys,
                                                            const char** registryPasskeyKeys,
+                                                           const char** registryRegions,
                                                            const unsigned int registryAuthCount,
                                                            const char* caBundle);
 typedef void (*container_images_start_func)();

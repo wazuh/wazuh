@@ -20,6 +20,8 @@
 #include "wm_container_images.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
 
+cJSON *wm_container_images_dump(const wm_container_images_t *data);
+
 static void wmodule_cleanup(wmodule *module) {
     if (module) {
         wm_container_images_t *data = (wm_container_images_t *)module->data;
@@ -37,6 +39,7 @@ static void wmodule_cleanup(wmodule *module) {
                 os_free(data->registries[i].host);
                 os_free(data->registries[i].user_key);
                 os_free(data->registries[i].passkey_key);
+                os_free(data->registries[i].region);
             }
             os_free(data->registries);
         }
@@ -594,6 +597,459 @@ void test_read_defaults_have_no_registry_configuration(void **state) {
     assert_null(data->ca_bundle);
 }
 
+#define ECR_HOST "123456789012.dkr.ecr.us-east-1.amazonaws.com"
+
+void test_read_ecr_registry(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "    <region>us-east-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].host, ECR_HOST);
+    assert_string_equal(data->registries[0].user_key, "ecr_key_id");
+    assert_string_equal(data->registries[0].passkey_key, "ecr_secret");
+    assert_string_equal(data->registries[0].region, "us-east-1");
+    assert_int_equal(data->registries[0].aws, 1);
+}
+
+void test_read_ecr_registry_without_region(void **state) {
+    /* The region is optional: the host names one. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].region, "");
+    assert_int_equal(data->registries[0].aws, 1);
+}
+
+void test_read_ecr_registry_of_china_and_other_regions(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>123456789012.dkr.ecr.cn-north-1.amazonaws.com.cn</host>\n"
+        "    <access_key_id_keystore_key>a</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>b</secret_access_key_keystore_key>\n"
+        "    <region>cn-north-1</region>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>123456789012.dkr.ecr.us-gov-west-1.amazonaws.com</host>\n"
+        "    <access_key_id_keystore_key>c</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>d</secret_access_key_keystore_key>\n"
+        "    <region>us-gov-west-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 2);
+    assert_string_equal(data->registries[0].region, "cn-north-1");
+    assert_string_equal(data->registries[1].region, "us-gov-west-1");
+}
+
+void test_read_ecr_registry_missing_a_key_is_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <region>us-east-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+
+    for (int i = 0; i < 3; i++) {
+        expect_any(__wrap__mtwarn, tag);
+        expect_string(__wrap__mtwarn, formatted_msg,
+                      "The 'registry' entry for '" ECR_HOST "' at module 'container_images' needs both 'access_key_id_keystore_key' and 'secret_access_key_keystore_key', ignoring it.");
+    }
+
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_ecr_registry_with_an_invalid_region_is_skipped(void **state) {
+    (void)state;
+
+    const char *regions[] = {"us-east-1.attacker.example", "US-EAST-1", "us east 1", "useast1", "us-east", "eu-west-1/x", "us-e4st-1", "us-12-1"};
+
+    for (size_t i = 0; i < sizeof(regions) / sizeof(regions[0]); i++) {
+        char string[512];
+        snprintf(string, sizeof(string),
+                 "<registry_auth>\n"
+                 "  <registry>\n"
+                 "    <host>" ECR_HOST "</host>\n"
+                 "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+                 "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+                 "    <region>%s</region>\n"
+                 "  </registry>\n"
+                 "</registry_auth>\n", regions[i]);
+
+        test_structure *test = calloc(1, sizeof(test_structure));
+        test->module = calloc(1, sizeof(wmodule));
+        test->nodes = string_to_xml_node(string, &(test->xml));
+
+        expect_any(__wrap__mtwarn, tag);
+        expect_string(__wrap__mtwarn, formatted_msg,
+                      "The 'registry' entry for '" ECR_HOST "' at module 'container_images' has an invalid 'region', ignoring it.");
+
+        assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+        assert_int_equal(((wm_container_images_t *)test->module->data)->registries_count, 0);
+
+        teardown_test_read((void **)&test);
+    }
+}
+
+void test_read_ecr_tags_mixed_with_basic_tags_are_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <user_keystore_key>u</user_keystore_key>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "The 'registry' entry for '" ECR_HOST "' at module 'container_images' mixes 'user_keystore_key' and 'passkey_keystore_key' with the Amazon ECR tags, ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_ecr_tags_on_a_host_that_is_not_amazon_are_skipped(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>public.ecr.aws</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>evil.example.com</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any_always(__wrap__mtwarn, tag);
+    expect_any_always(__wrap__mtwarn, formatted_msg);
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_basic_tags_on_an_amazon_host_are_skipped(void **state) {
+    /* The user and passkey of a registry would be sent to AWS as an access key pair, which
+     * is never what was meant, so the entry is refused with the tags to use instead. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <user_keystore_key>u</user_keystore_key>\n"
+        "    <passkey_keystore_key>p</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "The 'registry' entry for '" ECR_HOST "' at module 'container_images' needs 'access_key_id_keystore_key' and 'secret_access_key_keystore_key' for an Amazon ECR registry, ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 0);
+}
+
+void test_read_ecr_and_ghcr_registries_side_by_side(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 2);
+    assert_int_equal(data->registries[0].aws, 0);
+    assert_string_equal(data->registries[0].region, "");
+    assert_int_equal(data->registries[1].aws, 1);
+}
+
+void test_read_ghcr_registry_with_a_stray_region_is_kept(void **state) {
+    /* The region means nothing for GHCR. The entry worked before the tag existed, so it is kept
+     * and only the tag is ignored, rather than a private repository turning anonymous. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "    <region>us-east-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "The 'region' tag inside 'registry' for 'ghcr.io' at module 'container_images' applies only to an Amazon ECR registry, ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_int_equal(data->registries[0].aws, 0);
+    assert_string_equal(data->registries[0].user_key, "ghcr_user");
+    assert_string_equal(data->registries[0].passkey_key, "ghcr_token");
+    assert_string_equal(data->registries[0].region, "");
+}
+
+void test_read_ecr_host_is_read_in_lower_case(void **state) {
+    /* The Amazon check and the module's own comparison both look at the host in lower case. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>123456789012.DKR.ECR.US-EAST-1.AMAZONAWS.COM</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].host, ECR_HOST);
+    assert_int_equal(data->registries[0].aws, 1);
+}
+
+void test_read_ecr_host_with_a_scheme_or_a_path_is_skipped(void **state) {
+    const char *hosts[] = {"https://" ECR_HOST, ECR_HOST "/my-backend", ECR_HOST " extra"};
+
+    (void)state;
+
+    for (size_t i = 0; i < sizeof(hosts) / sizeof(hosts[0]); i++) {
+        char string[512];
+        snprintf(string, sizeof(string),
+                 "<registry_auth>\n"
+                 "  <registry>\n"
+                 "    <host>%s</host>\n"
+                 "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+                 "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+                 "  </registry>\n"
+                 "</registry_auth>\n", hosts[i]);
+
+        test_structure *test = calloc(1, sizeof(test_structure));
+        test->module = calloc(1, sizeof(wmodule));
+        test->nodes = string_to_xml_node(string, &(test->xml));
+
+        char message[512];
+        snprintf(message, sizeof(message),
+                 "The 'registry' entry for '%s' at module 'container_images' must name a bare host such as 'ghcr.io', without a scheme, a path or whitespace, ignoring it.", hosts[i]);
+
+        expect_any(__wrap__mtwarn, tag);
+        expect_string(__wrap__mtwarn, formatted_msg, message);
+        assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+        assert_int_equal(((wm_container_images_t *)test->module->data)->registries_count, 0);
+        teardown_test_read((void **)&test);
+    }
+}
+
+void test_read_a_second_ecr_entry_for_a_host_is_ignored(void **state) {
+    /* The first entry is the one the module uses, as for any other registry, and a host
+     * written in another case is the same host. */
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <access_key_id_keystore_key>first_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>first_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>123456789012.DKR.ECR.US-EAST-1.AMAZONAWS.COM</host>\n"
+        "    <access_key_id_keystore_key>second_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>second_secret</secret_access_key_keystore_key>\n"
+        "    <region>eu-west-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "The 'registry' entry for '" ECR_HOST "' at module 'container_images' repeats a host already configured, ignoring it. The first entry is used.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    wm_container_images_t *data = (wm_container_images_t *)test->module->data;
+    assert_int_equal(data->registries_count, 1);
+    assert_string_equal(data->registries[0].user_key, "first_id");
+    assert_string_equal(data->registries[0].passkey_key, "first_secret");
+    assert_string_equal(data->registries[0].region, "");
+}
+
+void test_read_ecr_entry_with_only_one_aws_key_is_skipped_whichever_one(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "    <region>us-east-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    expect_any(__wrap__mtwarn, tag);
+    expect_string(__wrap__mtwarn, formatted_msg,
+                  "The 'registry' entry for '" ECR_HOST "' at module 'container_images' needs both 'access_key_id_keystore_key' and 'secret_access_key_keystore_key', ignoring it.");
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+    assert_int_equal(((wm_container_images_t *)test->module->data)->registries_count, 0);
+}
+
+void test_read_aws_tags_on_another_amazon_host_are_skipped(void **state) {
+    /* Hosts under amazonaws.com that are not a private ECR registry can never match a
+     * reference, so the entry is refused where the operator is editing it. */
+    const char *hosts[] = {"s3.amazonaws.com", "123456789012.dkr.ecr-fips.us-east-1.amazonaws.com",
+                           "dkr.ecr.us-east-1.amazonaws.com", "12345678901.dkr.ecr.us-east-1.amazonaws.com",
+                           "123456789012.dkr.ecr.nowhere.amazonaws.com", "api.ecr.us-east-1.amazonaws.com"};
+
+    (void)state;
+
+    for (size_t i = 0; i < sizeof(hosts) / sizeof(hosts[0]); i++) {
+        char string[512];
+        char message[512];
+        snprintf(string, sizeof(string),
+                 "<registry_auth>\n"
+                 "  <registry>\n"
+                 "    <host>%s</host>\n"
+                 "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+                 "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+                 "  </registry>\n"
+                 "</registry_auth>\n", hosts[i]);
+        snprintf(message, sizeof(message),
+                 "The 'registry' entry for '%s' at module 'container_images' uses Amazon ECR tags, which apply only to a private ECR registry such as '<account>.dkr.ecr.<region>.amazonaws.com', ignoring it.", hosts[i]);
+
+        test_structure *test = calloc(1, sizeof(test_structure));
+        test->module = calloc(1, sizeof(wmodule));
+        test->nodes = string_to_xml_node(string, &(test->xml));
+
+        expect_any(__wrap__mtwarn, tag);
+        expect_string(__wrap__mtwarn, formatted_msg, message);
+        assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+        assert_int_equal(((wm_container_images_t *)test->module->data)->registries_count, 0);
+        teardown_test_read((void **)&test);
+    }
+}
+
+void test_dump_names_the_keys_and_never_a_value(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>ghcr.io</host>\n"
+        "    <user_keystore_key>ghcr_user</user_keystore_key>\n"
+        "    <passkey_keystore_key>ghcr_token</passkey_keystore_key>\n"
+        "  </registry>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "    <region>eu-west-1</region>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    cJSON *dump = wm_container_images_dump((wm_container_images_t *)test->module->data);
+    cJSON *registries = cJSON_GetObjectItem(cJSON_GetObjectItem(dump, "container_images"), "registry_auth");
+    assert_int_equal(cJSON_GetArraySize(registries), 2);
+
+    cJSON *ghcr = cJSON_GetArrayItem(registries, 0);
+    assert_string_equal(cJSON_GetObjectItem(ghcr, "user_keystore_key")->valuestring, "ghcr_user");
+    assert_string_equal(cJSON_GetObjectItem(ghcr, "passkey_keystore_key")->valuestring, "ghcr_token");
+    assert_null(cJSON_GetObjectItem(ghcr, "access_key_id_keystore_key"));
+    assert_null(cJSON_GetObjectItem(ghcr, "region"));
+
+    cJSON *ecr = cJSON_GetArrayItem(registries, 1);
+    assert_string_equal(cJSON_GetObjectItem(ecr, "access_key_id_keystore_key")->valuestring, "ecr_key_id");
+    assert_string_equal(cJSON_GetObjectItem(ecr, "secret_access_key_keystore_key")->valuestring, "ecr_secret");
+    assert_string_equal(cJSON_GetObjectItem(ecr, "region")->valuestring, "eu-west-1");
+    assert_null(cJSON_GetObjectItem(ecr, "user_keystore_key"));
+
+    cJSON_Delete(dump);
+}
+
+void test_dump_omits_the_region_when_none_is_configured(void **state) {
+    const char *string =
+        "<registry_auth>\n"
+        "  <registry>\n"
+        "    <host>" ECR_HOST "</host>\n"
+        "    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>\n"
+        "    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>\n"
+        "  </registry>\n"
+        "</registry_auth>\n";
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_container_images_read(&(test->xml), test->nodes, test->module), 0);
+
+    cJSON *dump = wm_container_images_dump((wm_container_images_t *)test->module->data);
+    cJSON *registries = cJSON_GetObjectItem(cJSON_GetObjectItem(dump, "container_images"), "registry_auth");
+
+    assert_null(cJSON_GetObjectItem(cJSON_GetArrayItem(registries, 0), "region"));
+
+    cJSON_Delete(dump);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_read_defaults, setup_test_read, teardown_test_read),
@@ -628,6 +1084,23 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_empty_ca_bundle_is_skipped, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_ca_bundle_last_one_wins, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_defaults_have_no_registry_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_registry, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_registry_without_region, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_registry_of_china_and_other_regions, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_registry_missing_a_key_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_registry_with_an_invalid_region_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_tags_mixed_with_basic_tags_are_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_tags_on_a_host_that_is_not_amazon_are_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_basic_tags_on_an_amazon_host_are_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_and_ghcr_registries_side_by_side, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ghcr_registry_with_a_stray_region_is_kept, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_host_is_read_in_lower_case, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_host_with_a_scheme_or_a_path_is_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_a_second_ecr_entry_for_a_host_is_ignored, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_ecr_entry_with_only_one_aws_key_is_skipped_whichever_one, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_aws_tags_on_another_amazon_host_are_skipped, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_dump_names_the_keys_and_never_a_value, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_dump_omits_the_region_when_none_is_configured, setup_test_read, teardown_test_read),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
