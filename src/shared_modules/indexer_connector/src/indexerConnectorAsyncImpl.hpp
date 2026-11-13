@@ -204,6 +204,13 @@ class IndexerConnectorAsyncImpl final
     size_t m_pendingUnclassifiedBatches {0};
     /// Parser for the items of a bulk response that reports errors (dispatch thread only).
     simdjson::dom::parser m_bulkParser;
+    /// Deduplication WARN edge (dispatch thread only, like m_consecutiveUnavailable): armed until a
+    /// bulk answer reports already applied `create` items, re-armed by an answer without any (see noteDeduplicated()).
+    bool m_dedupArmed {true};
+    /// `create` items answered with a per-item 409 version_conflict_engine_exception (already
+    /// applied by an earlier attempt). Written on the dispatch thread, read by the metrics from
+    /// another thread.
+    std::atomic<uint64_t> m_deduplicated {0};
     size_t m_maxQueueBytes {0};
     size_t m_flushInterval {FlushInterval};
     size_t m_bulkMaxBytes {BulkMaxBytes};
@@ -226,6 +233,41 @@ class IndexerConnectorAsyncImpl final
 public:
     static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
     static constexpr size_t DEFAULT_LOGGER_THREADS {1};    ///< Default number of error-logger threads.
+    static constexpr size_t MAX_DOC_ID_BYTES {512};        ///< Longest caller-supplied document id (before escaping).
+
+    /**
+     * @brief Whether one _bulk response item is a `create` the indexer had already applied.
+     *
+     * A resend of a document with a caller-supplied `_id` that an earlier attempt did apply is
+     * answered with a per-item 409 `version_conflict_engine_exception` on the `create` action.
+     *
+     * @param item One element of the response's "items" array.
+     * @return true only when the item has a "create" key whose "status" is 409 and whose
+     * "error.type" is "version_conflict_engine_exception"; false if any of them is missing or of
+     * another type.
+     */
+    static bool isAppliedCreateConflict(simdjson::dom::element item)
+    {
+        simdjson::dom::element create;
+        if (item["create"].get(create) != simdjson::SUCCESS)
+        {
+            return false;
+        }
+
+        int64_t status {0};
+        if (create["status"].get_int64().get(status) != simdjson::SUCCESS || status != HTTP_VERSION_CONFLICT)
+        {
+            return false;
+        }
+
+        std::string_view errorType;
+        if (create["error"]["type"].get_string().get(errorType) != simdjson::SUCCESS)
+        {
+            return false;
+        }
+
+        return errorType == "version_conflict_engine_exception";
+    }
 
     /**
      * @brief Cheap check of the "errors" field in the head of an OpenSearch _bulk response.
@@ -424,6 +466,14 @@ public:
                 size_t itemIndex = 0;
                 for (const auto& item : itemsArray)
                 {
+                    // An already applied `create` (resend of a document an earlier attempt indexed)
+                    // is counted by onSuccess as deduplicated: no line, not a failure.
+                    if (isAppliedCreateConflict(item))
+                    {
+                        ++itemIndex;
+                        continue;
+                    }
+
                     // Try to find the operation element (could be "index", "create", "delete")
                     simdjson::dom::element operationElement;
                     bool foundOperation = false;
@@ -598,6 +648,7 @@ public:
                     // full copy of both in the logger queue (the main RSS driver under sustained load).
                     if (!bulkResponseHasErrors(response))
                     {
+                        m_dedupArmed = true;
                         m_queue->reportHealthyResponse(sequence);
                         return;
                     }
@@ -640,6 +691,10 @@ public:
                             m_queue->reportHealthyResponse(sequence);
                             decided = true;
                         }
+
+                        // `create` items an earlier attempt had already applied (a resend after a timeout or a
+                        // lost connection): counted, never resent and not logged per document.
+                        noteDeduplicated(verdict.applied);
 
                         if (!verdict.otherErrors)
                         {
@@ -927,7 +982,13 @@ public:
 
     void bulkIndexDataStream(std::string_view index, std::string_view data)
     {
-        constexpr auto FORMATTED_SIZE {24}; // {"create":{"_index":""}} + newlines"
+        bulkIndexDataStream(index, std::string_view(), data);
+    }
+
+    void bulkIndexDataStream(std::string_view index, std::string_view id, std::string_view data)
+    {
+        constexpr auto FORMATTED_SIZE {24};   // {"create":{"_index":""}} + newlines"
+        constexpr auto ID_FORMATTED_SIZE {9}; // ,"_id":""
 
         // Validate input parameters
         if (index.empty())
@@ -940,11 +1001,23 @@ public:
             throw IndexerConnectorException("Data cannot be empty for data stream: " + std::string(index));
         }
 
+        if (id.size() > MAX_DOC_ID_BYTES)
+        {
+            throw IndexerConnectorException("Document id longer than " + std::to_string(MAX_DOC_ID_BYTES) +
+                                            " bytes for data stream: " + std::string(index));
+        }
+
         std::string bulkData;
-        bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE);
+        bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE +
+                         (id.empty() ? 0 : id.size() + ID_FORMATTED_SIZE));
 
         bulkData.append(R"({"create":{"_index":")");
         bulkData.append(index);
+        if (!id.empty())
+        {
+            bulkData.append(R"(","_id":")");
+            appendEscapedId(bulkData, id);
+        }
         bulkData.append(R"("}})");
         bulkData.append("\n");
         bulkData.append(data);
@@ -970,6 +1043,11 @@ public:
     uint64_t getRequeuedEvents() const
     {
         return m_queue->requeuedEvents();
+    }
+
+    uint64_t getDeduplicatedEvents() const
+    {
+        return m_deduplicated.load(std::memory_order_relaxed);
     }
 
     PointInTime
@@ -1317,6 +1395,9 @@ private:
         std::vector<size_t> retryable;
         size_t clusterBlocked {0};
         size_t throttled {0};
+        /// `create` items answered 409 version_conflict_engine_exception: an earlier attempt had already
+        /// applied them. Neither retried nor an error (see isAppliedCreateConflict()).
+        size_t applied {0};
         /// Some item failed with another error, which is logged with its document and not retried.
         bool otherErrors {false};
     };
@@ -1329,6 +1410,8 @@ private:
      * own: a 429 (load shedding) or a cluster_block_exception (writes blocked). A response whose "errors" is
      * false or absent is classified with nothing to retry. It is unclassified when it cannot be parsed, has
      * no items array, or its item count differs from the events sent: item i must be event i.
+     * A `create` item answered 409 version_conflict_engine_exception is counted in `applied`: the document is
+     * already there, so it is neither retried nor another error.
      *
      * Known limitation: each item is judged on its own. When a batch holds several operations on the same
      * document and the indexer rejects an earlier one but writes a later one, the earlier one is still resent
@@ -1374,10 +1457,14 @@ private:
             {
                 simdjson::dom::element operation;
                 simdjson::dom::element error;
-                if ((item["index"].get(operation) == simdjson::SUCCESS ||
-                     item["create"].get(operation) == simdjson::SUCCESS ||
-                     item["delete"].get(operation) == simdjson::SUCCESS) &&
-                    operation["error"].get(error) == simdjson::SUCCESS)
+                if (isAppliedCreateConflict(item))
+                {
+                    ++verdict.applied;
+                }
+                else if ((item["index"].get(operation) == simdjson::SUCCESS ||
+                          item["create"].get(operation) == simdjson::SUCCESS ||
+                          item["delete"].get(operation) == simdjson::SUCCESS) &&
+                         operation["error"].get(error) == simdjson::SUCCESS)
                 {
                     int64_t status = 0;
                     std::string_view type;
@@ -1408,6 +1495,32 @@ private:
             verdict.reason = "internal error";
         }
         return verdict;
+    }
+
+    /**
+     * @brief Counts the already applied `create` items of one classified bulk response. One WARN per streak:
+     * it is logged again only after a classified response without any (an HTTP error answer, or a response
+     * whose items cannot be matched with the batch, does not end the streak). Dispatch thread only.
+     *
+     * @param applied Items of the response counted in BulkItemVerdict::applied.
+     */
+    void noteDeduplicated(const size_t applied)
+    {
+        if (applied == 0)
+        {
+            m_dedupArmed = true;
+            return;
+        }
+
+        m_deduplicated.fetch_add(applied, std::memory_order_relaxed);
+        if (m_dedupArmed)
+        {
+            m_dedupArmed = false;
+            LOGFN_WARN(m_logFn,
+                       "Indexer already had %zu document(s) of a resent bulk (an earlier attempt was applied after a "
+                       "timeout or connection loss); they were not indexed twice.",
+                       applied);
+        }
     }
 
     /**

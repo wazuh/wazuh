@@ -26,6 +26,8 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
+#include <vector>
 
 // Indexer server addresses.
 static const std::string INDEXER_HOSTNAME {"localhost"};
@@ -534,6 +536,53 @@ TEST_F(IndexerConnectorTest, AsyncIndexUnavailableServer)
     }
 
     ASSERT_FALSE(bulkReceived);
+}
+
+/**
+ * @brief A resend of an already applied data-stream bulk is deduplicated by `_id`.
+ *
+ * The fake indexer stores documents by `_id` and answers a `create` of an existing id with a per-item
+ * 409 `version_conflict_engine_exception`. Its first `/_bulk` is applied and then answered 503 (the
+ * answer of a processed bulk was lost), so the connector resends the same batch: the indexer keeps
+ * one copy of each document and the connector counts the three 409 items as deduplicated, not dropped.
+ */
+TEST_F(IndexerConnectorTest, AsyncDataStreamResendIsDeduplicated)
+{
+    constexpr auto DATA_STREAM {"wazuh-events-v5-dedup"};
+    const std::vector<std::pair<std::string, std::string>> documents {
+        {"doc-1", R"({"n":1})"}, {"doc-2", R"({"n":2})"}, {"doc-3", R"({"n":3})"}};
+
+    m_indexerServers[A_IDX]->enableUniqueIds(1);
+
+    // The three entries go out together: the bulk threshold sits between two and three of them, and
+    // the flush timer is far longer than the test, so neither the first send nor the resend splits.
+    std::vector<size_t> entrySizes;
+    for (const auto& [id, data] : documents)
+    {
+        entrySizes.push_back(std::string(R"({"create":{"_index":")").size() + std::string(DATA_STREAM).size() +
+                             std::string(R"(","_id":")").size() + id.size() + std::string(R"("}})").size() + 1 +
+                             data.size() + 1);
+    }
+
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+    config["bulk_max_bytes"] = entrySizes[0] + entrySizes[1] + 1;
+    config["flush_interval_seconds"] = 60;
+
+    IndexerConnectorAsync connector(config, LoggingContext {"component_test_dedup", nullptr});
+    for (const auto& [id, data] : documents)
+    {
+        connector.indexDataStream(DATA_STREAM, id, data);
+    }
+
+    ASSERT_NO_THROW(waitUntil([&connector]() { return connector.getDeduplicatedEvents() >= 3; }, 10000));
+
+    EXPECT_EQ(m_indexerServers[A_IDX]->bulkRequests(), 2) << "exactly one resend";
+    EXPECT_EQ(m_indexerServers[A_IDX]->storedDocuments(), 3u) << "each document is stored once";
+    const std::map<std::string, std::string> expected(documents.begin(), documents.end());
+    EXPECT_EQ(m_indexerServers[A_IDX]->documents(), expected) << "each document is stored under its own _id";
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 3u);
+    EXPECT_EQ(connector.getDroppedEvents(), 0u);
 }
 
 // ─── IndexerSession (shared monitor) tests ────────────────────────────────────
