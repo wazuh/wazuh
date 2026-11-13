@@ -295,7 +295,11 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
                     // Update agent data to keep context of events to forward
-                    OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
+                    char *agent_version = w_strndup(version->valuestring, OS_SIZE_32);
+                    if (!OSHash_Update_ex(agent_data_hash, key->id, agent_version) &&
+                        OSHash_Add_ex(agent_data_hash, key->id, agent_version) != 2) {
+                        os_free(agent_version);
+                    }
                     if (!logr.allow_higher_versions &&
                         compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
 
@@ -1852,10 +1856,11 @@ void manager_init()
     pending_queue = linked_queue_init();
     pending_data = OSHash_Create();
 
-    if (!m_hash || !invalid_files || !groups || !multi_groups || !pending_data) {
+    if (!m_hash || !invalid_files || !groups || !multi_groups || !agent_data_hash || !pending_data) {
         merror_exit("OSHash_Create() failed");
     }
 
+    OSHash_SetFreeDataPointer(agent_data_hash, free);
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }
 

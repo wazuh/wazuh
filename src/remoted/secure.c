@@ -996,6 +996,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     os_free(agent_name);
 }
 
+// OSHash_Get_ex_dup() calls the duplicator even when the key is not found
+static void *agent_version_dup(void *data) {
+    return data ? strdup(data) : NULL;
+}
+
 void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name) {
     // Both syscollector delta and sync messages are sent to the router
     ROUTER_PROVIDER_HANDLE router_handle = NULL;
@@ -1054,16 +1059,20 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
     char* msg_start = msg + message_header_size;
     size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
     if ((msg_size + message_header_size) < OS_MAXSTR) {
+        // The stored version can be released by another thread once the table is unlocked
+        char *agent_version = OSHash_Get_ex_dup(agent_data_hash, agent_id, agent_version_dup);
         agent_ctx agent_ctx = {
             .agent_id = agent_id,
             .agent_name = agent_name,
             .agent_ip = agent_ip,
-            .agent_version = (char *)OSHash_Get_ex(agent_data_hash, agent_id)
+            .agent_version = agent_version
         };
 
         if (router_provider_send_fb_json(router_handle, msg_start, &agent_ctx, schema_type) != 0) {
             mdebug2("Unable to forward message '%s' for agent '%s'.", msg_start, agent_id);
         }
+
+        os_free(agent_version);
     }
 }
 
