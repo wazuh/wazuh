@@ -86,6 +86,8 @@ enum class RetGet
 constexpr bool RECURSIVE {true};
 constexpr bool NOT_RECURSIVE {false};
 
+class PathWriter;
+
 /**
  * @brief JSON document wrapper around RapidJSON.
  *
@@ -95,6 +97,8 @@ constexpr bool NOT_RECURSIVE {false};
  */
 class Json
 {
+    friend class PathWriter;
+
 public:
     enum class Type
     {
