@@ -1,5 +1,5 @@
 {
-  "_comment": "category: section in the dashboard (events, bytes, or any custom label). unit: y-axis label (count, items, percent, bytes, eps).",
+  "_comment": "category: section in the dashboard (events, bytes, or any custom label). unit: y-axis label (count = delta per poll of a counter, total = a cumulative pull counter, items, percent, bytes, eps, ms, state). A numeric segment of a metric name (a node's index) matches <i> in a key.",
   "agent.cache.rejected.identity": {
     "category": "events",
     "unit": "count"
@@ -58,7 +58,639 @@
   },
   "indexer.events.dropped": {
     "category": "events",
-    "unit": "count"
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.accepted": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.queue_full": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.client_closed": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.shutdown": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.submit_timeout": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.reentrancy": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.payload_too_large": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.group_too_large": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.rejected.invalid_argument": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.dropped.queue_full": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.dropped.client_closed": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.dropped.shutdown": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.dropped.cancelled": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.ok": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.failed.item_permanent": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.failed.retry_exhausted": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.failed.client_4xx": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.failed.server_5xx": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.failed.unavailable": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.failed.invalid_state": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.failed.ambiguous": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.retries.item_retryable": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.retries.version_conflict": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.retries.server_5xx": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.retries.transport": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.retries.other": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.late_results": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.retained_bytes": {
+    "category": "indexer events bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.events.charge_bytes": {
+    "category": "indexer events bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.events.quota_bytes": {
+    "category": "indexer events bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.events.bulk_requests": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.bulk_bytes": {
+    "category": "indexer events bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_1": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_2": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_4": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_8": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_16": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_32": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_64": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_128": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_256": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_512": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_1024": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_2048": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_4096": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_8192": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_16384": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_32768": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.le_inf": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.sum_micros": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.events.latency.count": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.accepted": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.queue_full": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.client_closed": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.shutdown": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.submit_timeout": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.reentrancy": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.payload_too_large": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.group_too_large": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.rejected.invalid_argument": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.dropped.queue_full": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.dropped.client_closed": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.dropped.shutdown": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.dropped.cancelled": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.ok": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.failed.item_permanent": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.failed.retry_exhausted": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.failed.client_4xx": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.failed.server_5xx": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.failed.unavailable": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.failed.invalid_state": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.failed.ambiguous": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.retries.item_retryable": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.retries.version_conflict": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.retries.server_5xx": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.retries.transport": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.retries.other": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.late_results": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.retained_bytes": {
+    "category": "indexer raw bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.raw.charge_bytes": {
+    "category": "indexer raw bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.raw.quota_bytes": {
+    "category": "indexer raw bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.raw.bulk_requests": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.bulk_bytes": {
+    "category": "indexer raw bucket",
+    "unit": "bytes"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_1": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_2": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_4": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_8": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_16": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_32": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_64": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_128": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_256": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_512": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_1024": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_2048": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_4096": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_8192": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_16384": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_32768": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.le_inf": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.sum_micros": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.latency.count": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.runtime.network_threads": {
+    "category": "indexer runtime",
+    "unit": "items"
+  },
+  "indexer_client.runtime.cpu_threads": {
+    "category": "indexer runtime",
+    "unit": "items"
+  },
+  "indexer_client.runtime.clients": {
+    "category": "indexer runtime",
+    "unit": "items"
+  },
+  "indexer_client.runtime.global_charge_bytes": {
+    "category": "indexer runtime",
+    "unit": "bytes"
+  },
+  "indexer_client.runtime.global_quota_bytes": {
+    "category": "indexer runtime",
+    "unit": "bytes"
+  },
+  "indexer_client.runtime.retained_bytes": {
+    "category": "indexer runtime",
+    "unit": "bytes"
+  },
+  "indexer_client.runtime.usage_errors": {
+    "category": "indexer runtime",
+    "unit": "total"
+  },
+  "indexer_client.query.requests": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.query.failovers": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.query.throttles": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.query.unavailable": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.query.too_large": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.query.conflict_retries": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.query.response_bytes_in_flight": {
+    "category": "indexer queries",
+    "unit": "bytes"
+  },
+  "indexer_client.query.peak_response_bytes_in_flight": {
+    "category": "indexer queries",
+    "unit": "bytes"
+  },
+  "indexer_client.pit.open": {
+    "category": "indexer queries",
+    "unit": "items"
+  },
+  "indexer_client.pit.reserved": {
+    "category": "indexer queries",
+    "unit": "items"
+  },
+  "indexer_client.pit.deletes_pending": {
+    "category": "indexer queries",
+    "unit": "items"
+  },
+  "indexer_client.pit.created": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.pit.deletes_confirmed": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.pit.deletes_expired": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.pit.delete_retries": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.pit.expired": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.pit.stale": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.pit.refused_full": {
+    "category": "indexer queries",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.state": {
+    "category": "indexer nodes",
+    "unit": "state"
+  },
+  "indexer_client.node.<i>.transitions": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.window": {
+    "category": "indexer nodes",
+    "unit": "items"
+  },
+  "indexer_client.node.<i>.bulk_target_bytes": {
+    "category": "indexer nodes",
+    "unit": "bytes"
+  },
+  "indexer_client.node.<i>.pace_ms": {
+    "category": "indexer nodes",
+    "unit": "ms"
+  },
+  "indexer_client.node.<i>.requests": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.throttled": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.server_5xx": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.failures": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.decreases.429": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.decreases.throttled": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.decreases.latency": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_1": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_2": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_4": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_8": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_16": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_32": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_64": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_128": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_256": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_512": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_1024": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_2048": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_4096": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_8192": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_16384": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_32768": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.le_inf": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.sum_micros": {
+    "category": "indexer nodes",
+    "unit": "total"
+  },
+  "indexer_client.node.<i>.latency.count": {
+    "category": "indexer nodes",
+    "unit": "total"
   },
   "agent.cache.bytes": {
     "category": "cache",
