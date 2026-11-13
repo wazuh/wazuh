@@ -110,6 +110,9 @@ void w_enrollment_parse_error(const hc_enroll_result_t *result, w_enroll_error_t
 const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *error, char *reason,
                                        size_t reason_size);
 
+/** @brief Whether @p enroll_kid is an enrollment token id, as opposed to a re-enrollment bearer's or none. */
+bool w_enrollment_is_token_kid(const char *enroll_kid);
+
 /**
  * @brief The enrollment token id a request signed with, or "(id unknown)" when its kid is not a
  *        token id (a re-enrollment bearer's, or none).
@@ -117,12 +120,36 @@ const char *w_enrollment_token_refusal(long http_code, const w_enroll_error_t *e
 const char *w_enrollment_token_id_or_unknown(const char *enroll_kid);
 
 /**
- * @brief Records that an attempt may have reached the manager without the agent learning the
- *        outcome. Later refusals in the same run are then explained by it instead of generically.
+ * @brief Whether a request that got no HTTP status failed because the manager refused the TLS
+ *        handshake over the agent's client certificate, and which alert it sent.
+ *
+ * @param transport_error The request's transport error text.
+ * @param reason Receives the alert as OpenSSL names it, e.g. "tlsv13 alert certificate required".
+ * @param size Size of @p reason.
  */
-void w_enrollment_note_outcome_unknown(void);
+bool w_enrollment_tls_rejection(const char *transport_error, char *reason, size_t size);
 
-/** @brief Forgets that record. A successful enrollment does it on its own. */
+/**
+ * @brief The /enroll budget in milliseconds, from `agent.https_enroll_timeout`. Read from the
+ *        internal options relative to the working directory, so every caller that has changed
+ *        into the installation directory honours an override and any other gets the default.
+ */
+uint32_t w_enrollment_timeout_ms(void);
+
+/**
+ * @brief Records, against @p enroll_kid, an attempt whose outcome the agent cannot know: the
+ *        request was sent and nothing came back, authd answered 503 with code -2, or a proxy
+ *        answered 502 or 504. A TLS rejection is never one. A 200 the agent cannot use is
+ *        recorded by process_response itself.
+ *
+ * Refusals of that same credential are then explained by it instead of generically. It ends on a
+ * success, on an ambiguous attempt for another credential, and on any other answer.
+ *
+ * @return true when the attempt is ambiguous.
+ */
+bool w_enrollment_note_outcome_unknown(const hc_enroll_result_t *result, const char *enroll_kid);
+
+/** @brief Forgets that record. Any definitive answer does it on its own. */
 void w_enrollment_clear_outcome_unknown(void);
 
 /**

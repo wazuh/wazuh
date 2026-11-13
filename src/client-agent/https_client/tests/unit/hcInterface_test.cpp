@@ -518,6 +518,8 @@ TEST(HcEnrollTest, UnreachableServerReturnsFalseWithZeroHttpCode)
     hc_enroll_result_t result {};
     EXPECT_FALSE(hc_enroll(&config, &request, &result));
     EXPECT_EQ(0, result.http_code);
+    // Refused before any request went out, so the manager cannot have acted on it.
+    EXPECT_FALSE(result.request_sent);
     // http_code == 0 says only "nothing answered", which an operator cannot act
     // on: the reason is what separates a down manager from a rejected
     // certificate. Not matched exactly -- libcurl and OpenSSL reword these
@@ -536,6 +538,7 @@ TEST(HcEnrollTest, InvalidTransportConfigIsRejectedBeforeSending)
     hc_enroll_result_t result {};
     EXPECT_FALSE(hc_enroll(&config, &request, &result));
     EXPECT_EQ(0, result.http_code);
+    EXPECT_FALSE(result.request_sent);
     // libcurl never ran, so it has no opinion to report; validateTransport()
     // logged the real reason itself, and the caller falls back to its own
     // wording rather than printing an empty one.

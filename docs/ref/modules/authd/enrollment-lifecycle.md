@@ -466,19 +466,25 @@ the agent receives it.
 The manager applies an enrollment whether or not the agent is still waiting. The agent waits
 `agent.https_enroll_timeout` (35 s by default), longer than remoted's `http_request_timeout`, but a
 manager that stays unresponsive past remoted's own wait can still apply the request after the agent
-has been told `503` (`Enrollment outcome unknown`) or has heard nothing.
+has been told `503` (`Enrollment outcome unknown`), a proxy has answered `502` or `504`, the
+agent could not use a `200`, or it has heard nothing after its request was sent.
+The agent ties these explanations to the credential of that attempt: every refusal of that
+credential is explained, until a success or any other answer ends it. A failure before the request
+was sent (DNS, connection refused, a refused TLS handshake) never triggers them.
 
 - **Re-enrollment.** The master has rotated the agent's key and re-enrollment secret, and the agent
   holds neither. Every later re-enrollment is refused (`409`/`9030` while the rotation is being
   written, then `401` `invalid_signature`), and no secret can be restored: authd never accepts the
-  previous one. The agent logs `Re-enrollment was refused for this agent's own credential after an
-  earlier attempt timed out or got no answer`. The manager may keep listing the agent as `active`
-  while it is locked out.
+  previous one. The agent keeps retrying, and every retry is refused until the agent is deleted.
+  It logs `Re-enrollment was refused for this agent's own credential after an earlier attempt timed
+  out or got no answer` on each such refusal. The manager may keep listing the agent as
+  `active` while it is locked out.
 - **First enrollment with a token.** The manager registered the agent, which stays `never_connected`,
   and the retry is refused as a duplicate (`9008`). `wazuh-agentd` exits with `Enrollment-token
   bootstrap failed; refusing to enroll unverified.`, after logging `Enrollment was refused as a
   duplicate after an earlier attempt in this start timed out or got no answer`. A single-use token
-  was already spent by the lost request, so the retry is refused with `9024` instead.
+  was already spent by the lost request, so the retry is refused with `9024` instead, and the agent
+  adds that the earlier attempt most likely registered it.
 
 In both cases, delete the agent on the manager, wait for its deletion to finish (see
 [Agent removal](README.md#agent-removal)), and enroll the agent again with a new enrollment token.

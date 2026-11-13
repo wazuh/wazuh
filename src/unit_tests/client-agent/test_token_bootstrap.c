@@ -43,8 +43,13 @@ static int g_fetch_call_count = 0;
 /* libcurl's error text for the next failed request; empty unless a test sets it. */
 static const char *g_fetch_transport_error = NULL;
 static const char *g_enroll_transport_error = NULL;
+static bool g_enroll_request_sent = false;
+/* What agent.https_enroll_timeout resolves to for the next bootstrap; 0 leaves the default. */
+static uint32_t g_enroll_timeout_override = 0;
 
-bool token_tls_rejection(const char *transport_error, char *reason, size_t size);
+uint32_t __wrap_w_enrollment_timeout_ms(void) {
+    return g_enroll_timeout_override > 0 ? g_enroll_timeout_override : 35000;
+}
 
 bool __wrap_hc_fetch_cacerts(const hc_config_t *config, const hc_cacerts_request_t *request,
                              hc_cacerts_result_t *result) {
@@ -98,6 +103,7 @@ bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *requ
         if (g_enroll_transport_error != NULL) {
             strncpy(result->transport_error, g_enroll_transport_error, sizeof(result->transport_error) - 1);
         }
+        result->request_sent = g_enroll_request_sent;
     }
 
     return (bool) mock();
@@ -538,6 +544,8 @@ static int setup_test(void **state) {
     g_enroll_call_count = 0;
     g_fetch_transport_error = NULL;
     g_enroll_transport_error = NULL;
+    g_enroll_request_sent = false;
+    g_enroll_timeout_override = 0;
     g_fail_anchor_move = false;
     g_busy_keys_rename = false;
     g_cleanse_watch = NULL;
@@ -2084,6 +2092,7 @@ static void test_enroll_duplicate_after_a_timeout_names_the_cause_and_stays_perm
     opts.uid = -1;
     opts.gid = -1;
     g_enroll_transport_error = "(28) Operation timed out";
+    g_enroll_request_sent = true;
 
     will_return(__wrap_hc_enroll, 0L);
     will_return(__wrap_hc_enroll, NULL);
@@ -2130,6 +2139,100 @@ static void test_enroll_duplicate_without_a_timeout_stays_generic(void **state) 
                   "Enrollment rejected by the manager: duplicate agent. Duplicate name");
     assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
     assert_false(report.transient);
+
+    os_free(token);
+}
+
+/* The manager was down (connection refused) and then answered with a genuine duplicate: the first
+ * attempt never reached it, so the duplicate has nothing to do with a lost answer. */
+static void test_enroll_duplicate_after_a_connection_failure_stays_generic(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    g_enroll_transport_error = "(7) Failed to connect to 192.168.1.10 port 1515: Connection refused";
+
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, NULL);
+    will_return(__wrap_hc_enroll, 0);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_true(report.transient);
+
+    g_enroll_transport_error = NULL;
+    will_return(__wrap_hc_enroll, 409L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9008,\"message\":\"Duplicate name\"}}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Duplicate name");
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_false(report.transient);
+
+    os_free(token);
+}
+
+/* A TLS 1.3 client-certificate refusal arrives after the request went out, yet it is a verdict on
+ * the certificate and says nothing about whether the manager applied the enrollment. */
+static void test_enroll_tls_rejection_is_not_recorded_as_a_lost_answer(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    g_enroll_transport_error = CERT_REQUIRED_ERROR;
+    g_enroll_request_sent = true;
+
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, NULL);
+    will_return(__wrap_hc_enroll, 0);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+    assert_false(report.transient);
+
+    g_enroll_transport_error = NULL;
+    will_return(__wrap_hc_enroll, 409L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9008,\"message\":\"Duplicate name\"}}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment rejected by the manager: duplicate agent. Duplicate name");
+    assert_int_equal(w_agent_token_enroll(&opts, &report), W_TOKEN_ENROLL_ERR_ENROLL);
+
+    os_free(token);
+}
+
+/* The bootstrap, and with it wazuh-agent-auth, takes the budget from the getter agentd's
+ * re-enrollment uses (its name, range and default are pinned in test_https_client_bridge). */
+static void test_enroll_passes_the_configured_timeout(void **state) {
+    (void) state;
+    w_token_enroll_opts_t opts = {0};
+    w_token_enroll_report_t report;
+    char *token = make_token(false, true, "FAKE-EMBEDDED-CA");
+
+    opts.token_text = token;
+    opts.uid = -1;
+    opts.gid = -1;
+    g_enroll_timeout_override = 45000;
+
+    will_return(__wrap_hc_enroll, 409L);
+    will_return(__wrap_hc_enroll, "{\"error\":{\"code\":9008,\"message\":\"Duplicate name\"}}");
+    will_return(__wrap_hc_enroll, 1);
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
+    w_agent_token_enroll(&opts, &report);
+
+    assert_int_equal(g_enroll_config.enroll_timeout_ms, 45000);
 
     os_free(token);
 }
@@ -2267,22 +2370,22 @@ static void test_tls_rejection_classifier(void **state) {
     char reason[96];
     char tiny[8];
 
-    assert_true(token_tls_rejection(CERT_REQUIRED_ERROR, reason, sizeof(reason)));
+    assert_true(w_enrollment_tls_rejection(CERT_REQUIRED_ERROR, reason, sizeof(reason)));
     assert_string_equal(reason, "tlsv13 alert certificate required");
-    assert_true(token_tls_rejection("error:0A000412:SSL routines::sslv3 alert bad certificate", reason,
-                                    sizeof(reason)));
+    assert_true(w_enrollment_tls_rejection("error:0A000412:SSL routines::sslv3 alert bad certificate",
+                                           reason, sizeof(reason)));
     assert_string_equal(reason, "sslv3 alert bad certificate");
-    assert_true(token_tls_rejection("error:0A00042E:SSL routines::tlsv1 alert access denied, errno 0",
-                                    reason, sizeof(reason)));
+    assert_true(w_enrollment_tls_rejection("error:0A00042E:SSL routines::tlsv1 alert access denied, errno 0",
+                                           reason, sizeof(reason)));
     assert_string_equal(reason, "tlsv1 alert access denied");
 
-    assert_false(token_tls_rejection("error:0A000438:SSL routines::tlsv1 alert internal error", reason,
-                                     sizeof(reason)));
-    assert_false(token_tls_rejection("(7) Couldn't connect to server", reason, sizeof(reason)));
-    assert_false(token_tls_rejection("", reason, sizeof(reason)));
-    assert_false(token_tls_rejection(NULL, reason, sizeof(reason)));
+    assert_false(w_enrollment_tls_rejection("error:0A000438:SSL routines::tlsv1 alert internal error",
+                                            reason, sizeof(reason)));
+    assert_false(w_enrollment_tls_rejection("(7) Couldn't connect to server", reason, sizeof(reason)));
+    assert_false(w_enrollment_tls_rejection("", reason, sizeof(reason)));
+    assert_false(w_enrollment_tls_rejection(NULL, reason, sizeof(reason)));
 
-    assert_true(token_tls_rejection(CERT_REQUIRED_ERROR, tiny, sizeof(tiny)));
+    assert_true(w_enrollment_tls_rejection(CERT_REQUIRED_ERROR, tiny, sizeof(tiny)));
     assert_string_equal(tiny, "tlsv13 ");
 }
 
@@ -3017,6 +3120,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_enroll_duplicate_after_a_timeout_names_the_cause_and_stays_permanent,
                                         setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_duplicate_without_a_timeout_stays_generic,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_duplicate_after_a_connection_failure_stays_generic,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_tls_rejection_is_not_recorded_as_a_lost_answer,
+                                        setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_passes_the_configured_timeout,
                                         setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_unreadable_5xx_body_reports_the_status,
                                         setup_test, teardown_test),

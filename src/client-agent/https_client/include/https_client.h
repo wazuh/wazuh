@@ -587,6 +587,10 @@ typedef struct hc_enroll_result_t
     long http_code;           ///< 0 = no HTTP response at all (transport/config
     ///< failure -- see hc_enroll()'s return value).
     long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
+    /// The request reached an established connection, so the manager may have acted on it
+    /// even when no answer came back. False for a failure before that: DNS, connect, a TLS
+    /// handshake the client refused, or a request never built.
+    bool request_sent;
     char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
     /// Why the request failed below HTTP, in libcurl's own words (same contract as
     /// on_producer_pause's reason). Usually paired with http_code == 0, but a

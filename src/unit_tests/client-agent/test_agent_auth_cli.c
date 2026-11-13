@@ -257,6 +257,11 @@ bool __wrap_hc_spki_pinned_certificate(const char *cacerts_body, size_t body_len
     return true;
 }
 
+/* The real getter reads the internal options, which this suite does not set up. */
+uint32_t __wrap_w_enrollment_timeout_ms(void) {
+    return 35000;
+}
+
 bool __wrap_hc_enroll(const hc_config_t *config, const hc_enroll_request_t *request,
                       hc_enroll_result_t *result) {
     (void) config;

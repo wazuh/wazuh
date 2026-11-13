@@ -82,10 +82,10 @@ static void remove_systemd_pidfile(void)
 }
 
 /* The PID file is what tells wazuh-control that agentd started, and what lets it stop one that
- * is still retrying. Published once the token bootstrap is about to retry, since its retries can
- * outlast wazuh-control's start deadline; otherwise only after startup's own checks, so any exit
- * before that point still ends the start as "did not start" and never gets the other daemons
- * launched. */
+ * is still enrolling. Published before a token bootstrap that will enroll, since /enroll alone can
+ * take longer than wazuh-control's start deadline and a start that gives up would kill agentd
+ * mid-request; otherwise only after startup's own checks, so any exit before that point still ends
+ * the start as "did not start" and never gets the other daemons launched. */
 static void publish_pid_files(uid_t uid, gid_t gid)
 {
     static bool published = false;
@@ -161,6 +161,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     time_t token_pending_since = 0;
     w_token_bootstrap_result_t token_bootstrap_result;
 
+    if (w_agent_token_bootstrap_will_enroll()) {
+        publish_pid_files((uid_t)uid, (gid_t)gid);
+    }
+
     while ((token_bootstrap_result =
                 w_token_bootstrap_bound_pending(w_agent_token_bootstrap(uid, gid), &token_pending_since,
                                                 w_get_monotonic_time())) == W_TOKEN_BOOTSTRAP_TRANSIENT) {
@@ -168,7 +172,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             token_bootstrap_delay += agt->enrollment.retry_delta;
         }
         mdebug1("Token bootstrap: transient failure, retrying in %d seconds.", token_bootstrap_delay);
-        publish_pid_files((uid_t)uid, (gid_t)gid);
         sleep(token_bootstrap_delay);
     }
 

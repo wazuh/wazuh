@@ -898,32 +898,51 @@ static void test_process_response_409_is_duplicate(void **state) {
 #define LOST_ROTATION_MSG \
     "Re-enrollment was refused for this agent's own credential after an earlier attempt timed out or " \
     "got no answer. The manager most likely applied that attempt and rotated the credential after the " \
-    "agent gave up, so the stored one is stale and cannot be recovered. Delete this agent on the " \
-    "manager and enroll it again with a new enrollment token."
+    "agent gave up, so the stored one is stale. The agent keeps retrying, and every retry will be " \
+    "refused until this agent is deleted on the manager and enrolled again with a new enrollment token."
 #define ROTATION_PENDING_MSG \
     "A re-enrollment is already in progress on the manager after an earlier attempt of this agent " \
-    "timed out or got no answer. That attempt most likely rotated the credential; if the next attempt " \
-    "is refused as an invalid signature, delete this agent on the manager and enroll it again with a " \
-    "new enrollment token."
+    "timed out or got no answer. That attempt most likely rotated the credential. The agent keeps " \
+    "retrying; if the retries are then refused as an invalid signature, delete this agent on the " \
+    "manager and enroll it again with a new enrollment token."
 #define LOST_REGISTRATION_MSG \
     "Enrollment was refused as a duplicate after an earlier attempt in this start timed out or got no " \
     "answer. The manager most likely registered this agent from that attempt. Delete the agent on the " \
     "manager and enroll again with a new enrollment token."
+#define LOST_TOKEN_USE_MSG \
+    "An earlier attempt with this token timed out or got no answer. It most likely registered this " \
+    "agent and used the token's last use. Delete the agent on the manager before enrolling again " \
+    "with a new enrollment token."
+#define GENERIC_DUPLICATE_MSG "Enrollment rejected by the manager: duplicate agent. Duplicate name"
+#define GENERIC_SIGNATURE_MSG \
+    "Enrollment rejected by the manager: the credential's signature was refused: Invalid client " \
+    "authentication. This will keep failing until the credential is corrected on the manager; the " \
+    "agent is keeping the one it has and retrying."
 #define TEST_TOKEN_KID "AAAAAAAAAAAAAAAAAAAAAA"
+#define OTHER_TOKEN_KID "BBBBBBBBBBBBBBBBBBBBBB"
 
-static void note_timed_out_attempt(void) {
+static void note_timed_out_attempt(const char *kid) {
     hc_enroll_result_t lost = {0};
 
+    lost.request_sent = true;
     strncpy(lost.transport_error, "(28) Timeout was reached", sizeof(lost.transport_error) - 1);
     expect_any(__wrap__merror, formatted_msg);
-    assert_int_equal(w_enrollment_process_response(&lost, NULL), W_ENROLL_ERR_TRANSPORT);
+    assert_int_equal(w_enrollment_process_response(&lost, kid), W_ENROLL_ERR_TRANSPORT);
+}
+
+static void note_unsent_failure(const char *kid, const char *error) {
+    hc_enroll_result_t unsent = {0};
+
+    strncpy(unsent.transport_error, error, sizeof(unsent.transport_error) - 1);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&unsent, kid), W_ENROLL_ERR_TRANSPORT);
 }
 
 static void test_lost_answer_then_invalid_signature_explains_the_rotation(void **state) {
     (void)state;
     hc_enroll_result_t result = {0};
 
-    note_timed_out_attempt();
+    note_timed_out_attempt("001");
     set_error_body(&result, 401, "\"invalid_signature\"", "Invalid client authentication");
 
     expect_string(__wrap__merror, formatted_msg, LOST_ROTATION_MSG);
@@ -993,7 +1012,7 @@ static void test_lost_answer_then_duplicate_name_for_a_token_names_the_cause(voi
     size_t i;
 
     for (i = 0; i < 2; i++) {
-        note_timed_out_attempt();
+        note_timed_out_attempt(TEST_TOKEN_KID);
         set_error_body(&result, 409, codes[i], "Duplicate name");
         expect_string(__wrap__merror, formatted_msg, LOST_REGISTRATION_MSG);
         assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
@@ -1011,7 +1030,7 @@ static void test_duplicate_name_without_a_lost_answer_stays_generic(void **state
                   "Enrollment rejected by the manager: duplicate agent. Duplicate name");
     assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
 
-    note_timed_out_attempt();
+    note_timed_out_attempt(NULL);
     expect_string(__wrap__merror, formatted_msg,
                   "Enrollment rejected by the manager: duplicate agent. Duplicate name");
     assert_int_equal(w_enrollment_process_response(&result, NULL), W_ENROLL_ERR_DUPLICATE);
@@ -1021,13 +1040,229 @@ static void test_clearing_the_lost_answer_restores_the_generic_message(void **st
     (void)state;
     hc_enroll_result_t result = {0};
 
-    note_timed_out_attempt();
+    note_timed_out_attempt(TEST_TOKEN_KID);
     w_enrollment_clear_outcome_unknown();
 
     set_error_body(&result, 409, "9008", "Duplicate name");
     expect_string(__wrap__merror, formatted_msg,
                   "Enrollment rejected by the manager: duplicate agent. Duplicate name");
     assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+}
+
+/* Connection refused, DNS failure and a connect timeout never reached the manager, so they must
+ * not make a later genuine refusal read as the consequence of a lost answer. */
+static void test_a_failure_before_the_request_was_sent_keeps_later_refusals_generic(void **state) {
+    (void)state;
+    hc_enroll_result_t signature = {0};
+    hc_enroll_result_t duplicate = {0};
+
+    note_unsent_failure("001", "(7) Failed to connect to 192.168.1.10 port 1515: Connection refused");
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg, GENERIC_SIGNATURE_MSG);
+    assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
+
+    note_unsent_failure(TEST_TOKEN_KID, "(6) Could not resolve host: manager.example");
+    set_error_body(&duplicate, 409, "9008", "Duplicate name");
+    expect_string(__wrap__merror, formatted_msg, GENERIC_DUPLICATE_MSG);
+    assert_int_equal(w_enrollment_process_response(&duplicate, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+}
+
+/* The agent's client certificate refused after the request went out (TLS 1.3 reports it on the
+ * first read) is a verdict, not a lost answer. */
+static void test_a_tls_rejection_is_not_a_lost_answer(void **state) {
+    (void)state;
+    hc_enroll_result_t rejected = {0};
+    hc_enroll_result_t duplicate = {0};
+
+    rejected.request_sent = true;
+    strncpy(rejected.transport_error, "error:0A00045C:SSL routines::tlsv13 alert certificate required",
+            sizeof(rejected.transport_error) - 1);
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&rejected, TEST_TOKEN_KID), W_ENROLL_ERR_TRANSPORT);
+
+    set_error_body(&duplicate, 409, "9008", "Duplicate name");
+    expect_string(__wrap__merror, formatted_msg, GENERIC_DUPLICATE_MSG);
+    assert_int_equal(w_enrollment_process_response(&duplicate, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+}
+
+static void test_a_lost_answer_does_not_explain_another_credentials_refusal(void **state) {
+    (void)state;
+    hc_enroll_result_t duplicate = {0};
+    hc_enroll_result_t signature = {0};
+
+    note_timed_out_attempt(TEST_TOKEN_KID);
+    set_error_body(&duplicate, 409, "9008", "Duplicate name");
+    expect_string(__wrap__merror, formatted_msg, GENERIC_DUPLICATE_MSG);
+    assert_int_equal(w_enrollment_process_response(&duplicate, OTHER_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+
+    note_timed_out_attempt("001");
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg, GENERIC_SIGNATURE_MSG);
+    assert_int_equal(w_enrollment_process_response(&signature, "002"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+/* The retry loop goes on refusing the same stale credential: every refusal is the one incident,
+ * so each is explained, not only the first. */
+static void test_repeated_refusals_of_the_same_credential_are_all_explained(void **state) {
+    (void)state;
+    hc_enroll_result_t signature = {0};
+    hc_enroll_result_t pending = {0};
+    hc_enroll_result_t exhausted = {0};
+    int i;
+
+    note_timed_out_attempt("001");
+    set_error_body(&pending, 409, "9030", "Re-enrollment already in progress");
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+
+    expect_string(__wrap__merror, formatted_msg, ROTATION_PENDING_MSG);
+    assert_int_equal(w_enrollment_process_response(&pending, "001"), W_ENROLL_ERR_DUPLICATE);
+
+    for (i = 0; i < 2; i++) {
+        expect_string(__wrap__merror, formatted_msg, LOST_ROTATION_MSG);
+        assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
+    }
+
+    note_timed_out_attempt(TEST_TOKEN_KID);
+    set_error_body(&exhausted, 403, "9024", "Token has no uses left");
+
+    for (i = 0; i < 2; i++) {
+        expect_string(__wrap__merror, formatted_msg,
+                      "Enrollment token " TEST_TOKEN_KID " has no uses left (code 9024). A new enrollment token is needed.");
+        expect_string(__wrap__merror, formatted_msg, LOST_TOKEN_USE_MSG);
+        assert_int_equal(w_enrollment_process_response(&exhausted, TEST_TOKEN_KID), W_ENROLL_ERR_AUTH_FATAL);
+    }
+}
+
+/* A later ambiguous attempt for another credential replaces the record, so the first one's
+ * refusals are no longer blamed on a lost answer. */
+static void test_a_lost_answer_for_another_credential_replaces_the_record(void **state) {
+    (void)state;
+    hc_enroll_result_t signature = {0};
+
+    note_timed_out_attempt("001");
+    note_timed_out_attempt("002");
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+
+    expect_string(__wrap__merror, formatted_msg, GENERIC_SIGNATURE_MSG);
+    assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+/* Any other answer settles the earlier attempt: a refusal that comes later is not its consequence. */
+static void test_a_definitive_answer_clears_the_lost_answer(void **state) {
+    (void)state;
+    hc_enroll_result_t other = {0};
+    hc_enroll_result_t signature = {0};
+
+    note_timed_out_attempt("001");
+    other.http_code = 429;
+    expect_any(__wrap__minfo, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&other, "001"), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg, GENERIC_SIGNATURE_MSG);
+    assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+static void test_lost_answer_then_token_use_exhausted_names_the_cause(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    note_timed_out_attempt(TEST_TOKEN_KID);
+    set_error_body(&result, 403, "9024", "Token has no uses left");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment token " TEST_TOKEN_KID " has no uses left (code 9024). A new enrollment token is needed.");
+    expect_string(__wrap__merror, formatted_msg, LOST_TOKEN_USE_MSG);
+    assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_AUTH_FATAL);
+}
+
+static void test_token_use_exhausted_without_a_lost_answer_or_for_another_token_is_generic(void **state) {
+    (void)state;
+    hc_enroll_result_t result = {0};
+
+    set_error_body(&result, 403, "9024", "Token has no uses left");
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment token " TEST_TOKEN_KID " has no uses left (code 9024). A new enrollment token is needed.");
+    assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_AUTH_FATAL);
+
+    note_timed_out_attempt(OTHER_TOKEN_KID);
+    expect_string(__wrap__merror, formatted_msg,
+                  "Enrollment token " TEST_TOKEN_KID " has no uses left (code 9024). A new enrollment token is needed.");
+    assert_int_equal(w_enrollment_process_response(&result, TEST_TOKEN_KID), W_ENROLL_ERR_AUTH_FATAL);
+}
+
+static void test_is_token_kid_tells_a_token_id_from_a_reenrollment_one(void **state) {
+    (void)state;
+    assert_true(w_enrollment_is_token_kid(TEST_TOKEN_KID));
+    assert_true(w_enrollment_is_token_kid("ab-_CD0123456789abcdEF"));
+    assert_false(w_enrollment_is_token_kid("001"));
+    assert_false(w_enrollment_is_token_kid(""));
+    assert_false(w_enrollment_is_token_kid(NULL));
+    assert_false(w_enrollment_is_token_kid("AAAAAAAAAAAAAAAAAAAA!A"));
+    assert_string_equal(w_enrollment_token_id_or_unknown(TEST_TOKEN_KID), TEST_TOKEN_KID);
+    assert_string_equal(w_enrollment_token_id_or_unknown("001"), "(id unknown)");
+}
+
+/* A 200 the agent cannot use: the manager applied the enrollment, so the retry is refused as if
+ * the answer had been lost. */
+static void test_an_unusable_200_then_invalid_signature_explains_the_rotation(void **state) {
+    (void)state;
+    hc_enroll_result_t unusable = {0};
+    hc_enroll_result_t signature = {0};
+
+    unusable.http_code = 200;
+    strncpy(unusable.body, "not json", sizeof(unusable.body) - 1);
+    expect_string(__wrap__merror, formatted_msg, "Enrollment response is not valid JSON.");
+    assert_int_equal(w_enrollment_process_response(&unusable, "001"), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg, LOST_ROTATION_MSG);
+    assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+static void test_an_invalid_200_then_duplicate_names_the_cause(void **state) {
+    (void)state;
+    hc_enroll_result_t invalid = {0};
+    hc_enroll_result_t duplicate = {0};
+
+    invalid.http_code = 200;
+    strncpy(invalid.body, "{\"id\":\"001\"}", sizeof(invalid.body) - 1);
+    expect_string(__wrap__merror, formatted_msg, "Enrollment response has a missing or invalid field.");
+    assert_int_equal(w_enrollment_process_response(&invalid, TEST_TOKEN_KID), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&duplicate, 409, "9008", "Duplicate name");
+    expect_string(__wrap__merror, formatted_msg, LOST_REGISTRATION_MSG);
+    assert_int_equal(w_enrollment_process_response(&duplicate, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
+}
+
+/* A proxy that answers 502 or 504 may have forwarded the request before it gave up. */
+static void test_a_504_then_invalid_signature_explains_the_rotation(void **state) {
+    (void)state;
+    hc_enroll_result_t gateway = {0};
+    hc_enroll_result_t signature = {0};
+
+    gateway.http_code = 504;
+    gateway.request_sent = true;
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&gateway, "001"), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&signature, 401, "\"invalid_signature\"", "Invalid client authentication");
+    expect_string(__wrap__merror, formatted_msg, LOST_ROTATION_MSG);
+    assert_int_equal(w_enrollment_process_response(&signature, "001"), W_ENROLL_ERR_AUTH_RETRY);
+}
+
+static void test_a_502_then_duplicate_names_the_cause(void **state) {
+    (void)state;
+    hc_enroll_result_t gateway = {0};
+    hc_enroll_result_t duplicate = {0};
+
+    gateway.http_code = 502;
+    gateway.request_sent = true;
+    expect_any(__wrap__merror, formatted_msg);
+    assert_int_equal(w_enrollment_process_response(&gateway, TEST_TOKEN_KID), W_ENROLL_ERR_SERVER);
+
+    set_error_body(&duplicate, 409, "9008", "Duplicate name");
+    expect_string(__wrap__merror, formatted_msg, LOST_REGISTRATION_MSG);
+    assert_int_equal(w_enrollment_process_response(&duplicate, TEST_TOKEN_KID), W_ENROLL_ERR_DUPLICATE);
 }
 
 /* A 429 is the manager's node-wide enrollment rate limit, not a verdict on this request: retryable
@@ -1639,6 +1874,19 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_lost_answer_then_duplicate_name_for_a_token_names_the_cause, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_duplicate_name_without_a_lost_answer_stays_generic, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_clearing_the_lost_answer_restores_the_generic_message, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_failure_before_the_request_was_sent_keeps_later_refusals_generic, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_tls_rejection_is_not_a_lost_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_lost_answer_does_not_explain_another_credentials_refusal, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_repeated_refusals_of_the_same_credential_are_all_explained, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_lost_answer_for_another_credential_replaces_the_record, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_an_unusable_200_then_invalid_signature_explains_the_rotation, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_an_invalid_200_then_duplicate_names_the_cause, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_504_then_invalid_signature_explains_the_rotation, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_502_then_duplicate_names_the_cause, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_a_definitive_answer_clears_the_lost_answer, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_lost_answer_then_token_use_exhausted_names_the_cause, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_token_use_exhausted_without_a_lost_answer_or_for_another_token_is_generic, setup_test, teardown_test),
+        cmocka_unit_test(test_is_token_kid_tells_a_token_id_from_a_reenrollment_one),
         cmocka_unit_test_setup_teardown(test_process_response_429_is_rate_limited_and_retryable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_unrecognized_status_is_server_error, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_process_response_flat_500_logs_the_manager_message, setup_test, teardown_test),

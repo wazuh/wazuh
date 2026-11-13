@@ -42,6 +42,7 @@
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
+#include "enrollment.h" /* w_enrollment_timeout_ms() */
 #include "ca_publication.h"
 #include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 #include "syscheck_op.h" /* ag_send_syscheck: the FIM leg of the sync answer */
@@ -2153,8 +2154,7 @@ static void bridge_build_transport_config(hc_config_t *config)
     config->https_compression_enabled = (bool)getDefine_Int_default("agent", "https_compression_enabled", 0, 1, 1);
 
     /* /enroll only, hence here and not with the other timeouts. */
-    config->enroll_timeout_ms =
-        (uint32_t)getDefine_Int_default("agent", "https_enroll_timeout", 1000, 600000, 35000);
+    config->enroll_timeout_ms = w_enrollment_timeout_ms();
 }
 
 /* Builds the full module config: the transport half above, plus the
