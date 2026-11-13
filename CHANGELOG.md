@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-maild` stopping when an alert's text contained lines that start with `** Alert`, which `wazuh-analysisd` wrote to `alerts.log` as the start of new alerts. ([#41245](https://github.com/wazuh/wazuh/pull/41245))
 - Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41273](https://github.com/wazuh/wazuh/pull/41273))
 - Added type validation for the `path` and `index` fields of FIM synchronization entries in `wazuh-db`. ([#41511](https://github.com/wazuh/wazuh/pull/41511))
+- Fixed `wazuh-remoted` not releasing the agent data it replaced on each agent startup message, and bounded the stored version. ([#41409](https://github.com/wazuh/wazuh/pull/41409))
 
 ### Agent
 
