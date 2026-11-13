@@ -572,8 +572,8 @@ TEST_F(EngineIndexerRuntimeTest, NoDocumentCountClosesABulk)
     fake->addRule(indexer_client::testing::bulkRule(responder));
     const auto src = source(countingProvider());
     wiconnector::EngineWriteOptions options;
-    // Issue 34: no flush interval can expire while the test posts, however slow the runner; the test fires the flush
-    // itself below. Nothing here depends on how long the posts take.
+    // No flush interval can expire while the test posts, however slow the runner; the test fires the flush itself
+    // below. Nothing here depends on how long the posts take.
     options.flushInterval = std::chrono::hours {1};
     std::vector<std::string> warnings;
     ASSERT_TRUE(runtime->start(indexer_client::ProcessId::Analysisd, src, options, warnings).ok());
@@ -639,8 +639,8 @@ TEST_F(EngineIndexerRuntimeTest, FinishStopDiscardsWhatIsQueued)
         << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() << " ms: the queue was drained";
     EXPECT_FALSE(indexer_client::RuntimeOwner::running());
 
-    // Issue 37: the runtime's last summary still sees the engine's Client, so the three discarded events are logged
-    // for the `events` bucket (synchronously, inside finishStop()).
+    // The runtime stops before the Client is closed: its last summary still sees the engine's Client, so the three
+    // discarded events are logged for the `events` bucket (synchronously, inside finishStop()).
     const auto logged = sink->text();
     EXPECT_NE(logged.find("indexer-client Indexer client bucket 'analysisd/events' in the last "), std::string::npos)
         << logged;

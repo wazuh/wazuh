@@ -352,7 +352,7 @@ void EngineIndexerRuntime::finishStop()
     beginStop();
     m_stopFinished = true;
 
-    // The runtime first, with the Client still registered (issue 37): its stop discards whatever is still queued at
+    // The runtime first, with the Client still registered: its stop discards whatever is still queued at
     // once (no drain: every op Dropped(Shutdown)) and its last summary, which only sees the live clients, then
     // logs the engine's buckets with what they discarded. awaitClosed() releases the consumer name, so it comes after.
     const auto cause = indexer_client::RuntimeOwner::shutdown();

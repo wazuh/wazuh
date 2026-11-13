@@ -247,7 +247,7 @@ protected:
     Loop0Gate m_gate;
 };
 
-// ---- CA-E6e-2: the flushes
+// ---- The flushes
 
 // 63 posts stay staged (nothing admitted, nothing counted); the 64th flushes the stripe with one admission of all of
 // them (and asks for the scheduler: the bucket went non-empty).
@@ -769,7 +769,7 @@ TEST_F(WriteLocalBatch, NoBusyLoopWhileStaged)
     closeNow(*c);
 }
 
-// ---- CA-E6e-3: the seal
+// ---- The seal
 
 // Half-filled stripes (loop 0 parked, so no deadline flush) and requestClose(): the seal admits them before the
 // admission closes, below the flushSeq it sets, so they drain at once (drained = 10, nothing dropped).
@@ -913,7 +913,7 @@ TEST_F(WriteLocalBatch, PostRacingSeal)
     }
 }
 
-// ---- CA-E6e-4: what never stages, and Posted
+// ---- What never stages, and Posted
 
 // Only DropNewest and not ordered stages; Reject, DropOldest, Block and an ordered DropNewest admit op by op.
 TEST_F(WriteLocalBatch, OnlyDropNewestUnordered)

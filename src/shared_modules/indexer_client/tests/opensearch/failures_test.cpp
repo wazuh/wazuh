@@ -12,7 +12,7 @@
 
 // The failures of the old connector's qa (test_efficacy_log.py) against a real OpenSearch, end to
 // end through the public API: a document the strict mapping rejects, the shard limit and a missing index with
-// auto-creation disabled; then (issues 26 and 27) a bulk over the node's http.max_content_length, split until
+// auto-creation disabled; then a bulk over the node's http.max_content_length, split until
 // everything lands, and a node that is stopped and started again. Each case that changes a cluster setting does it
 // through ClusterSettingGuard, which puts the setting back (to the value it had, or its default) when the guard dies,
 // so the fixture's TearDown restores the cluster even when an ASSERT aborts the body.
@@ -361,9 +361,9 @@ TEST_F(OpenSearchPayloadLimit, BulkOverTheLimitIsSplitUntilEverythingLands)
 
 namespace
 {
-    /// `docker stop` / `docker start` of the URL_ENV node (issue 27). Only a container name or id ([A-Za-z0-9_.-])
-    /// and never the e2e `wazuh-indexer`. Whatever the case does, the destructor leaves the node started and waits
-    /// until it answers.
+    /// `docker stop` / `docker start` of the URL_ENV node (the outage case). Only a container name or id
+    /// ([A-Za-z0-9_.-]) and never the e2e `wazuh-indexer`. Whatever the case does, the destructor leaves the node
+    /// started and waits until it answers.
     class NodeControl final
     {
     public:

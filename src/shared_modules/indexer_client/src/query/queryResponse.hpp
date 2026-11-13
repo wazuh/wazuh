@@ -31,7 +31,7 @@ namespace indexer_client::detail::query
     {
         Ok,       ///< `body` holds the parsed response (search, DBQ, UBQ) and `exists` the HEAD answer.
         Conflict, ///< DBQ/UBQ: version conflicts (they feed the conflict budget); `versionConflicts` holds the count.
-        Retry,    ///< DBQ/UBQ `timed_out`: retry under with an attempt.
+        Retry,    ///< DBQ/UBQ `timed_out`: retried under the query's RetryPolicy, spending an attempt.
         Fail      ///< Final: `cause` (NotFound, Client4xx, ItemPermanent), `httpStatus`, `reason`.
     };
 

@@ -377,7 +377,7 @@ TEST_F(IndexerGatingTest, HealthLogFromClient)
         << "recovery must be as visible as the outage";
 }
 
-/// A3: every node is born Down with no reason until the Client's first probe round. A heartbeat
+/// Every node is born Down with no reason until the Client's first probe round. A heartbeat
 /// that lands before that round must not log "unreachable" -- the indexer is not known yet -- and must not latch
 /// the state, so the first heartbeat after the round still logs the real one, whichever it is.
 TEST_F(IndexerGatingTest, HealthLogIsSilentBeforeTheFirstProbeRound)

@@ -835,7 +835,7 @@ TEST_F(BulkTest, OneWakePerCompletion)
     EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), kWindow);
 }
 
-// CA-E6a-3, variant with a pinned (ordered) bucket: wakePinned is folded into the completion's single wake-up. B is
+// OneWakePerCompletion with a pinned (ordered) bucket: wakePinned is folded into the completion's single wake-up. B is
 // Throttled (A takes everything while Available, B only gives the scheduler capacity). A holds three 503s of `u` and
 // cuts the answer of X (ordered `o`): X is pinned to A and A is Down; X meets the Down node and waits in A's
 // pinnedWaiting. The probe brings A back Throttled, which halves its window (4 -> 2) under the three held requests,

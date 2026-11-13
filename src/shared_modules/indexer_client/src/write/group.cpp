@@ -262,7 +262,7 @@ namespace indexer_client::detail::write
             path->budget().release(reserved - reserves);
             for (const auto& op : ops)
             {
-                path->resolve(nullptr, op, dropped(Cause::ClientClosed)); // D66b/D67b: no bucket, no client.
+                path->resolve(nullptr, op, dropped(Cause::ClientClosed)); // No bucket, no client.
             }
             return GroupTicket(group);
         }

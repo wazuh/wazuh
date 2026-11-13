@@ -90,7 +90,7 @@ namespace indexer_client::opensearch
                     return;
                 }
                 deleteIndices(std::string(INDEX_PREFIX) + "*");
-                // The node of the 413 case (issue 26), when there is one and it answers.
+                // The node of the 413 case (a small http.max_content_length), when there is one and it answers.
                 if (const auto small = variable(SMALL_URL_ENV); !small.empty())
                 {
                     if (const auto reason = waitForCluster(small, testing::scaled(120s)); !reason.empty())
