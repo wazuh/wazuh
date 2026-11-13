@@ -125,16 +125,31 @@ namespace containerimages
                                   HttpResponse& response,
                                   std::string& error) override;
 
+            /// @brief POST a small body, for the one signed AWS call that obtains a private
+            /// ECR registry token.
+            ///
+            /// Deliberately not on @ref IRegistryTransport, which stays registry-only. It
+            /// shares the certificate, protocol, timeout and size posture of every other
+            /// request, and differs in one way: redirects are not followed, so a signed
+            /// request is never replayed anywhere the signature was not made for.
+            bool post(const std::string& url,
+                      const std::vector<std::string>& headers,
+                      const std::string& body,
+                      HttpResponse& response,
+                      std::string& error);
+
             const TransportConfig& config() const
             {
                 return m_config;
             }
 
         private:
-            /// @brief Perform one request, optionally with Basic credentials.
+            /// @brief Perform one request, optionally with Basic credentials, or as a POST
+            /// of @p postBody that does not follow redirects.
             bool perform(const std::string& url,
                          const std::vector<std::string>& headers,
                          const std::string* basicCredentials,
+                         const std::string* postBody,
                          HttpResponse& response,
                          std::string& error);
 

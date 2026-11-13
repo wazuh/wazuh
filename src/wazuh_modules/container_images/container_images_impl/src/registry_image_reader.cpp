@@ -18,6 +18,7 @@
 #include "layer_composer.hpp"
 #include "oci_metadata.hpp"
 #include "registry_byte_stream.hpp"
+#include "registry_errors.hpp"
 #include "registry_reference.hpp"
 
 #include "hashHelper.h"
@@ -109,6 +110,34 @@ namespace
             const std::atomic<bool>* m_stopRequested;
     };
 
+    /// @brief @p text as a sentence: one full stop at the end, whether or not it already had one.
+    ///
+    /// A reason that comes from a registry or from AWS is often a sentence already, and a
+    /// log line built from it must not end in two periods.
+    std::string sentence(const std::string& text)
+    {
+        if (!text.empty() && (text.back() == '.' || text.back() == '!' || text.back() == '?'))
+        {
+            return text;
+        }
+
+        return text + ".";
+    }
+
+    /// @brief Clears the credential-bearing request headers it was given when it goes out of scope.
+    struct HeaderScrubber
+    {
+        std::vector<std::string>& headers;
+
+        ~HeaderScrubber()
+        {
+            for (auto& header : headers)
+            {
+                containerimages::scrubString(header);
+            }
+        }
+    };
+
     /// @brief The media types a manifest request is willing to receive.
     std::string acceptHeader()
     {
@@ -184,6 +213,12 @@ namespace containerimages
                 if (error.empty())
                 {
                     error = "the registry answered " + std::to_string(response.status);
+
+                    // The reason a private ECR registry gives is what the user can act on.
+                    if (answered && m_reference.profile.kind != RegistryKind::Ghcr)
+                    {
+                        error += reasonSuffix(response.body);
+                    }
                 }
 
                 return false;
@@ -209,10 +244,11 @@ namespace containerimages
                                       std::string& error)
     {
         std::vector<std::string> headers {acceptHeader()};
+        const HeaderScrubber scrubber {headers};
 
         if (authorized && !m_token.empty())
         {
-            headers.push_back("Authorization: Bearer " + m_token);
+            headers.push_back(authorizationHeader());
         }
 
         return send([this, &url, &headers](HttpResponse & attemptResponse, std::string & attemptError)
@@ -282,7 +318,9 @@ namespace containerimages
             return false;
         }
 
-        const auto* configured {m_context.config != nullptr
+        // Only GHCR exchanges a stored credential for its token. Public ECR issues its token
+        // to anyone, and private ECR does not use this path at all.
+        const auto* configured {m_context.config != nullptr && m_reference.profile.kind == RegistryKind::Ghcr
                                     ? m_context.config->credentialsFor(m_reference.registry)
                                     : nullptr};
 
@@ -348,22 +386,298 @@ namespace containerimages
             return false;
         }
 
-        m_token = oci::stringField(oci::parseJson(response.body), "token");
+        auto token {oci::stringField(oci::parseJson(response.body), "token")};
 
-        if (m_token.empty())
+        if (token.empty())
         {
             // Some registries name it differently, and one that names it neither way has
             // not given us anything to authenticate with.
-            m_token = oci::stringField(oci::parseJson(response.body), "access_token");
+            token = oci::stringField(oci::parseJson(response.body), "access_token");
         }
 
-        if (m_token.empty())
+        if (token.empty())
         {
             error = "the registry issued no token";
             return false;
         }
 
+        m_token = Secret {std::move(token)};
+
         return true;
+    }
+
+    std::string RegistryImageReader::reasonSuffix(const std::string& body) const
+    {
+        const auto reason {registryErrorReason(body)};
+
+        if (reason.empty())
+        {
+            return {};
+        }
+
+        // Withheld when it contains the token held or either half of the AWS credential,
+        // which a registry has no reason to echo and a log has every reason not to carry.
+        if (!m_token.empty() && reason.find(m_token.value()) != std::string::npos)
+        {
+            return {};
+        }
+
+        for (const auto& guarded : m_guard)
+        {
+            if (!guarded.empty() && reason.find(guarded.value()) != std::string::npos)
+            {
+                return {};
+            }
+        }
+
+        return ": " + reason;
+    }
+
+    std::string RegistryImageReader::authorizationHeader() const
+    {
+        if (m_token.empty())
+        {
+            return {};
+        }
+
+        return std::string {"Authorization: "} + (m_reference.profile.usesBasicToken() ? "Basic " : "Bearer ") +
+               m_token.value();
+    }
+
+    bool RegistryImageReader::acquireEcrToken(std::string& error)
+    {
+        const auto* configured {m_context.config != nullptr ? m_context.config->credentialsFor(m_reference.registry)
+                                                            : nullptr};
+
+        if (configured == nullptr || m_context.credentials == nullptr)
+        {
+            error = "no credential is configured for " + m_reference.registry +
+                    ", which needs a <registry> entry with access_key_id_keystore_key and "
+                    "secret_access_key_keystore_key";
+            return false;
+        }
+
+        const auto accessKeyId {m_context.credentials->get(CREDENTIAL_FAMILY, configured->userKey)};
+        const auto secretAccessKey {m_context.credentials->get(CREDENTIAL_FAMILY, configured->passkeyKey)};
+
+        if (!accessKeyId.has_value() || !secretAccessKey.has_value())
+        {
+            // Named without the value, always, as for any credential.
+            error = "the credential configured for " + m_reference.registry +
+                    " is missing from the agent credential store";
+            return false;
+        }
+
+        // Kept so no reason a registry sends can carry either value into a log line.
+        m_guard.clear();
+        m_guard.emplace_back(accessKeyId->value());
+        m_guard.emplace_back(secretAccessKey->value());
+
+        // A configured region wins over the one in the host name. The two differing is
+        // worth one line, since the token is then requested from a region the registry
+        // does not live in. Neither region is a secret.
+        auto region {m_reference.profile.region};
+        m_regionOverridden = false;
+
+        if (!configured->region.empty())
+        {
+            if (configured->region != region)
+            {
+                m_regionOverridden = true;
+                logDebug("Reference '" + m_location + "': the configured region '" + configured->region +
+                         "' overrides the region '" + region + "' of " + m_reference.registry + ".");
+            }
+
+            region = configured->region;
+            m_configuredRegion = configured->region;
+        }
+
+        m_ecrTokenKey = RegistryTokenCache::makeKey(m_reference.registry,
+                                                    configured->userKey,
+                                                    configured->passkeyKey,
+                                                    region);
+
+        if (m_context.tokenCache != nullptr)
+        {
+            if (auto cached {m_context.tokenCache->lookup(m_ecrTokenKey)})
+            {
+                logDebug("Reference '" + m_location + "': reusing the registry token held for " +
+                         m_reference.registry + ".");
+                m_token = std::move(*cached);
+                return true;
+            }
+        }
+
+        IEcrTokenSource* source {m_context.ecrTokenSource};
+
+        if (source == nullptr)
+        {
+            if (!m_ownedTokenSource)
+            {
+                m_ownedTokenSource = EcrTokenClient::overCurl(m_transportConfig);
+            }
+
+            source = m_ownedTokenSource.get();
+        }
+
+        for (int attempt = 1;; ++attempt)
+        {
+            if (m_context.stopRequested != nullptr && m_context.stopRequested->load())
+            {
+                error = "the module was asked to stop";
+                return false;
+            }
+
+            logDebug("Reference '" + m_location + "': requesting a registry token for " + m_reference.registry +
+                     " from AWS in " + region + ".");
+
+            auto result {source->fetch(region, m_reference.profile.dnsSuffix, *accessKeyId, *secretAccessKey)};
+
+            if (result.ok)
+            {
+                if (m_context.tokenCache != nullptr)
+                {
+                    m_context.tokenCache->store(m_ecrTokenKey, Secret {result.token.value()}, result.expiresAt);
+                }
+
+                m_token = std::move(result.token);
+                return true;
+            }
+
+            // A call that was refused, or never made, in a way that repeats itself is tried
+            // once: a certificate that does not verify or a URL that is not usable fails the
+            // same way every time. Throttling and server errors are retried, waiting for what
+            // AWS asks for when it says.
+            const auto decision {result.retryable ? m_retryPolicy.evaluate(result.status, result.retryAfter, attempt)
+                                                  : RetryDecision {}};
+
+            if (!decision.retry)
+            {
+                error = "AWS did not issue a registry token: " + result.reason;
+
+                // A 4xx other than throttling is AWS refusing the credential, or the request
+                // made with it, and every reference of the registry would hear the same: a
+                // signed call each, and a log line each, for a mistyped secret. Remembered for
+                // the rest of the scan under the host. A server error, throttling and a call
+                // that was never answered say nothing about the credential and are not kept.
+                if (result.status >= 400 && result.status < 500 && result.status != 429)
+                {
+                    rememberEcrRefusal(m_reference.registry, error);
+                }
+
+                return false;
+            }
+
+            logDebug("Reference '" + m_location + "': " + result.reason + ", retrying in " +
+                     std::to_string(decision.delay.count()) + " ms.");
+
+            if (!waitOrStop(decision.delay))
+            {
+                error = "the module was asked to stop";
+                return false;
+            }
+        }
+    }
+
+    bool RegistryImageReader::tokenIsRefused(const long status, const std::string& body)
+    {
+        if (status == 401)
+        {
+            return true;
+        }
+
+        if (status != 400 && status != 403)
+        {
+            return false;
+        }
+
+        // A 400 or a 403 is also what a credential that is valid and not allowed gets, and
+        // what the content host answers after a redirect. Only a body that names the token
+        // identifies it. With no body at hand, the manifest is asked for again with the
+        // token held, which is cheap and has a body to read.
+        if (!body.empty())
+        {
+            return registryRefusesTheToken(body);
+        }
+
+        if (m_probeUrl.empty())
+        {
+            return false;
+        }
+
+        std::vector<std::string> headers {acceptHeader(), authorizationHeader()};
+        const HeaderScrubber scrubber {headers};
+        HttpResponse probe;
+        std::string ignored;
+
+        if (!m_transport->get(m_probeUrl, headers, probe, ignored))
+        {
+            return false;
+        }
+
+        return probe.status == 401 ||
+               ((probe.status == 400 || probe.status == 403) && registryRefusesTheToken(probe.body));
+    }
+
+    bool RegistryImageReader::renewAuthorization(const std::string& url,
+                                                 const long status,
+                                                 const std::string& body,
+                                                 std::string& error)
+    {
+        if (m_tokenRefreshed)
+        {
+            return false;
+        }
+
+        // A token is dropped, and AWS signed for again, only when the registry says the
+        // token is what it refused. A missing permission would be refused again by the next
+        // token, and every reference of the registry would pay for a second signed call.
+        if (m_reference.profile.usesBasicToken() ? !tokenIsRefused(status, body)
+                                                 : !m_reference.profile.rejectsAuthorization(status))
+        {
+            return false;
+        }
+
+        // The token was asked for in a region other than the registry's, because the
+        // configuration said so, and the registry refused it. A second token from the same
+        // region would be refused the same way, so no second signed call is made, and the
+        // reason says what to correct. Neither region is a secret.
+        if (m_reference.profile.usesBasicToken() && m_regionOverridden)
+        {
+            m_tokenRefreshed = true;
+            m_regionRefusal = "the registry refused the token requested in the configured region '" +
+                              m_configuredRegion + "', and the registry host is in '" + m_reference.profile.region +
+                              "'. The configured <region> overrides the host's, so it has to be the registry's "
+                              "region. The token was not renewed";
+            return false;
+        }
+
+        m_tokenRefreshed = true;
+
+        if (m_reference.profile.usesBasicToken())
+        {
+            // The shared token is dropped with the reader's own, so the next reference of
+            // this registry does not start from a token the registry has just refused.
+            if (m_context.tokenCache != nullptr)
+            {
+                m_context.tokenCache->invalidate(m_ecrTokenKey);
+            }
+
+            m_token = Secret {};
+
+            return acquireEcrToken(error);
+        }
+
+        HttpResponse challenge;
+
+        const auto challenged {send([this, &url](HttpResponse & attemptResponse, std::string & attemptError)
+        {
+            return m_transport->get(url, {}, attemptResponse, attemptError);
+        },
+        challenge,
+        error)};
+
+        return challenged && challenge.status == 401 && authenticate(challenge.header("www-authenticate"), error);
     }
 
     bool RegistryImageReader::readAnonymously(const std::string& url,
@@ -372,6 +686,14 @@ namespace containerimages
                                               HttpResponse& response,
                                               std::string& error)
     {
+        // Only GHCR serves some references anonymously and others to the credential. A
+        // private Amazon ECR registry has no anonymous path, and a refused credential there
+        // is the answer: its error stands and nothing is asked without it.
+        if (!m_reference.profile.allowsAnonymousFallback())
+        {
+            return false;
+        }
+
         // The error the refused credential produced is what the user can act on, so it is
         // the one reported when the anonymous attempt does not work either.
         const auto credentialError {error};
@@ -408,10 +730,85 @@ namespace containerimages
             return true;
         }
 
-        m_token.clear();
+        m_token = Secret {};
         error = credentialError;
 
         return false;
+    }
+
+    bool RegistryImageReader::requestPrivateEcr(const std::string& url, HttpResponse& response, std::string& error)
+    {
+        auto answered {request(url, true, response, error)};
+
+        // A private ECR registry refuses a stale token with 400, 401 or 403, depending on
+        // how it was refused. The token is replaced once and the request repeated, when the
+        // registry says the token is what it refused.
+        if (answered ? response.status == 401 : m_reference.profile.rejectsAuthorization(response.status))
+        {
+            std::string renewError;
+
+            if (renewAuthorization(url, response.status, response.body, renewError))
+            {
+                error.clear();
+                answered = request(url, true, response, error);
+            }
+            else if (!m_regionRefusal.empty())
+            {
+                error = m_regionRefusal;
+                rememberEcrRefusal(m_reference.refusalScope(), error);
+                return false;
+            }
+            else if (!renewError.empty())
+            {
+                error = "the registry refused the credential, and a new one could not be obtained: " + renewError;
+                return false;
+            }
+        }
+
+        if (answered && response.status == 401)
+        {
+            // The credential is what the registry refused, and there is nothing to fall back
+            // on: readAnonymously says no for a registry with no anonymous path, and this error
+            // stands.
+            error = "the registry rejected the credential" + reasonSuffix(response.body);
+            m_credentialRefused = true;
+
+            if (readAnonymously(url, response.header("www-authenticate"), false, response, error))
+            {
+                return true;
+            }
+
+            rememberEcrRefusal(m_reference.refusalScope(), error);
+            return false;
+        }
+
+        if (!answered)
+        {
+            // A refusal of this credential for this repository, as opposed to a failure of the
+            // network or of the registry, is remembered for the rest of the scan.
+            if (response.status == 401 || response.status == 403 ||
+                (response.status == 400 && registryDenies(response.body)))
+            {
+                rememberEcrRefusal(m_reference.refusalScope(), error);
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    void RegistryImageReader::rememberEcrRefusal(const std::string& scope, const std::string& reason)
+    {
+        // A refusal at the registry is keyed by the account host and the repository: an IAM
+        // policy answers per repository, so one refusal says nothing about the others of the
+        // same account. A refusal by AWS of the credential itself is keyed by the host, since
+        // it says the same for every repository of the account. The reason is what the next
+        // reference reports without asking again, and the memory ends with the scan.
+        if (m_context.refusedCredentialScopes != nullptr && !reason.empty())
+        {
+            m_context.refusedCredentialScopes->emplace(scope, reason);
+        }
     }
 
     bool RegistryImageReader::fetchManifest(const std::string& identifier,
@@ -422,14 +819,25 @@ namespace containerimages
         const auto url {"https://" + m_reference.registry + "/v2/" + m_reference.repository + "/manifests/" +
                         identifier};
 
+        m_probeUrl = url;
+
         HttpResponse response;
 
-        if (!request(url, true, response, error))
+        // A private ECR registry authenticates with a token that is obtained before the
+        // first request, and refuses with 400, 401 or 403 rather than with a challenge.
+        if (m_reference.profile.usesBasicToken())
+        {
+            if (!requestPrivateEcr(url, response, error))
+            {
+                return false;
+            }
+        }
+        else if (!request(url, true, response, error))
         {
             return false;
         }
 
-        if (response.status == 401)
+        if (response.status == 401 && !m_reference.profile.usesBasicToken())
         {
             const auto challengeHeader {response.header("www-authenticate")};
 
@@ -531,10 +939,11 @@ namespace containerimages
                             digest};
 
             std::vector<std::string> headers;
+            const HeaderScrubber scrubber {headers};
 
             if (!m_token.empty())
             {
-                headers.push_back("Authorization: Bearer " + m_token);
+                headers.push_back(authorizationHeader());
             }
 
             // A layer is retried like a metadata request is. A transfer that failed part
@@ -542,6 +951,7 @@ namespace containerimages
             // consumed snapshot is discarded with the stream that produced it.
             LayerSnapshot snapshot;
             std::string failedCause;
+            std::string renewError;
             bool skipped {false};
 
             // The size the manifest declares, which is what the transfer will deliver.
@@ -643,28 +1053,19 @@ namespace containerimages
                 failedCause = blob->error();
 
                 // A token that expired part way through a large image is answered by
-                // asking for another one, once, rather than by failing the reference.
-                if (blob->status() == 401 && !m_tokenRefreshed)
+                // asking for another one, once, rather than by failing the reference. For
+                // a private ECR registry only when the registry says the token is what it
+                // refused: see renewAuthorization.
+                if (renewAuthorization(url, blob->status(), {}, renewError))
                 {
-                    m_tokenRefreshed = true;
-
-                    HttpResponse challenge;
-                    std::string ignored;
-
-                    const auto challenged {send([this, &url](HttpResponse & attemptResponse, std::string & attemptError)
+                    for (auto& header : headers)
                     {
-                        return m_transport->get(url, {}, attemptResponse, attemptError);
-                    },
-                    challenge,
-                    ignored)};
-
-                    if (challenged && challenge.status == 401 &&
-                        authenticate(challenge.header("www-authenticate"), ignored))
-                    {
-                        headers.clear();
-                        headers.push_back("Authorization: Bearer " + m_token);
-                        continue;
+                        scrubString(header);
                     }
+
+                    headers.clear();
+                    headers.push_back(authorizationHeader());
+                    continue;
                 }
 
                 // This side ending the transfer, by a stop request, the idle bound or the
@@ -688,6 +1089,19 @@ namespace containerimages
                     // guess, and a guess stored as the complete state deletes whatever the
                     // reference really holds. Reported as a failed read instead.
                     error = "layer " + digest.substr(0, 19) + " could not be retrieved: " + blob->error();
+
+                    if (m_reference.profile.usesBasicToken())
+                    {
+                        if (!m_regionRefusal.empty())
+                        {
+                            error += ", and " + m_regionRefusal;
+                        }
+                        else if (!renewError.empty())
+                        {
+                            error += ", and renewing the credential failed: " + renewError;
+                        }
+                    }
+
                     return false;
                 }
 
@@ -744,7 +1158,7 @@ namespace containerimages
 
             if (!parseRegistryReference(m_location, m_reference, error))
             {
-                logWarn("Reference '" + m_location + "' cannot be used: " + error + ".");
+                logWarn("Reference '" + m_location + "' cannot be used: " + sentence(error));
                 return ImageReadResult::failed();
             }
 
@@ -767,7 +1181,22 @@ namespace containerimages
 
             if (m_context.refusedCredentialScopes != nullptr)
             {
-                const auto refused {m_context.refusedCredentialScopes->find(m_reference.refusalScope())};
+                // For a private ECR registry the credential refused by AWS is remembered under the
+                // host, and a refusal at one repository under the repository.
+                auto refused {m_context.refusedCredentialScopes->end()};
+                auto refusedScope {m_reference.refusalScope()};
+
+                if (m_reference.profile.usesBasicToken())
+                {
+                    refused = m_context.refusedCredentialScopes->find(m_reference.registry);
+                    refusedScope = m_reference.registry;
+                }
+
+                if (refused == m_context.refusedCredentialScopes->end())
+                {
+                    refusedScope = m_reference.refusalScope();
+                    refused = m_context.refusedCredentialScopes->find(refusedScope);
+                }
 
                 if (refused != m_context.refusedCredentialScopes->end())
                 {
@@ -775,6 +1204,25 @@ namespace containerimages
                     // per reference to hear the same answer.
                     m_credentialRefused = true;
                     m_hostRefusal = refused->second;
+
+                    if (m_reference.profile.usesBasicToken())
+                    {
+                        // Private ECR has no anonymous path to go to instead, so the reason the
+                        // registry gave is the answer, and nothing is requested.
+                        auto reason {m_hostRefusal};
+
+                        // The reason may already be a sentence, and another follows it.
+                        while (!reason.empty() && reason.back() == '.')
+                        {
+                            reason.pop_back();
+                        }
+
+                        logWarn("Reference '" + m_location + "' could not be resolved: " +
+                                sentence(reason + ". An earlier reference of " + refusedScope +
+                                         " was refused in this scan, so nothing was requested"));
+                        return ImageReadResult::failed();
+                    }
+
                     logDebug("Reference '" + m_location + "': the credential for " + m_reference.refusalScope() +
                              " was refused earlier in this scan, so it is not sent.");
                 }
@@ -800,12 +1248,22 @@ namespace containerimages
                 m_transport = std::make_unique<CurlRegistryTransport>(m_transportConfig);
             }
 
+            // A private ECR registry accepts nothing without a token that only a signed call
+            // to AWS can obtain, so it is obtained first rather than after a request that
+            // is certain to be refused. With no entry, or a credential the store does not
+            // hold, the reference fails here, and no anonymous request is made.
+            if (m_reference.profile.usesBasicToken() && !acquireEcrToken(error))
+            {
+                logWarn("Reference '" + m_location + "' could not be resolved: " + sentence(error));
+                return ImageReadResult::failed();
+            }
+
             nlohmann::json document;
             std::string manifestDigest;
 
             if (!fetchManifest(m_reference.identifier(), document, manifestDigest, error))
             {
-                logWarn("Reference '" + m_location + "' could not be resolved: " + error + ".");
+                logWarn("Reference '" + m_location + "' could not be resolved: " + sentence(error));
                 return ImageReadResult::failed();
             }
 
@@ -813,7 +1271,7 @@ namespace containerimages
 
             if (!selectPlatformManifest(document, detectTargetPlatform(), selected, error))
             {
-                logWarn("Reference '" + m_location + "' was not inventoried: " + error + ".");
+                logWarn("Reference '" + m_location + "' was not inventoried: " + sentence(error));
                 return ImageReadResult::failed();
             }
 
@@ -821,7 +1279,7 @@ namespace containerimages
 
             if (!selected.digest.empty() && !fetchManifest(selected.digest, document, selectedDigest, error))
             {
-                logWarn("Reference '" + m_location + "' could not be resolved: " + error + ".");
+                logWarn("Reference '" + m_location + "' could not be resolved: " + sentence(error));
                 return ImageReadResult::failed();
             }
 
@@ -917,7 +1375,7 @@ namespace containerimages
 
             if (!readLayers(document, record, error))
             {
-                logWarn("Reference '" + m_location + "' could not be read: " + error + ".");
+                logWarn("Reference '" + m_location + "' could not be read: " + sentence(error));
                 return ImageReadResult::failed();
             }
 
@@ -931,7 +1389,7 @@ namespace containerimages
         }
         catch (const std::exception& exception)
         {
-            logWarn("Reference '" + m_location + "' could not be read: " + exception.what() + ".");
+            logWarn("Reference '" + m_location + "' could not be read: " + sentence(exception.what()));
             return ImageReadResult::failed();
         }
         catch (...)

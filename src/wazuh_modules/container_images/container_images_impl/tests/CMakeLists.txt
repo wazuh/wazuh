@@ -48,6 +48,7 @@ if(NOT DBSYNC_LIB)
 endif()
 
 add_executable(container_images_unit_test container_images_test.cpp
+                                          ecr_test.cpp
                                           package_extraction_test.cpp
                                           credential_store_test.cpp
                                           platform_test.cpp

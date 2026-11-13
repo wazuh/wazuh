@@ -11,14 +11,12 @@
 #ifndef _REGISTRY_REFERENCE_HPP
 #define _REGISTRY_REFERENCE_HPP
 
+#include "registry_profile.hpp"
+
 #include <string>
 
 namespace containerimages
 {
-    /// @brief The registry this module supports. Other registries are a follow-up issue,
-    /// so a reference naming one is rejected rather than attempted.
-    constexpr auto SUPPORTED_REGISTRY {"ghcr.io"};
-
     /// @brief Tag assumed when a reference names none, matching every registry client.
     constexpr auto DEFAULT_TAG {"latest"};
 
@@ -32,6 +30,7 @@ namespace containerimages
     struct RegistryReference
     {
         std::string registry;   ///< Registry host, e.g. "ghcr.io".
+        RegistryProfile profile; ///< How that registry is authenticated and read.
         std::string repository; ///< Repository path, e.g. "owner/app".
         std::string tag;        ///< Tag, when the reference carries one.
         std::string digest;     ///< Digest, when the reference is pinned by content.
@@ -86,8 +85,17 @@ namespace containerimages
         /// What a refusal of the credential at the token endpoint is remembered under for the
         /// rest of a scan. A registry such as GHCR can answer per organization, so one
         /// organization's refusal says nothing about another's on the same host.
+        ///
+        /// A private Amazon ECR registry answers per repository, since access is granted
+        /// per repository and an account has no organizations, so its scope is the host and
+        /// the whole repository.
         std::string refusalScope() const
         {
+            if (profile.kind == RegistryKind::EcrPrivate)
+            {
+                return registry + "/" + repository;
+            }
+
             return registry + "/" + repository.substr(0, repository.find('/'));
         }
     };
@@ -96,7 +104,9 @@ namespace containerimages
     ///
     /// Accepts `host/repository:tag`, `host/repository@algorithm:digest` and
     /// `host/repository:tag@algorithm:digest`, where the digest wins. A reference with
-    /// neither a tag nor a digest takes @ref DEFAULT_TAG.
+    /// neither a tag nor a digest takes @ref DEFAULT_TAG. The host must be one the module
+    /// has a registry profile for, and the profile decides how many path components the
+    /// repository needs.
     ///
     /// @param text      The reference as written in the configuration.
     /// @param reference Filled in when parsing succeeds.

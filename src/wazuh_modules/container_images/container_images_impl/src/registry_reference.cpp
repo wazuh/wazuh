@@ -159,21 +159,27 @@ namespace containerimages
 
         const auto components {splitPath(remainder)};
 
-        // host + owner + name at the very least. A bare "app:1.4" names an implicit
-        // registry, which is Docker Hub for every client that accepts it, and this module
-        // supports only GHCR, so it is rejected rather than silently redirected.
-        if (components.size() < 3)
+        // A bare "app:1.4" names an implicit registry, which is Docker Hub for every
+        // client that accepts it, and this module supports only a fixed set of registries,
+        // so it is rejected rather than silently redirected.
+        if (components.size() < 2)
         {
-            error = "the reference must name a registry, an owner and a repository";
+            error = "the reference must name a registry and a repository";
             return false;
         }
 
         reference.registry = components.front();
 
-        if (reference.registry != SUPPORTED_REGISTRY)
+        if (!profileForHost(reference.registry, reference.profile, error))
         {
-            error = "only " + std::string {SUPPORTED_REGISTRY} + " is supported, and the reference names '" +
-                    reference.registry + "'";
+            return false;
+        }
+
+        if (components.size() - 1 < reference.profile.minRepositoryComponents())
+        {
+            error = reference.profile.minRepositoryComponents() > 1
+                        ? "the reference must name a registry, an owner and a repository"
+                        : "the reference must name a registry and a repository";
             return false;
         }
 

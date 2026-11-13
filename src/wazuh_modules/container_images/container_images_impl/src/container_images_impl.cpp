@@ -149,7 +149,13 @@ namespace containerimages
             }
 
             auto stored {m_db->loadStored(referenceTypeName(configured.type), configured.location)};
-            const ReaderContext context {&m_config, m_credentials.get(), &m_scanBytes, &m_stopFlag, &m_refusedCredentialScopes, &m_reportedRefusalHosts};
+            const ReaderContext context {&m_config,
+                                         m_credentials.get(),
+                                         &m_scanBytes,
+                                         &m_stopFlag,
+                                         &m_refusedCredentialScopes,
+                                         &m_reportedRefusalHosts,
+                                         &m_tokenCache};
             const auto reader {m_readerFactory(configured, stored ? stored->configDigest : std::string {}, context)};
 
             if (!reader)

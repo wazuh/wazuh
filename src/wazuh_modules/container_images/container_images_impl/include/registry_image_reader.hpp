@@ -13,10 +13,12 @@
 
 #include "container_images_config.hpp"
 #include "credential_provider.hpp"
+#include "ecr_token_client.hpp"
 #include "iimage_reader.hpp"
 #include "platform_selection.hpp"
 #include "registry_byte_stream.hpp"
 #include "registry_reference.hpp"
+#include "registry_token_cache.hpp"
 #include "registry_transport.hpp"
 #include "retry_policy.hpp"
 
@@ -28,6 +30,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 namespace containerimages
 {
@@ -67,6 +70,16 @@ namespace containerimages
         /// @brief Hosts whose refusal of the credential, at the token endpoint or at a
         /// manifest, was already reported in this scan. Not owned.
         std::set<std::string>* reportedRefusalHosts {nullptr};
+
+        /// @brief Registry tokens shared by the references of one module. Not owned.
+        ///
+        /// Lives with the module rather than with a reader, because a reader exists for
+        /// one reference and a private ECR token is good for hours. When null, a token is
+        /// requested for every reference.
+        RegistryTokenCache* tokenCache {nullptr};
+
+        /// @brief Source of private ECR tokens. Not owned. When null the reader calls AWS.
+        IEcrTokenSource* ecrTokenSource {nullptr};
     };
 
     /// @brief Reads an image, and the packages it contains, from a remote registry.
@@ -122,7 +135,7 @@ namespace containerimages
 
             /// @brief One metadata request, with the retry and back-off policy applied.
             ///
-            /// @param authorized When true the bearer token is sent, when there is one.
+            /// @param authorized When true the token is sent, when there is one.
             bool request(const std::string& url, bool authorized, HttpResponse& response, std::string& error);
 
             /// @brief Open one attempt at a layer blob.
@@ -150,6 +163,46 @@ namespace containerimages
                                  HttpResponse& response,
                                  std::string& error);
 
+            /// @brief Obtain the Basic token of a private ECR registry: from the shared
+            /// cache while it is valid, otherwise from AWS with the configured credential.
+            bool acquireEcrToken(std::string& error);
+
+            /// @brief Ask for a new token after the registry refused the current one.
+            ///
+            /// Once per reference, whatever the number of requests. A token refused twice
+            /// is a credential problem, and asking again would not change it.
+            bool renewAuthorization(const std::string& url, long status, const std::string& body, std::string& error);
+
+            /// @brief True when a refusal is the registry saying the token itself is bad.
+            ///
+            /// 401 always is. 400 and 403 are only when the body says so, because they are
+            /// also the answer to a credential that is valid and not permitted, and to the
+            /// content host after a redirect. When there is no body, the manifest is asked
+            /// for again to get one.
+            bool tokenIsRefused(long status, const std::string& body);
+
+            /// @brief `: <reason>` for a registry error body, or nothing when it names none or
+            /// the text looks like it quotes a credential.
+            std::string reasonSuffix(const std::string& body) const;
+
+            /// @brief The `Authorization` header for the token held, or empty when none is.
+            std::string authorizationHeader() const;
+
+            /// @brief The manifest request of a private ECR registry: authorized from the first
+            /// request, the token replaced once when the registry says it is the token it refuses.
+            ///
+            /// There is no anonymous path to fall back on, so a refusal of the credential is
+            /// final: the error stands, and is remembered for the repository.
+            bool requestPrivateEcr(const std::string& url, HttpResponse& response, std::string& error);
+
+            /// @brief Keep @p reason under @p scope until the scan ends.
+            ///
+            /// The scope is the account host and the repository for a refusal at the registry,
+            /// since IAM answers per repository, and the account host for a refusal of the
+            /// credential by AWS, which says the same for every repository. Throttling, server
+            /// errors and calls that got no answer are not kept.
+            void rememberEcrRefusal(const std::string& scope, const std::string& reason);
+
             /// @brief Fetch the manifest or index the reference points at.
             ///
             /// @param digest Filled in with the digest of the manifest: the one the registry
@@ -172,7 +225,7 @@ namespace containerimages
             RetryPolicy m_retryPolicy;
             std::unique_ptr<IRegistryTransport> m_transport;
             BlobStreamFactory m_blobStreamFactory;
-            std::string m_token;
+            Secret m_token;
             bool m_tokenRefreshed {false};
 
             /// @brief Set once the registry refused the configured credential, at the token
@@ -181,12 +234,21 @@ namespace containerimages
             bool m_credentialRefused {false};
 
             /// @brief Why the registry refused the credential earlier in this scan for this
-            /// reference's organization, empty when it did not. Set when this reference starts,
-            /// so it never sent the credential.
+            /// reference's organization (for private ECR, repository), empty when it did not.
+            /// Set when this reference starts, so it never sent the credential.
             std::string m_hostRefusal;
 
             /// @brief True when the last token request carried the configured credential.
             bool m_credentialSent {false};
+
+            // Private ECR.
+            std::string m_probeUrl;      ///< A manifest URL, to learn from the registry why a blob was refused.
+            std::vector<Secret> m_guard; ///< The AWS credential, so no registry reason can quote it.
+            std::string m_ecrTokenKey;
+            std::unique_ptr<IEcrTokenSource> m_ownedTokenSource;
+            bool m_regionOverridden {false};  ///< The configured region differs from the host's.
+            std::string m_configuredRegion;
+            std::string m_regionRefusal;      ///< Why a refused token was not renewed, when the region is the cause.
             std::uint64_t m_imageBytes {0};
     };
 } // namespace containerimages

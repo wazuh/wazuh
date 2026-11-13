@@ -105,8 +105,14 @@ static void wm_container_images_log_config(const wm_container_images_t *data) {
     // The host and the key names, never the values: the values are read from the
     // credential store at scan time and must not reach a log line at any level.
     for (int i = 0; i < data->registries_count; i++) {
-        mdebug1("Registry credentials configured for '%s': user key '%s', passkey key '%s'.",
-                data->registries[i].host, data->registries[i].user_key, data->registries[i].passkey_key);
+        if (data->registries[i].aws) {
+            mdebug1("Registry credentials configured for '%s': access key id key '%s', secret access key key '%s', region '%s'.",
+                    data->registries[i].host, data->registries[i].user_key, data->registries[i].passkey_key,
+                    data->registries[i].region);
+        } else {
+            mdebug1("Registry credentials configured for '%s': user key '%s', passkey key '%s'.",
+                    data->registries[i].host, data->registries[i].user_key, data->registries[i].passkey_key);
+        }
     }
 }
 
@@ -177,25 +183,29 @@ void *wm_container_images_main(wm_container_images_t *data) {
     const char **registry_hosts = NULL;
     const char **registry_user_keys = NULL;
     const char **registry_passkey_keys = NULL;
+    const char **registry_regions = NULL;
 
     if (data->registries_count > 0) {
         os_calloc((size_t)data->registries_count, sizeof(char *), registry_hosts);
         os_calloc((size_t)data->registries_count, sizeof(char *), registry_user_keys);
         os_calloc((size_t)data->registries_count, sizeof(char *), registry_passkey_keys);
+        os_calloc((size_t)data->registries_count, sizeof(char *), registry_regions);
 
         for (int i = 0; i < data->registries_count; i++) {
             registry_hosts[i] = data->registries[i].host;
             registry_user_keys[i] = data->registries[i].user_key;
             registry_passkey_keys[i] = data->registries[i].passkey_key;
+            registry_regions[i] = data->registries[i].region;
         }
     }
 
     container_images_set_registry_options_ptr(registry_hosts, registry_user_keys, registry_passkey_keys,
-                                              (unsigned int)data->registries_count, data->ca_bundle);
+                                              registry_regions, (unsigned int)data->registries_count, data->ca_bundle);
 
     os_free(registry_hosts);
     os_free(registry_user_keys);
     os_free(registry_passkey_keys);
+    os_free(registry_regions);
 
     container_images_init_ptr(data->interval, data->scan_on_start, data->enabled,
                               reference_types, reference_values, (unsigned int)data->references_count);
@@ -249,6 +259,7 @@ void wm_container_images_destroy(wm_container_images_t *data) {
                 os_free(data->registries[i].host);
                 os_free(data->registries[i].user_key);
                 os_free(data->registries[i].passkey_key);
+                os_free(data->registries[i].region);
             }
             os_free(data->registries);
         }
@@ -292,8 +303,18 @@ cJSON *wm_container_images_dump(const wm_container_images_t *data) {
         for (int i = 0; i < data->registries_count; i++) {
             cJSON *registry = cJSON_CreateObject();
             cJSON_AddStringToObject(registry, "host", data->registries[i].host);
-            cJSON_AddStringToObject(registry, "user_keystore_key", data->registries[i].user_key);
-            cJSON_AddStringToObject(registry, "passkey_keystore_key", data->registries[i].passkey_key);
+
+            if (data->registries[i].aws) {
+                cJSON_AddStringToObject(registry, "access_key_id_keystore_key", data->registries[i].user_key);
+                cJSON_AddStringToObject(registry, "secret_access_key_keystore_key", data->registries[i].passkey_key);
+
+                if (data->registries[i].region && *data->registries[i].region) {
+                    cJSON_AddStringToObject(registry, "region", data->registries[i].region);
+                }
+            } else {
+                cJSON_AddStringToObject(registry, "user_keystore_key", data->registries[i].user_key);
+                cJSON_AddStringToObject(registry, "passkey_keystore_key", data->registries[i].passkey_key);
+            }
             cJSON_AddItemToArray(registry_auth, registry);
         }
 

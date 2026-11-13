@@ -374,3 +374,212 @@ TEST_F(CaBundleTest, WellKnownLocationsAreDistinctAndAbsolute)
         EXPECT_EQ(location.front(), '/') << location;
     }
 }
+
+class RegistryProfileTest : public ::testing::Test
+{
+};
+
+TEST_F(RegistryProfileTest, GhcrKeepsItsRules)
+{
+    const auto reference {parsed("ghcr.io/owner/app:1.4")};
+
+    EXPECT_EQ(reference.profile.kind, RegistryKind::Ghcr);
+    EXPECT_FALSE(reference.profile.usesBasicToken());
+    rejected("ghcr.io/app:1.4"); // a GHCR repository still needs an owner
+}
+
+TEST_F(RegistryProfileTest, PublicEcrNeedsAnAliasAndARepository)
+{
+    const auto reference {parsed("public.ecr.aws/docker/library/alpine:3.20")};
+
+    EXPECT_EQ(reference.profile.kind, RegistryKind::EcrPublic);
+    EXPECT_EQ(reference.registry, "public.ecr.aws");
+    EXPECT_EQ(reference.repository, "docker/library/alpine");
+    EXPECT_EQ(reference.tag, "3.20");
+    EXPECT_EQ(reference.pullScope(), "repository:docker/library/alpine:pull");
+    EXPECT_FALSE(reference.profile.usesBasicToken());
+
+    EXPECT_EQ(parsed("public.ecr.aws/nginx/nginx").tag, "latest");
+    rejected("public.ecr.aws/nginx"); // a registry alias with no repository
+}
+
+TEST_F(RegistryProfileTest, PrivateEcrAllowsASingleComponentRepository)
+{
+    const auto reference {parsed("123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable")};
+
+    EXPECT_EQ(reference.profile.kind, RegistryKind::EcrPrivate);
+    EXPECT_EQ(reference.profile.region, "us-east-1");
+    EXPECT_EQ(reference.profile.dnsSuffix, "amazonaws.com");
+    EXPECT_EQ(reference.registry, "123456789012.dkr.ecr.us-east-1.amazonaws.com");
+    EXPECT_EQ(reference.repository, "my-backend");
+    EXPECT_EQ(reference.tag, "stable");
+    EXPECT_TRUE(reference.profile.usesBasicToken());
+}
+
+TEST_F(RegistryProfileTest, PrivateEcrAcceptsNestedRepositoriesAndDigests)
+{
+    const auto digest {"sha256:2f3a4b5c6d7e8f900112233445566778899aabbccddeeff00112233445566778"};
+    const auto reference {parsed(std::string {"123456789012.dkr.ecr.eu-west-1.amazonaws.com/team/app@"} + digest)};
+
+    EXPECT_EQ(reference.repository, "team/app");
+    EXPECT_TRUE(reference.pinnedByDigest());
+    EXPECT_EQ(reference.profile.region, "eu-west-1");
+}
+
+TEST_F(RegistryProfileTest, RegionsOfOtherPartitionsAreRead)
+{
+    EXPECT_EQ(parsed("123456789012.dkr.ecr.us-gov-west-1.amazonaws.com/app:1").profile.region, "us-gov-west-1");
+
+    const auto china {parsed("123456789012.dkr.ecr.cn-north-1.amazonaws.com.cn/app:1")};
+    EXPECT_EQ(china.profile.region, "cn-north-1");
+    EXPECT_EQ(china.profile.dnsSuffix, "amazonaws.com.cn");
+}
+
+TEST_F(RegistryProfileTest, HostsThatOnlyLookLikeEcrAreRejected)
+{
+    // The host selects where a token derived from a credential is sent, so it is matched
+    // exactly. Each of these ends in, or contains, a valid-looking ECR host.
+    rejected("123456789012.dkr.ecr.us-east-1.amazonaws.com.attacker.example/app:1");
+    rejected("123456789012.dkr.ecr.us-east-1.amazonaws.com@attacker.example/app:1");
+    rejected("attacker.123456789012.dkr.ecr.us-east-1.amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.us-east-1.amazonaws.org/app:1");
+    rejected("123456789012.dkr.ecr.us-east-1.amazonaws.com.cn.example/app:1");
+    rejected("evil.public.ecr.aws/nginx/nginx:1");
+    rejected("public.ecr.aws.attacker.example/nginx/nginx:1");
+    rejected("ghcr.io.attacker.example/owner/app:1");
+}
+
+TEST_F(RegistryProfileTest, MalformedAccountIdsAreRejected)
+{
+    rejected("12345678901.dkr.ecr.us-east-1.amazonaws.com/app:1");   // 11 digits
+    rejected("1234567890123.dkr.ecr.us-east-1.amazonaws.com/app:1"); // 13 digits
+    rejected("12345678901a.dkr.ecr.us-east-1.amazonaws.com/app:1");
+    rejected(".dkr.ecr.us-east-1.amazonaws.com/app:1");
+}
+
+TEST_F(RegistryProfileTest, MalformedRegionsAreRejected)
+{
+    rejected("123456789012.dkr.ecr..amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.us-east-1x.amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.us.east-1.amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.US-EAST-1.amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.us-east-1%2f.amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.us_east_1.amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.useast1.amazonaws.com/app:1");
+    rejected("123456789012.dkr.ecr.-east-1.amazonaws.com/app:1");
+}
+
+TEST_F(RegistryProfileTest, FipsEndpointsAreNamedAsUnsupported)
+{
+    RegistryReference reference;
+    std::string error;
+
+    EXPECT_FALSE(parseRegistryReference("123456789012.dkr.ecr-fips.us-east-1.amazonaws.com/app:1", reference, error));
+    EXPECT_NE(error.find("FIPS"), std::string::npos) << error;
+}
+
+TEST_F(RegistryProfileTest, APortOnAnEcrHostIsRejected)
+{
+    rejected("123456789012.dkr.ecr.us-east-1.amazonaws.com:443/app:1");
+    rejected("public.ecr.aws:443/nginx/nginx:1");
+}
+
+TEST_F(RegistryProfileTest, TraversalInAnEcrRepositoryIsRejected)
+{
+    rejected("123456789012.dkr.ecr.us-east-1.amazonaws.com/../app:1");
+    rejected("123456789012.dkr.ecr.us-east-1.amazonaws.com/team/../app:1");
+    rejected("public.ecr.aws/nginx/../nginx:1");
+}
+
+TEST_F(RegistryProfileTest, TheRegionValidatorIsStrict)
+{
+    for (const auto* valid : {"us-east-1", "eu-west-3", "ap-southeast-2", "us-gov-west-1", "cn-north-1", "eu-central-2"})
+    {
+        EXPECT_TRUE(isValidAwsRegion(valid)) << valid;
+    }
+
+    for (const auto* invalid : {"", "us", "us-1", "us-east", "US-EAST-1", "us-east-123", "u-east-1", "us--east-1",
+                                "us-east-1/", "us-east-1.evil", "us-east-1@evil", "us east 1", "us-east-1\n"})
+    {
+        EXPECT_FALSE(isValidAwsRegion(invalid)) << invalid;
+    }
+
+    EXPECT_FALSE(isValidAwsRegion(std::string(40, 'a') + "-east-1"));
+}
+
+TEST_F(RegistryProfileTest, OnlyTheTwoAwsDomainsAreSignedFor)
+{
+    EXPECT_TRUE(isSupportedAwsDnsSuffix("amazonaws.com"));
+    EXPECT_TRUE(isSupportedAwsDnsSuffix("amazonaws.com.cn"));
+    EXPECT_FALSE(isSupportedAwsDnsSuffix("amazonaws.com.attacker.example"));
+    EXPECT_FALSE(isSupportedAwsDnsSuffix(""));
+}
+
+TEST_F(RegistryProfileTest, TheRejectedStatusesDependOnTheScheme)
+{
+    RegistryProfile ghcr;
+    RegistryProfile ecr;
+    ecr.kind = RegistryKind::EcrPrivate;
+
+    EXPECT_TRUE(ghcr.rejectsAuthorization(401));
+    EXPECT_FALSE(ghcr.rejectsAuthorization(400));
+    EXPECT_FALSE(ghcr.rejectsAuthorization(403));
+
+    EXPECT_TRUE(ecr.rejectsAuthorization(401));
+    EXPECT_TRUE(ecr.rejectsAuthorization(400));
+    EXPECT_TRUE(ecr.rejectsAuthorization(403));
+    EXPECT_FALSE(ecr.rejectsAuthorization(404));
+    EXPECT_FALSE(ecr.rejectsAuthorization(500));
+}
+
+TEST_F(RegistryProfileTest, ATagFollowedByADigestIsAcceptedOnEcrAsOnGhcr)
+{
+    const auto digest {"sha256:2f3a4b5c6d7e8f900112233445566778899aabbccddeeff00112233445566778"};
+
+    for (const std::string host : {"123456789012.dkr.ecr.us-east-1.amazonaws.com", "public.ecr.aws/docker"})
+    {
+        const auto name {host + "/library/alpine"};
+        const auto reference {parsed(name + ":3.20@" + digest)};
+
+        EXPECT_EQ(reference.tag, "3.20");
+        EXPECT_EQ(reference.digest, digest);
+        EXPECT_TRUE(reference.pinnedByDigest());
+        EXPECT_EQ(reference.identifier(), digest) << "the digest is what is pulled";
+        EXPECT_EQ(reference.fullName(), name + ":3.20@" + digest);
+        EXPECT_EQ(reference.taggedName(), name + ":3.20");
+    }
+}
+
+TEST_F(RegistryProfileTest, ADigestAloneStaysAcceptedOnEcr)
+{
+    const auto digest {"sha256:2f3a4b5c6d7e8f900112233445566778899aabbccddeeff00112233445566778"};
+    const auto reference {parsed(std::string {"123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend@"} + digest)};
+
+    EXPECT_TRUE(reference.tag.empty());
+    EXPECT_EQ(reference.fullName(), std::string {"123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend@"} + digest);
+}
+
+TEST_F(RegistryProfileTest, TheFullNameOfAnEcrReferenceNamesTheAccountHostAndTheRepository)
+{
+    EXPECT_EQ(parsed("123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable").fullName(),
+              "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable");
+    EXPECT_EQ(parsed("123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend").fullName(),
+              "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:latest");
+}
+
+TEST_F(RegistryProfileTest, TheRefusalScopeIsTheRepositoryOnPrivateEcrAndTheOrganizationElsewhere)
+{
+    EXPECT_EQ(parsed("123456789012.dkr.ecr.us-east-1.amazonaws.com/team/app:1").refusalScope(),
+              "123456789012.dkr.ecr.us-east-1.amazonaws.com/team/app");
+    EXPECT_EQ(parsed("123456789012.dkr.ecr.us-east-1.amazonaws.com/app:1").refusalScope(),
+              "123456789012.dkr.ecr.us-east-1.amazonaws.com/app");
+    EXPECT_EQ(parsed("ghcr.io/owner/app:1").refusalScope(), "ghcr.io/owner");
+    EXPECT_EQ(parsed("ghcr.io/owner/group/app:1").refusalScope(), "ghcr.io/owner");
+}
+
+TEST_F(RegistryProfileTest, OnlyGhcrMayFallBackToAnAnonymousRead)
+{
+    EXPECT_TRUE(parsed("ghcr.io/owner/app:1").profile.allowsAnonymousFallback());
+    EXPECT_FALSE(parsed("public.ecr.aws/docker/library/alpine:1").profile.allowsAnonymousFallback());
+    EXPECT_FALSE(parsed("123456789012.dkr.ecr.us-east-1.amazonaws.com/app:1").profile.allowsAnonymousFallback());
+}

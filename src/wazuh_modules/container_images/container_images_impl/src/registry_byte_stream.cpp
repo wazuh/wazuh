@@ -91,6 +91,12 @@ namespace containerimages
         {
             curl_slist_free_all(static_cast<curl_slist*>(m_headerList));
         }
+
+        // The headers carry the registry token, and libcurl's own copy is gone by now.
+        for (auto& header : m_headers)
+        {
+            scrubString(header);
+        }
     }
 
     std::size_t RegistryByteStream::buffered() const

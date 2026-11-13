@@ -8,12 +8,15 @@
  * Foundation.
  */
 
+#include "aws_sigv4.hpp"
 #include "ci_logging_helper.hpp"
 #include "container_images_config.hpp"
 #include "credential_provider.hpp"
+#include "ecr_token_client.hpp"
 #include "image_fixtures.hpp"
 #include "registry_byte_stream.hpp"
 #include "registry_image_reader.hpp"
+#include "registry_token_cache.hpp"
 #include "registry_transport.hpp"
 
 #include <gtest/gtest.h>
@@ -21,9 +24,11 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <deque>
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <set>
 #include <string>
@@ -63,6 +68,11 @@ namespace
             };
 
             std::vector<Sequence> sequences;
+
+            /// Answers given once, in order, after @ref sequences and before @ref answers. Lets
+            /// a test script a refusal followed by a success for the same URL.
+            std::map<std::string, std::deque<HttpResponse>> queued;
+
             std::vector<Call> calls;
             bool refuse {false}; ///< When set, no response is produced at all.
 
@@ -126,6 +136,16 @@ namespace
                             return false;
                         }
 
+                        return true;
+                    }
+                }
+
+                for (auto& entry : queued)
+                {
+                    if (!entry.second.empty() && url.find(entry.first) != std::string::npos)
+                    {
+                        response = entry.second.front();
+                        entry.second.pop_front();
                         return true;
                     }
                 }
@@ -2074,4 +2094,1593 @@ TEST_F(RegistryLayerContentTest, EachUnsupportedCompressionIsNamed)
         EXPECT_EQ(instance->discover().status, ReadStatus::Success) << name;
         EXPECT_EQ(warningsMentioning("is " + name + " compressed"), 1u) << name;
     }
+}
+
+// ---------------------------------------------------------------------------------------
+// Amazon ECR
+// ---------------------------------------------------------------------------------------
+
+namespace
+{
+    constexpr auto ECR_HOST = "123456789012.dkr.ecr.us-east-1.amazonaws.com";
+    constexpr auto ECR_REFERENCE = "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:1.0";
+    constexpr auto PUBLIC_REFERENCE = "public.ecr.aws/docker/library/alpine:1.0";
+
+    // Verbatim from the probe of a private registry given a made-up Basic token.
+    constexpr auto DENIED_BODY = R"({"errors":[{"code":"DENIED","message":"Your Authorization Token is invalid."}]})";
+
+    /// @brief A token source with scripted answers that records what it was asked.
+    class StubTokenSource final : public IEcrTokenSource
+    {
+        public:
+            struct Call
+            {
+                std::string region;
+                std::string dnsSuffix;
+                std::string accessKeyId;
+                std::string secretAccessKey;
+            };
+
+            std::vector<Call> calls;
+            std::deque<EcrTokenResult> results; ///< Consumed in order. Afterwards a fresh token each call.
+            std::chrono::system_clock::time_point* now {nullptr};
+            std::function<void()> onFetch; ///< Called at the start of every call.
+
+            EcrTokenResult fetch(const std::string& region,
+                                 const std::string& dnsSuffix,
+                                 const Secret& accessKeyId,
+                                 const Secret& secretAccessKey) override
+            {
+                calls.push_back({region, dnsSuffix, accessKeyId.value(), secretAccessKey.value()});
+
+                if (onFetch)
+                {
+                    onFetch();
+                }
+
+                if (!results.empty())
+                {
+                    auto result {std::move(results.front())};
+                    results.pop_front();
+
+                    return result;
+                }
+
+                EcrTokenResult result;
+                result.ok = true;
+                result.token = Secret {"ecr-token-" + std::to_string(calls.size())};
+                result.expiresAt = (now != nullptr ? *now : std::chrono::system_clock::now()) + std::chrono::hours {12};
+
+                return result;
+            }
+    };
+
+    EcrTokenResult failure(const long status, const std::string& reason)
+    {
+        EcrTokenResult result;
+        result.status = status;
+        result.reason = reason;
+
+        return result;
+    }
+
+    std::string base64(const std::string& text)
+    {
+        constexpr auto ALPHABET {"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"};
+        std::string encoded;
+        std::size_t index {0};
+
+        for (; index + 2 < text.size(); index += 3)
+        {
+            const auto chunk {(static_cast<unsigned char>(text[index]) << 16) |
+                              (static_cast<unsigned char>(text[index + 1]) << 8) |
+                              static_cast<unsigned char>(text[index + 2])};
+            encoded += {ALPHABET[(chunk >> 18) & 63], ALPHABET[(chunk >> 12) & 63], ALPHABET[(chunk >> 6) & 63],
+                        ALPHABET[chunk & 63]};
+        }
+
+        if (index + 1 == text.size())
+        {
+            const auto chunk {static_cast<unsigned char>(text[index]) << 16};
+            encoded += {ALPHABET[(chunk >> 18) & 63], ALPHABET[(chunk >> 12) & 63], '=', '='};
+        }
+        else if (index + 2 == text.size())
+        {
+            const auto chunk {(static_cast<unsigned char>(text[index]) << 16) |
+                              (static_cast<unsigned char>(text[index + 1]) << 8)};
+            encoded += {ALPHABET[(chunk >> 18) & 63], ALPHABET[(chunk >> 12) & 63], ALPHABET[(chunk >> 6) & 63], '='};
+        }
+
+        return encoded;
+    }
+
+    std::string hex(const std::string& bytes)
+    {
+        constexpr auto DIGITS {"0123456789abcdef"};
+        std::string result;
+
+        for (const auto character : bytes)
+        {
+            result += DIGITS[(static_cast<unsigned char>(character) >> 4) & 15];
+            result += DIGITS[static_cast<unsigned char>(character) & 15];
+        }
+
+        return result;
+    }
+} // namespace
+
+class EcrReaderTest : public RegistryReaderTest
+{
+    protected:
+        EcrReaderTest()
+            : m_cache {[this] { return m_now; }, std::chrono::minutes {10}}
+        {
+        }
+
+        void SetUp() override
+        {
+            RegistryReaderTest::SetUp();
+
+            // The base fixture hands out one transport for a reader to own. These tests
+            // build several, so the spare is held here until a reader takes it.
+            m_spare.reset(m_transport);
+
+            m_source.now = &m_now;
+            m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", {}});
+            m_credentials.values["container_images/ecr_key_id"] = "AKIDEXAMPLE";
+            m_credentials.values["container_images/ecr_secret"] = "example-secret-access-key";
+
+            LoggingHelper::setLogCallback([this](const modules_log_level_t level, const char* line)
+            {
+                m_logs.push_back({level, line});
+            });
+        }
+
+        void TearDown() override
+        {
+            if (HasFailure())
+            {
+                for (const auto& entry : m_logs)
+                {
+                    std::cerr << "[module log " << entry.first << "] " << entry.second << "\n";
+                }
+            }
+
+            LoggingHelper::setLogCallback([](const modules_log_level_t, const char*) {});
+            RegistryReaderTest::TearDown();
+        }
+
+        /// @brief The transport script of an image that resolves, with no token endpoint.
+        void scriptResolution(ScriptedTransport& transport)
+        {
+            transport.answers.push_back({"/manifests/1.0", json(200, index())});
+            transport.answers.push_back({"/manifests/sha256:aaaa1111", json(200, MANIFEST)});
+            transport.answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+        }
+
+        /// @brief A reader over @p transport that shares this fixture's cache and token source.
+        std::unique_ptr<RegistryImageReader> ecrReader(const std::string& location,
+                                                       ScriptedTransport* transport,
+                                                       IEcrTokenSource* source = nullptr)
+        {
+            ReaderContext context {&m_config,
+                                   &m_credentials,
+                                   &m_scanBytes,
+                                   &m_stop,
+                                   m_shareRefusals ? &m_refusedScopes : nullptr,
+                                   &m_reportedHosts};
+            context.tokenCache = &m_cache;
+            context.ecrTokenSource = source != nullptr ? source : &m_source;
+
+            auto instance {std::make_unique<RegistryImageReader>(location, std::string {}, context)};
+
+            if (transport == m_spare.get())
+            {
+                m_spare.release();
+            }
+
+            instance->setTransport(std::unique_ptr<IRegistryTransport>(transport));
+
+            return instance;
+        }
+
+        std::string cacheKey(const std::string& region = "us-east-1") const
+        {
+            return RegistryTokenCache::makeKey(ECR_HOST, "ecr_key_id", "ecr_secret", region);
+        }
+
+        bool logged(const std::string& fragment) const
+        {
+            for (const auto& entry : m_logs)
+            {
+                if (entry.second.find(fragment) != std::string::npos)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        std::size_t countLogged(const std::string& fragment) const
+        {
+            std::size_t total {0};
+
+            for (const auto& entry : m_logs)
+            {
+                if (entry.second.find(fragment) != std::string::npos)
+                {
+                    ++total;
+                }
+            }
+
+            return total;
+        }
+
+        bool m_shareRefusals {false}; ///< Hand the scan's refusal memory to the readers, as a scan does.
+        std::chrono::system_clock::time_point m_now {std::chrono::system_clock::from_time_t(1'800'000'000)};
+        RegistryTokenCache m_cache;
+        StubTokenSource m_source;
+        std::vector<std::pair<modules_log_level_t, std::string>> m_logs;
+        std::unique_ptr<ScriptedTransport> m_spare;
+};
+
+TEST_F(EcrReaderTest, APublicReferenceIsReadWithAnAnonymousBearerToken)
+{
+    m_transport->queued["/manifests/1.0"].push_back(
+        []
+    {
+        HttpResponse response;
+        response.status = 401;
+        response.headers["www-authenticate"] =
+            R"(Bearer realm="https://public.ecr.aws/token/",service="public.ecr.aws",scope="aws")";
+
+        return response;
+    }());
+    m_transport->answers.push_back({"/token/", json(200, R"({"token":"public-token"})")});
+    scriptResolution(*m_transport);
+
+    const auto instance = ecrReader(PUBLIC_REFERENCE, m_transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+
+    // The token request is the form the reader builds for any Bearer registry, scoped to
+    // the repository, and carries no credential.
+    ASSERT_GE(m_transport->calls.size(), 2u);
+    EXPECT_EQ(m_transport->calls[1].url,
+              "https://public.ecr.aws/token/?service=public.ecr.aws&scope=repository%3Adocker%2Flibrary%2Falpine%3Apull");
+    EXPECT_FALSE(m_transport->calls[1].basic);
+    EXPECT_TRUE(m_source.calls.empty()) << "public ECR must never reach AWS";
+
+    for (const auto& call : m_transport->calls)
+    {
+        EXPECT_EQ(call.url.rfind("https://public.ecr.aws/", 0), 0u) << call.url;
+    }
+
+    // The manifest is then requested with the Bearer token.
+    auto sawBearer {false};
+
+    for (const auto& call : m_transport->calls)
+    {
+        for (const auto& header : call.headers)
+        {
+            sawBearer = sawBearer || header == "Authorization: Bearer public-token";
+        }
+    }
+
+    EXPECT_TRUE(sawBearer);
+}
+
+TEST_F(EcrReaderTest, ACredentialConfiguredForPublicEcrIsNotSent)
+{
+    m_config.registryAuth.push_back({"public.ecr.aws", "ecr_key_id", "ecr_secret", {}});
+
+    HttpResponse challenge;
+    challenge.status = 401;
+    challenge.headers["www-authenticate"] =
+        R"(Bearer realm="https://public.ecr.aws/token/",service="public.ecr.aws",scope="aws")";
+    m_transport->queued["/manifests/1.0"].push_back(challenge);
+    m_transport->answers.push_back({"/token/", json(200, R"({"token":"public-token"})")});
+    scriptResolution(*m_transport);
+
+    const auto instance = ecrReader(PUBLIC_REFERENCE, m_transport);
+    instance->discover();
+
+    for (const auto& call : m_transport->calls)
+    {
+        EXPECT_FALSE(call.basic) << "a credential reached " << call.url;
+    }
+}
+
+TEST_F(EcrReaderTest, APublicRealmOutsideTheRegistryIsRefused)
+{
+    HttpResponse challenge;
+    challenge.status = 401;
+    challenge.headers["www-authenticate"] = R"(Bearer realm="https://public.ecr.aws@attacker.example/token/")";
+    m_transport->answers.push_back({"/manifests/1.0", challenge});
+
+    const auto instance = ecrReader(PUBLIC_REFERENCE, m_transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    for (const auto& call : m_transport->calls)
+    {
+        EXPECT_EQ(call.url.find("attacker.example"), std::string::npos) << call.url;
+    }
+}
+
+TEST_F(EcrReaderTest, APrivateReferenceSendsTheBasicTokenFromTheFirstRequest)
+{
+    scriptResolution(*m_transport);
+
+    const auto instance = ecrReader(ECR_REFERENCE, m_transport);
+    const auto result {instance->discover()};
+
+    EXPECT_EQ(result.status, ReadStatus::Success);
+
+    ASSERT_EQ(m_source.calls.size(), 1u);
+    EXPECT_EQ(m_source.calls[0].region, "us-east-1");
+    EXPECT_EQ(m_source.calls[0].dnsSuffix, "amazonaws.com");
+    EXPECT_EQ(m_source.calls[0].accessKeyId, "AKIDEXAMPLE");
+    EXPECT_EQ(m_source.calls[0].secretAccessKey, "example-secret-access-key");
+
+    // No unauthenticated request is wasted, and nothing is asked of a token endpoint: the
+    // challenge of a private registry names none that this module would use.
+    ASSERT_FALSE(m_transport->calls.empty());
+
+    for (const auto& call : m_transport->calls)
+    {
+        EXPECT_EQ(call.url.rfind(std::string {"https://"} + ECR_HOST + "/v2/my-backend/", 0), 0u) << call.url;
+        EXPECT_FALSE(call.basic);
+
+        auto sawBasic {false};
+
+        for (const auto& header : call.headers)
+        {
+            sawBasic = sawBasic || header == "Authorization: Basic ecr-token-1";
+            EXPECT_EQ(header.find("Bearer"), std::string::npos) << header;
+        }
+
+        EXPECT_TRUE(sawBasic) << call.url;
+    }
+}
+
+TEST_F(EcrReaderTest, TheTokenIsSharedAcrossTheReferencesOfARegistry)
+{
+    auto* second {new ScriptedTransport()};
+    scriptResolution(*m_transport);
+    scriptResolution(*second);
+
+    const auto first = ecrReader(ECR_REFERENCE, m_transport);
+    EXPECT_EQ(first->discover().status, ReadStatus::Success);
+
+    const auto other = ecrReader(std::string {ECR_HOST} + "/my-backend:1.0", second);
+    EXPECT_EQ(other->discover().status, ReadStatus::Success);
+
+    EXPECT_EQ(m_source.calls.size(), 1u) << "the second reference should have reused the token";
+    EXPECT_EQ(m_cache.size(), 1u);
+
+    for (const auto& call : second->calls)
+    {
+        EXPECT_NE(std::find(call.headers.begin(), call.headers.end(), "Authorization: Basic ecr-token-1"),
+                  call.headers.end());
+    }
+}
+
+TEST_F(EcrReaderTest, TheTokenIsRenewedBeforeItExpires)
+{
+    auto* second {new ScriptedTransport()};
+    scriptResolution(*m_transport);
+    scriptResolution(*second);
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+
+    // Eleven hours and fifty minutes into a twelve hour token: inside the ten minute margin.
+    m_now += std::chrono::hours {11} + std::chrono::minutes {50};
+
+    const auto renewed = ecrReader(ECR_REFERENCE, second);
+    EXPECT_EQ(renewed->discover().status, ReadStatus::Success);
+
+    EXPECT_EQ(m_source.calls.size(), 2u);
+
+    for (const auto& call : second->calls)
+    {
+        EXPECT_NE(std::find(call.headers.begin(), call.headers.end(), "Authorization: Basic ecr-token-2"),
+                  call.headers.end());
+    }
+}
+
+TEST_F(EcrReaderTest, ATokenWellInsideItsLifetimeIsNotRenewed)
+{
+    auto* second {new ScriptedTransport()};
+    scriptResolution(*m_transport);
+    scriptResolution(*second);
+
+    ecrReader(ECR_REFERENCE, m_transport)->discover();
+    m_now += std::chrono::hours {6};
+    ecrReader(ECR_REFERENCE, second)->discover();
+
+    EXPECT_EQ(m_source.calls.size(), 1u);
+}
+
+TEST_F(EcrReaderTest, ARefusedTokenIsRenewedOnceAndTheRequestRepeated)
+{
+    for (const long status : {400L, 401L, 403L})
+    {
+        SCOPED_TRACE(status);
+
+        m_source.calls.clear();
+        m_cache.clear();
+
+        auto* transport {new ScriptedTransport()};
+        scriptResolution(*transport);
+        transport->queued["/manifests/1.0"].push_back(json(status, DENIED_BODY));
+
+        const auto instance = ecrReader(ECR_REFERENCE, transport);
+        EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+
+        EXPECT_EQ(m_source.calls.size(), 2u);
+
+        // The repeated request carries the new token, and the cache holds it.
+        std::vector<std::string> manifestTokens;
+
+        for (const auto& call : transport->calls)
+        {
+            if (call.url.find("/manifests/1.0") != std::string::npos)
+            {
+                for (const auto& header : call.headers)
+                {
+                    if (header.rfind("Authorization: Basic ", 0) == 0)
+                    {
+                        manifestTokens.push_back(header);
+                    }
+                }
+            }
+        }
+
+        ASSERT_EQ(manifestTokens.size(), 2u);
+        EXPECT_EQ(manifestTokens[0], "Authorization: Basic ecr-token-1");
+        EXPECT_EQ(manifestTokens[1], "Authorization: Basic ecr-token-2");
+        ASSERT_TRUE(m_cache.lookup(cacheKey()).has_value());
+        EXPECT_EQ(m_cache.lookup(cacheKey())->value(), "ecr-token-2");
+    }
+}
+
+TEST_F(EcrReaderTest, ARepeatedRefusalIsReportedWithTheRegistrysReasonAndNotRetriedForever)
+{
+    for (const long status : {400L, 401L, 403L})
+    {
+        SCOPED_TRACE(status);
+
+        m_source.calls.clear();
+        m_logs.clear();
+        m_cache.clear();
+
+        auto* transport {new ScriptedTransport()};
+        transport->answers.push_back({"/manifests/", json(status, DENIED_BODY)});
+
+        const auto instance = ecrReader(ECR_REFERENCE, transport);
+        EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+        EXPECT_EQ(m_source.calls.size(), 2u) << "one token and one renewal, never a third";
+        EXPECT_EQ(transport->countMatching("/manifests/1.0"), 2u);
+
+        EXPECT_TRUE(logged("Reference '" + std::string {ECR_REFERENCE} + "'"));
+        EXPECT_TRUE(logged("DENIED: Your Authorization Token is invalid.")) << "the registry's reason is missing";
+    }
+}
+
+TEST_F(EcrReaderTest, ARefusalWhoseBodyEchoesTheRequestNamesOnlyTheCode)
+{
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back(
+        {"/manifests/",
+         json(400,
+              R"({"errors":[{"code":"DENIED","message":"bad header Authorization: Basic ecr-token-1 for AKIDEXAMPLE"}]})")});
+
+    const auto instance = ecrReader(ECR_REFERENCE, transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(logged("DENIED"));
+
+    for (const auto& entry : m_logs)
+    {
+        EXPECT_EQ(entry.second.find("ecr-token"), std::string::npos) << entry.second;
+        EXPECT_EQ(entry.second.find("AKIDEXAMPLE"), std::string::npos) << entry.second;
+    }
+}
+
+TEST_F(EcrReaderTest, ARenewalThatFailsIsReportedWithAwsReason)
+{
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back({"/manifests/", json(400, DENIED_BODY)});
+
+    m_source.results.emplace_back();
+    m_source.results.front().ok = true;
+    m_source.results.front().token = Secret {"ecr-token-1"};
+    m_source.results.front().expiresAt = m_now + std::chrono::hours {12};
+    m_source.results.push_back(failure(400, "AWS does not accept the access key id (UnrecognizedClientException)"));
+
+    const auto instance = ecrReader(ECR_REFERENCE, transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(logged("a new one could not be obtained"));
+    EXPECT_TRUE(logged("UnrecognizedClientException"));
+    EXPECT_EQ(m_cache.size(), 0u) << "a refused token must not stay cached";
+}
+
+TEST_F(EcrReaderTest, APrivateReferenceWithNoRegistryEntryFailsBeforeAnyRequest)
+{
+    m_config.registryAuth.clear();
+
+    const auto instance = ecrReader(ECR_REFERENCE, m_transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(m_transport->calls.empty());
+    EXPECT_TRUE(m_source.calls.empty());
+    EXPECT_EQ(countLogged("no credential is configured for " + std::string {ECR_HOST}), 1u);
+    EXPECT_TRUE(logged("Reference '" + std::string {ECR_REFERENCE} + "'"));
+    EXPECT_TRUE(logged("access_key_id_keystore_key"));
+}
+
+TEST_F(EcrReaderTest, ACredentialMissingFromTheStoreFailsBeforeAnyRequest)
+{
+    m_credentials.values.erase("container_images/ecr_secret");
+
+    const auto instance = ecrReader(ECR_REFERENCE, m_transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(m_transport->calls.empty());
+    EXPECT_TRUE(m_source.calls.empty());
+    EXPECT_TRUE(logged("is missing from the agent credential store"));
+}
+
+TEST_F(EcrReaderTest, AnAwsFailureIsReportedWithTheReferenceAndTheReasonAndNotCached)
+{
+    m_source.results.push_back(failure(400, "AWS does not accept the access key id (UnrecognizedClientException)"));
+
+    const auto instance = ecrReader(ECR_REFERENCE, m_transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(m_transport->calls.empty()) << "the registry must not be asked when there is no token";
+    EXPECT_EQ(m_source.calls.size(), 1u) << "a rejected credential is not retried";
+    EXPECT_EQ(m_cache.size(), 0u);
+    EXPECT_EQ(countLogged("UnrecognizedClientException"), 1u);
+    EXPECT_TRUE(logged("Reference '" + std::string {ECR_REFERENCE} + "'"));
+
+    // Nothing was remembered, so a corrected credential works at the next scan.
+    auto* transport {new ScriptedTransport()};
+    scriptResolution(*transport);
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_source.calls.size(), 2u);
+}
+
+TEST_F(EcrReaderTest, AClockSkewReasonReachesTheLog)
+{
+    m_source.results.push_back(
+        failure(400, "AWS refused the signature because the agent clock differs too much from AWS time"));
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(logged("the agent clock differs too much from AWS time"));
+}
+
+TEST_F(EcrReaderTest, ThrottlingIsRetried)
+{
+    m_source.results.push_back(failure(429, "AWS throttled the request (ThrottlingException)"));
+    scriptResolution(*m_transport);
+
+    const auto instance = ecrReader(ECR_REFERENCE, m_transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_source.calls.size(), 2u);
+}
+
+TEST_F(EcrReaderTest, ThrottlingThatNeverEndsGivesUpAndSaysSo)
+{
+    for (auto attempt = 0; attempt < 10; ++attempt)
+    {
+        m_source.results.push_back(failure(429, "AWS throttled the request (ThrottlingException)"));
+    }
+
+    m_config.limits.maxAttempts = 3;
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_source.calls.size(), 3u);
+    EXPECT_TRUE(logged("ThrottlingException"));
+}
+
+TEST_F(EcrReaderTest, AConfiguredRegionOverridesTheOneInTheHost)
+{
+    m_config.registryAuth.clear();
+    m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "eu-west-1"});
+    scriptResolution(*m_transport);
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+
+    ASSERT_EQ(m_source.calls.size(), 1u);
+    EXPECT_EQ(m_source.calls[0].region, "eu-west-1");
+
+    // One line naming both regions, neither of which is a secret.
+    EXPECT_EQ(countLogged("overrides"), 1u);
+
+    for (const auto& entry : m_logs)
+    {
+        if (entry.second.find("overrides") != std::string::npos)
+        {
+            EXPECT_NE(entry.second.find("eu-west-1"), std::string::npos);
+            EXPECT_NE(entry.second.find("us-east-1"), std::string::npos);
+            EXPECT_EQ(entry.first, LOG_DEBUG);
+        }
+    }
+
+    // The token is kept per region it was issued for.
+    EXPECT_TRUE(m_cache.lookup(cacheKey("eu-west-1")).has_value());
+    EXPECT_FALSE(m_cache.lookup(cacheKey("us-east-1")).has_value());
+}
+
+TEST_F(EcrReaderTest, TheRegionOfTheHostIsUsedWhenNoneIsConfigured)
+{
+    scriptResolution(*m_transport);
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+
+    ASSERT_EQ(m_source.calls.size(), 1u);
+    EXPECT_EQ(m_source.calls[0].region, "us-east-1");
+    EXPECT_FALSE(logged("overrides"));
+}
+
+TEST_F(EcrReaderTest, ARegionEqualToTheHostsIsNotReportedAsAnOverride)
+{
+    m_config.registryAuth.clear();
+    m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "us-east-1"});
+    scriptResolution(*m_transport);
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+    EXPECT_FALSE(logged("overrides"));
+}
+
+TEST_F(EcrReaderTest, AReferenceOfAnotherRegistryDoesNotUseThePrivateTokens)
+{
+    // GHCR and the cache coexist: a GHCR reference never reads the ECR token or the source.
+    m_transport->answers.push_back({"/manifests/1.0", json(200, "{not json")});
+
+    EXPECT_EQ(ecrReader("ghcr.io/owner/app:1.0", m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(m_source.calls.empty());
+    EXPECT_EQ(m_cache.size(), 0u);
+}
+
+TEST_F(EcrReaderTest, OneFailingEcrReferenceDoesNotStopTheNext)
+{
+    auto* good {new ScriptedTransport()};
+    scriptResolution(*good);
+
+    m_credentials.values.erase("container_images/ecr_secret");
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+
+    m_credentials.values["container_images/ecr_secret"] = "example-secret-access-key";
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, good)->discover().status, ReadStatus::Success);
+}
+
+namespace
+{
+    // The form AWS documents for an IAM denial. Not measured against a real account.
+    constexpr auto PERMISSION_BODY =
+        R"({"errors":[{"code":"DENIED","message":"User: arn:aws:iam::123456789012:user/wazuh-ci is not authorized to )"
+        R"(perform: ecr:BatchGetImage on resource: arn:aws:ecr:us-east-1:123456789012:repository/my-backend"}]})";
+} // namespace
+
+TEST_F(EcrReaderTest, AMissingPermissionCostsOneSignedCallWhateverTheNumberOfReferences)
+{
+    constexpr int REFERENCES {3};
+
+    for (const long status : {403L, 400L})
+    {
+        SCOPED_TRACE(status);
+
+        m_source.calls.clear();
+        m_logs.clear();
+        m_cache.clear();
+
+        for (auto index = 0; index < REFERENCES; ++index)
+        {
+            auto* transport {new ScriptedTransport()};
+            transport->answers.push_back({"/manifests/", json(status, PERMISSION_BODY)});
+
+            const auto instance = ecrReader(ECR_REFERENCE, transport);
+            EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+            // The refused request was not repeated, and the shared token was kept.
+            EXPECT_EQ(transport->countMatching("/manifests/1.0"), 1u);
+        }
+
+        EXPECT_EQ(m_source.calls.size(), 1u) << "a missing permission must not cost a second signed call";
+        EXPECT_TRUE(m_cache.lookup(cacheKey()).has_value()) << "a valid token was dropped";
+        EXPECT_EQ(countLogged("is not authorized to perform: ecr:BatchGetImage"), static_cast<std::size_t>(REFERENCES));
+        EXPECT_TRUE(logged("arn:aws:iam::123456789012:user/wazuh-ci"));
+        EXPECT_TRUE(logged("arn:aws:ecr:us-east-1:123456789012:repository/my-backend")) << "the resource ARN was cut";
+    }
+}
+
+TEST_F(EcrReaderTest, ATokenRefusedAfterARegionOverrideSaysSoAndIsNotRenewed)
+{
+    for (const long status : {400L, 401L, 403L})
+    {
+        SCOPED_TRACE(status);
+
+        m_source.calls.clear();
+        m_logs.clear();
+        m_cache.clear();
+        m_config.registryAuth.clear();
+        m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "eu-west-1"});
+
+        auto* transport {new ScriptedTransport()};
+        transport->answers.push_back({"/manifests/", json(status, DENIED_BODY)});
+
+        const auto instance = ecrReader(ECR_REFERENCE, transport);
+        EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+        EXPECT_EQ(m_source.calls.size(), 1u) << "a token from the same wrong region must not be asked for twice";
+        EXPECT_EQ(m_source.calls[0].region, "eu-west-1");
+        EXPECT_EQ(transport->countMatching("/manifests/1.0"), 1u);
+
+        EXPECT_TRUE(logged("the registry refused the token requested in the configured region 'eu-west-1', "
+                           "and the registry host is in 'us-east-1'"));
+        EXPECT_TRUE(logged("Reference '" + std::string {ECR_REFERENCE} + "'"));
+        EXPECT_TRUE(logged("The token was not renewed"));
+
+        for (const auto& entry : m_logs)
+        {
+            EXPECT_EQ(entry.second.find("ecr-token"), std::string::npos) << entry.second;
+            EXPECT_EQ(entry.second.find("example-secret-access-key"), std::string::npos) << entry.second;
+        }
+    }
+}
+
+TEST_F(EcrReaderTest, ARegionOverrideEqualToTheHostsKeepsTheRenewal)
+{
+    m_config.registryAuth.clear();
+    m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "us-east-1"});
+
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back({"/manifests/", json(400, DENIED_BODY)});
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Failed);
+
+    EXPECT_EQ(m_source.calls.size(), 2u) << "no region mismatch, so the usual single renewal applies";
+    EXPECT_FALSE(logged("configured region"));
+}
+
+TEST_F(EcrReaderTest, ARegionOverrideThatTheRegistryAcceptsStillWorks)
+{
+    m_config.registryAuth.clear();
+    m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "eu-west-1"});
+    scriptResolution(*m_transport);
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_source.calls.size(), 1u);
+}
+
+TEST_F(EcrReaderTest, AReasonThatEndsInAPeriodIsNotFollowedByAnother)
+{
+    // Registry and AWS messages are often sentences, and the log line adds its own full stop.
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back(
+        {"/manifests/", json(404, R"({"errors":[{"code":"NAME_UNKNOWN","message":"The repository does not exist."}]})")});
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(logged("NAME_UNKNOWN: The repository does not exist."));
+
+    for (const auto& entry : m_logs)
+    {
+        EXPECT_EQ(entry.second.find(".."), std::string::npos) << entry.second;
+    }
+
+    // And one that does not end in a period still gets exactly one.
+    m_logs.clear();
+    auto* denied {new ScriptedTransport()};
+    denied->answers.push_back({"/manifests/", json(403, PERMISSION_BODY)});
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, denied)->discover().status, ReadStatus::Failed);
+
+    for (const auto& entry : m_logs)
+    {
+        if (entry.first == LOG_WARNING)
+        {
+            EXPECT_EQ(entry.second.back(), '.') << entry.second;
+            EXPECT_EQ(entry.second.find(".."), std::string::npos) << entry.second;
+        }
+    }
+}
+
+TEST_F(EcrReaderTest, ARepeatedRefusalLinesNeverHaveADoublePeriod)
+{
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back({"/manifests/", json(400, DENIED_BODY)});
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(logged("DENIED: Your Authorization Token is invalid."));
+
+    for (const auto& entry : m_logs)
+    {
+        EXPECT_EQ(entry.second.find(".."), std::string::npos) << entry.second;
+    }
+}
+
+TEST_F(EcrReaderTest, AnEmptyRefusalIsCheckedAgainstTheManifestBeforeTheTokenIsDropped)
+{
+    // No body to read, as on the layer path: the manifest is asked for again to learn why.
+    auto* transport {new ScriptedTransport()};
+    transport->queued["/manifests/1.0"].push_back(json(403, ""));
+    transport->queued["/manifests/1.0"].push_back(json(403, PERMISSION_BODY));
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_source.calls.size(), 1u);
+    EXPECT_TRUE(m_cache.lookup(cacheKey()).has_value());
+}
+
+TEST_F(EcrReaderTest, AnEmptyRefusalThatTheManifestSaysIsTheTokenRenewsIt)
+{
+    auto* transport {new ScriptedTransport()};
+    scriptResolution(*transport);
+    transport->queued["/manifests/1.0"].push_back(json(400, ""));
+    transport->queued["/manifests/1.0"].push_back(json(400, DENIED_BODY));
+
+    const auto instance = ecrReader(ECR_REFERENCE, transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_source.calls.size(), 2u);
+}
+
+TEST_F(EcrReaderTest, AnEmptyRefusalThatTheManifestDoesNotRepeatLeavesTheTokenAlone)
+{
+    // The content host after a redirect answers 403 too, and the token was fine.
+    auto* transport {new ScriptedTransport()};
+    scriptResolution(*transport);
+    transport->queued["/manifests/1.0"].push_back(json(403, ""));
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_source.calls.size(), 1u);
+}
+
+TEST_F(EcrReaderTest, A401FromTheRegistryAlwaysRenewsTheToken)
+{
+    auto* transport {new ScriptedTransport()};
+    scriptResolution(*transport);
+    transport->queued["/manifests/1.0"].push_back(json(401, PERMISSION_BODY));
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Success);
+    EXPECT_EQ(m_source.calls.size(), 2u);
+}
+
+TEST_F(EcrReaderTest, AReasonQuotingTheConfiguredCredentialIsNotLogged)
+{
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back(
+        {"/manifests/",
+         json(403, R"({"errors":[{"code":"DENIED","message":"key AKIDEXAMPLE secret example-secret-access-key refused"}]})")});
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(logged("403"));
+
+    for (const auto& entry : m_logs)
+    {
+        EXPECT_EQ(entry.second.find("example-secret-access-key"), std::string::npos) << entry.second;
+        EXPECT_EQ(entry.second.find("AKIDEXAMPLE"), std::string::npos) << entry.second;
+    }
+}
+
+TEST_F(EcrReaderTest, AStoredAccessKeyIdThatIsNotWellFormedIsReportedWithoutBeingEchoed)
+{
+    m_credentials.values["container_images/ecr_key_id"] = "AKIDEXAMPLEWITHBLANK ";
+
+    EcrTokenClient client {[](const EcrPostRequest&, HttpResponse&, std::string&) -> bool
+    {
+        ADD_FAILURE() << "nothing may be sent for a key id that could not be one";
+        return false;
+    }};
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport, &client)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(logged("the stored access key id is not well-formed"));
+    EXPECT_FALSE(logged("AKIDEXAMPLEWITHBLANK"));
+}
+
+// ---------------------------------------------------------------------------------------
+// Nothing derived from a credential reaches a log line
+// ---------------------------------------------------------------------------------------
+
+TEST_F(EcrReaderTest, NoLogLineAtAnyLevelCarriesACredentialOrAnythingDerivedFromOne)
+{
+    const std::string accessKeyId {"AKIDREDACTIONCHECK01"};
+    const std::string secretKey {"SECRET/redaction+check/0123456789abcdefghij"};
+    const std::string password {"PW-REDACTION-0123456789"};
+    const auto token {base64("AWS:" + password)};
+
+    m_credentials.values["container_images/ecr_key_id"] = accessKeyId;
+    m_credentials.values["container_images/ecr_secret"] = secretKey;
+
+    // Everything the signer sends is recorded, so the values derived from the credential
+    // are known to the test and can be searched for.
+    std::vector<EcrPostRequest> sent;
+    enum class Mode { Succeed, EchoEverything, Throw } mode {Mode::Succeed};
+
+    auto clock = [this] { return m_now; };
+    EcrTokenClient client {[&](const EcrPostRequest& request, HttpResponse& answer, std::string&)
+    {
+        sent.push_back(request);
+
+        if (mode == Mode::Throw)
+        {
+            throw std::runtime_error("signing failed for " + secretKey + " " + request.headers.back());
+        }
+
+        if (mode == Mode::EchoEverything)
+        {
+            const auto& authorization {request.headers.back()};
+
+            answer.status = 400;
+            answer.body = R"({"__type":"InvalidSignatureException","message":"Credential=)" + accessKeyId +
+                          " " + authorization + " secret " + secretKey + " token " + token + "\"}";
+
+            return true;
+        }
+
+        answer.status = 200;
+        answer.body = R"({"authorizationData":[{"authorizationToken":")" + token + R"(","expiresAt":)" +
+                      std::to_string(std::chrono::duration_cast<std::chrono::seconds>(m_now.time_since_epoch()).count() + 43200) +
+                      "}]}";
+
+        return true;
+    }, clock};
+
+    // 1. The whole flow succeeds.
+    scriptResolution(*m_transport);
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport, &client)->discover().status, ReadStatus::Success);
+
+    // 2. The registry refuses the token, quoting it, and the renewal succeeds.
+    auto* refused {new ScriptedTransport()};
+    scriptResolution(*refused);
+    refused->queued["/manifests/1.0"].push_back(
+        json(400, R"({"errors":[{"code":"DENIED","message":"The token is invalid. Authorization: Basic )" + token + R"("}]})"));
+    m_cache.clear();
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, refused, &client)->discover().status, ReadStatus::Success);
+
+    // 3. AWS refuses the call and quotes everything it was sent.
+    m_cache.clear();
+    mode = Mode::EchoEverything;
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, new ScriptedTransport(), &client)->discover().status, ReadStatus::Failed);
+
+    // 4. The signing path throws, with the secret in the exception text.
+    mode = Mode::Throw;
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, new ScriptedTransport(), &client)->discover().status, ReadStatus::Failed);
+
+    ASSERT_FALSE(sent.empty());
+    ASSERT_FALSE(m_logs.empty());
+
+    // The values that must never appear. The signature and the signing key are taken from
+    // what was really sent and from the signer itself, not recomputed by hand.
+    const auto& authorization {sent.front().headers.back()};
+    const auto signaturePosition {authorization.find("Signature=")};
+    ASSERT_NE(signaturePosition, std::string::npos);
+
+    aws::SigningRequest scope;
+    scope.region = "us-east-1";
+    scope.service = "ecr";
+    scope.amzDate = aws::formatAmzDate(m_now);
+
+    const std::vector<std::string> forbidden {
+        accessKeyId,
+        secretKey,
+        token,
+        password,
+        "AWS:" + password,
+        authorization,
+        authorization.substr(signaturePosition + std::string {"Signature="}.size()),
+        hex(aws::signingKey(Secret {secretKey}, scope).value()),
+        "AWS4" + secretKey,
+        "Credential=",
+        "Signature=",
+        "AWS4-HMAC-SHA256",
+    };
+
+    auto sawDebug {false};
+
+    for (const auto& entry : m_logs)
+    {
+        sawDebug = sawDebug || entry.first == LOG_DEBUG;
+
+        for (const auto& value : forbidden)
+        {
+            EXPECT_EQ(entry.second.find(value), std::string::npos)
+                << "a log line carries '" << value << "': " << entry.second;
+        }
+    }
+
+    EXPECT_TRUE(sawDebug) << "the test must capture debug lines to mean anything";
+    EXPECT_TRUE(logged("could not be resolved")) << "the failures must still be reported";
+}
+
+// ---------------------------------------------------------------------------------------
+// Amazon ECR on the rules #38830 set for GHCR
+// ---------------------------------------------------------------------------------------
+
+namespace
+{
+    constexpr auto MANIFEST_WITH_A_LAYER_ECR = R"({"mediaType":"application/vnd.oci.image.manifest.v1+json",
+        "config":{"digest":"sha256:cccc3333"},"layers":[{"digest":"sha256:dddd4444"}]})";
+
+    // The form AWS documents for a wrong token, the other half of a permission denial.
+    constexpr auto OTHER_REPOSITORY = "123456789012.dkr.ecr.us-east-1.amazonaws.com/other-backend:1.0";
+    constexpr auto SECOND_TAG = "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:2.0";
+} // namespace
+
+// What stops an ECR registry being read as anonymous, and what makes it different from GHCR.
+TEST_F(EcrReaderTest, APrivateEcrRegistryIsNeverReadAnonymouslyAfterItRefusedTheCredential)
+{
+    // A registry that, once the credential is refused, would serve anyone with a Bearer
+    // token. If the fallback existed the third manifest request would succeed.
+    HttpResponse bearer;
+    bearer.status = 401;
+    bearer.headers["www-authenticate"] =
+        std::string {R"(Bearer realm="https://)"} + ECR_HOST + R"(/token",service="ecr")";
+
+    auto* transport {new ScriptedTransport()};
+    transport->queued["/manifests/1.0"].push_back(bearer);
+    transport->queued["/manifests/1.0"].push_back(bearer);
+    transport->answers.push_back({"/token", json(200, R"({"token":"anonymous-token"})")});
+    scriptResolution(*transport);
+
+    const auto instance = ecrReader(ECR_REFERENCE, transport);
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_EQ(transport->countMatching("/token"), 0u) << "an anonymous token was requested";
+    EXPECT_EQ(transport->countMatching("/manifests/1.0"), 2u) << "a request was made after the refusal";
+    EXPECT_TRUE(logged("the registry rejected the credential")) << "the credential error does not stand";
+    EXPECT_EQ(m_source.calls.size(), 2u);
+}
+
+TEST_F(EcrReaderTest, ARefusedAnonymousReadOfPublicEcrIsNotCalledARejectedCredential)
+{
+    HttpResponse challengeResponse;
+    challengeResponse.status = 401;
+    challengeResponse.headers["www-authenticate"] =
+        R"(Bearer realm="https://public.ecr.aws/token/",service="public.ecr.aws",scope="aws")";
+
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back({"/manifests/1.0", challengeResponse});
+    transport->answers.push_back({"/token/", json(200, R"({"token":"public-token"})")});
+
+    EXPECT_EQ(ecrReader(PUBLIC_REFERENCE, transport)->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(logged("the registry requires a credential for this reference"));
+    EXPECT_FALSE(logged("rejected the credential"));
+    EXPECT_TRUE(m_source.calls.empty());
+}
+
+// The refusal memory of a scan, for a private ECR registry: the account host and the repository.
+TEST_F(EcrReaderTest, ARefusedRepositoryFailsItsOtherTagsWithoutAnyRequest)
+{
+    m_shareRefusals = true;
+
+    auto* first {new ScriptedTransport()};
+    first->answers.push_back({"/manifests/", json(403, PERMISSION_BODY)});
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, first)->discover().status, ReadStatus::Failed);
+    ASSERT_EQ(m_refusedScopes.size(), 1u);
+    EXPECT_EQ(m_refusedScopes.begin()->first, std::string {ECR_HOST} + "/my-backend");
+
+    m_logs.clear();
+    auto* second {new ScriptedTransport()};
+    scriptResolution(*second);
+    const auto secondReader = ecrReader(SECOND_TAG, second);
+    EXPECT_EQ(secondReader->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(second->calls.empty()) << "a refused repository was asked again";
+    EXPECT_EQ(m_source.calls.size(), 1u) << "one signed call for the whole registry";
+    EXPECT_TRUE(logged("is not authorized to perform: ecr:BatchGetImage"));
+    EXPECT_TRUE(logged("An earlier reference of " + std::string {ECR_HOST} + "/my-backend was refused in this scan"));
+    EXPECT_TRUE(m_cache.lookup(cacheKey()).has_value()) << "the refusal memory must not touch the token cache";
+}
+
+TEST_F(EcrReaderTest, ARefusalIsKeptPerRepositoryAndNotForTheWholeHost)
+{
+    m_shareRefusals = true;
+
+    auto* first {new ScriptedTransport()};
+    first->answers.push_back({"/manifests/", json(403, PERMISSION_BODY)});
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, first)->discover().status, ReadStatus::Failed);
+
+    // Another repository of the same account may be one the credential is allowed to read.
+    auto* other {new ScriptedTransport()};
+    scriptResolution(*other);
+    const auto otherReader = ecrReader(OTHER_REPOSITORY, other);
+    EXPECT_EQ(otherReader->discover().status, ReadStatus::Success);
+
+    EXPECT_FALSE(other->calls.empty());
+    EXPECT_EQ(m_source.calls.size(), 1u) << "the token is shared across repositories";
+}
+
+TEST_F(EcrReaderTest, ARefusalOfANestedRepositoryDoesNotCoverItsNeighbourUnderTheSamePrefix)
+{
+    // "team/app" and "team/other" share a first path segment. GHCR scopes a refusal by that
+    // segment, an organization. An ECR account has none, and the policy is per repository.
+    m_shareRefusals = true;
+
+    auto* first {new ScriptedTransport()};
+    first->answers.push_back({"/manifests/", json(403, PERMISSION_BODY)});
+    EXPECT_EQ(ecrReader(std::string {ECR_HOST} + "/team/app:1.0", first)->discover().status, ReadStatus::Failed);
+
+    auto* neighbour {new ScriptedTransport()};
+    scriptResolution(*neighbour);
+    const auto neighbourReader = ecrReader(std::string {ECR_HOST} + "/team/other:1.0", neighbour);
+    EXPECT_EQ(neighbourReader->discover().status, ReadStatus::Success);
+    EXPECT_FALSE(neighbour->calls.empty());
+}
+
+TEST_F(EcrReaderTest, ABadCredentialAtAwsCostsOneSignedCallPerScan)
+{
+    // A mistyped secret says the same for every reference of the host. One signed call, one
+    // reason from AWS, and the references after it are answered from the memory of the scan.
+    m_shareRefusals = true;
+    m_source.results.push_back(failure(400, "AWS rejected the signature, so the secret access key does not match the access key id (InvalidSignatureException)"));
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+
+    ASSERT_EQ(m_refusedScopes.size(), 1u);
+    EXPECT_EQ(m_refusedScopes.begin()->first, ECR_HOST) << "kept under the host: it is the credential that failed";
+
+    for (const std::string reference : {SECOND_TAG, OTHER_REPOSITORY, "123456789012.dkr.ecr.us-east-1.amazonaws.com/team/app:3"})
+    {
+        auto* next {new ScriptedTransport()};
+        scriptResolution(*next);
+        const auto nextReader = ecrReader(reference, next);
+
+        EXPECT_EQ(nextReader->discover().status, ReadStatus::Failed) << reference;
+        EXPECT_TRUE(next->calls.empty()) << reference << " asked the registry";
+    }
+
+    EXPECT_EQ(m_source.calls.size(), 1u) << "one signed call for all four references";
+    EXPECT_EQ(countLogged("InvalidSignatureException"), 4u);
+    EXPECT_TRUE(logged("An earlier reference of " + std::string {ECR_HOST} + " was refused in this scan, so nothing was requested"));
+    EXPECT_TRUE(m_cache.lookup(cacheKey()) == std::nullopt);
+}
+
+TEST_F(EcrReaderTest, EveryKindOfAwsRefusalOfTheCredentialIsRemembered)
+{
+    for (const long status : {400L, 401L, 403L, 404L})
+    {
+        SCOPED_TRACE(status);
+
+        m_refusedScopes.clear();
+        m_source.calls.clear();
+        m_shareRefusals = true;
+        m_source.results.push_back(failure(status, "AWS refused the credential"));
+
+        EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+        m_transport = new ScriptedTransport();
+        EXPECT_EQ(m_refusedScopes.count(ECR_HOST), 1u);
+    }
+}
+
+TEST_F(EcrReaderTest, ThrottlingAndServerErrorsFromAwsAreNotRemembered)
+{
+    m_shareRefusals = true;
+    m_config.limits.maxAttempts = 2;
+
+    for (const long status : {429L, 500L, 502L, 503L, 504L, TRANSPORT_FAILURE})
+    {
+        SCOPED_TRACE(status);
+
+        m_refusedScopes.clear();
+        m_source.calls.clear();
+        m_source.results.push_back(failure(status, "AWS could not be reached"));
+        m_source.results.push_back(failure(status, "AWS could not be reached"));
+
+        auto* first {new ScriptedTransport()};
+        const auto firstReader = ecrReader(ECR_REFERENCE, first);
+        EXPECT_EQ(firstReader->discover().status, ReadStatus::Failed);
+        EXPECT_TRUE(m_refusedScopes.empty()) << "a failure that says nothing about the credential was kept";
+
+        // The next reference tries again, and works.
+        auto* next {new ScriptedTransport()};
+        scriptResolution(*next);
+        const auto nextReader = ecrReader(ECR_REFERENCE, next);
+        EXPECT_EQ(nextReader->discover().status, ReadStatus::Success);
+        EXPECT_EQ(m_source.calls.size(), 3u);
+
+        m_cache.clear();
+    }
+}
+
+TEST_F(EcrReaderTest, ATokenCallThrottledOnceAndThenAnsweredIsNotRemembered)
+{
+    m_shareRefusals = true;
+    m_source.results.push_back(failure(429, "AWS throttled the request (ThrottlingException)"));
+    scriptResolution(*m_transport);
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+    EXPECT_TRUE(m_refusedScopes.empty());
+    EXPECT_EQ(m_source.calls.size(), 2u);
+}
+
+TEST_F(EcrReaderTest, ACredentialThatAwsRefusedIsStillReportedWhenTheStoreIsMissingAKey)
+{
+    // The check of the store comes first and costs nothing, so it is not what is remembered.
+    m_shareRefusals = true;
+    m_credentials.values.erase("container_images/ecr_secret");
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(m_refusedScopes.empty());
+}
+
+TEST_F(EcrReaderTest, ARegionRefusalIsRememberedForTheRepositoryToo)
+{
+    m_shareRefusals = true;
+    m_config.registryAuth.clear();
+    m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "eu-west-1"});
+
+    auto* first {new ScriptedTransport()};
+    first->answers.push_back({"/manifests/", json(400, DENIED_BODY)});
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, first)->discover().status, ReadStatus::Failed);
+
+    m_logs.clear();
+    auto* second {new ScriptedTransport()};
+    scriptResolution(*second);
+    const auto secondReader = ecrReader(SECOND_TAG, second);
+    EXPECT_EQ(secondReader->discover().status, ReadStatus::Failed);
+
+    EXPECT_TRUE(second->calls.empty());
+    EXPECT_EQ(m_source.calls.size(), 1u);
+    EXPECT_TRUE(logged("the configured region 'eu-west-1'"));
+}
+
+TEST_F(EcrReaderTest, TheTwoFormsOfRefusalScopeCannotMeet)
+{
+    // The two scope forms cannot meet: an ECR scope is the host and the whole repository.
+    RegistryReference ecr;
+    std::string error;
+    ASSERT_TRUE(parseRegistryReference(ECR_REFERENCE, ecr, error)) << error;
+    EXPECT_EQ(ecr.refusalScope(), std::string {ECR_HOST} + "/my-backend");
+
+    RegistryReference ghcr;
+    ASSERT_TRUE(parseRegistryReference("ghcr.io/owner/app/sub:1.0", ghcr, error)) << error;
+    EXPECT_EQ(ghcr.refusalScope(), "ghcr.io/owner");
+}
+
+// A repository, a role or a user named after the words the registry uses about a token.
+TEST_F(EcrReaderTest, AMissingPermissionOnARepositoryNamedAfterATokenIsNotATokenRefusal)
+{
+    for (const std::string name : {"token-service", "expiry-job", "oauth-token-proxy"})
+    {
+        SCOPED_TRACE(name);
+
+        m_source.calls.clear();
+        m_logs.clear();
+        m_cache.clear();
+
+        const auto body {std::string {R"({"errors":[{"code":"DENIED","message":"User: arn:aws:iam::123456789012:user/token-admin )"} +
+                         R"(is not authorized to perform: ecr:BatchGetImage on resource: )" +
+                         "arn:aws:ecr:us-east-1:123456789012:repository/" + name + R"("}]})"};
+
+        for (auto index = 0; index < 3; ++index)
+        {
+            auto* transport {new ScriptedTransport()};
+            transport->answers.push_back({"/manifests/", json(403, body)});
+            const auto instance = ecrReader(std::string {ECR_HOST} + "/" + name + ":1.0", transport);
+            EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+            EXPECT_EQ(transport->countMatching("/manifests/"), 1u) << "the refused request was repeated";
+        }
+
+        EXPECT_EQ(m_source.calls.size(), 1u) << "a missing permission must not cost a second signed call";
+        EXPECT_TRUE(m_cache.lookup(cacheKey()).has_value()) << "a valid token was dropped";
+        EXPECT_TRUE(logged("is not authorized to perform: ecr:BatchGetImage"));
+    }
+}
+
+TEST_F(EcrReaderTest, AMissingPermissionUnderARegionOverrideDoesNotBlameTheRegion)
+{
+    m_config.registryAuth.clear();
+    m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "eu-west-1"});
+
+    const auto body {std::string {R"({"errors":[{"code":"DENIED","message":"User: arn:aws:iam::123456789012:user/ci )"} +
+                     R"(is not authorized to perform: ecr:BatchGetImage on resource: )" +
+                     R"(arn:aws:ecr:us-east-1:123456789012:repository/token-service"}]})"};
+
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back({"/manifests/", json(403, body)});
+    const auto instance = ecrReader(std::string {ECR_HOST} + "/token-service:1.0", transport);
+
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+    EXPECT_FALSE(logged("the registry refused the token requested in the configured region"))
+        << "the permission was blamed on the region";
+    EXPECT_TRUE(logged("is not authorized to perform: ecr:BatchGetImage"));
+    EXPECT_EQ(m_source.calls.size(), 1u);
+}
+
+// What is remembered, from each place a refusal ends a reference.
+TEST_F(EcrReaderTest, ARejectedCredentialAnswered401IsRememberedForTheRepository)
+{
+    m_shareRefusals = true;
+
+    auto* first {new ScriptedTransport()};
+    first->answers.push_back({"/manifests/", json(401, PERMISSION_BODY)});
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, first)->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_refusedScopes.count(std::string {ECR_HOST} + "/my-backend"), 1u);
+
+    auto* second {new ScriptedTransport()};
+    scriptResolution(*second);
+    const auto secondReader = ecrReader(SECOND_TAG, second);
+    EXPECT_EQ(secondReader->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(second->calls.empty());
+}
+
+TEST_F(EcrReaderTest, ATokenRefusedAgainAfterItsRenewalIsRememberedForTheRepository)
+{
+    m_shareRefusals = true;
+
+    auto* first {new ScriptedTransport()};
+    first->answers.push_back({"/manifests/", json(400, DENIED_BODY)});
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, first)->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_source.calls.size(), 2u);
+    EXPECT_EQ(m_refusedScopes.count(std::string {ECR_HOST} + "/my-backend"), 1u);
+
+    m_logs.clear();
+    auto* second {new ScriptedTransport()};
+    scriptResolution(*second);
+    const auto secondReader = ecrReader(SECOND_TAG, second);
+    EXPECT_EQ(secondReader->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(second->calls.empty());
+
+    // The reason ends in a period, and the line goes on: one full stop between them, not two.
+    EXPECT_TRUE(logged("DENIED: Your Authorization Token is invalid. An earlier reference of "));
+
+    for (const auto& entry : m_logs)
+    {
+        EXPECT_EQ(entry.second.find(".."), std::string::npos) << entry.second;
+    }
+}
+
+// GetAuthorizationToken follows the retry rules of the token exchange of the other registries.
+TEST_F(EcrReaderTest, ThrottlingFromAwsEndsAtOnceWhenTheModuleIsAskedToStop)
+{
+    for (auto attempt = 0; attempt < 5; ++attempt)
+    {
+        m_source.results.push_back(failure(429, "AWS throttled the request (ThrottlingException)"));
+        m_source.results.back().retryAfter = "30";
+    }
+
+    // The stop arrives while the call is in flight. A wait for the 30 seconds AWS asked for
+    // must not hold the module thread: waitOrStop answers at once.
+    m_source.onFetch = [this] { m_stop = true; };
+
+    const auto before {std::chrono::steady_clock::now()};
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::seconds {5});
+
+    EXPECT_EQ(m_source.calls.size(), 1u);
+    EXPECT_TRUE(logged("the module was asked to stop"));
+}
+
+TEST_F(EcrReaderTest, ThrottlingWaitsForWhatAwsAsksFor)
+{
+    // The base delay is 1 ms in this suite, so only the Retry-After can make this wait a second.
+    m_source.results.push_back(failure(429, "AWS throttled the request (ThrottlingException)"));
+    m_source.results.back().retryAfter = "1";
+    scriptResolution(*m_transport);
+
+    const auto before {std::chrono::steady_clock::now()};
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Success);
+
+    EXPECT_GE(std::chrono::steady_clock::now() - before, std::chrono::milliseconds {900});
+    EXPECT_EQ(m_source.calls.size(), 2u);
+}
+
+TEST_F(EcrReaderTest, AStopRequestedBeforeTheCallPreventsIt)
+{
+    m_stop = true;
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_TRUE(m_source.calls.empty()) << "nothing may be signed once the module is stopping";
+}
+
+TEST_F(EcrReaderTest, AServerErrorFromAwsIsRetried)
+{
+    for (const long status : {500L, 502L, 503L, 504L})
+    {
+        SCOPED_TRACE(status);
+
+        m_source.calls.clear();
+        m_cache.clear();
+        m_source.results.push_back(failure(status, "AWS answered " + std::to_string(status)));
+
+        auto* transport {new ScriptedTransport()};
+        scriptResolution(*transport);
+
+        EXPECT_EQ(ecrReader(ECR_REFERENCE, transport)->discover().status, ReadStatus::Success);
+        EXPECT_EQ(m_source.calls.size(), 2u);
+    }
+}
+
+TEST_F(EcrReaderTest, ACallThatWouldFailTheSameWayIsTriedOnce)
+{
+    // A certificate that does not verify or an unusable address: no response, and the same
+    // on every attempt, so the back-off would only be spent on the same answer.
+    for (auto attempt = 0; attempt < 5; ++attempt)
+    {
+        auto copy {failure(TRANSPORT_FAILURE, "the request to AWS could not be completed: SSL peer certificate")};
+        copy.retryable = false;
+        m_source.results.push_back(std::move(copy));
+    }
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_source.calls.size(), 1u);
+    EXPECT_TRUE(logged("SSL peer certificate"));
+}
+
+TEST_F(EcrReaderTest, ACallThatMayClearUpIsRetriedUpToTheAttempts)
+{
+    for (auto attempt = 0; attempt < 10; ++attempt)
+    {
+        m_source.results.push_back(failure(TRANSPORT_FAILURE, "the request to AWS could not be completed: timeout"));
+    }
+
+    m_config.limits.maxAttempts = 3;
+
+    EXPECT_EQ(ecrReader(ECR_REFERENCE, m_transport)->discover().status, ReadStatus::Failed);
+    EXPECT_EQ(m_source.calls.size(), 3u);
+}
+
+// What is stored for an ECR image is what is stored for a GHCR one.
+TEST_F(EcrReaderTest, TheStoredNameIsTheFullImageName)
+{
+    scriptResolution(*m_transport);
+
+    const auto result {ecrReader(ECR_REFERENCE, m_transport)->discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(result.records.front().tag, std::string {ECR_HOST} + "/my-backend:1.0");
+    ASSERT_EQ(result.records.front().tags.size(), 1u);
+    EXPECT_EQ(result.records.front().tags.front(), std::string {ECR_HOST} + "/my-backend:1.0");
+    EXPECT_EQ(result.records.front().source.location, ECR_REFERENCE);
+}
+
+TEST_F(EcrReaderTest, ATagFollowedByADigestPullsTheDigestAndKeepsTheTag)
+{
+    const std::string digest {"sha256:" + std::string(64, 'a')};
+
+    auto* transport {new ScriptedTransport()};
+    transport->answers.push_back({"/manifests/" + digest, json(200, MANIFEST)});
+    transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+    const auto instance = ecrReader(std::string {ECR_HOST} + "/my-backend:1.0@" + digest, transport);
+    const auto result {instance->discover()};
+
+    ASSERT_EQ(result.status, ReadStatus::Success);
+    ASSERT_EQ(result.records.size(), 1u);
+    EXPECT_EQ(transport->countMatching("/manifests/1.0"), 0u) << "the tag was pulled instead of the digest";
+    EXPECT_EQ(result.records.front().tag, std::string {ECR_HOST} + "/my-backend:1.0@" + digest);
+    ASSERT_EQ(result.records.front().tags.size(), 1u);
+    EXPECT_EQ(result.records.front().tags.front(), std::string {ECR_HOST} + "/my-backend:1.0");
+}
+
+// The layer path is the shared one: nothing ECR-specific reads, bounds or retries a layer.
+class EcrLayerTest : public EcrReaderTest
+{
+    protected:
+        /// @brief A reader of the private reference whose layer attempts end as @p outcomes, the last repeating.
+        std::unique_ptr<RegistryImageReader> layerReader(ScriptedTransport* transport, std::vector<BlobOutcome> outcomes)
+        {
+            m_outcomes = std::move(outcomes);
+
+            auto instance {ecrReader(ECR_REFERENCE, transport)};
+            instance->setBlobStreamFactory([this](const TransportConfig&,
+                                                  const std::string&,
+                                                  const std::vector<std::string>& headers,
+                                                  const std::uint64_t,
+                                                  const std::atomic<bool>*)
+            {
+                m_attemptHeaders.push_back(headers);
+
+                const auto index {std::min(m_attemptHeaders.size(), m_outcomes.size()) - 1};
+
+                return std::unique_ptr<IBlobStream> {std::make_unique<ScriptedBlob>(m_outcomes[index])};
+            });
+
+            return instance;
+        }
+
+        static BlobOutcome refused(const long status)
+        {
+            BlobOutcome outcome;
+            outcome.failed = true;
+            outcome.status = status;
+            outcome.error = "the registry answered " + std::to_string(status);
+
+            return outcome;
+        }
+
+        /// @brief The image, with one layer, and a transport that answers the manifest as the
+        /// registry would answer the request that follows a refused layer.
+        ScriptedTransport* imageWithALayer(std::vector<HttpResponse> manifestAnswers)
+        {
+            auto* transport {new ScriptedTransport()};
+            transport->answers.push_back({"/blobs/sha256:cccc3333", json(200, configBlob())});
+
+            for (auto& answer : manifestAnswers)
+            {
+                transport->queued["/manifests/1.0"].push_back(std::move(answer));
+            }
+
+            return transport;
+        }
+
+        std::vector<std::vector<std::string>> m_attemptHeaders;
+        std::vector<BlobOutcome> m_outcomes;
+};
+
+TEST_F(EcrLayerTest, ALayerRefusedForTheTokenIsRenewedOnceAfterTheManifestConfirmsIt)
+{
+    // The layer is refused with no body to read. The manifest is asked for again, and the
+    // registry says the token is the cause.
+    auto* transport {imageWithALayer({json(200, MANIFEST_WITH_A_LAYER_ECR), json(400, DENIED_BODY)})};
+
+    const auto instance = layerReader(transport, {refused(400), BlobOutcome {}});
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+
+    EXPECT_EQ(m_source.calls.size(), 2u);
+    ASSERT_EQ(m_attemptHeaders.size(), 2u);
+    ASSERT_EQ(m_attemptHeaders[0].size(), 1u);
+    EXPECT_EQ(m_attemptHeaders[0][0], "Authorization: Basic ecr-token-1");
+    ASSERT_EQ(m_attemptHeaders[1].size(), 1u);
+    EXPECT_EQ(m_attemptHeaders[1][0], "Authorization: Basic ecr-token-2");
+}
+
+TEST_F(EcrLayerTest, ALayerRefusedForAPermissionIsNotRenewedAndReportsTheStatus)
+{
+    auto* transport {imageWithALayer({json(200, MANIFEST_WITH_A_LAYER_ECR), json(403, PERMISSION_BODY)})};
+
+    const auto instance = layerReader(transport, {refused(403)});
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_EQ(m_source.calls.size(), 1u) << "a missing permission must not cost a second signed call";
+    EXPECT_EQ(m_attemptHeaders.size(), 1u);
+    EXPECT_TRUE(logged("layer sha256:dddd4444 could not be retrieved: the registry answered 403"));
+    EXPECT_FALSE(logged("renewing the credential failed"));
+}
+
+TEST_F(EcrLayerTest, ALayerRefusedAfterARegionOverrideSaysSoAndIsNotRenewed)
+{
+    m_config.registryAuth.clear();
+    m_config.registryAuth.push_back({ECR_HOST, "ecr_key_id", "ecr_secret", "eu-west-1"});
+
+    auto* transport {imageWithALayer({json(200, MANIFEST_WITH_A_LAYER_ECR), json(400, DENIED_BODY)})};
+
+    const auto instance = layerReader(transport, {refused(400)});
+    EXPECT_EQ(instance->discover().status, ReadStatus::Failed);
+
+    EXPECT_EQ(m_source.calls.size(), 1u);
+    EXPECT_TRUE(logged("the registry refused the token requested in the configured region 'eu-west-1'"));
+}
+
+TEST_F(EcrLayerTest, ALayerThatFailsMidTransferIsRetriedLikeAnyOther)
+{
+    auto* transport {imageWithALayer({json(200, MANIFEST_WITH_A_LAYER_ECR)})};
+
+    BlobOutcome reset;
+    reset.failed = true;
+    reset.status = 200;
+
+    const auto instance = layerReader(transport, {reset, BlobOutcome {}});
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+
+    EXPECT_EQ(m_attemptHeaders.size(), 2u);
+    EXPECT_EQ(m_source.calls.size(), 1u) << "a reset is not a reason to ask AWS again";
+}
+
+TEST_F(EcrLayerTest, AnUnsupportedLayerCompressionIsSkippedAndReported)
+{
+    auto* transport {imageWithALayer({json(200, MANIFEST_WITH_A_LAYER_ECR)})};
+
+    BlobOutcome xz;
+    xz.content = std::string {"\xfd\x37\x7a\x58\x5a\x00", 6} + " compressed bytes this reader cannot expand";
+
+    const auto instance = layerReader(transport, {xz});
+    EXPECT_EQ(instance->discover().status, ReadStatus::Success);
+
+    EXPECT_TRUE(logged("NOT IMPLEMENTED: layer 'sha256:dddd4444'"));
+    EXPECT_TRUE(logged("is xz compressed"));
 }

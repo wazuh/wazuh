@@ -22,7 +22,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/zlib/) # layer blob decompression
 include_directories(${SRC_FOLDER}/external/zstd/lib/) # layer blob decompression
 include_directories(${SRC_FOLDER}/external/curl/include/) # registry transport
-include_directories(${SRC_FOLDER}/external/openssl/include/) # hash_helper
+include_directories(${SRC_FOLDER}/external/openssl/include/) # hash_helper, SigV4 (EVP_Q_mac)
 include_directories(${SRC_FOLDER}/external/sqlite/) # rpm sqlite database backend
 # The rpm header and database format readers are the shared agent package reading. They
 # are header only, so they are compiled here rather than linked, and the module gains no
@@ -45,11 +45,13 @@ endif()
 add_library(
   ContainerImagesImpl STATIC
   src/agent_credential_store.cpp
+  src/aws_sigv4.cpp
   src/container_images_impl.cpp
   src/container_images_db.cpp
   src/archive_image_reader.cpp
   src/auth_challenge.cpp
   src/ca_bundle.cpp
+  src/ecr_token_client.cpp
   src/byte_stream.cpp
   src/layer_composer.cpp
   src/layer_reader.cpp
@@ -57,7 +59,9 @@ add_library(
   src/package_db_parser.cpp
   src/platform_selection.cpp
   src/registry_byte_stream.cpp
+  src/registry_errors.cpp
   src/registry_image_reader.cpp
+  src/registry_profile.cpp
   src/registry_reference.cpp
   src/registry_transport.cpp
   src/retry_policy.cpp)

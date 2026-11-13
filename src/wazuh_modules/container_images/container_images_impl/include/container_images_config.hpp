@@ -80,11 +80,15 @@ namespace containerimages
     /// The configuration holds key names only, so no credential is ever written into
     /// `ossec.conf`. A reference whose registry has no entry here is attempted with no
     /// credential at all, which is what a public repository needs.
+    ///
+    /// For a private Amazon ECR host the two keys name the AWS access key id and the
+    /// secret access key, and @ref region may override the region of the host.
     struct RegistryCredentials
     {
         std::string host;         ///< Registry host this applies to, e.g. "ghcr.io".
-        std::string userKey;      ///< Keystore key holding the user name.
-        std::string passkeyKey;   ///< Keystore key holding the access token.
+        std::string userKey;      ///< Keystore key holding the user name, or the AWS access key id.
+        std::string passkeyKey;   ///< Keystore key holding the access token, or the AWS secret access key.
+        std::string region {};    ///< AWS region the credential belongs to. Empty when not configured.
     };
 
     /// @brief Ceiling on the decompressed bytes read out of one layer blob.
