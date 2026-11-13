@@ -16,6 +16,7 @@
 #include "loggerHelper.h"
 #include "sysSeams.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 
@@ -80,9 +81,19 @@ struct ModuleConfig
         std::int64_t caPublication {CA_PUBLICATION_UNKNOWN};
 
         uint32_t requestTimeoutMs {10000};
+        /// /enroll outlasts remoted's 30 s request cap, so the agent gets the manager's real answer
+        /// instead of abandoning an enrollment authd goes on to apply.
+        uint32_t enrollTimeoutMs {HC_DEFAULT_ENROLL_TIMEOUT_MS};
         uint32_t statefulTimeoutMs {90000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
+
+        /// How long the held credential is retried on a `401 unknown_agent` before the AuthGate
+        /// latches and re-enrollment starts. A worker learns a new key through the cluster sync
+        /// 8.4-13.0 s after /enroll answers, so the window outlasts that. An attempt started just
+        /// before the deadline still runs to its request timeout. hc_config maps 0 to the default,
+        /// so only a typed config (tests) can set zero, which latches at once.
+        std::chrono::milliseconds unknownAgentRetryBound {30000};
 
         /// Whether a published CA bundle may replace the trust store this agent verifies
         /// against. False when <certificate_authorities> names a file the agent did not install

@@ -310,7 +310,7 @@ def _logtest_full_policy() -> dict:
                     "id": LOGTEST_DECODER_UUID,
                     "name": "decoder/root/0",
                     "enabled": True,
-                    "normalize": [{"map": [{"@timestamp": "get_date()"}]}],
+                    "normalize": [{"map": [{"@timestamp": "now()"}]}],
                 }
             ],
             "integrations": [

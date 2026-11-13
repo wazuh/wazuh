@@ -65,7 +65,9 @@ jobs:
   remoted-module-tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # The asan leg's build alone takes 34-57 min (build_target_cpp compiles serially) and its tests ~5 min,
+    # so 60 cancelled it mid-test; the valgrind leg takes ~25 min.
+    timeout-minutes: 90
     strategy:
       fail-fast: true
       matrix:

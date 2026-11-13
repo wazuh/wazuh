@@ -5,6 +5,7 @@
 #include <api/adapter/adapter.hpp>
 #include <base/baseTypes.hpp>
 #include <dumper/idumper.hpp>
+#include <httpsrv/irouteregistrar.hpp>
 
 namespace api::dumper::handlers
 {
@@ -15,7 +16,7 @@ adapter::RouteHandler deactivateDumper(const std::shared_ptr<::dumper::IDumper>&
 adapter::RouteHandler getDumperStatus(const std::shared_ptr<::dumper::IDumper>& dumper);
 
 inline void registerHandlers(const std::shared_ptr<::dumper::IDumper>& dumper,
-                             const std::shared_ptr<httpsrv::Server>& server)
+                             const std::shared_ptr<httpsrv::IRouteRegistrar>& server)
 {
     server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/activate", activateDumper(dumper));
     server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/deactivate", deactivateDumper(dumper));

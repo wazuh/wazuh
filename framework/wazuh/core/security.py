@@ -14,6 +14,7 @@ from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.core.decorators import dapi_allower
 from wazuh.rbac.orm import TokenManager, check_database_integrity, DB_FILE
+from wazuh.rbac.preprocessor import check_policy_resource
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
@@ -141,10 +142,12 @@ RULE_FUNCTIONS = ('MATCH', 'MATCH$', 'FIND', 'FIND$')
 def is_valid_rbac_policy(policy: dict) -> bool:
     """Check a sanitized policy body against the RBAC catalog of the API specification.
 
-    The structure (keys, value types, `type:field:value` syntax) is checked by the ORM. This adds what
-    it cannot know: the effect is one the decorators evaluate (anything but `allow` is read as a deny,
-    so a typo silently denies), every action exists, every resource type exists, and neither list is
-    empty, as a policy with no action or no resource grants or denies nothing.
+    The structure (keys, value types) is checked by the ORM. This adds what it cannot know: the effect is
+    one the decorators evaluate (anything but `allow` is read as a deny, so a typo silently denies), every
+    action exists, every resource type exists, neither list is empty, as a policy with no action or no
+    resource grants or denies nothing, and every resource passes `check_policy_resource`, the check a token
+    is built with: the ORM's own syntax check accepts non-ASCII `\\w` values and any number of `&`
+    combinations, which a holder of a linked role would then fail authorization on (4500).
 
     Parameters
     ----------
@@ -167,7 +170,9 @@ def is_valid_rbac_policy(policy: dict) -> bool:
     if not all(isinstance(action, str) and action in catalog['actions'] for action in actions):
         return False
     for resource in resources:
-        if not isinstance(resource, str):
+        try:
+            check_policy_resource(resource)
+        except WazuhError:
             return False
         for nested_resource in resource.split('&'):
             parts = nested_resource.split(':')

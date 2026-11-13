@@ -64,10 +64,12 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.caPublication = config.ca_publication > 0 ? config.ca_publication : CA_PUBLICATION_UNKNOWN;
     typed.caRefreshAllowed = config.ca_refresh_allowed;
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);
+    typed.enrollTimeoutMs = orDefault<uint32_t>(config.enroll_timeout_ms, HC_DEFAULT_ENROLL_TIMEOUT_MS);
     typed.statefulTimeoutMs = orDefault<uint32_t>(config.stateful_timeout_ms, 90000);
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);
     typed.backoffCapMs = orDefault<uint32_t>(config.backoff_cap_ms, 60000);
     typed.drainTimeoutMs = orDefault<uint32_t>(config.drain_timeout_ms, 5000);
+    typed.unknownAgentRetryBound = std::chrono::milliseconds {orDefault<uint32_t>(config.unknown_agent_retry_ms, 30000)};
     typed.controlMaxAttempts = orDefault<uint32_t>(config.control_max_attempts, 4);
     typed.statelessMaxAttempts = orDefault<uint32_t>(config.stateless_max_attempts, 5);
     typed.statefulMaxAttempts = orDefault<uint32_t>(config.stateful_max_attempts, 5);

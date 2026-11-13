@@ -20,6 +20,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstring>
 #include <fstream>
 
@@ -461,4 +462,48 @@ TEST_F(StatefulStreamTest, GateAlreadyDisabledSkipsCompressionEntirely)
 
     ASSERT_TRUE(compressing.submit("sess-1", reinterpret_cast<const uint8_t*>("body"), 4));
     EXPECT_TRUE(compressing.step(m_waiter));
+}
+
+TEST_F(StatefulStreamTest, UnknownAgentRetriesWaitTheirStepThroughSyncWakeUps)
+{
+    // Every submitted session notifies the stateful waiter, which wakes waitFor() early; the
+    // held-credential retries must still wait out their step instead of firing back-to-back.
+    class SyncWaker final : public Waiter
+    {
+        public:
+            explicit SyncWaker(FakeClock& clock)
+                : m_clock(clock)
+            {
+            }
+
+            bool waitFor(std::chrono::milliseconds timeout) override
+            {
+                m_clock.advance(std::min(timeout, std::chrono::milliseconds {50}));
+                return true;
+            }
+
+        private:
+            FakeClock& m_clock;
+    };
+
+    SyncWaker waker {m_clock};
+    const std::string unknownAgent = R"({"error":"Invalid client authentication","code":"unknown_agent"})";
+    std::vector<int64_t> sentAtMs;
+    EXPECT_CALL(m_performer, perform(_))
+    .Times(4)
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec&)
+    {
+        sentAtMs.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(
+                               m_clock.steadyNow().time_since_epoch()).count());
+        return sentAtMs.size() < 4 ? response(TransportStatus::Ok, 401, unknownAgent)
+               : response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    ASSERT_TRUE(submit("sess-1", "FULLSESSION:fim:body"));
+    EXPECT_TRUE(m_stream.step(waker));
+
+    // Immediate one-shot retry, then 0.5 s and 1 s steps (zero jitter: half of 1 s and 2 s).
+    EXPECT_EQ((std::vector<int64_t> {0, 0, 500, 1500}), sentAtMs);
+    EXPECT_FALSE(m_authGate.paused());
 }

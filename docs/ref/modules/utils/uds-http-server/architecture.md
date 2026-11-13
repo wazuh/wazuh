@@ -23,7 +23,7 @@ sequenceDiagram
     A->>S: accept (liveSessions++, over maxConnections ⇒ 503+close)
     S->>S: header timer armed, doRead
     P->>S: request head
-    Note over S: parser PAUSES at headers-complete<br/>(411 chunked, 413 server-wide cap, 414, 431 decided here)
+    Note over S: parser PAUSES at headers-complete<br/>(411 chunked, 413 server-wide cap or a length<br/>no buffer can hold, 414, 431 decided here)
     S->>S: match route (404/405) → class/route body cap (413)<br/>→ class/route session cap (503) → reserve budget, Data only (503)
     S->>S: resume, read body (chunks of bufferSize)
     S->>H: dispatch(request, responder)
@@ -38,7 +38,15 @@ The order is deliberate: everything that can refuse a request is decided at
 headers-complete, before a body byte that would be discarded is read, and a body cap is
 checked before any session counter or budget is charged. Routing matches the target's
 path before `?`; the handler receives the raw target, query string included, and header
-names lower-cased.
+names lower-cased. A repeated header name keeps its last value and is listed in `duplicateHeaders`. With
+`expectContinue` on, the interim `100 Continue` for `Expect: 100-continue` is written at this point —
+after admission, and only while the body is still outstanding. A final response ready during
+the interim write waits for it to complete. The first final response is preserved, whether it
+comes from the handler or the response backstop; later attempts cannot replace it. A handler
+whose response is already waiting does not produce an unanswered-handler timeout warning. The wait is
+bounded by the write timeout, counted from the first parked response: an interim write still pending
+then closes the connection. A response chosen before the body completed (the body-timeout `400`, a
+shutdown `503`) also ends the request: a body that arrives afterwards is never handed to the handler.
 
 While a reply is deferred there is no read pending, so a one-byte read watches the socket:
 a peer that gives up (EOF) or violates the one-request-per-connection contract (any byte)

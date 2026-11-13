@@ -865,7 +865,7 @@ namespace invsync
         /**
          * @brief One startup attempt: resolve configuration, build what is missing, open the socket.
          *
-         * Three phases so the slow part -- the session's synchronous `GET /_cat/health` per host,
+         * Three phases so the slow part -- the session's synchronous `GET /_cluster/health/wazuh-*,.wazuh-*` per host,
          * 5 s timeout each -- does NOT hold the mutex stop() needs: stop() can set m_stopping
          * immediately and the m_stopping checks in phase B bail early.
          */

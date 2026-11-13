@@ -115,29 +115,44 @@ class AgentSyncProtocolTest : public ::testing::Test
             return protocol->parseResponseBuffer(buf.data(), buf.size());
         }
 
-        /// Runs one DELTA sync against a queue that never runs dry, acknowledging every block,
-        /// and returns how many blocks the cycle sent before it stopped on its own. With
-        /// @p boundedTo set, the sync goes through synchronizeModuleBounded() instead.
-        int sendBlocksUntilTheCycleStops(size_t expectedBlocks, std::optional<size_t> boundedTo = std::nullopt)
+        /// Runs one DELTA sync, acknowledging every block, and returns how many blocks the cycle
+        /// sent before it stopped on its own. The queue never runs dry, so the cycle must stop at
+        /// its block limit and report it; with @p queueRunsDry, it holds exactly
+        /// @p expectedBlocks blocks, so the cycle must stop on the empty queue and not report it.
+        int sendBlocksUntilTheCycleStops(size_t expectedBlocks, bool queueRunsDry = false)
         {
             std::vector<PersistedData> testData =
             {
                 {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
             };
 
-            EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
-            .Times(static_cast<int>(expectedBlocks))
-            .WillRepeatedly(Return(testData));
+            if (queueRunsDry)
+            {
+                // gMock tries the newest expectation first: the blocks below, then this empty
+                // fetch once they retire.
+                EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+                .WillOnce(Return(std::vector<PersistedData> {}));
+                EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+                .Times(static_cast<int>(expectedBlocks))
+                .WillRepeatedly(Return(testData))
+                .RetiresOnSaturation();
+            }
+            else
+            {
+                EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_))
+                .Times(static_cast<int>(expectedBlocks))
+                .WillRepeatedly(Return(testData));
+            }
+
             EXPECT_CALL(*mockQueue, clearSyncedItems())
             .Times(static_cast<int>(expectedBlocks));
             EXPECT_CALL(*mockQueue, resetSyncingItems())
             .Times(0);
 
             std::atomic<bool> syncDone{false};
-            auto syncFuture = std::async(std::launch::async, [this, &syncDone, boundedTo]()
+            auto syncFuture = std::async(std::launch::async, [this, &syncDone]()
             {
-                auto result = boundedTo ? protocol->synchronizeModuleBounded(Mode::DELTA, *boundedTo)
-                              : protocol->synchronizeModule(Mode::DELTA);
+                auto result = protocol->synchronizeModule(Mode::DELTA);
                 syncDone.store(true, std::memory_order_release);
                 return result;
             });
@@ -183,6 +198,7 @@ class AgentSyncProtocolTest : public ::testing::Test
             ackThread.join();
 
             EXPECT_TRUE(result.success);
+            EXPECT_EQ(result.reachedBlockLimit, !queueRunsDry);
             return mockSyncTransport->sendCount();
         }
 
@@ -1131,16 +1147,7 @@ TEST_F(AgentSyncProtocolTest, ABlockLimitSetAfterConstructionDoesNotChangeTheIns
     EXPECT_EQ(sendBlocksUntilTheCycleStops(50U), 50);
 }
 
-TEST_F(AgentSyncProtocolTest, ABoundedSyncStopsAtTheRequestedLimit)
-{
-    mockQueue = std::make_shared<MockPersistentQueue>();
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
-
-    EXPECT_EQ(sendBlocksUntilTheCycleStops(10U, 10U), 10);
-}
-
-TEST_F(AgentSyncProtocolTest, ABoundedSyncNeverExceedsTheConfiguredLimit)
+TEST_F(AgentSyncProtocolTest, ACycleThatEmptiesTheQueueDoesNotReportTheBlockLimit)
 {
     const MaxBlocksPerSyncGuard guard {3U};
 
@@ -1148,16 +1155,21 @@ TEST_F(AgentSyncProtocolTest, ABoundedSyncNeverExceedsTheConfiguredLimit)
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    EXPECT_EQ(sendBlocksUntilTheCycleStops(3U, 10U), 3);
+    EXPECT_EQ(sendBlocksUntilTheCycleStops(2U, true), 2);
 }
 
-TEST_F(AgentSyncProtocolTest, ABoundedSyncWithZeroUsesTheConfiguredLimit)
+TEST_F(AgentSyncProtocolTest, AnEmptyQueueDoesNotReportTheBlockLimit)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
 
-    EXPECT_EQ(sendBlocksUntilTheCycleStops(50U, 0U), 50);
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(_)).WillOnce(Return(std::vector<PersistedData> {}));
+
+    const SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+
+    EXPECT_TRUE(result.success);
+    EXPECT_FALSE(result.reachedBlockLimit);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaUsesBytePrefilterBudgetForSyncOption)
@@ -1343,6 +1355,59 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDeltaBypassesBytePrefilterBudgetF
 
     runAndAck(Option::VDFIRST);
     runAndAck(Option::VDSYNC);
+}
+
+// A VD sync takes the whole queue in its first block, so nothing is left behind even when the
+// lowest block limit ends the cycle right after that block.
+TEST_F(AgentSyncProtocolTest, AVDSyncAtABlockLimitOfOneDoesNotReportTheBlockLimit)
+{
+    const MaxBlocksPerSyncGuard guard {1U};
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", testLogger, mockQueue, mockSyncTransport);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    // One fetch per option: the limit of one ends each cycle before it looks at the queue again.
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync(0))
+    .Times(2)
+    .WillRepeatedly(Return(testData));
+    EXPECT_CALL(*mockQueue, clearSyncedItems())
+    .Times(2);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    const Option vdOptions[] = {Option::VDFIRST, Option::VDSYNC};
+
+    for (const Option option : vdOptions)
+    {
+        SyncModuleResult result;
+        const int sendCountBefore = mockSyncTransport->sendCount();
+        std::thread syncThread([this, option, &result]()
+        {
+            result = protocol->synchronizeModule(Mode::DELTA, option);
+        });
+
+        auto waitDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+
+        while (mockSyncTransport->sendCount() <= sendCountBefore &&
+                std::chrono::steady_clock::now() < waitDeadline)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        EXPECT_GT(mockSyncTransport->sendCount(), sendCountBefore);
+
+        feedHttpResult(200);
+
+        syncThread.join();
+        EXPECT_TRUE(result.success);
+        EXPECT_FALSE(result.reachedBlockLimit);
+    }
 }
 
 // A call that collides with an in-flight synchronization runs no session, and says so: it is

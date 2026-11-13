@@ -49,23 +49,21 @@ Responsibilities:
 * **DataContext Event Generation**: Creates specialized events for vulnerability detection when context evaluation triggers
 * **VD Sync Protocol Coordination**: Routes DataContext events to VD's independent sync protocol instance
 * **Context-Aware Persistence**: Uses `persistDifference()` with context flags to route data appropriately
-* **VD Database Operations**: Supports VD-specific operations like `getAllEvents()` and `deleteDataContextBatch()`
+* **VD Database Operations**: Uses the VD protocol's `fetchPendingItems()` and `clearAllDataContext()` to build and reset the DataContext
 
 **VD Context Event Flow Integration:**
 
 ```cpp
-// VD table detection based on sync index
-bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
-                  index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
-                  index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-
-if (isVDTable && m_spSyncProtocolVD) {
-    // Route to VD sync protocol
-    m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
-} else if (m_spSyncProtocol) {
-    // Route to regular sync protocol
-    m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
+// Syscollector::persistDifference()
+if (auto* protocol = protocolForIndex(index)) {
+    protocol->persistDifference(id, operation, index, data, version, isDataContext);
 }
+
+// Syscollector::protocolForIndex(): VD indices are system, packages and hotfixes
+if (isVDIndex(index) && m_spSyncProtocolVD) {
+    return m_spSyncProtocolVD.get();
+}
+return m_spSyncProtocol.get();
 ```
 
 **Key VD Context Features:**
@@ -73,7 +71,7 @@ if (isVDTable && m_spSyncProtocolVD) {
 - **Dual Sync Protocols**: Separate `m_spSyncProtocolVD` for VD tables vs `m_spSyncProtocol` for regular inventory
 - **DataContext Processing**: Post-scan processing via `processVDDataContext()` method
 - **Platform-Specific Rules**: `getDataContextTables()` determines context inclusion based on platform and operation
-- **VD Context Batch Operations**: Support for `clearAllDataContext()` and context table fetching
+- **VD Context Batch Operations**: Support for `clearAllDataContext()` and context table fetching (`fetchAllFromTable()`)
 
 ### **Transaction Callbacks**
 
@@ -170,7 +168,7 @@ This coordination mechanism ensures that:
 Syscollector implements an inventory limit mechanism to control the number of synchronized items per inventory type. This feature allows the manager to limit resource consumption by restricting how many items are synced to the indexer.
 
 **Configuration:**
-- Document limits are received from the manager during agent handshake
+- Document limits are set by the manager and delivered to the module through agentd (the `getdoclimits syscollector` query), which Syscollector requests before its first scan loop
 - Limits are applied per inventory index (packages, processes, ports, etc.)
 - Value of `0` means unlimited (all items are synchronized)
 - Non-zero values enforce a maximum number of synchronized items
@@ -178,8 +176,10 @@ Syscollector implements an inventory limit mechanism to control the number of sy
 **Synchronization Control:**
 
 Each inventory item has a `sync` flag in the database:
-- `sync=1`: Item is synchronized and will generate events
+- `sync=1`: Item is synchronized (its stateful document is queued for the manager)
 - `sync=0`: Item is stored locally but not synchronized
+
+The limit applies to the stateful (synchronized) documents only. Stateless events are not subject to it.
 
 **Limit Enforcement Flow:**
 
@@ -189,13 +189,18 @@ Inventory Scan Detects Item
          ▼
 Check Document Limit
          │
-         ├─► Limit = 0 (unlimited) ──────► Set sync=1 ──────► Generate Event
+         ├─► Limit = 0 (unlimited) ──────► Set sync=1 ──────► Queue stateful document
          │
          └─► Limit > 0 (limited)
                   │
-                  ├─► Count < Limit ──────► Set sync=1 ──────► Generate Event
+                  ├─► Item already sync=1 ─► Queue stateful document
                   │
-                  └─► Count >= Limit ─────► Set sync=0 ──────► Store Locally (no event)
+                  └─► New item (sync=0) ───► Store locally; not queued yet
+                           │
+                           └─► End of scan: promoteItemsAfterScan() promotes pending items
+                               into the free slots (sync=0 → sync=1, CREATE queued)
+
+In every case the stateless event is still sent. A DELETE of a sync=0 item queues nothing.
 ```
 
 **Promotion Mechanism:**
@@ -206,12 +211,12 @@ When limits increase or items are deleted, pending items (sync=0) are promoted:
 // Triggered when:
 // 1. Document limit increases
 // 2. Document limit changes to unlimited
-// 3. Synced item is deleted (frees a slot)
+// 3. At the end of each scan, for the free slots of every index with a limit
 
 promoteUnsyncedItems(index, tableName, availableSlots, reason);
          │
          ├─► Select unsynced items: WHERE sync=0 ORDER BY primary_key ASC
-         ├─► Generate INSERT events for selected items
+         ├─► Queue a CREATE stateful document for each selected item
          └─► Update sync flag: sync=0 → sync=1
 ```
 
@@ -257,7 +262,7 @@ notifyChange() / processEvent() Compare with stored state
                                                       └─► Regular Table ──────► Regular Sync Protocol Database
                                                                                          │
                                                                                          ▼
-                                                                         Periodic Sync Thread (syncLoop)
+                                                                         Sync thread (wm_sync_module)
                                                                                          │
                                                                                          └─► syncModule()
                                                                                                   │
@@ -272,8 +277,10 @@ processVDDataContext() ──────► getDataContextTables() ────
          │                              │                             │
          ├─► clearAllDataContext()      ├─► Platform Rules            └─► DataContext Events
          ├─► fetchPendingItems()        └─► OS → packages
-         └─► fetchAllFromTable()              packages → OS + hotfixes (Windows)
-                                              hotfixes → OS + packages (Windows)
+         └─► fetchAllFromTable()              OS create/modify → packages (+ hotfixes on Windows)
+                                              packages create/modify → OS (+ hotfixes on Windows)
+                                              packages delete → none
+                                              hotfixes (Windows) → OS + packages + hotfixes
 ```
 
 ---
@@ -282,16 +289,20 @@ processVDDataContext() ──────► getDataContextTables() ────
 
 ### Stateless Events
 
-Generated immediately when changes are detected and sent directly to the manager:
+Generated immediately when changes are detected and written to the agent's local message queue (`queue/sockets/queue`, event type `d`) by the wodle's report callback, rate-limited by `max_eps`:
 
 ```cpp
-if (m_reportDiffFunction) {
-    m_reportDiffFunction(data.dump());  // Immediate send to manager
+if (m_notify && !onlyVolatileFieldsChanged(result, data, table)) {
+    // build the stateless event
+    m_reportDiffFunction(stateless.dump());
 }
 ```
 
 **Characteristics:**
 - Sent immediately when changes detected
+- Not sent for the first scan of an agent when `notify_first_scan` is `no`
+- Not sent when only volatile counters changed (memory free/used, process `utime`/`stime`, interface traffic counters)
+- Not subject to document limits
 - Contain essential inventory change information
 - No persistence or retry mechanism
 - Lost if network is down or agent restarts
@@ -301,27 +312,20 @@ if (m_reportDiffFunction) {
 Generated with complete data including checksums and persisted for synchronization:
 
 ```cpp
-if (m_persistDiffFunction) {
-    std::string id = calculateHashId(data, table);
-    std::string index = getSyncIndexForTable(table);
-    m_persistDiffFunction(id, operation, index, data.dump());
+if (shouldQueue && m_persistDiffFunction && checkDocumentLimit(table, aux, result)) {
+    m_persistDiffFunction(calculateHashId(aux, table),
+                          OPERATION_STATES_MAP.at(result),
+                          indexIt->second,   // sync index of the table
+                          dataToQueue,
+                          version);
 }
 ```
+
+An item is queued only if its stateful document passes the schema validation and the document limit check.
 
 **VD Context Routing for Stateful Events:**
 
-```cpp
-// VD table routing based on sync index
-bool isVDTable = (index == SYSCOLLECTOR_SYNC_INDEX_SYSTEM ||
-                  index == SYSCOLLECTOR_SYNC_INDEX_PACKAGES ||
-                  index == SYSCOLLECTOR_SYNC_INDEX_HOTFIXES);
-
-if (isVDTable && m_spSyncProtocolVD) {
-    m_spSyncProtocolVD->persistDifference(id, operation, index, data, version, isDataContext);
-} else {
-    m_spSyncProtocol->persistDifference(id, operation, index, data, version, isDataContext);
-}
-```
+The routing is the one shown above (`protocolForIndex()`).
 
 **Characteristics:**
 - Include complete inventory metadata and checksums
@@ -336,23 +340,12 @@ if (isVDTable && m_spSyncProtocolVD) {
 
 Additional context data generated after scan completion for VD analysis:
 
-```cpp
-void Syscollector::processVDDataContext() {
-    // Clear previous DataContext
-    m_spSyncProtocolVD->clearAllDataContext();
-    
-    // Get pending DataValue items
-    std::vector<PersistedData> pendingDataValues = m_spSyncProtocolVD->fetchPendingItems(true);
-    
-    // Determine context tables needed based on platform rules
-    std::vector<std::string> contextTables = getDataContextTables(operation, index);
-    
-    // Fetch and submit context data
-    for (const auto& item : contextItems) {
-        m_spSyncProtocolVD->persistDifference(itemId, Operation::MODIFY, contextIndex, item.dump(), 0, true);
-    }
-}
-```
+`processVDDataContext()` returns immediately until the first VD synchronization has completed (the first VD session carries the whole inventory). After that it:
+
+1. Clears the DataContext left by a previous scan (`clearAllDataContext()`).
+2. Fetches the pending DataValue items of the VD protocol (`fetchPendingItems(true)`); with none, it stops.
+3. Asks `getDataContextTables(operation, index)` which tables each pending item needs as context.
+4. For each such table, reads its rows with `fetchAllFromTable()` (skipping the IDs already queued as DataValue; hotfixes ignore document limits), validates them and queues each with `persistDifference(itemId, Operation::MODIFY, contextIndex, data, 0, true)`.
 
 **Characteristics:**
 - **Post-scan processing** via `processVDDataContext()` method
@@ -378,34 +371,55 @@ The Syscollector module includes automatic recovery to detect and resolve synchr
 
 ### Recovery Process
 
+`runRecoveryProcess()` runs in the sync thread after each successful synchronization, with the scan mutex held. It does nothing (and logs at debug level) while a flush or the startup DataClean for disabled collectors is running. Otherwise it first runs the agent-ID check (`checkAgentIdentity()`), then the per-table integrity checks.
+
 When a checksum mismatch is detected for a table:
 
 1. **Version Increment**: All entries in the table have their version incremented by 1
    - Uses DBSync's `increaseEachEntryVersion()` method
-2. **Data Extraction**: All elements are retrieved from the affected table
+2. **Data Extraction**: The elements are retrieved from the affected table. When the index has a document limit, only rows with `sync=1` are retrieved
 3. **Index Clear**: The manager's index for this table is cleared via `notifyDataClean()` — there
    is no full-replace mode; recovery is a `DataClean` followed by an ordinary delta sync of the
-   fresh snapshot (a byte-capped `Mode::FULL` used to make the manager unconditionally
-   `deleteByQuery` the whole index, which could permanently drop whatever didn't fit in one
-   session)
+   fresh snapshot. The clean is sent on the protocol that carries the index (the VD protocol for the system, packages and hotfixes indices, the regular one otherwise)
 4. **Stateful Message Rebuild**: Each inventory item is:
    - Converted to ECS format
-   - Wrapped in stateful message structure
-   - Persisted to the sync protocol's queue with CREATE operation via `persistDifference()`
-5. **Delta Synchronization**: A `Mode::DELTA` synchronization is triggered
+   - Validated against the index schema (invalid items are skipped)
+   - Persisted to the queue of the same protocol with CREATE operation via `persistDifference()`
+5. **Delta Synchronization**: For a VD index (when VD synchronization is enabled), `processVDDataContext()` first queues the DataContext the session needs. Then a `Mode::DELTA` synchronization is triggered
    - Sends all data for the affected table to the manager, safely split across sessions if needed
-6. **Timestamp Update**: `last_sync_time` is updated to current timestamp
+6. **Timestamp Update**: `last_sync_time` is updated to the current timestamp, whatever the outcome of the check or the recovery, except when the module is stopping (the table is then checked again after the restart). A table that failed is checked again after the next `integrity_interval`, not in the next synchronization cycle
+
+### Recovery Logging
+
+Integrity checks and recoveries report their outcome in `ossec.log`. A table whose integrity could not be checked is collected and reported once per pass.
+
+| Level | Message |
+|-------|---------|
+| INFO | `Checksum mismatch confirmed for <index>; starting recovery (index cleanup and full resend).` |
+| INFO | `Integrity check for <index> interrupted: module is stopping. It will be checked again after the restart.` (with `; a checksum mismatch reported by the manager was not confirmed` before the period when applicable) |
+| WARNING | `Integrity check could not be performed for <N> table(s): <index> (<reason>), ...; they will be checked again in the next integrity_interval (<interval>).` |
+| INFO | `Recovery of index <index> interrupted: module is stopping.` (the DataClean was cut short) |
+| INFO | `Recovery of index <index> interrupted: module is stopping. The queued entries will be sent by a later synchronization.` (the send was cut short; rows stay in the on-disk queue) |
+| INFO | `Recovery of index <index> completed; some entries are still queued and will be sent in the next synchronization.` (the cycle stopped at its block limit) |
+| INFO | `Recovery of index <index> completed.` |
+| INFO | `Recovery of index <index> did not finish sending; the queued rows will be delivered by the next regular synchronization.` |
+| WARNING | `Failed to clear index <index> before recovery resync for table <table> (<reason>); it will be retried in the next integrity_interval (<interval>)` |
+
+A stopped recovery is therefore never logged as completed: the DataClean and the queued rows are kept, and the next synchronization sends them.
 
 ### Recovery Flow Diagram
 
 ```
-Main Scanning Loop (syncLoop)
+Sync thread (wm_sync_module): successful synchronization
          │
          ▼
-Periodic Scan Execution
+Lock scan mutex → runRecoveryProcess()
          │
          ▼
-Check if integrity_interval elapsed for each table
+checkAgentIdentity()  (resend of every table if the agent ID changed)
+         │
+         ▼
+For each enabled table: has integrity_interval elapsed?
          │
          ├─► No  → Skip integrity check for this table
          │
@@ -414,18 +428,20 @@ Check if integrity_interval elapsed for each table
                    ▼
              Send checksum to manager (requiresFullSync)
                    │
-                   ├─► Match    → No action needed, update last_sync_time
+                   ├─► Valid       → No action needed
+                   ├─► Not checked → Reported in the end-of-pass warning
                    │
-                   └─► Mismatch → Perform full recovery for this table
+                   └─► Mismatch → Perform recovery for this table
                                   │
-                                  ├─► Lock scan mutex (prevent concurrent scans)
                                   ├─► Increase version for all entries
-                                  ├─► Load all elements from table
-                                  ├─► Clear in-memory sync data
-                                  ├─► Rebuild stateful messages
-                                  ├─► Trigger FULL synchronization
-                                  ├─► Update last_sync_time
-                                  └─► Unlock scan mutex
+                                  ├─► Load elements from table (sync=1 only with a document limit)
+                                  ├─► notifyDataClean() on the index's protocol
+                                  ├─► Rebuild and persist stateful messages (CREATE)
+                                  ├─► processVDDataContext() for VD indices
+                                  └─► Trigger DELTA synchronization
+         │
+         ▼
+Update last_sync_time for the table (unless the module is stopping) → Unlock scan mutex
 ```
 
 ### Configuration
@@ -452,11 +468,14 @@ Recovery behavior is controlled by the `integrity_interval` parameter:
 Syscollector uses database transactions to ensure consistency between change detection and event generation:
 
 ```cpp
-auto callback = [this, table](ReturnTypeCallback result, const nlohmann::json& data) {
-    processEvent(result, data, table);
-};
+const auto callback {[this, table](ReturnTypeCallback result, const nlohmann::json& data) {
+    if (result == INSERTED || result == MODIFIED || result == DELETED) {
+        notifyChange(result, data, table);   // calls processEvent()
+    }
+}};
 
-m_spDBSync->syncRowData(table, values, callback);
+DBSyncTxn txn {m_spDBSync->handle(), nlohmann::json{table}, 0, QUEUE_SIZE, callback};
+// syncTxnRow() with options.return_old_data, then getDeletedRows(callback)
 ```
 
 ### Transaction Callback Processing
@@ -466,9 +485,9 @@ The `processEvent()` function handles the database response:
 1. **Receives database comparison result** from DBSync
 2. **Determines change type** (create, modify, delete) based on database state
 3. **Generates both event types**:
-   - Stateless event for immediate alerts
-   - Stateful event for synchronization
-4. **Persists stateful event** to sync protocol with appropriate index
+   - Stateless event for immediate alerts (unless `notify_first_scan` or the volatile-counter rule suppresses it)
+   - Stateful event for synchronization (validated against the index schema and the document limit first)
+4. **Persists stateful event** to the sync protocol that carries its index
 
 ---
 
@@ -476,38 +495,29 @@ The `processEvent()` function handles the database response:
 
 ### Periodic Synchronization Thread
 
-Syscollector runs a dedicated synchronization mechanism as part of its main loop:
+`Syscollector::syncLoop()` is the scanning loop: it runs `scan()` at start (when `scan_on_start` is set) and then every `interval`, skipping an iteration while the module is paused. It never synchronizes.
 
-```cpp
-// Function: Syscollector::syncLoop()
-void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock) {
-    while (!m_stopping) {
-        // Wait for sync interval
-        m_cv.wait_for(lock, std::chrono::seconds(m_intervalValue));
+Synchronization runs in a separate thread, `wm_sync_module()` in `wm_syscollector.c`, which the wodle starts only when `<synchronization><enabled>` is `yes`. Every `synchronization.interval` seconds (default 300) it:
 
-        // Trigger synchronization of all pending inventory changes
-        if (m_spSyncProtocol) {
-            bool success = m_spSyncProtocol->synchronizeModule(
-                Mode::DELTA,
-                std::chrono::seconds(timeout),
-                retries,
-                maxEps
-            );
-        }
-    }
+1. Skips the cycle if a scan is in progress.
+2. Calls `syscollector_sync_module(MODE_DELTA)`, which calls `Syscollector::syncModule(Mode::DELTA)`. That synchronizes the regular sync protocol and then the VD tables (`synchronizeVDTables()`).
+3. After a successful synchronization, takes the scan mutex and runs `runRecoveryProcess()`.
+
+```c
+bool sync_succeeded = syscollector_sync_module_ptr(MODE_DELTA);
+
+if (sync_succeeded && sync_module_running && syscollector_run_recovery_process_ptr) {
+    syscollector_lock_scan_mutex_ptr();
+    syscollector_run_recovery_process_ptr();
+    syscollector_unlock_scan_mutex_ptr();
 }
 ```
 
-The wodle's sync thread (`wm_sync_module`) runs the synchronization cycle and, after each successful one, the recovery process. The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, and the recovery process resends every table under the new ID. Each table records the ID it was resent under, so a resend cut short by a restart or by a failed table resumes with the tables still pending instead of clearing and resending the ones already done; the vulnerability detection tables are still resent together, as one session. While that resend keeps failing (a failed synchronization counts, since the resend only follows a successful one), the 30 seconds double on each attempt, up to the synchronization interval; a cycle skipped because a flush was sending keeps the period.
+Before the first cycle the thread waits for `synchronization.interval`, with two exceptions: if no first synchronization has ever completed, it waits for the first scan to finish and then synchronizes at once; if one did complete but the agent ID changed since, it synchronizes at once. The wait before each cycle restarts with every agent start, so the thread also asks whether the agent ID changed since the last full synchronization (for example after the agent was removed and re-enrolled): at startup, and every 30 seconds while it waits. On a change it runs its cycle at once, and the recovery process resends every table under the new ID. Each table records the ID it was resent under, so a resend cut short by a restart or by a failed table resumes with the tables still pending instead of clearing and resending the ones already done; the vulnerability detection tables are still resent together, as one session. While that resend keeps failing (a failed synchronization counts, since the resend only follows a successful one), the 30 seconds double on each attempt, up to the synchronization interval; a cycle skipped because a flush was sending keeps the period.
 
 ### Manager Response Handling
 
-Syscollector processes manager responses through the syscom interface:
-
-```cpp
-// Handle inventory sync messages from manager
-bool ret = parseResponseBuffer(response_data, response_length);
-```
+The wodle's `wm_sync_message()` receives them. Messages with the `syscollector_sync ` header go to `parseResponseBuffer()` (regular sync protocol); messages with the `syscollector_vd_sync ` header go to `parseResponseBufferVD()` (VD sync protocol). See the [API reference](api-reference.md#sync-message-routing).
 
 ### Inventory Type Synchronization
 
@@ -546,7 +556,7 @@ The function is called during module startup in `wm_sys_main()` when `sys->flags
 ```c
 if (!sys->flags.enabled) {
     wm_handle_sys_disabled_and_notify_data_clean(sys);
-    mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
+    mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting.");
     pthread_exit(NULL);
 }
 ```
@@ -575,16 +585,15 @@ Load Syscollector module dynamically
       ▼
 Configure Syscollector minimally
       │
-      ├─► Initialize sync protocol ──────► syscollector_init_sync()
-      │   (module name, DB path, MQ funcs)
+      ├─► Initialize module ──────────────► syscollector_init()
       │
-      └─► Initialize module ──────────────► syscollector_init()
-      │
+      └─► Initialize sync protocol ──────► syscollector_init_sync()
+      │   (module name, sync DB path, VD sync DB path, integrity_interval)
       │
       ▼
 Prepare indices array
       │
-      ├─► All 13 inventory indices:
+      ├─► 14 indices (13 inventory + vulnerabilities):
       │   ├─► SYSCOLLECTOR_SYNC_INDEX_SYSTEM
       │   ├─► SYSCOLLECTOR_SYNC_INDEX_HARDWARE
       │   ├─► SYSCOLLECTOR_SYNC_INDEX_HOTFIXES
@@ -597,19 +606,20 @@ Prepare indices array
       │   ├─► SYSCOLLECTOR_SYNC_INDEX_USERS
       │   ├─► SYSCOLLECTOR_SYNC_INDEX_GROUPS
       │   ├─► SYSCOLLECTOR_SYNC_INDEX_SERVICES
-      │   └─► SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS
+      │   ├─► SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS
+      │   └─► SYSCOLLECTOR_SYNC_INDEX_VULNERABILITIES
       │
       ▼
 Send data clean notification ────────► syscollector_notify_data_clean()
       │                                     │
-      │                                     ├─► All 13 indices
+      │                                     ├─► All 14 indices
       │                                     ├─► Retry on failure
-      │                                     │   (wait sync_interval)
+      │                                     │   (wait sync_interval, default 300 s)
       │                                     │
       │                                     └─► Success confirmation
       │
       └─► Delete databases ─────────────► syscollector_delete_database()
-          (both sync protocol and DBSync)
+          (regular sync, VD sync and DBSync databases)
 ```
 
 ### Behavior Scenarios
@@ -620,12 +630,12 @@ Send data clean notification ────────► syscollector_notify_dat
 1. Agent starts with Syscollector disabled (sys->flags.enabled = false)
 2. Syscollector database file exists at SYSCOLLECTOR_DB_DISK_PATH
 3. Load Syscollector module dynamically
-4. Initialize sync protocol with MQ functions
-5. Initialize Syscollector module with full configuration
-6. Prepare all 13 inventory indices
-7. Send data clean notification to manager (with infinite retries)
-8. Manager removes all 13 indices from agent's state
-9. Delete both sync protocol and DBSync databases
+4. Initialize Syscollector module with the parsed configuration
+5. Initialize the sync protocols (regular and VD)
+6. Prepare the 14 indices (13 inventory indices plus vulnerabilities)
+7. Send data clean notification to manager (retried until it succeeds or the agent shuts down)
+8. Manager removes all 14 indices from agent's state
+9. Delete the regular sync, VD sync and DBSync databases
 10. Exit module startup
 ```
 
@@ -698,7 +708,7 @@ Module Resumes Normal Operations
 
 #### Flush Command
 
-**Purpose:** Force immediate synchronization of pending inventory changes, bypassing the normal sync interval.
+**Purpose:** Force immediate synchronization of pending inventory changes, bypassing the normal sync interval. The command is **asynchronous**: `flush()` starts the work in a background worker (`Utils::AsyncFlushController`) and returns at once; the caller polls the `is_flush_completed` command for the outcome.
 
 **Use Cases:**
 - Agent shutdown (ensure all inventory is sent before exit)
@@ -709,24 +719,29 @@ Module Resumes Normal Operations
 **Implementation:**
 
 ```
-Flush Command Received
+Flush Command Received (flush())
+         │
+         ├─► No async flush controller → Return -1
+         │
+         └─► startFlush() → Return 0 (background flush running or already running)
+
+Background worker: executeFlushSync()
          │
          ▼
-Check if Sync Protocol Initialized
+Neither sync protocol initialized? → ends successfully (nothing to flush)
          │
-         ├─► Not Initialized → Return 0 (nothing to flush)
-         │
-         └─► Initialized
-             │
-             ▼
+         ▼
 Wait for any synchronization or recovery in progress, then hold both off until done
-             │
-             ▼
-Call synchronizeModule(Mode::DELTA)
-             │
-             ├─► Sends all pending differences
-             ├─► Waits for manager acknowledgment
-             └─► Returns sync result
+(module stopping → ends with error)
+         │
+         ▼
+Regular protocol: synchronizeModule(Mode::DELTA)
+         │
+         ▼
+VD protocol: synchronizeVDTables(Mode::DELTA)
+         │
+         ▼
+Success only if both succeed → is_flush_completed reports "completed" with result "success" or "error"
 ```
 
 The flush operation waits for an ongoing synchronization or recovery to complete before it opens its own session, and a synchronization or recovery due while it sends is skipped until the next cycle. The DataClean for disabled collectors sent at startup waits for a running flush, synchronization or recovery instead of skipping; while it sends, a flush waits for it and a synchronization or recovery due is skipped until the next cycle.
@@ -774,14 +789,12 @@ For Each Syscollector Table:
          │
          ├─► For Each Row:
          │   │
-         │   ├─► Update row with new version
-         │   │
-         │   └─► Increment counter
+         │   └─► Update row with new version (one DBSync transaction per table)
          │
-         └─► Continue to next table
+         └─► Continue to next table (the total is only logged)
          │
          ▼
-Return Total Rows Updated
+Return 0 (or -1 on error)
 ```
 
 ---
@@ -1054,7 +1067,7 @@ Syscollector uses a deferred deletion pattern to safely remove invalid entries:
 
 **Graceful Degradation:**
 
-If the schema validator is not initialized:
+If the schema validator factory is not initialized:
 - Validation is skipped
 - Data is processed normally
 - A warning is logged on startup:
@@ -1062,10 +1075,11 @@ If the schema validator is not initialized:
   [WARNING] Failed to initialize schema validator. Schema validation will be disabled.
   ```
 
+If the factory is initialized but has no validator for the index, the message is discarded with `[WARNING] No schema validator found for index: <index>. Discarding message.`
+
 ### Performance Considerations
 
 - **Deferred Deletion**: Batch transaction minimizes database overhead
-- **Validation Caching**: Validators are obtained once per scan and reused
 - **Early Exit**: Validation happens before queuing (saves sync protocol overhead)
 - **Graceful Degradation**: Validation can be disabled without affecting core functionality
 

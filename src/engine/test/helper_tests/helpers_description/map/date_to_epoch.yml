@@ -3,20 +3,37 @@ name: date_to_epoch
 
 metadata:
   description: |
-    Converts a date/time string to its UNIX epoch (seconds since 1970-01-01T00:00:00Z), returned as a double.
-    Parsing is strict and driven entirely by a format:
-      - If a second argument `format` is provided (string literal), it is used verbatim by the parser.
-      - If `format` is omitted, the default format "%Y-%m-%dT%H:%M:%SZ" (ISO 8601, UTC with trailing 'Z') is used.
-    To support other ISO-8601 variants (offsets, basic format, space instead of 'T', etc.), pass the appropriate format.
-  keywords:
-    - date
-    - time
-    - epoch
-    - timestamp
+    Converts a date string to the number of seconds since the Unix epoch, as a double, and maps it to
+    the target field.
+
+    Behavior:
+    - `date` is parsed with `format`, a strftime-style format (`%Y-%m-%dT%H:%M:%SZ` by default, where
+      the `Z` is a literal character), in the classic locale. The whole input must be consumed, so
+      surrounding whitespace is accepted only when the format contains it.
+    - `%S` accepts fractional seconds. The result keeps microseconds: further digits are truncated.
+    - A UTC offset is read with `%z` (`-0300`) or `%Ez` (`-03:00`) and subtracted.
+    - `%Z` reads an IANA time zone name such as `America/New_York`, and the local time is converted
+      to UTC with the rules of that zone; a local time inside a DST gap or fold fails.
+
+    Build errors:
+    - `date` is a literal, or it is a schema field whose type is neither `date` nor `date_nanos`.
+    - `format` is a reference, is not a string, is empty or is longer than 64 characters.
+
+    Notes:
+    - `parse_date` writes an ISO string with milliseconds, accepts named formats and a locale, fills a
+      missing year with the current one and resolves DST gaps and folds to the earliest instant.
+    - `epoch_to_date` is the inverse conversion; `now_epoch` gives the current time as an integer.
+  group: date
+  fails_when:
+    - "`date` is missing or is not a string"
+    - "`date` does not match `format` entirely: a field is invalid or input remains unparsed"
+    - "the local time falls in a DST gap or fold, or the zone name is unknown"
+    - "the resulting instant is out of range"
 
 helper_type: map
 
-# Arguments expected by the helper function
+is_variadic: false
+
 arguments:
   date:
     type: string
@@ -26,16 +43,13 @@ arguments:
     type: string
     generate: string
     source: value
-    optional: true # defaults to "%Y-%m-%dT%H:%M:%SZ" when omitted
+    optional: true
 
 skipped:
   - success_cases
 
-# Indicates whether the helper function supports a variable number of arguments
-is_variadic: False
-
 output:
-  type: double
+  type: number
   subset: double
 
 test:
@@ -44,150 +58,166 @@ test:
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: true
     expected: 0.0
-    description: Default format → epoch start
+    description: Convert the epoch start with the default format given explicitly
+  - arguments:
+      date: "2024-05-17T15:10:58Z"
+    should_pass: true
+    expected: 1715958658.0
+    description: Convert a UTC date with the default format, omitting the format argument
   - arguments:
       date: "2024-05-17T15:10:58Z"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: true
     expected: 1715958658.0
-    description: Default format → UTC with trailing Z
+    description: Convert a UTC date with a trailing Z
   - arguments:
       date: "2024-09-24T23:03:00.597629Z"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: true
     expected: 1727218980.597629
-    description: Default format → fractional seconds preserved
+    description: Keep the fractional seconds up to the microsecond
+  - arguments:
+      date: "2024-09-24T23:03:00.597629999Z"
+      format: "%Y-%m-%dT%H:%M:%SZ"
+    should_pass: true
+    expected: 1727218980.597629
+    description: Truncate the fractional seconds beyond the microsecond
   - arguments:
       date: "1969-12-31T23:59:59Z"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: true
     expected: -1.0
-    description: Default format → negative epoch
+    description: Convert a date before the epoch to a negative value
   - arguments:
       date: "2024-05-17T15:10:58"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Default format requires 'Z' → fails without timezone
+    description: Fail when the input lacks the Z that the default format requires
   - arguments:
       date: "2024-05-17T12:10:58-03:00"
       format: "%FT%T%Ez"
     should_pass: true
     expected: 1715958658.0
-    description: Offset with colon (−03:00)
+    description: Subtract an offset with a colon read with %Ez
   - arguments:
       date: "2024-05-17T12:10:58-0300"
       format: "%FT%T%z"
     should_pass: true
     expected: 1715958658.0
-    description: Offset without colon (−0300)
+    description: Subtract an offset without a colon read with %z
   - arguments:
       date: "2024-05-17 15:10:58+00:00"
       format: "%F %T%Ez"
     should_pass: true
     expected: 1715958658.0
-    description: Space instead of 'T' + offset
+    description: Parse a space instead of the T and a zero offset
   - arguments:
       date: "20240517T151058Z"
       format: "%Y%m%dT%H%M%SZ"
     should_pass: true
     expected: 1715958658.0
-    description: Basic (no-extended) format with 'Z'
+    description: Parse the basic ISO 8601 format with a Z
   - arguments:
       date: "20240517T121058-0300"
       format: "%Y%m%dT%H%M%S%z"
     should_pass: true
     expected: 1715958658.0
-    description: Basic format with offset (−0300)
+    description: Parse the basic ISO 8601 format with an offset
   - arguments:
       date: "2024-05-17T15:10:58"
       format: "%FT%T"
     should_pass: true
     expected: 1715958658.0
-    description: No timezone in input; format without timezone
+    description: Read a date without time zone as UTC when the format has none
   - arguments:
       date: "2024-05-17 12:10:58 America/Argentina/Buenos_Aires"
       format: "%F %T %Z"
     should_pass: true
     expected: 1715958658.0
-    description: IANA zone America/Argentina/Buenos_Aires, UTC−03) → 2024-05-17T15:10:58Z
+    description: Convert a local time in the IANA zone America/Argentina/Buenos_Aires (UTC-3) to UTC
   - arguments:
       date: "2024-07-01 10:00:00 Europe/Berlin"
       format: "%F %T %Z"
     should_pass: true
     expected: 1719820800.0
-    description: IANA zone (Europe/Berlin, CEST UTC+02) → 2024-07-01T08:00:00Z
+    description: Convert a local time in the IANA zone Europe/Berlin during DST (UTC+2) to UTC
   - arguments:
       date: "2024-05-17 15:10:58 Mars/Phobos"
       format: "%F %T %Z"
     should_pass: false
-    description: Unknown IANA zone → tzdb lookup fails
+    description: Fail on an unknown IANA zone name
   - arguments:
       date: "2024-03-10 02:30:00 America/New_York"
       format: "%F %T %Z"
     should_pass: false
-    description: DST spring-forward gap (nonexistent local time in New York)
+    description: Fail on a local time inside the DST gap (the spring-forward hour in New York)
+  - arguments:
+      date: "2024-11-03 01:30:00 America/New_York"
+      format: "%F %T %Z"
+    should_pass: false
+    description: Fail on a local time inside the DST fold (the repeated fall-back hour in New York)
   - arguments:
       date: 123456789
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Reject non-string input for 'date'
+    description: Fail when the date is a number
   - arguments:
       date: null
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Reject null input for 'date'
+    description: Fail when the date is null
   - arguments:
       date: "2024-05-17T15:10:58Z"
       format: "%invalid_format"
     should_pass: false
-    description: Invalid format format with unknown specifier
+    description: Fail on a format with an unknown specifier
   - arguments:
       date: "2024-05-17T15:10:58Z"
       format: ""
     should_pass: false
-    description: Empty format format
+    description: Fail on an empty format
   - arguments:
       date: "2024-05-17T15:10:58Z"
       format: null
     should_pass: false
-    description: Null format format
+    description: Fail on a null format
   - arguments:
       date: "2024-05-17T15:10:58Z"
       format: 123
     should_pass: false
-    description: Non-string format format
+    description: Fail on a format that is not a string
   - arguments:
       date: "2024-05-17T15:10:58Z"
       format: "%Y-%m-%d"
     should_pass: false
-    description: Date string doesn't match format (has time, format expects only date)
+    description: Fail when input remains after the format (the format has no time part)
   - arguments:
       date: "2024-05-17"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: format expects time, date string has only date
+    description: Fail when the input ends before the format (the input has no time part)
   - arguments:
       date: "not-a-date"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Completely malformed date string
+    description: Fail on a malformed date string
   - arguments:
       date: ""
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Empty date string
+    description: Fail on an empty date string
   - arguments:
       date: "2024-02-30T15:10:58Z"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Invalid date - February 30th doesn't exist
+    description: Fail on an invalid day of month (February 30th)
   - arguments:
       date: "2024-13-17T15:10:58Z"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Invalid date - 13th month doesn't exist
+    description: Fail on an invalid month (13)
   - arguments:
       date: "2024-05-32T15:10:58Z"
       format: "%Y-%m-%dT%H:%M:%SZ"
     should_pass: false
-    description: Invalid date - 32nd day doesn't exist
+    description: Fail on an invalid day (32)

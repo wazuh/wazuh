@@ -1,0 +1,84 @@
+# Name of the helper function
+name: parse_half_float
+
+metadata:
+  description: |
+    Converts the input string to a floating-point number within the half-precision range and stores it in
+    the target field.
+
+    Behavior:
+    - The input must match `-?[0-9]+(.[0-9]*)?([eE][+-]?[0-9]+)?`: an optional minus sign, digits, an
+      optional fraction and an optional exponent; no plus sign, no leading `.`, no `inf` or `nan`, no
+      surrounding spaces.
+    - The value must be within -65504 and 65504 (the half-precision range); otherwise the operation fails.
+    - The value is stored as a 32-bit float: it is not rounded to 16-bit precision, so `23.45234` becomes
+      `23.45233917236328`.
+    - The number replaces the target field.
+
+    Build errors:
+    - `input` is not a reference, or references a schema field that is not a string.
+    - A number of arguments other than 1.
+    - The target field is a schema field that is not half_float, float, scaled_float or double.
+
+    Notes:
+    - `parse_float` and `parse_double` have no range limit beyond their own precision.
+  group: parse
+  fails_when:
+    - The input field does not exist or is not a string.
+    - The input is not a number in the accepted syntax.
+    - The value is outside the range -65504..65504.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input:
+    type: string
+    generate: string
+    source: reference
+
+# string generation is random, and the previous value of the target is replaced whatever its type
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: number
+  generate: double
+
+test:
+  - arguments:
+      input: "23.45234"
+    target_field: any_value
+    should_pass: true
+    expected: 23.45233917236328
+    description: The value is stored with 32-bit precision
+  - arguments:
+      input: "70000"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a value above the half-precision range
+  - arguments:
+      input: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Fails on a string that is not a number
+  - arguments:
+      input: hello
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: An array target is left unchanged when the input is not a number
+  - arguments:
+      input: hello
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: An object target is left unchanged when the input is not a number

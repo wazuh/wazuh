@@ -1,0 +1,192 @@
+# Name of the helper function
+name: merge
+
+metadata:
+  description: |
+    Merges the field referenced by `source` into the target field and deletes the source field.
+
+    Behavior:
+    - Both fields must exist and have the same type: both objects, or both arrays.
+    - Objects, default mode: the top-level members of the source are added to the target; on a shared key the
+      source wins and a nested object is replaced as a whole.
+    - Objects, `deep` mode: a shared key whose source value is an object or an array is merged recursively; a
+      scalar source value overwrites the target member, even when that member is an object.
+    - Arrays, both modes: a de-duplicated union; the target keeps its order, the source elements that are not
+      already present are appended in source order, and an element repeated in the source is added once.
+    - After a successful merge the source field is erased from the event.
+    - When the target field is a schema field, every top-level member of an object source must be a field
+      allowed under it (checked at runtime).
+
+    Build errors:
+    - `source` is not a reference (a literal or definition object is rejected).
+    - A second argument other than the literal `deep`, or more than 2 arguments.
+    - In `deep` mode, the target field is a schema field that is not an object.
+    - The target field is not a schema field and does not start with `_`.
+
+    Notes:
+    - The source field is deleted: `a: merge($a)` erases `a` after merging it into itself, and a source nested
+      inside the target disappears after the merge.
+    - In `deep` mode an object or array in the source whose counterpart in the target has another type fails
+      the operation; the target and the source are left untouched.
+    - `lookup_merge` merges a value out of an object without deleting anything; `rename` moves a field but
+      refuses to overwrite the target.
+  group: object
+  deletes_arguments:
+    - source
+  fails_when:
+    - The source or the target field does not exist.
+    - The source and the target field have different types, or are not both objects or both arrays.
+    - In deep mode, a nested member is an object or array in the source and has another type in the target.
+
+helper_type: transform
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+# The generator cannot combine a list-typed argument with a second one, so `source` is declared as an
+# object; an array source is merged into an array target as well (see the description and the tests)
+arguments:
+  source:
+    type: object
+    generate: object
+    source: reference
+    accepted_values: An object, or an array when the target field is an array
+  mode:
+    type: string
+    generate: string
+    source: value
+    optional: true
+    restrictions:
+      allowed:
+        - deep
+
+# An array target is accepted too (an array source is merged into it); the generated cases use objects
+target_field:
+  type: object
+  generate: object
+
+skipped:
+  - success_cases # Field types do not match
+
+test:
+  - arguments:
+      source:
+        key: name
+        key2:
+          age: 27
+          address: new york
+    target_field:
+      key3: surname
+    should_pass: true
+    expected:
+      key: name
+      key2:
+        age: 27
+        address: new york
+      key3: surname
+    description: The members of the source object are added to the target object
+  - arguments:
+      source:
+        a:
+          d: e
+    target_field:
+      a:
+        b: c
+    should_pass: true
+    expected:
+      a:
+        d: e
+    description: Without deep a nested object of the source replaces the one of the target as a whole
+  - arguments:
+      source:
+        - 0
+        - 1
+        - 2
+        - 4
+    target_field:
+      - 1
+      - 3
+    should_pass: true
+    expected:
+      - 1
+      - 3
+      - 0
+      - 2
+      - 4
+    description: Arrays merge as a union that keeps the target order and appends the new elements
+  - arguments:
+      source:
+        - 1
+        - 1
+        - 2
+    target_field:
+      - 1
+    should_pass: true
+    expected:
+      - 1
+      - 2
+    description: An element repeated in the source array is added once
+  - arguments:
+      source:
+        - 1
+    target_field:
+      a: 1
+    should_pass: false
+    expected:
+      a: 1
+    description: Fails when the source is an array and the target an object
+  - arguments:
+      source:
+        a:
+          d: e
+      mode: deep
+    target_field:
+      a:
+        b: c
+    should_pass: true
+    expected:
+      a:
+        b: c
+        d: e
+    description: In deep mode nested objects are merged recursively
+  - arguments:
+      source:
+        key: new
+      mode: deep
+    target_field:
+      key: old
+      other: 1
+    should_pass: true
+    expected:
+      key: new
+      other: 1
+    description: In deep mode a scalar of the source overwrites the member of the target
+  - arguments:
+      source:
+        - 0
+        - 1
+        - 2
+        - 4
+      mode: deep
+    target_field:
+      - 1
+      - 3
+    should_pass: true
+    expected:
+      - 1
+      - 3
+      - 0
+      - 2
+      - 4
+    description: In deep mode arrays merge as the same de-duplicated union
+  - arguments:
+      source:
+        - 1
+      mode: deep
+    target_field:
+      a: 1
+    should_pass: false
+    expected:
+      a: 1
+    description: In deep mode fields of different types are not merged either

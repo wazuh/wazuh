@@ -227,6 +227,7 @@ struct HttpResponse
     std::string localIp;        ///< Local IP of the connection (CURLINFO_LOCAL_IP);
     ///< the agent's own address toward the manager.
     std::string body;
+    bool requestSent {false};   ///< See ICurlHandle::requestSent().
     std::string curlError;      ///< libcurl's own wording for a failed attempt, empty
     ///< otherwise (success, or a failure that never reached libcurl).
     TlsFailureDetail tlsFailure; ///< Populated (kind != None) only when status == TlsFail

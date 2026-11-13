@@ -309,6 +309,48 @@ TEST_F(RulesetSpaceSinkTest, AFailedRouteSwapRollsBackTheImportedNamespace)
     EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::RejectedRetrySame);
 }
 
+// The engine stops the sync service before the router, so a route swap still running fails against a
+// router that is shutting down: once the shutdown is requested that is logged at INFO as an abort, and the
+// commit is still rejected and rolled back. INFO goes to stdout, WARNING and above to stderr.
+TEST_F(RulesetSpaceSinkTest, AFailedRouteSwapDuringTheShutdownIsLoggedAsAnAbort)
+{
+    stagePolicy();
+    ON_CALL(*router, postEntry(_)).WillByDefault(Return(base::Error {"Orchestrator has been shutdown"}));
+    ON_CALL(*crud, existsNamespace(_)).WillByDefault(Return(true));
+    EXPECT_CALL(*crud, deleteNamespace(_)).Times(1);
+
+    sink->requestShutdown();
+    logging::setLevel(logging::Level::Info);
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+    EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::RejectedRetrySame);
+    const auto info = testing::internal::GetCapturedStdout();
+    const auto warn = testing::internal::GetCapturedStderr();
+    logging::setLevel(logging::Level::Warn);
+
+    EXPECT_THAT(info, HasSubstr("Synchronization aborted for space 'standard' by the shutdown: "));
+    EXPECT_THAT(info, HasSubstr("Orchestrator has been shutdown"));
+    EXPECT_THAT(warn, Not(HasSubstr("Failed to sync the namespace in route")));
+}
+
+TEST_F(RulesetSpaceSinkTest, AFailedRouteSwapWithoutTheShutdownIsAnError)
+{
+    stagePolicy();
+    ON_CALL(*router, postEntry(_)).WillByDefault(Return(base::Error {"no priority available"}));
+    ON_CALL(*crud, existsNamespace(_)).WillByDefault(Return(true));
+
+    logging::setLevel(logging::Level::Info);
+    testing::internal::CaptureStdout();
+    testing::internal::CaptureStderr();
+    EXPECT_EQ(sink->commit({}).status, content_manager::CommitStatus::RejectedRetrySame);
+    const auto info = testing::internal::GetCapturedStdout();
+    const auto warn = testing::internal::GetCapturedStderr();
+    logging::setLevel(logging::Level::Warn);
+
+    EXPECT_THAT(warn, HasSubstr("Failed to sync the namespace in route for space 'standard'"));
+    EXPECT_THAT(info, Not(HasSubstr("Synchronization aborted")));
+}
+
 TEST_F(RulesetSpaceSinkTest, AbortDiscardsTheStagingNamespace)
 {
     ASSERT_EQ(sink->beginSession(sessionOf(content_manager::SessionKind::FullReload)),

@@ -3,33 +3,43 @@ name: regex_extract
 
 metadata:
   description: |
-    Match and capture the regex expression against the indicated "fieldToMatch", saving the captured group in field.
-    Save in field the captured group if the regex expression matches, otherwise if "fieldToMatch"
-    is not found or is not of type string, or if the regex did not match, nothing is performed.
-    If the operation executes successfully the field is overridden, if it does not exist, it is created.
-    Keep in mind that we need to escape reserved Yaml characters depending on the string input mode of Yaml.
-    RE2 syntax: https://github.com/google/re2/wiki/Syntax
-    This helper function is used in the map stage
-  keywords:
-    - undefined
+    Extracts the first capture group of the first match of a regular expression in a string and maps
+    it to the target field.
+
+    Behavior:
+    - `regex` is an RE2 expression (https://github.com/google/re2/wiki/Syntax) matched anywhere in
+      the string; anchor it with `^` and `$` to match the whole string.
+    - Only capture group 1 is returned; further groups are ignored: `^(va)l(ue)$` on `value` gives
+      `va`.
+    - A regex with no capture group builds, but every match fails at runtime.
+
+    Build errors:
+    - `regex` is not a string literal or is not a valid RE2 expression.
+    - `field_to_match` is a schema field whose type is not a string.
+
+    Notes:
+    - Escape the reserved YAML characters of the regex according to the quoting style used.
+    - `regex_extract_all` collects group 1 of every match into an array.
+    - `regex_match` is the check helper with the same matching.
+  group: string
+  fails_when:
+    - "`field_to_match` is missing or is not a string"
+    - "the regex does not match, or it has no capture group"
 
 helper_type: map
 
-# Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 
-# Arguments expected by the helper function
 arguments:
-  fieldToMatch:
-    type: string # Expected type is string
+  field_to_match:
+    type: string
     generate: string
-    source: reference # Includes only references (their names start with $)
+    source: reference
   regex:
-    type: string # Expected type is string
+    type: string
     generate: regex
-    source: value # Includes only value
+    source: value
 
-# The database is not created
 skipped:
   - success_cases
 
@@ -39,14 +49,30 @@ output:
 
 test:
   - arguments:
-      fieldToMatch: bye pcre2
+      field_to_match: bye pcre2
       regex: "^(bye pcre\\d)$"
     should_pass: true
     expected: bye pcre2
-    description: Match regular expression
+    description: Extract the capture group of an anchored regex that matches the whole string
   - arguments:
-      fieldToMatch: ye pcre2
+      field_to_match: ye pcre2
       regex: "^(bye pcre\\d)$"
     should_pass: false
-    expected: bye pcre2
-    description: Don't match regular expression
+    description: Fail when the regex does not match
+  - arguments:
+      field_to_match: "id=12 id=34"
+      regex: "id=(\\d+)"
+    should_pass: true
+    expected: "12"
+    description: Extract the capture group of the first match of an unanchored regex
+  - arguments:
+      field_to_match: value
+      regex: "^(va)l(ue)$"
+    should_pass: true
+    expected: va
+    description: Return capture group 1 only and ignore the other groups
+  - arguments:
+      field_to_match: value
+      regex: "value"
+    should_pass: false
+    description: Fail at runtime when the regex has no capture group

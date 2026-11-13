@@ -4,6 +4,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+from copy import deepcopy
 import glob
 import os
 from importlib import reload
@@ -420,6 +421,47 @@ def test_update_user_allowed(db_setup, rbac_context, user_id, context, current_u
     assert result['affected_items'][0]['id'] == int(user_id)
 
 
+@pytest.mark.parametrize('user_id, current_user, context, denied', [
+    # A run_as account (flag on): its run_as token is held to every role, those not created yet included.
+    ('100', 'administrator', _white_role_update(set()), None),
+    ('100', 'administrator', _white_role_update(RUN_AS_REACHABLE), None),
+    # An account without the flag: its run_as token is held to the account's own roles.
+    ('101', 'normal', _white_role_update(set()), {103, 104, 105}),
+])
+def test_update_user_run_as_token_is_not_its_own_account(db_setup, rbac_context, user_id, current_user, context,
+                                                         denied):
+    """A run_as token names the shared account it logged in through, not the end user who holds it.
+
+    Its roles are only those the authorization context resolved to, so resetting the password of that
+    account is resetting someone else's: exempting it would hand the account, and every role it reaches,
+    to anyone mapped to a role with 'security:update' over it.
+    """
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.update_user(user_id=[user_id], password='Password1234', current_user=current_user, run_as=True)
+
+    assert exc.value.code == 4000
+    if denied is not None:
+        assert exc.value.ids == denied
+
+
+@pytest.mark.parametrize('user_id, current_user, context', [
+    ('100', 'administrator', EVERY_ROLE_UPDATE),
+    ('101', 'normal', _white_role_update({103, 104, 105})),
+])
+def test_update_user_run_as_token_with_the_roles(db_setup, rbac_context, user_id, current_user, context):
+    """A run_as token that covers what the account reaches may reset its password, like any other caller."""
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    result = security.update_user(user_id=[user_id], password='Password1234', current_user=current_user,
+                                  run_as=True).to_dict()
+
+    assert result['affected_items'][0]['id'] == int(user_id)
+
+
 def test_update_user_black_mode_honours_a_deny(db_setup, rbac_context):
     """In black mode everything is allowed but an explicit deny, which still refuses the reset."""
     security, _, _ = db_setup
@@ -470,3 +512,194 @@ def test_update_rule_name_needs_no_role(db_setup, rbac_context):
     result = security.update_rule(rule_id=['103'], name='renamed').to_dict()
 
     assert result['affected_items'][0]['name'] == 'renamed'
+
+
+# Policy 106 is linked to role 105 only; policy 101 to roles 102, 104 and 105 (schema_security_test.sql).
+ESCALATING_POLICY_BODY = {'actions': ['security:read', 'security:update'],
+                          'resources': ['role:id:*', 'user:id:*'], 'effect': 'allow'}
+
+
+def _white_role_delete(role_ids):
+    """RBAC context of a white-mode caller holding 'security:delete' over the given roles only."""
+    return {'rbac_mode': 'white',
+            'security:delete': {f'role:id:{role_id}': 'allow' for role_id in role_ids}}
+
+
+def _policy_body(security, policy_id):
+    with security.PoliciesManager() as pm:
+        return pm.get_policy_id(policy_id)['policy']
+
+
+@pytest.mark.parametrize('context', [
+    _white_role_update(set()),
+    {'rbac_mode': 'black', 'security:update': {'role:id:105': 'deny'}},
+])
+def test_update_policy_body_requires_the_linked_roles(db_setup, rbac_context, context):
+    """Rewriting a policy's body changes what every linked role grants, so it needs 'security:update' over each.
+
+    Without it, update over a policy linked to one's own role is enough to grant oneself 'security:update'
+    over every role and user, and then link 'administrator' to oneself.
+    """
+    security, _, _ = db_setup
+    before = _policy_body(security, 106)
+    rbac_context(context)
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.update_policy(policy_id=['106'], policy=deepcopy(ESCALATING_POLICY_BODY))
+
+    assert exc.value.code == 4000
+    assert exc.value.ids == {105}
+    assert _policy_body(security, 106) == before
+
+
+def test_update_policy_body_lists_every_missing_role(db_setup, rbac_context):
+    """All or nothing: covering some of the linked roles is not enough, and the refusal names the rest."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_update({102}))
+
+    with pytest.raises(WazuhPermissionError) as exc:
+        security.update_policy(policy_id=['101'], policy=deepcopy(ESCALATING_POLICY_BODY))
+
+    assert exc.value.ids == {104, 105}
+
+
+def test_update_policy_body_with_the_linked_roles(db_setup, rbac_context):
+    """A caller that could link the policy to its roles may rewrite its body."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_update({105}))
+
+    result = security.update_policy(policy_id=['106'], policy=deepcopy(ESCALATING_POLICY_BODY)).to_dict()
+
+    assert result['affected_items'][0]['id'] == 106
+    assert _policy_body(security, 106)['resources'] == ESCALATING_POLICY_BODY['resources']
+
+
+def test_update_policy_name_needs_no_role(db_setup, rbac_context):
+    """A rename does not change what the policy grants, so it is never refused over roles."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_update(set()))
+
+    result = security.update_policy(policy_id=['106'], name='renamed').to_dict()
+
+    assert result['affected_items'][0]['name'] == 'renamed'
+
+
+@pytest.mark.parametrize('context', [
+    _white_role_delete(set()),
+    {'rbac_mode': 'black', 'security:delete': {'role:id:105': 'deny'}},
+])
+def test_remove_policies_requires_deleting_from_the_linked_roles(db_setup, rbac_context, context):
+    """Deleting a policy unlinks it from every role it is on, and dropping a deny widens those roles.
+
+    It therefore asks for what `remove_role_policy` asks: 'security:delete' over each linked role. A refused
+    policy fails on its own and is kept.
+    """
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    result = security.remove_policies(policy_ids=['106']).to_dict()
+
+    assert result['affected_items'] == []
+    assert list(result['failed_items'].keys())[0].code == 4000
+    with security.PoliciesManager() as pm:
+        assert isinstance(pm.get_policy_id(106), dict)
+
+
+def test_remove_policies_with_the_linked_roles(db_setup, rbac_context):
+    """A caller that could unlink the policy from its roles may delete it."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete({105}))
+
+    result = security.remove_policies(policy_ids=['106']).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [106]
+
+
+def test_remove_policies_reserved_is_still_refused_as_reserved(db_setup, rbac_context):
+    """A reserved policy keeps its own refusal (4008), not a role one."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete(set()))
+
+    result = security.remove_policies(policy_ids=['1']).to_dict()
+
+    assert list(result['failed_items'].keys())[0].code == 4008
+
+
+def test_remove_policies_unlinked_needs_no_role(db_setup, rbac_context):
+    """A policy on no role grants nothing to anyone, so deleting it asks for no role."""
+    security, _, _ = db_setup
+    added = security.add_policy(name='unlinked', policy={'actions': ['agent:read'], 'resources': ['agent:id:001'],
+                                                         'effect': 'allow'}).to_dict()
+    policy_id = added['affected_items'][0]['id']
+    rbac_context(_white_role_delete(set()))
+
+    result = security.remove_policies(policy_ids=[str(policy_id)]).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [policy_id]
+
+
+# Rule 103 is linked to role 103 only, and rule 104 to role 104 only (schema_security_test.sql).
+@pytest.mark.parametrize('context', [
+    _white_role_delete(set()),
+    {'rbac_mode': 'black', 'security:delete': {'role:id:103': 'deny'}},
+])
+def test_remove_rules_requires_deleting_from_the_linked_roles(db_setup, rbac_context, context):
+    """Deleting a rule unlinks it from every role it is on, and dropping a deny role widens its users.
+
+    It therefore asks for what `remove_role_rule` asks: 'security:delete' over each linked role. A refused
+    rule fails on its own, is kept and stays linked.
+    """
+    security, _, _ = db_setup
+    rbac_context(context)
+
+    result = security.remove_rules(rule_ids=['103']).to_dict()
+
+    assert result['affected_items'] == []
+    assert list(result['failed_items'].keys())[0].code == 4000
+    with security.RulesManager() as rum:
+        assert rum.get_rule(103)['roles'] == [103]
+
+
+def test_remove_rules_refuses_only_the_rules_of_uncovered_roles(db_setup, rbac_context):
+    """In one request, the rule whose role is covered is deleted and the other is kept."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete({104}))
+
+    result = security.remove_rules(rule_ids=['103', '104']).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [104]
+    assert list(result['failed_items'].keys())[0].code == 4000
+    with security.RulesManager() as rum:
+        assert rum.get_rule(103)['roles'] == [103]
+
+
+def test_remove_rules_with_the_linked_roles(db_setup, rbac_context):
+    """A caller that could unlink the rule from its roles may delete it."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete({103}))
+
+    result = security.remove_rules(rule_ids=['103']).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [103]
+
+
+def test_remove_rules_reserved_is_still_refused_as_reserved(db_setup, rbac_context):
+    """A reserved rule keeps its own refusal (4008), not a role one."""
+    security, _, _ = db_setup
+    rbac_context(_white_role_delete(set()))
+
+    result = security.remove_rules(rule_ids=['1']).to_dict()
+
+    assert list(result['failed_items'].keys())[0].code == 4008
+
+
+def test_remove_rules_unlinked_needs_no_role(db_setup, rbac_context):
+    """A rule on no role maps nobody to anything, so deleting it asks for no role."""
+    security, _, _ = db_setup
+    added = security.add_rule(name='unlinked', rule={'MATCH': {'definition': 'unlinkedRule'}}).to_dict()
+    rule_id = added['affected_items'][0]['id']
+    rbac_context(_white_role_delete(set()))
+
+    result = security.remove_rules(rule_ids=[str(rule_id)]).to_dict()
+
+    assert [item['id'] for item in result['affected_items']] == [rule_id]

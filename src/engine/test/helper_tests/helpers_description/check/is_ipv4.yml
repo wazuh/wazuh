@@ -1,0 +1,60 @@
+# Name of the helper function
+name: is_ipv4
+
+metadata:
+  description: |
+    Checks whether the target string is a valid IPv4 address.
+
+    Behavior:
+    - The target must be a string; it is parsed with `inet_pton(AF_INET)`, so it must be a strict dotted
+      quad: four decimal octets from 0 to 255, with no leading zeros, no surrounding whitespace and no prefix
+      length.
+    - Every syntactically valid address passes, private, loopback and reserved ranges included.
+    - No arguments are accepted.
+
+    Build errors:
+    - The target is a schema field whose type is neither `ip` nor an IP-compatible string type (keyword, text,
+      wildcard and the like); date, binary, numeric and object fields are rejected.
+    - Any argument is given.
+
+    Notes:
+    - `in_cidr` uses a more lenient parser (leading zeros and whitespace are accepted), so it can accept
+      strings that this helper rejects.
+    - `is_public_ip` excludes the private and loopback ranges.
+  group: network
+  fails_when:
+    - The target field does not exist.
+    - The target field is not a string.
+    - The string is not a valid IPv4 address (an IPv6 address included).
+
+helper_type: check
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - target_field: 3002:0bd6:0000:0000:0000:ee00:0033:6778
+    should_pass: false
+    description: An IPv6 address is not an IPv4 address.
+  - target_field: 127.0.0.1
+    should_pass: true
+    description: The loopback address is a valid IPv4 address.
+  - target_field: 192.168.0.0
+    should_pass: true
+    description: A private network address is a valid IPv4 address.
+  - target_field: 8.8.8.8
+    should_pass: true
+    description: A public address is a valid IPv4 address.
+  - target_field: 256.1.1.1
+    should_pass: false
+    description: An octet above 255 is not valid.
+  - target_field: 10.0.0.1/8
+    should_pass: false
+    description: A prefix length is not part of an address.
+  - target_field: 3232235777
+    should_pass: false
+    description: The target field is a number, not a string.

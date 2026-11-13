@@ -35,19 +35,23 @@ These apply to every route on `engine-api-http.sock`:
 - Validation failures are 400. A handler whose backing component is gone answers 500 with
   `Error: Handler is not initialized`; an exception escaping a handler is answered 500 with the plain-text
   body `Internal server error`.
-- A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with 413 and a
-  plain-text message (`Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`), before any handler runs. This is
-  the only server-wide size limit, whatever the request's `Content-Type`. Routes with their own per-type limits
-  (the content routes) answer their 413 with a JSON body.
-- A request for a path no route serves is answered 404 with the plain-text body `Not found: no such route.`; a
-  path served under another method only is answered 405 with an `Allow` header and the plain-text body
-  `Method not allowed. Allowed: <methods>.` (every route is `POST` except `GET /status`, `GET /content/ioc/state` and `DELETE /logtest`;
-  `HEAD` is answered like `GET` and listed beside it). The same applies on the events socket.
-- One request per connection, on both sockets: every answer carries `Connection: close` and the server closes the
-  connection after it, so a request pipelined behind another on the same connection is not answered: send each
+- A body larger than `analysisd.server_api_payload_max_bytes` (default `0`, unlimited) is answered with 413 and the
+  plain-text message `Payload too large. Max allowed: <n> bytes (<n/1024> KiB).`, decided from the declared
+  `Content-Length` before the body is read. `GET /status` and `POST /metrics/*` are capped at 4096 bytes, or at that
+  limit when it is lower. Routes with their own per-type limits (the content routes) answer their 413 with a JSON body.
+- The server closes the connection after each response, and answers `Expect: 100-continue` with `100 Continue`.
+  Statuses decided before a handler runs carry a JSON body `{"error":"<message>","code":<status>}`: 404 (unknown
+  path), 405 with an `Allow` header (known path, other method; every route is `POST` except `GET /status`,
+  `GET /content/ioc/state` and `DELETE /logtest`), 411 (chunked body), 414 (target too long), 431 (headers too
+  large), 400 (`Malformed HTTP request`, or `Request body not received in time` when the body does not arrive within
+  10 s; a different body from a handler's 400), 503 (`Server busy`: every request worker busy and the queue full; a
+  connection or session limit reached; or the engine is stopping) and 504 (no answer within 300 s). The 413 above is
+  the one answer decided before a handler that carries a `text/plain` body rather than JSON; only a declared length
+  that no buffer can hold gets a 413 with the JSON body.
+- One request per connection: a request pipelined behind another on the same connection is not answered, so send each
   request on its own connection (clients that do not pipeline, such as `curl` and `httpx`, open a new one after
-  `Connection: close` on their own). Do not half-close the
-  connection (`shutdown(SHUT_WR)`) after sending a request: the server then sends no answer.
+  `Connection: close` on their own). Do not half-close the connection (`shutdown(SHUT_WR)`) after sending a request:
+  the server then sends no answer.
 - Send `Content-Type: application/json`. The server does not require it, but `curl -d` otherwise labels the body
   `application/x-www-form-urlencoded`.
 

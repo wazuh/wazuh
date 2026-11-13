@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <chrono>
 #include <thread>
 #include <vector>
 
@@ -122,4 +123,60 @@ TEST_F(AuthGateTest, ConcurrentReportsAndReleasesNeverStrandUnpaused)
 
     gate.reportAuthFailure(); // No release after this one.
     EXPECT_TRUE(gate.paused());
+}
+
+TEST_F(AuthGateTest, AStreamOnAnOlderWindowCannotCloseANewerOne)
+{
+    const auto t0 = std::chrono::steady_clock::time_point {};
+    const auto first = m_gate.joinUnknownAgentWindow(t0, std::chrono::seconds {30});
+    ASSERT_TRUE(m_gate.closeUnknownAgentWindow()); // An accepted request ends it.
+
+    const auto second = m_gate.joinUnknownAgentWindow(t0 + std::chrono::seconds {1}, std::chrono::seconds {30});
+
+    EXPECT_TRUE(second.opened);
+    EXPECT_NE(first.generation, second.generation);
+    EXPECT_FALSE(m_gate.unknownAgentWindowCurrent(first.generation));
+    EXPECT_FALSE(m_gate.closeUnknownAgentWindow(first.generation));
+    EXPECT_TRUE(m_gate.unknownAgentWindowOpen());
+    EXPECT_TRUE(m_gate.closeUnknownAgentWindow(second.generation));
+}
+
+TEST_F(AuthGateTest, AnExpiredWindowIsRejoinedWhileUnknownAgentKeepsComing)
+{
+    const auto t0 = std::chrono::steady_clock::time_point {};
+    const auto bound = std::chrono::seconds {30};
+    const auto first = m_gate.joinUnknownAgentWindow(t0, bound);
+    m_gate.noteUnknownAgent(t0 + std::chrono::seconds {20});
+
+    const auto rejoined = m_gate.joinUnknownAgentWindow(t0 + std::chrono::seconds {40}, bound);
+
+    EXPECT_FALSE(rejoined.opened);
+    EXPECT_EQ(first.generation, rejoined.generation);
+    EXPECT_EQ(first.deadline, rejoined.deadline);
+}
+
+TEST_F(AuthGateTest, AnExpiredWindowWithoutUnknownAgentForABoundIsReplaced)
+{
+    const auto t0 = std::chrono::steady_clock::time_point {};
+    const auto bound = std::chrono::seconds {30};
+    const auto first = m_gate.joinUnknownAgentWindow(t0, bound);
+
+    const auto later = t0 + std::chrono::seconds {90};
+    const auto fresh = m_gate.joinUnknownAgentWindow(later, bound);
+
+    EXPECT_TRUE(fresh.opened);
+    EXPECT_NE(first.generation, fresh.generation);
+    EXPECT_EQ(later + bound, fresh.deadline);
+}
+
+TEST_F(AuthGateTest, ReleaseDropsAnOpenWindow)
+{
+    const auto t0 = std::chrono::steady_clock::time_point {};
+    m_gate.joinUnknownAgentWindow(t0, std::chrono::seconds {30});
+    m_gate.reportAuthFailure();
+
+    m_gate.release();
+
+    EXPECT_FALSE(m_gate.unknownAgentWindowOpen());
+    EXPECT_TRUE(m_gate.joinUnknownAgentWindow(t0 + std::chrono::seconds {1}, std::chrono::seconds {30}).opened);
 }

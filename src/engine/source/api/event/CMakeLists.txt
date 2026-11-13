@@ -4,6 +4,7 @@ set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
 add_library(api_event STATIC
   ${SRC_DIR}/handlers.cpp
+  ${SRC_DIR}/ingestServer.cpp
 )
 target_include_directories(api_event
   PUBLIC
@@ -13,7 +14,8 @@ target_include_directories(api_event
 )
 target_link_libraries(api_event
     PUBLIC
-    api::adapter
+    base
+    httpsrv
     router::irouter
     dumper::iface
     rawevtindexer::irawindexer
@@ -29,6 +31,7 @@ if(ENGINE_BUILD_TEST)
     add_executable(api_event_utest
         ${UNIT_SRC_DIR}/handlers_test.cpp
         ${UNIT_SRC_DIR}/ndJsonParser_test.cpp
+        ${UNIT_SRC_DIR}/ingestServer_test.cpp
     )
     target_include_directories(api_event_utest
         PRIVATE
@@ -39,7 +42,7 @@ if(ENGINE_BUILD_TEST)
         api::event
         router::mocks
         GTest::gtest_main
-        api::adapter::test
+        base::test
         dumper::mocks
         rawevtindexer::mocks
     )

@@ -130,6 +130,7 @@ TEST(EnrollComponentTest, OpenModeSucceedsAgainstFakeManager)
 
     ASSERT_TRUE(hc_enroll(&config, &request, &result));
     EXPECT_EQ(200, result.http_code);
+    EXPECT_TRUE(result.request_sent);
     EXPECT_NE(nullptr, std::strstr(result.body, "\"id\":\"042\""));
     EXPECT_NE(nullptr, std::strstr(result.body, "\"name\":\"agent01\""));
 }

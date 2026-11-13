@@ -2,6 +2,7 @@
 #ifndef CMCONTENT_RULESET_SINK_HPP
 #define CMCONTENT_RULESET_SINK_HPP
 
+#include <atomic>
 #include <memory>
 #include <optional>
 #include <string>
@@ -82,6 +83,16 @@ public:
     void collectOrphanNamespaces() noexcept;
 
     /**
+     * @brief Mark the engine as stopping.
+     *
+     * The engine stops the sync service before the router, so a commit still running can reach a
+     * router that is already shut down. Once this is called, a failed route swap is logged at INFO as
+     * an abort instead of at ERROR; the commit is still rejected and the staging namespace discarded.
+     * Thread-safe; called from the stopping thread while a cycle may run.
+     */
+    void requestShutdown() noexcept;
+
+    /**
      * @copydoc content_manager::IContentSink::beginSession
      */
     content_manager::SessionDecision beginSession(const content_manager::SessionInfo& info) noexcept override;
@@ -143,6 +154,7 @@ private:
     bool m_policyMissing {false};
     std::optional<cm::store::NamespaceId> m_stagingNamespaceId;
     Accumulator m_accumulator;
+    std::atomic<bool> m_shutdownRequested {false}; ///< Set by requestShutdown(); publishes no data.
 };
 
 } // namespace cmcontent
