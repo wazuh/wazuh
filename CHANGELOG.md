@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Removed
+
+- Removed the `df -P` command from the default `ossec.conf` of Linux and Solaris agents and of the manager. ([#41441](https://github.com/wazuh/wazuh/issues/41441))
+
 #### Fixed
 
 - Fixed the removal and purge of the `wazuh-manager` DEB package failing when the installation is incomplete. ([#33339](https://github.com/wazuh/wazuh/issues/33339))
@@ -61,8 +65,11 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Removed the `df -P` command from the default `ossec.conf` of Linux and Solaris agents and of the manager. ([#41441](https://github.com/wazuh/wazuh/issues/41441))
 - Added a workflow that validates the FIM eBPF whodata events of every syscall on several kernels and filesystems. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
+
+#### Removed
+
+- Removed the `df -P` command from the default `ossec.conf` of Linux and Solaris agents and of the manager. ([#41441](https://github.com/wazuh/wazuh/issues/41441))
 
 #### Fixed
 
