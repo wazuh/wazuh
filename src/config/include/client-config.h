@@ -217,6 +217,23 @@ int w_parse_agent_endpoint(const char *raw, char *host, size_t host_size, int *p
                            bool *port_present, char *endpoint, size_t endpoint_size,
                            uint32_t *scope_id);
 
+/* #38492: validation bound for <endpoint>, well under hc_config_t::server_endpoint's
+ * HC_MAX_ENDPOINT (256) so the C++ bridge's strncpy() never truncates a value
+ * that passed validation here. */
+#define AGENT_SERVER_ENDPOINT_MAX_LEN 128
+
+/* #38624: bound for the host component, matching hc_config_t::server_host (HC_MAX_HOST,
+ * 256) for the same reason. */
+#define AGENT_SERVER_HOST_MAX_LEN 255
+
+/**
+ * @brief Read an <enrollment> block into logr->enrollment.
+ *
+ * Shared by <agent> (client-config.c) and the legacy <client> block
+ * (legacy-client-config.c), which carry the same block under two names.
+ */
+int Read_Agent_Enrollment(XML_NODE node, agent *logr);
+
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10
 
