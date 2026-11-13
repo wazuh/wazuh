@@ -260,7 +260,7 @@ namespace
 } // namespace
 
 /**
- * With the real Client behind the module, GET /metrics publishes the 51 metrics of EACH of the two buckets by
+ * With the real Client behind the module, GET /metrics publishes the 52 metrics of EACH of the two buckets by
  * pull -- `inventory` and `agent-state`, under the exact prefixes `indexer_client.bucket.inventory_sync_server.
  * {inventory,agent_state}.` -- plus the sync.indexer.* totals read from the `inventory` bucket: after one
  * session, one /stats and one deletion each bucket accepted its ops and `sync.indexer.bulk.requests` IS the

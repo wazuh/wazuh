@@ -487,7 +487,7 @@ by stage:
 | Pipeline | `sync.pipeline.shed.total` (byte-cap refusals), `sync.agent_busy.total` (per-agent cap refusals, pipeline and lane alike), `sync.shard.<i>.depth`/`.bytes` (live gauges per worker shard), `sync.session.duration.bulk`/`.immediate` (enqueue-to-response histograms, µs) |
 | Group commit | `sync.bulk.flushes`, `sync.bulk.bytes.total`, `sync.bulk.sessions.total`, `sync.bulk.sessions.failed`, `sync.bulk.flush.failures.{documents,exhausted,other}` |
 | Indexer requests | `sync.indexer.bulk.requests`, `sync.indexer.bulk.bytes.total`, `sync.indexer.conflict.retries`, `sync.indexer.conflict.exhausted` |
-| Indexer client buckets | `indexer_client.bucket.inventory_sync_server.inventory.*` and `….agent_state.*` — the library's 51 metrics per bucket, by pull |
+| Indexer client buckets | `indexer_client.bucket.inventory_sync_server.inventory.*` and `….agent_state.*` — the library's 52 metrics per bucket, by pull |
 | Deletion sweep | `sync.agent_delete.sweep.{runs,failures,residual,dropped,forgotten}` — the [post-deletion sweep](#the-post-deletion-sweep) |
 | Documents | `sync.docs.indexed`, `sync.docs.skipped`, `sync.bytes.ingested` |
 | VD lane | `vd.lane.depth` (gauge), `vd.lane.time` (enqueue-to-response histogram, all outcomes), `vd.capacity.503.total`, `vd.retry_after.total`, `vd.offset_mismatch.total`, `vd.scan.duration` (histogram), `vd.scans.ok`/`.failed`/`.skipped` |

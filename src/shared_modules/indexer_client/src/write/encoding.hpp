@@ -75,7 +75,7 @@ namespace indexer_client::detail::write
         "cur.put(p[last], k[1]); } "
         "} else { ctx.op = 'none' }";
 
-    /// The action lines of the kinds without `_id` (IndexAutoId, IndexDataStream), which depend only on
+    /// The action lines of the ops without `_id` (IndexAutoId, IndexDataStream without an id), which depend only on
     /// kind and index, shared by every op of the write path that owns the table (WritePath::heads()). Append-only, at
     /// most CAPACITY entries in fixed slots (a line never moves and is never freed before the table: an op holds a
     /// plain pointer to it, no reference count). A full table refuses new entries and the op builds its own line. The
@@ -134,7 +134,7 @@ namespace indexer_client::detail::write
     };
 
     /// The wire lines of one op: the action line (and, for the update kinds and Delete, every line) in `head`
-    /// or, for IndexAutoId and IndexDataStream given a HeadTable, in `cachedHead` (the table's line
+    /// or, for IndexAutoId and IndexDataStream without `_id` given a HeadTable, in `cachedHead` (the table's line
     /// shared by every op of that kind and index; `head` then stays empty), and `body` the moved-in document of the
     /// kinds that carry it verbatim (empty otherwise). On the wire the op is headView() + `body` + '\n' (the '\n' only
     /// when `body` is not empty).
@@ -169,6 +169,7 @@ namespace indexer_client::detail::write
     ///   Index                {"index":{"_index":"<i>","_id":"<id>"}}\n<body>\n
     ///   IndexAutoId          {"index":{"_index":"<i>"}}\n<body>\n
     ///   IndexDataStream      {"create":{"_index":"<i>"}}\n<body>\n
+    ///   IndexDataStream + id {"create":{"_index":"<i>","_id":"<id>"}}\n<body>\n   (never shared, see below)
     ///   Delete               {"delete":{"_index":"<i>","_id":"<id>"}}\n
     ///   IndexVersionedScript {"update":{"_index":"<i>","_id":"<id>"<R>}}\n{"script":{"source":"<the v1 guard>","lang":
     ///                        "painless","params":{"doc_version":<version>,"doc":<body>}},"upsert":<body>,
@@ -185,12 +186,12 @@ namespace indexer_client::detail::write
     /// create or delete line with it is a 400 for the whole request); with Success the line is today's (v1 parity).
     /// <P> = the preserved paths in the given order, each as an array of its segments: [["case"],["a","b"]] (the
     /// segment alphabet needs no escaping). `_id` is escaped as the v1 escapes it. The result splits those bytes in
-    /// two: for Index (Replace) `head` is the action line with its '\n' (built with an exact reserve); for
-    /// IndexAutoId and IndexDataStream, given a HeadTable, that line (it depends only on kind and index) is
-    /// `cachedHead`, taken from the per-thread cache over the table (see below): on a hit (same table,
-    /// kind, index equal byte for byte) neither isSafeIndexName runs nor a line is built; on a miss the index is
+    /// two: for Index (Replace) and IndexDataStream with `_id` `head` is the action line with its '\n' (built with an
+    /// exact reserve); for IndexAutoId and IndexDataStream without `_id`, given a HeadTable, that line (it depends only
+    /// on kind and index) is `cachedHead`, taken from the per-thread cache over the table (see below): on a hit (same
+    /// table, kind, index equal byte for byte) neither isSafeIndexName runs nor a line is built; on a miss the index is
     /// validated as always and, once the op is valid, the line is found or interned (an invalid index never enters
-    /// the table nor the cache). For those three kinds `body` is `op.body`
+    /// the table nor the cache). For those kinds `body` is `op.body`
     /// itself, moved in with its buffer and capacity, never copied nor
     /// re-reserved; for the update kinds and Delete `head` holds every line (the update kinds copy the document twice,
     /// which is their wire format) and `body` is empty. On success `op.body` is left empty (moved from, or its
@@ -198,7 +199,9 @@ namespace indexer_client::detail::write
     /// the field first in `reason`
     /// ("index: ...", "id: ...", "version: ...", "body: ...", "mode: ...", "onConflict.retryOnConflict: ..."):
     ///   - unsafe or empty index; missing `_id` where required (Index, Delete, IndexVersionedScript) or present
-    ///     where the kind has none (IndexAutoId, IndexDataStream); `version` not a canonical integer in
+    ///     where the kind has none (IndexAutoId); for IndexDataStream (optional `_id`) one longer than 512 bytes
+    ///     ("id: longer than 512 bytes") or not valid UTF-8 ("id: not valid UTF-8"; that kind only: Index and Delete
+    ///     have no bound); `version` not a canonical integer in
     ///     [0, INT64_MAX] (no leading zero) for IndexVersionedScript or non-empty for any other kind; empty body or a
     ///     '\n' in it for the kinds with a body (the '\n' is not searched with `trustedBody`,
     ///     BucketSpec::trustedBodies: the producer guarantees compact JSON and a stray '\n' fails that bulk with 400),
@@ -214,10 +217,12 @@ namespace indexer_client::detail::write
     /// InvalidState "internal error: ..." when the precomputed size and the encoded lines disagree (a library bug,
     /// logged at ERROR and counted by detail::internalError; the callers count it with the bucket's InvalidArgument
     /// refusals, as the op never entered the bucket). On failure `op` is untouched.
-    /// With `heads`, the line of IndexAutoId / IndexDataStream comes from that table through a per-thread
-    /// cache of THREAD_CACHE entries keyed by (heads->generation(), kind, index) — a hit validates neither the index
-    /// nor builds a line; a miss validates as always, then finds or interns the line in the table (a full table: the op
-    /// keeps its own `head`) — and `cachedHead` points at it. Without `heads` every op builds its own `head`.
+    /// With `heads`, the line of IndexAutoId / IndexDataStream without `_id` comes from that table through a
+    /// per-thread cache of THREAD_CACHE entries keyed by (heads->generation(), kind, index) — a hit validates neither
+    /// the index nor builds a line; a miss validates as always, then finds or interns the line in the table (a full
+    /// table: the op keeps its own `head`) — and `cachedHead` points at it. An IndexDataStream with `_id` never reads
+    /// the cache nor the table and never enters them: it always builds its own `head` (`cachedHead` null). Without
+    /// `heads` every op builds its own `head`.
     Outcome<Encoded>
     encode(Op&& op, const ConflictPolicy& effective, bool trustedBody = false, HeadTable* heads = nullptr);
 

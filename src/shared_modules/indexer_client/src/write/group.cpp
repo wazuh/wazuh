@@ -163,8 +163,9 @@ namespace indexer_client::detail::write
         }
         // As submit (writer.cpp): encode() only moved the body out, so the tag and the key fields are still `op`'s.
         std::string tag = std::move(op.tag);
-        const bool hasKey = bucket->spec().ordered && !op.id.empty(); // `_id` iff the kind has one.
+        const bool hasKey = bucket->spec().ordered && !op.id.empty(); // `_id` iff the op has one.
         const std::uint64_t keyHash = hasKey ? orderedKeyHash(op.index, op.id) : 0;
+        const bool dedupOnConflict = op.kind == Op::Kind::IndexDataStream && !op.id.empty();
 
         const auto& overflow = bucket->spec().overflow;
         const auto now = std::chrono::steady_clock::now();
@@ -187,6 +188,7 @@ namespace indexer_client::detail::write
         state->tag = std::move(tag);
         state->hasKey = hasKey;
         state->keyHash = keyHash;
+        state->dedupOnConflict = dedupOnConflict;
         state->owner = bucket.get(); // For the owner check only.
         state->group = group;
 

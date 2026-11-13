@@ -86,6 +86,7 @@ namespace
             out.push_back(std::string("dropped.") + ic::toString(static_cast<ic::DropCause>(i)));
         }
         out.push_back("ok");
+        out.push_back("deduplicated");
         for (std::size_t i = 0; i < static_cast<std::size_t>(ic::FailCause::Count); ++i)
         {
             out.push_back(std::string("failed.") + ic::toString(static_cast<ic::FailCause>(i)));
@@ -198,7 +199,7 @@ TEST(MetricsCatalogTest, CatalogNamesAreSaneAndStable)
     m.buckets = {bucket("states.v2"), bucket("---")};
     std::map<std::string, ic::MetricKind> kinds;
     const auto zero = collect(m, &kinds);
-    ASSERT_EQ(zero.size(), 2u * 51u + 3u);
+    ASSERT_EQ(zero.size(), 2u * 52u + 3u);
     std::set<std::string> expected;
     for (const auto* b : {"states_v2", "_"})
     {
@@ -222,6 +223,7 @@ TEST(MetricsCatalogTest, CatalogNamesAreSaneAndStable)
     EXPECT_EQ(names, expected);
     EXPECT_EQ(kinds.at("indexer_client.bucket.vd_scanner.states_v2.retained_bytes"), ic::MetricKind::Gauge);
     EXPECT_EQ(kinds.at("indexer_client.bucket.vd_scanner.states_v2.rejected.queue_full"), ic::MetricKind::Counter);
+    EXPECT_EQ(kinds.at("indexer_client.bucket.vd_scanner.states_v2.deduplicated"), ic::MetricKind::Counter);
     EXPECT_EQ(kinds.at("indexer_client.client.vd_scanner.callback_max_duration_ms"), ic::MetricKind::Gauge);
 
     // The same names after every counter moved.

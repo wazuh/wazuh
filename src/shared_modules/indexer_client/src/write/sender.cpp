@@ -106,6 +106,7 @@ namespace indexer_client::detail::write
                 , nodeWindowMax(std::max<std::uint32_t>(1, config.nodeWindowMax))
                 , bulkMinBytes(std::max<std::uint64_t>(1, config.bulkMinBytes))
                 , ambiguousRetryWindow(config.ambiguousRetryWindow)
+                , logSummaryInterval(config.logSummaryInterval)
             {
                 const auto count = nodes ? nodes->size() : 0;
                 urls.reserve(count);
@@ -139,6 +140,7 @@ namespace indexer_client::detail::write
             const std::uint32_t nodeWindowMax;   ///< The AIMD window's cap and start.
             const std::uint64_t bulkMinBytes;    ///< The bulk target's floor.
             const Duration ambiguousRetryWindow; ///< How long an ambiguous batch stays pinned to its node.
+            const Duration logSummaryInterval;   ///< The dedup WARN's quiet interval.
             std::vector<std::string> urls;
             std::vector<std::string> hosts;
 
@@ -639,6 +641,9 @@ namespace indexer_client::detail::write
                 return;
             }
             std::vector<RequeueOp> retry;
+            // The 409 version_conflict items of ops with `_id` of IndexDataStream resolved Ok (the response's count:
+            // late ones included).
+            std::uint64_t deduplicated = 0;
             // The resolutions of this bulk (Ok and Permanent items), settled together below.
             std::vector<BulkItem> settle;
             settle.reserve(batch.ops.size());
@@ -660,6 +665,10 @@ namespace indexer_client::detail::write
                                                                   std::move(item.itemErrorType),
                                                                   item.reason}});
                             break;
+                        }
+                        if (op->dedupOnConflict)
+                        {
+                            ++deduplicated;
                         }
                         [[fallthrough]];
                     case ItemVerdict::Ok:
@@ -702,6 +711,11 @@ namespace indexer_client::detail::write
             late += requeueOps(
                 shared, path, batch.bucket, std::move(retry), spec(true, RequeueSpec::Delay::Backoff, clear), deferred);
             countLate();
+            if (deduplicated != 0 && batch.bucket)
+            {
+                batch.bucket->noteDedupResponse(
+                    deduplicated, std::chrono::steady_clock::now(), shared.logSummaryInterval);
+            }
         }
 
         /// A completion that threw after the slot was released: what is still unresolved goes back to the lane with an
@@ -813,7 +827,7 @@ namespace indexer_client::detail::write
             // The indexer may have applied this bulk; a bucket with onAmbiguous5xx = Fail resolves it
             // Failed(Ambiguous) instead of resending it. Ambiguous: a 500, 502 or 504 (503 stays Retry) and a response
             // over maxResponseBytes (the node answered: the bulk may be applied, so it is never Split and resent in
-            // halves; the generated ids of an index without `_id` would duplicate). Decided here, before the slot
+            // halves; the generated ids of ops without `_id` would duplicate). Decided here, before the slot
             // accounting (no Split counted) and before the try (no allocation), so an exception after it resolves
             // instead of requeuing: a Fail batch is never resent.
             const bool responseTooLarge = result.cause == TransportCause::ResponseTooLarge;

@@ -237,7 +237,23 @@ TEST_F(WriteTest, EncodingRejectsInvalid)
         {"Delete without _id", make(ic::Op::Kind::Delete, "i", "", ""), "id:"},
         {"IndexVersionedScript without _id", make(ic::Op::Kind::IndexVersionedScript, "i", "", "{}", "1"), "id:"},
         {"IndexAutoId with _id", make(ic::Op::Kind::IndexAutoId, "i", "x", "{}"), "id:"},
-        {"IndexDataStream with _id", make(ic::Op::Kind::IndexDataStream, "i", "x", "{}"), "id:"},
+        // IndexDataStream takes an optional `_id` of at most 512 bytes of valid UTF-8.
+        {"IndexDataStream _id of 513 bytes",
+         make(ic::Op::Kind::IndexDataStream, "i", std::string(513, 'a'), "{}"),
+         "id: longer than 512 bytes"},
+        {"IndexDataStream _id 0xff", make(ic::Op::Kind::IndexDataStream, "i", "\xff", "{}"), "id: not valid UTF-8"},
+        {"IndexDataStream _id truncated sequence",
+         make(ic::Op::Kind::IndexDataStream, "i", "a\xc3", "{}"),
+         "id: not valid UTF-8"},
+        {"IndexDataStream _id overlong",
+         make(ic::Op::Kind::IndexDataStream, "i", "\xc0\xaf", "{}"),
+         "id: not valid UTF-8"},
+        {"IndexDataStream _id surrogate",
+         make(ic::Op::Kind::IndexDataStream, "i", "\xed\xa0\x80", "{}"),
+         "id: not valid UTF-8"},
+        {"IndexDataStream _id above U+10FFFF",
+         make(ic::Op::Kind::IndexDataStream, "i", "\xf4\x90\x80\x80", "{}"),
+         "id: not valid UTF-8"},
         {"versioned without version", make(ic::Op::Kind::IndexVersionedScript, "i", "1", "{}", ""), "version:"},
         {"version not numeric", make(ic::Op::Kind::IndexVersionedScript, "i", "1", "{}", "1a"), "version:"},
         {"version negative", make(ic::Op::Kind::IndexVersionedScript, "i", "1", "{}", "-1"), "version:"},
@@ -296,11 +312,25 @@ TEST_F(WriteTest, EncodingRejectsInvalid)
     EXPECT_EQ(s.charge, 0u);
     expectInvariants(s);
 
-    // The boundaries are valid: INT64_MAX, zero, every allowlisted index character.
+    // The boundaries are valid: INT64_MAX, zero, every allowlisted index character; an IndexDataStream with an `_id`
+    // of one byte and of 512 bytes; the 512-byte bound is IndexDataStream's alone (Index takes a longer one).
     const std::vector<ic::Op> good {
         make(ic::Op::Kind::IndexVersionedScript, "i", "1", "{}", "9223372036854775807"),
         make(ic::Op::Kind::IndexVersionedScript, "i", "1", "{}", "0"),
         make(ic::Op::Kind::Index, "aZ09._*-", "1", "{}"),
+        make(ic::Op::Kind::IndexDataStream, "i", "x", "{}"),
+        make(ic::Op::Kind::IndexDataStream, "i", std::string(512, 'a'), "{}"),
+        make(ic::Op::Kind::Index, "i", std::string(513, 'a'), "{}"),
+        // Valid multibyte UTF-8: 2, 3 and 4 bytes, and the valid edges of the E0/ED/F0/F4 ranges.
+        make(ic::Op::Kind::IndexDataStream, "i", "\xc3\xb1", "{}"),         // U+00F1
+        make(ic::Op::Kind::IndexDataStream, "i", "\xe2\x82\xac", "{}"),     // U+20AC
+        make(ic::Op::Kind::IndexDataStream, "i", "\xf0\x9f\x98\x80", "{}"), // U+1F600
+        make(ic::Op::Kind::IndexDataStream, "i", "\xe0\xa0\x80", "{}"),     // U+0800, lowest 3-byte
+        make(ic::Op::Kind::IndexDataStream, "i", "\xed\x9f\xbf", "{}"),     // U+D7FF, below the surrogates
+        make(ic::Op::Kind::IndexDataStream, "i", "\xee\x80\x80", "{}"),     // U+E000, above the surrogates
+        make(ic::Op::Kind::IndexDataStream, "i", "\xf0\x90\x80\x80", "{}"), // U+10000, lowest 4-byte
+        make(ic::Op::Kind::IndexDataStream, "i", "\xf4\x8f\xbf\xbf", "{}"), // U+10FFFF
+        make(ic::Op::Kind::IndexDataStream, "i", std::string(510, 'a') + "\xc3\xb1", "{}"), // 512 bytes, multibyte last
     };
     for (const auto& op : good)
     {
@@ -311,6 +341,88 @@ TEST_F(WriteTest, EncodingRejectsInvalid)
     EXPECT_EQ(sink->resolveHeld(), good.size());
     ASSERT_TRUE(results->waitTotal(good.size()));
     EXPECT_EQ(results->total(), good.size()) << "no refused submit ever calls back";
+    expectInvariants(stats("b"));
+}
+
+// An IndexDataStream with an `_id` is a `create` with its own action line, the `_id` escaped as any other (quote and
+// backslash), never a shared line (no HeadTable entry, no cachedHead); 512 bytes is valid. Without an `_id` the line
+// is today's byte for byte, and shared. Checked on encode() (with and without a table) and through
+// submit (the bytes handed to the sink and the charge). Mutant: the `_id` left out of the line.
+TEST_F(WriteTest, EncodingDataStreamId)
+{
+    const std::string doc = R"({"n":1})";
+    const std::string longId(512, 'a');
+    const std::vector<Case> cases {
+        {"id x",
+         make(ic::Op::Kind::IndexDataStream, "i", "x", doc),
+         "{\"create\":{\"_index\":\"i\",\"_id\":\"x\"}}\n" + doc + "\n"},
+        {"id with quote and backslash",
+         make(ic::Op::Kind::IndexDataStream, "i", "a\"b\\c", doc),
+         "{\"create\":{\"_index\":\"i\",\"_id\":\"a\\\"b\\\\c\"}}\n" + doc + "\n"},
+        {"id of 512 bytes",
+         make(ic::Op::Kind::IndexDataStream, "i", longId, doc),
+         "{\"create\":{\"_index\":\"i\",\"_id\":\"" + longId + "\"}}\n" + doc + "\n"},
+        {"no id", make(ic::Op::Kind::IndexDataStream, "i", "", doc), v1Create("i", doc)},
+    };
+    EXPECT_EQ(cases.front().expected, std::string("{\"create\":{\"_index\":\"i\",\"_id\":\"x\"}}\n{\"n\":1}\n"));
+
+    wr::HeadTable table;
+    for (const auto& c : cases)
+    {
+        SCOPED_TRACE(c.name);
+        const bool withId = !c.op.id.empty();
+        {
+            auto copy = c.op;
+            const auto encoded = wr::encode(std::move(copy), ic::ConflictPolicy {});
+            ASSERT_TRUE(encoded.ok()) << encoded.reason;
+            EXPECT_EQ(wireOf(encoded.value), c.expected);
+            EXPECT_EQ(encoded.value.wire(), c.expected.size());
+            EXPECT_EQ(encoded.value.body, doc) << "the body is moved in, as without an _id";
+            EXPECT_EQ(encoded.value.cachedHead, nullptr);
+        }
+        const auto sizeBefore = table.size();
+        auto copy = c.op;
+        const auto shared = wr::encode(std::move(copy), ic::ConflictPolicy {}, false, &table);
+        ASSERT_TRUE(shared.ok()) << shared.reason;
+        EXPECT_EQ(wireOf(shared.value), c.expected);
+        if (withId)
+        {
+            EXPECT_EQ(shared.value.cachedHead, nullptr) << "a line with an _id is never shared";
+            EXPECT_EQ(std::string(shared.value.headView()), c.expected.substr(0, c.expected.size() - doc.size() - 1));
+            EXPECT_EQ(table.size(), sizeBefore) << "a line with an _id is never interned";
+        }
+        else
+        {
+            EXPECT_NE(shared.value.cachedHead, nullptr) << "without an _id the line is shared, as today";
+            EXPECT_EQ(shared.value.cachedHead, table.find(ic::Op::Kind::IndexDataStream, "i"));
+        }
+    }
+
+    // Through submit: the sink receives exactly those bytes, and the charge is their size plus the reserve.
+    ASSERT_NO_FATAL_FAILURE(start());
+    auto sink = installSink();
+    auto c = client("c", {bucketSpec("b", 1u << 20, ic::Overflow::Kind::Reject, 64 * 1024, 1)});
+    auto writer = c->writer("b");
+    std::size_t expectedBatches = 0;
+    for (const auto& k : cases)
+    {
+        SCOPED_TRACE(k.name);
+        const auto before = stats("b").charge;
+        const auto submit = writer->submit(k.op);
+        ASSERT_TRUE(submit.accepted) << ic::toString(submit.cause);
+        ASSERT_TRUE(sink->waitDispatched(++expectedBatches));
+        auto batches = sink->take();
+        ASSERT_EQ(batches.size(), 1u);
+        ASSERT_EQ(batches[0].ops.size(), 1u);
+        EXPECT_EQ(wireOf(*batches[0].ops[0]), k.expected);
+        EXPECT_EQ(batches[0].ops[0]->cachedHead == nullptr, !k.op.id.empty());
+        EXPECT_EQ(batches[0].bytes, k.expected.size());
+        EXPECT_EQ(stats("b").charge - before, k.expected.size() + wr::RESULT_RESERVE);
+        for (const auto& op : batches[0].ops)
+        {
+            m_path->resolve(bucketOf(*op), op, TestSink::ok());
+        }
+    }
     expectInvariants(stats("b"));
 }
 

@@ -48,7 +48,7 @@ The option names are the internal options `wazuh_modules.<name>`. The modulesd b
 | `413` | The batch is split in halves and resent; one operation that is still too large fails |
 | A `2xx` larger than `max_response_bytes` | Split in halves and resent like a `413`, because the three buckets above keep `onAmbiguous5xx = Retry` (the indexer may have applied it, but every operation carries its `_id`); one operation whose answer is still too large fails |
 | Any other `4xx` or a `3xx` | The whole batch fails, not retried |
-| `2xx` | Every item is read on its own: `created`/`updated`/`noop`/`deleted` are success; a delete of a missing document is success; `409` follows the bucket's conflict policy; `429`, `5xx` and `cluster_block_exception` items are retried; any other item error (a mapping rejection, a missing index) fails that operation only and is never retried |
+| `2xx` | Every item is read on its own: `created`/`updated`/`noop`/`deleted` are success; a delete of a missing document is success; `409` follows the bucket's conflict policy (a `409` of a `create` that carries an `_id`, resolved as success, is counted in the bucket's `deduplicated` metric and reported by a WARN at most once per `log_summary_interval_ms`); `429`, `5xx` and `cluster_block_exception` items are retried; any other item error (a mapping rejection, a missing index) fails that operation only and is never retried |
 
 The retry delay is exponential from 1 s to 15 s with jitter. The library README has the full classification (`Response classification and retry lane`, `Ambiguous 5xx`).
 

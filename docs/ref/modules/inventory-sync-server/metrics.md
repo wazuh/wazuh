@@ -126,7 +126,7 @@ group commits; `sync.indexer.bulk.*` counts the real requests those commits prod
 
 ### Indexer client buckets — `indexer_client.bucket.inventory_sync_server.<bucket>.*`
 
-The module publishes, by pull, the 51 metrics of each of its two buckets next to its own, under the
+The module publishes, by pull, the 52 metrics of each of its two buckets next to its own, under the
 bucket name sanitized for a metric name (`-` becomes `_`, `src/shared_modules/indexer_client/src/metrics.cpp`):
 
 | Prefix | Bucket | What travels in it |

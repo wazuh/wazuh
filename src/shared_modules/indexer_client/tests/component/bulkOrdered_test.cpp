@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "bulkFixture.hpp"
+#include "testTimeScale.hpp"
 #include "write/scheduler.hpp"
 #include "write/sender.hpp"
 
@@ -71,6 +72,17 @@ namespace
         op.kind = ic::Op::Kind::Delete;
         op.index = "wazuh-states-test";
         op.id = std::move(docId);
+        return op;
+    }
+
+    /// An IndexDataStream op with an `_id` and a body of `bodyBytes` bytes.
+    ic::Op streamOp(std::string docId, std::size_t bodyBytes = 16)
+    {
+        ic::Op op;
+        op.kind = ic::Op::Kind::IndexDataStream;
+        op.index = "wazuh-events-test";
+        op.id = std::move(docId);
+        op.body = body(bodyBytes);
         return op;
     }
 
@@ -264,6 +276,40 @@ TEST_F(BulkTest, OrderedKeyOncePerBulk)
     ASSERT_EQ(received[0].size(), 3u);
     EXPECT_EQ(received[0][0].source, body(16)) << "the first X first";
     ASSERT_EQ(received[1].size(), 1u);
+    EXPECT_EQ(received[1][0].id, id(1));
+    EXPECT_EQ(received[1][0].source, body(32)) << "then the second X";
+    expectInvariants(stats("b"));
+}
+
+// An IndexDataStream with an `_id` has a key in an ordered bucket, as an Index with the same `_id`: X, Y, X, Z
+// (data-stream creates) queued in 4-op batches ⇒ the first bulk carries X, Y, Z and the second X leaves alone
+// afterwards (by age), after the first. Mutant: OpState::hasKey not set for an IndexDataStream with an `_id` (both X
+// in one bulk).
+TEST_F(BulkTest, OrderedDataStreamIdHasKey)
+{
+    const auto a = startNode();
+    ASSERT_NO_FATAL_FAILURE(startOn({a.url()}));
+    auto c = client("c", {bucket("b", 4)});
+    auto writer = c->writer("b");
+    auto results = Results::create();
+    ASSERT_TRUE(writer->submit(streamOp(id(1), 16), results->callback(0)).accepted);
+    ASSERT_TRUE(writer->submit(streamOp(id(2), 16), results->callback(1)).accepted);
+    ASSERT_TRUE(writer->submit(streamOp(id(1), 32), results->callback(2)).accepted); // X again, a distinct body.
+    ASSERT_TRUE(writer->submit(streamOp(id(3), 16), results->callback(3)).accepted);
+    ASSERT_TRUE(results->waitTotal(4, indexer_client::testing::scaled(3s)));
+    EXPECT_EQ(results->countWith(ic::Status::Ok, ic::Cause::None), 4u);
+
+    const auto received = a.bulk->received();
+    ASSERT_EQ(received.size(), 2u) << describe(received);
+    EXPECT_EQ(ids(received[0]), (std::vector<std::string> {id(1), id(2), id(3)})) << describe(received);
+    ASSERT_EQ(received[0].size(), 3u);
+    for (const auto& op : received[0])
+    {
+        EXPECT_EQ(op.action, "create");
+    }
+    EXPECT_EQ(received[0][0].source, body(16)) << "the first X first";
+    ASSERT_EQ(received[1].size(), 1u);
+    EXPECT_EQ(received[1][0].action, "create");
     EXPECT_EQ(received[1][0].id, id(1));
     EXPECT_EQ(received[1][0].source, body(32)) << "then the second X";
     expectInvariants(stats("b"));

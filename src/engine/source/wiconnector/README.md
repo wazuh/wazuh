@@ -98,7 +98,7 @@ second (one scrape of every indexer metric takes one snapshot):
 | `getDroppedEvents()` | Σ `dropped` + `failed` + `rejected` (every cause) of both buckets, plus the events discarded after `shutdown()`; after it the bucket part is the last snapshot taken before it (up to `METRICS_TTL`, 1 s, older than the close; zeros if nothing read the metrics before), so what the runtime's stop drops later (`Dropped(Shutdown)`) is not in it |
 
 `getBucketMetric(name)` serves the library's catalog for the two buckets from that snapshot:
-`indexer_client.bucket.analysisd.{events,raw}.<field>`, 51 names per bucket (`accepted`, `ok`, `late_results`,
+`indexer_client.bucket.analysisd.{events,raw}.<field>`, 52 names per bucket (`accepted`, `ok`, `deduplicated`, `late_results`,
 `rejected.*`, `dropped.*`, `failed.*`, `retries.*` by cause, `retained_bytes`, `charge_bytes`, `quota_bytes`,
 `bulk_requests`, `bulk_bytes` and the cumulative `latency.*` histogram). `bucketMetricNames()` lists them, with their
 kind, from a snapshot with no values, so the set is known before any metrics() call. The client-wide
@@ -286,7 +286,7 @@ void registerIndexerMetrics(fastmetrics::IManager& manager,
   counted), concurrent indexing, and `getEngineRemoteConfig()` against the library's `MockClient`/`MockQuery`.
 - **`engineIndexerRuntime_test.cpp`** — `engineBucketSpecs` (`EngineBucketSpecsTest.*`) and the runtime against the
   library's in-process fake indexer: start with and without buckets, the capacity, the failed start, the stop phases.
-- **`indexerMetrics_test.cpp`** — `bucketMetricNames()` (51 names per bucket, nothing client-wide) and
+- **`indexerMetrics_test.cpp`** — `bucketMetricNames()` (52 names per bucket, nothing client-wide) and
   `registerIndexerMetrics()` on a local `fastmetrics::Manager`: the three `indexer.*` names and every bucket metric from
   one `metrics()` call, the last snapshot after `shutdown()` and 0 without a connector, and, on a runtime started
   against the library's fake indexer, the runtime, node, query and PIT families (one node set per host).

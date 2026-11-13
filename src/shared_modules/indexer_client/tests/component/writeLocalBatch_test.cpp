@@ -29,6 +29,7 @@
 #include <thread>
 #include <vector>
 
+#include "logSink.hpp"
 #include "testTimeScale.hpp"
 #include "transport/seams.hpp"
 #include "write/scheduler.hpp"
@@ -552,6 +553,64 @@ TEST_F(WriteLocalBatch, EdgeLineWrittenOutsideStripeMutex)
     EXPECT_EQ(probe->lines, 1);
     EXPECT_EQ(probe->free, 1) << "the edge line was written holding a stripe's mutex";
     drain(*bucket);
+}
+
+// The dedup WARN of a bucket built directly, with synthetic instants and I = 1 s:
+// noteDedupResponse at t0 (k = 3) warns; at t0 + 0.8 I (k = 1) it does not, and moves the mark; at t0 + 1.6 I (k = 2)
+// it does not either, since t0 + 0.8 I refreshed the mark; at t0 + 2.7 I (k = 1) it warns again, after 1.1 I without
+// any 409 applied and with no clean response in between (the bucket was idle). Two WARN in all, each with its k.
+// Mutants (c): the mark not refreshed by a call that does not warn (t0 + 1.6 I warns), a WARN on every call.
+TEST_F(WriteLocalBatch, DedupWarnRateLimitedByInterval)
+{
+    constexpr int WARN = 2; // loggerHelper.h's LOGLEVEL_WARNING, as the library passes it.
+    const std::string dedup = "Indexer client bucket 'direct/w': the indexer already had ";
+    const ic::Duration interval {1000};
+    wr::GlobalBudget budget(1u << 30);
+    auto bucket = std::make_shared<wr::Bucket>("direct", bucketSpec("w", 1u << 20), budget);
+    // The sink outlives any late call of the log function (shared by the installed lambda).
+    auto sink = std::make_shared<log_component::Sink>();
+    indexer_client::setLogFunction([sink, write = sink->function()](const int level,
+                                                                    const char* tag,
+                                                                    const char* file,
+                                                                    const int line,
+                                                                    const char* function,
+                                                                    const char* format,
+                                                                    va_list args)
+                                   { write(level, tag, file, line, function, format, args); });
+
+    const auto t0 = now();
+    const auto at = [t0](std::int64_t ms) // An instant t0 + ms (I = 1000 ms: 800 = 0.8 I).
+    {
+        return t0 + std::chrono::milliseconds(ms);
+    };
+    bucket->noteDedupResponse(3, at(0), interval);
+    EXPECT_EQ(sink->count(WARN, dedup), 1u) << "t0: the first 409 applied warns" << sink->dump();
+    bucket->noteDedupResponse(1, at(800), interval);
+    EXPECT_EQ(sink->count(WARN, dedup), 1u) << "t0 + 0.8 I: within the interval" << sink->dump();
+    bucket->noteDedupResponse(2, at(1600), interval);
+    EXPECT_EQ(sink->count(WARN, dedup), 1u) << "t0 + 1.6 I: 0.8 I after the refreshed mark" << sink->dump();
+    bucket->noteDedupResponse(1, at(2700), interval);
+    EXPECT_EQ(sink->count(WARN, dedup), 2u) << "t0 + 2.7 I: 1.1 I without a 409 applied" << sink->dump();
+    // The bound is inclusive, and a response noted late (an earlier `now`, as with concurrent
+    // completions) never moves the mark back.
+    bucket->noteDedupResponse(4, at(3700), interval);
+    EXPECT_EQ(sink->count(WARN, dedup), 3u) << "t0 + 3.7 I: exactly I after the mark" << sink->dump();
+    bucket->noteDedupResponse(1, at(3000), interval);
+    EXPECT_EQ(sink->count(WARN, dedup), 3u) << "an earlier now: no WARN" << sink->dump();
+    bucket->noteDedupResponse(1, at(4699), interval);
+    EXPECT_EQ(sink->count(WARN, dedup), 3u) << "t0 + 4.699 I: the mark stayed at 3.7 I" << sink->dump();
+    indexer_client::setLogFunction({});
+
+    const auto warns = sink->atLeast(WARN, dedup);
+    EXPECT_EQ(warns.size(), 3u) << sink->dump();
+    if (warns.size() == 3)
+    {
+        EXPECT_NE(warns[0].text.find(dedup + "3 document(s)"), std::string::npos) << warns[0].text;
+        EXPECT_NE(warns[1].text.find(dedup + "1 document(s)"), std::string::npos) << warns[1].text;
+        EXPECT_NE(warns[2].text.find(dedup + "4 document(s)"), std::string::npos) << warns[2].text;
+    }
+    EXPECT_EQ(bucket->stats().deduplicated, 0u) << "the WARN counts nothing: the counter is countResolved's";
+    expectInvariants(bucket->stats());
 }
 
 // Three posts and the producer idle: loop 0 admits them at their oldest + min(1 ms, maxAge), not before; the batch

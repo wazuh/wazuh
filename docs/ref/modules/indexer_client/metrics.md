@@ -18,7 +18,7 @@ Lowercase, dotted, no labels. `<consumer>` and `<bucket>` are sanitized: lowerca
 
 | Prefix | Published by | Scope | Count |
 |---|---|---|---|
-| `indexer_client.bucket.<consumer>.<bucket>.` | Inventory Sync Server (`inventory_sync_server.inventory`, `inventory_sync_server.agent_state`), Vulnerability Scanner (`vulnerability_scanner.vd_states`), engine (`analysisd.events`, `analysisd.raw`) | One bucket | 51 per bucket |
+| `indexer_client.bucket.<consumer>.<bucket>.` | Inventory Sync Server (`inventory_sync_server.inventory`, `inventory_sync_server.agent_state`), Vulnerability Scanner (`vulnerability_scanner.vd_states`), engine (`analysisd.events`, `analysisd.raw`) | One bucket | 52 per bucket |
 | `indexer_client.runtime.` | Inventory Sync Server (modulesd), engine | The process | 7 |
 | `indexer_client.query.` | Inventory Sync Server (modulesd), engine | Every query of the process, any consumer; never reset | 8 |
 | `indexer_client.pit.` | Inventory Sync Server (modulesd), engine | Every point in time of the process; never reset | 10 |
@@ -30,7 +30,7 @@ The bucket metrics read 0 while the module has no live `Client` (it failed to st
 
 The names, kinds and meaning of every metric are the library's catalog (`src/shared_modules/indexer_client/README.md`, section "Metrics"); they are not copied here. The families:
 
-- **Bucket**: `accepted`, `ok`, `late_results`; closed per-cause sets `rejected.<cause>` (8), `dropped.<cause>` (4), `failed.<cause>` (7), `retries.<cause>` (5); `retained_bytes`, `charge_bytes`, `quota_bytes` (gauges); `bulk_requests`, `bulk_bytes`; and the latency histogram `latency.le_1` ... `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count` (cumulative, milliseconds, of the `_bulk` responses that carried an HTTP answer).
+- **Bucket**: `accepted`, `ok`, `deduplicated`, `late_results`; closed per-cause sets `rejected.<cause>` (8), `dropped.<cause>` (4), `failed.<cause>` (7), `retries.<cause>` (5); `retained_bytes`, `charge_bytes`, `quota_bytes` (gauges); `bulk_requests`, `bulk_bytes`; and the latency histogram `latency.le_1` ... `latency.le_32768`, `latency.le_inf`, `latency.sum_micros`, `latency.count` (cumulative, milliseconds, of the `_bulk` responses that carried an HTTP answer).
 - **Runtime**: `network_threads`, `cpu_threads`, `clients`, `global_charge_bytes`, `global_quota_bytes`, `retained_bytes`, `usage_errors`.
 - **Query**: `requests`, `failovers`, `throttles`, `unavailable`, `too_large`, `conflict_retries`, `response_bytes_in_flight`, `peak_response_bytes_in_flight`.
 - **PIT**: `open`, `reserved`, `deletes_pending`, `created`, `deletes_confirmed`, `deletes_expired`, `delete_retries`, `expired`, `stale`, `refused_full`.

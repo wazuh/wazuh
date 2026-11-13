@@ -38,7 +38,7 @@ Headers are in `include/indexer_client/`; `indexerClient.hpp` is the umbrella.
 | | `OpResult` | Final result of one write; `itemErrorType` truncated to 64 B, `reason` to 512 B |
 | | `RetryPolicy`, `Overflow`, `BulkThresholds`, `ConflictPolicy`, `WriteMode` | Per-bucket / per-query policies |
 | | `Op`, `Callback` | One write (`Index`, `IndexAutoId`, `IndexDataStream`, `Delete`, `IndexVersionedScript`); completion callback that runs on the CPU pool |
-| | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered`, `onAmbiguous5xx`, `trustedBodies` (default `false`: the producer guarantees compact JSON without a raw `\n`, so the per-op `\n` search is skipped; a stray `\n` is then not caught locally: it fails that whole bulk with 400, or, when what follows it is a valid action line, injects an operation, the batch is requeued and every retry runs it again and duplicates each `IndexAutoId`/`IndexDataStream` of the batch; only for producers that guarantee compact JSON, see [Encoding per kind](#encoding-per-kind)) |
+| | `BucketSpec` | A consumer-declared queue: name, weight, quota, retry, overflow, bulk, conflict policy, `ordered`, `onAmbiguous5xx`, `trustedBodies` (default `false`: the producer guarantees compact JSON without a raw `\n`, so the per-op `\n` search is skipped; a stray `\n` is then not caught locally: it fails that whole bulk with 400, or, when what follows it is a valid action line, injects an operation, the batch is requeued and every retry runs it again and duplicates each `IndexAutoId` and each `IndexDataStream` without an `id` of the batch; only for producers that guarantee compact JSON, see [Encoding per kind](#encoding-per-kind)) |
 | | `AmbiguousPolicy` | `Retry` (default) or `Fail`: what a bucket does with a `_bulk` answered 500, 502 or 504, or whose response went over `max_response_bytes` (see [Ambiguous 5xx](#ambiguous-5xx)) |
 | | `Slice`, `CursorQuery`, `PitOptions`, `DbqOptions`, `QueryOptions`, `PitPage` | Query and PIT parameters and page |
 | | `HealthView` | `nodes[]` (`url`, `state`, `reason`), `clusterRed`, `localFault`, `anyAvailable()`, `anyUsable()`; returned by `Client::health()` (see [Node health](#node-health)) |
@@ -515,7 +515,7 @@ it.
 
 - `Index` (`Replace`): `head` is the action line with its `\n`, built with an exact `reserve`; `body` is `op.body` itself, moved
   in with its buffer: the document is never copied nor re-reserved on the producer's thread.
-- `IndexAutoId`, `IndexDataStream`: `body` as above; the action line depends only on kind and index, so it is **shared**
+- `IndexAutoId`, and `IndexDataStream` without an `id`: `body` as above; the action line depends only on kind and index, so it is **shared**
   (`cachedHead`, a plain pointer to a line of the write path's `HeadTable`; `head` stays empty). The table is append-only, holds at most 256 lines in fixed slots and lives as long as the write path, which outlives
   every reader of a line (the runtime joins its CPU pool first; a group of a dead path never reads its lines); past 256 an op
   builds its own `head`. The cap is per runtime lifetime (the table never shrinks): once 256 (kind, index) pairs were seen, an
@@ -526,6 +526,10 @@ it.
   interned in the table and takes an entry of the cache (an invalid index never enters either). The rest of the validation runs in the same order either way, so the first
   failure still wins. The charge does not count the shared line apart: every op charges its own `wire()` (which includes it) plus
   its body's heap slack, as any other op ([Charge and quota](#charge-and-quota)).
+- `IndexDataStream` **with an `id`**: `head` is its own action line, `{"create":{"_index":"<i>","_id":"<id>"}}` plus `\n`, built with
+  `appendEscaped` like the `Index` line; `body` as above. That line is never shared: it is not cached per thread and never enters the
+  `HeadTable`, so a thread that alternates ops with and without an id for the same index keeps the shared line for the ones without
+  (`cachedHead` is `nullptr` only for the ones with an id). A resend carries the same line, byte for byte, with the same `_id`.
 - The update kinds (`IndexVersionedScript`, every `ReplacePreserving`) and `Delete`: `head` holds every line (the update kinds copy
   the document twice, which is their wire format) and `body` is empty.
 
@@ -536,7 +540,7 @@ byte-for-byte the v1's (`indexerConnectorSyncImpl.hpp` of the deleted v1 library
 |---|---|
 | `Index` | `{"index":{"_index":"<i>","_id":"<id>"}}` + body |
 | `IndexAutoId` | `{"index":{"_index":"<i>"}}` + body |
-| `IndexDataStream` | `{"create":{"_index":"<i>"}}` + body |
+| `IndexDataStream` | `{"create":{"_index":"<i>"}}` + body, or with an `id` `{"create":{"_index":"<i>","_id":"<id>"}}` + body (the line with an id is not shared and is not in the `HeadTable`) |
 | `Delete` | `{"delete":{"_index":"<i>","_id":"<id>"}}` (one line, no body) |
 | `IndexVersionedScript` | `{"update":{"_index":"<i>","_id":"<id>"<R>}}` + `{"script":{...,"params":{"doc_version":<version>,"doc":<body>}},"upsert":<body>,"scripted_upsert":true}`; the Painless source keeps the document unless `document_version` is older, then sets `ctx.op = 'none'`; the document travels twice |
 | `Index` + `ReplacePreserving` | `{"update":{"_index":"<i>","_id":"<id>"<R>}}` + `{"script":{"source":"<PRESERVE_SOURCE>","lang":"painless","params":{"paths":<P>,"doc":<body>}},"upsert":<body>,"scripted_upsert":true}` |
@@ -570,9 +574,9 @@ field is first in the reason (`index: ...`, `id: ...`, `version: ...`, `body: ..
 | Field | Rule |
 |---|---|
 | `index` | Non-empty and only `[a-zA-Z0-9._*-]` (the v1 allowlist, `isSafeIndexName`) |
-| `id` | Required for `Index`, `Delete` and `IndexVersionedScript`; must be empty for `IndexAutoId` and `IndexDataStream`. Escaped as the v1 does: `"`, `\`, the short escapes and any other control character below 0x20 as `\u00XX` |
+| `id` | Required for `Index`, `Delete` and `IndexVersionedScript`; must be empty for `IndexAutoId`; optional for `IndexDataStream`, where, when present, it is at most 512 bytes (`id: longer than 512 bytes`) and valid UTF-8 (`id: not valid UTF-8`); the two limits apply to that kind only, `Index` and `Delete` have no bound. Escaped as the v1 does: `"`, `\`, the short escapes and any other control character below 0x20 as `\u00XX` |
 | `version` | Only for `IndexVersionedScript`, where it must be a canonical integer in [0, `INT64_MAX`] (digits only, no leading zero); empty for every other kind |
-| `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete`. With `BucketSpec::trustedBodies` the `\n` search is skipped (the producer vouches for compact JSON; a stray `\n` breaks the NDJSON framing: if what follows is not a valid action line the indexer answers 400 to that whole bulk; if it is one, the indexer runs the injected operation and answers 2xx with one item more than operations, the whole batch is requeued `{true, Backoff}` and every retry runs the injected operation again and duplicates each `IndexAutoId`/`IndexDataStream` of the batch until `Failed(RetryExhausted)`. Only for producers that guarantee compact JSON — the engine escapes every `\n`) |
+| `body` | Required and free of `\n` for every kind but `Delete`; must be empty for `Delete`. With `BucketSpec::trustedBodies` the `\n` search is skipped (the producer vouches for compact JSON; a stray `\n` breaks the NDJSON framing: if what follows is not a valid action line the indexer answers 400 to that whole bulk; if it is one, the indexer runs the injected operation and answers 2xx with one item more than operations, the whole batch is requeued `{true, Backoff}` and every retry runs the injected operation again and duplicates each `IndexAutoId` and each `IndexDataStream` without an `id` of the batch until `Failed(RetryExhausted)`. Only for producers that guarantee compact JSON — the engine escapes every `\n`) |
 | `mode` | `ReplacePreserving` only with `Index` or `IndexVersionedScript`; `preservedPaths` non-empty only with `ReplacePreserving` |
 | `preservedPaths` | With `ReplacePreserving`: 1 to 16 paths; each 1 to 8 segments of 1 to 64 characters from `[A-Za-z0-9_@-]` (written dot-separated); no two equal and none a segment prefix of another; with `IndexVersionedScript` none may be `state`, `state.document_version` or below it (it would defeat the guard) |
 | `onConflict` | Optional per-operation [conflict policy](#conflict-policy); `Retry` needs `retryOnConflict` in 1 to 100 (`MAX_RETRY_ON_CONFLICT`) |
@@ -591,7 +595,16 @@ when it is admitted.
 `retryOnConflict` must be 1 to 100 for a `Retry` policy, both in `Op::onConflict` (`InvalidArgument`, field
 `onConflict.retryOnConflict`) and in the bucket's spec (registration refuses it). `Retry` on `create`
 (`IndexDataStream`), `IndexAutoId` or `Index`/`Delete` is accepted but only changes how a 409 item is treated: for `create` the 409
-means "the document exists", so retrying it can never succeed and is useless. `ordered` buckets are described in [Ordered buckets](#ordered-buckets).
+means "the document exists", so retrying it can never succeed and is useless.
+
+**Deduplicated 409.** A `create` carrying an `_id` (`IndexDataStream` with an `id`) that the indexer answers with a 409
+`version_conflict_engine_exception` means the document is already there, typically because an earlier attempt of the same bulk was applied
+after a timeout or a connection loss. With the `Success` policy the op resolves `Ok` (the 409 is kept) and the item is counted in the
+bucket's `deduplicated` counter ([Catalog](#catalog)), in `submit` with a callback or ticket, in `post` and in a `Group` alike. Only that
+combination counts: a 409 of an `IndexDataStream` without `_id`, of any other kind, or resolved by `Retry` does not. The library cannot tell a resend
+from an `_id` the producer reused: a reused `_id` is counted (and logged) the same way, and its second document is not indexed, so
+producers must generate a new `_id` for every write. Such items are
+reported by a WARN at most once per `log_summary_interval_ms` ([Logging](#log-lines)). `ordered` buckets are described in [Ordered buckets](#ordered-buckets).
 
 ### Groups
 
@@ -879,7 +892,8 @@ connector never resent these) chooses per bucket:
 - **Known asymmetry.** The policy covers the status codes only. A transport timeout, a reset or any other failure **after the request was
   sent** (`mayHaveSent`) stays a counted failover (`Retry`, v1 parity) under both policies, so it may still duplicate in buckets without
   `_id`. Buckets whose operations carry an `_id` are idempotent and should keep `Retry`; append-only buckets without `_id` (the engine's `events`
-  and `raw`) are the ones that choose `Fail`.
+  and `raw`) are the ones that choose `Fail`. An `IndexDataStream` with an `_id` is the conditional exception: its resend is idempotent
+  within the backing index and its 409 is counted ([Deduplicated 409](#conflict-policy)).
 
 `classifyItems(std::string& body, expected)` reads a 2xx body item by item and returns one `ItemResult{verdict, outcome, httpStatus,
 itemErrorType, reason}` per operation, or `nullopt` when the body is unreadable or does not hold exactly `expected` items (the sender
@@ -1051,8 +1065,9 @@ earlier operation of the same key has a final outcome (from the indexer or a loc
 **not** order how the indexer applies requests: a request that timed out may still be applied later by its node (see the residual risk below). An unordered bucket is unchanged (`UnorderedUnchanged`).
 
 - **The key** is `(index, _id)`: `OpState::keyHash` is a 64-bit FNV-1a hash of `index`, a `\0` byte and `_id` (`orderedKeyHash`), set only
-  in an ordered bucket and only for kinds with `_id`. A collision can only block too much, never too little. Operations without `_id`
-  (`IndexAutoId`, `IndexDataStream`) have no key and are **never blocked**.
+  in an ordered bucket and only for ops with `_id`. A collision can only block too much, never too little. Operations without `_id`
+  (`IndexAutoId`, and `IndexDataStream` without an `id`) have no key and are **never blocked**; an `IndexDataStream` with an `id` has one,
+  like an `Index` with the same `_id`, and is ordered by it.
 - **One bulk in flight.** While any operation of the bucket is delivered to the sink the bucket is not eligible and `nextDue` is empty;
   the completion wakes the scheduler (`sinkReady`). So an ordered bucket never has two `_bulk` requests in flight (the node window of
   the sender still applies across buckets).
@@ -1696,7 +1711,7 @@ buckets of one client whose sanitized names are equal. The set of names is there
 
 ### Catalog
 
-Counts per prefix: bucket 51, client 3, runtime 7, query 8, PIT 10, node 31. Source = the field of the snapshot type.
+Counts per prefix: bucket 52, client 3, runtime 7, query 8, PIT 10, node 31. Source = the field of the snapshot type.
 
 **Bucket**, prefix `indexer_client.bucket.<consumer>.<bucket>.` (`BucketMetrics`):
 
@@ -1706,6 +1721,7 @@ Counts per prefix: bucket 51, client 3, runtime 7, query 8, PIT 10, node 31. Sou
 | `rejected.<cause>` (8) | counter | `rejected[RejectCause]` |
 | `dropped.<cause>` (4) | counter | `dropped[DropCause]` |
 | `ok` | counter | `ok` |
+| `deduplicated` | counter | `deduplicated` |
 | `failed.<cause>` (7) | counter | `failed[FailCause]` |
 | `retries.<cause>` (5) | counter | `retries[RetryCause]` |
 | `late_results` | counter | `lateResults` |
@@ -1800,6 +1816,7 @@ compare-and-swap crossed the threshold claims the line with an `exchange`, so a 
 | WARN | `Indexer client global quota reached 80% (<charge> of <cap> bytes charged).` | The global charge crosses 0.8 × `global_quota_bytes` upwards |
 | WARN | `Indexer client global quota is full (<charge> of <cap> bytes charged): every bucket applies its overflow policy.` | The first admission the global cap refuses |
 | WARN | `Indexer client bucket '<consumer>/<bucket>' got an ambiguous HTTP <status> for a bulk of <n> operations: they failed without being resent (onAmbiguous5xx = fail); the indexer may have applied them.` — or, for a response over the cap, `... got a response over max_response_bytes for a bulk of <n> operations: ...` (same tail) | The first `Failed(Ambiguous)` of the bucket after a 2xx `_bulk` (or since its creation); re-armed by the next 2xx `_bulk`. See [Ambiguous 5xx](#ambiguous-5xx) |
+| WARN | `Indexer client bucket '<consumer>/<bucket>': the indexer already had <n> document(s) of a resent bulk (an earlier attempt was applied after a timeout or connection loss); they were not indexed twice.` | A response with 409 `version_conflict_engine_exception` items of `IndexDataStream` ops with an `_id` resolved `Ok`; `<n>` is that response's count. Logs again after at least `log_summary_interval_ms` since the last response that had such items (also after an idle spell); a trickle of 409 denser than the interval logs once, so the sustained signal is the `deduplicated` counter. A clean `_bulk` does not re-arm it |
 
 **Periodic summary**. A timer on network loop 0 fires every `log_summary_interval_ms` (1000 – 3600000, default 60000). `<n>` is the
 elapsed seconds since the previous summary, rounded up and never below 1. A bucket with no activity in the interval logs nothing; every bucket

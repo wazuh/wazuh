@@ -116,6 +116,10 @@
     "category": "indexer events bucket",
     "unit": "total"
   },
+  "indexer_client.bucket.analysisd.events.deduplicated": {
+    "category": "indexer events bucket",
+    "unit": "total"
+  },
   "indexer_client.bucket.analysisd.events.failed.item_permanent": {
     "category": "indexer events bucket",
     "unit": "total"
@@ -317,6 +321,10 @@
     "unit": "total"
   },
   "indexer_client.bucket.analysisd.raw.ok": {
+    "category": "indexer raw bucket",
+    "unit": "total"
+  },
+  "indexer_client.bucket.analysisd.raw.deduplicated": {
     "category": "indexer raw bucket",
     "unit": "total"
   },

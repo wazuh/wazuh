@@ -194,6 +194,7 @@ namespace indexer_client
             emitSet<RejectCause>(emit, "rejected", bucket.rejected);
             emitSet<DropCause>(emit, "dropped", bucket.dropped);
             emit("ok", COUNTER, num(bucket.ok));
+            emit("deduplicated", COUNTER, num(bucket.deduplicated));
             emitSet<FailCause>(emit, "failed", bucket.failed);
             emitSet<RetryCause>(emit, "retries", bucket.retries);
             emit("late_results", COUNTER, num(bucket.lateResults));

@@ -330,7 +330,7 @@ Sync I/O goes through `IndexerClientSyncAdapter` (`src/indexer/indexerClientSync
 - **Health.** `IClient::health().anyUsable()` gates `/stateful`, `/stats`, `/config` and the deletion, and drives the
   heartbeat's availability transitions log. A `post` the bucket refuses (`QueueFull`, `Unavailable`, closing)
   answers `503` with a throttled log per cause; `/stats` and `/config` still have no `sync.requests.total.*`.
-- **Metrics.** The 51 metrics of each bucket (`…inventory.*` and `…agent_state.*`; the name is sanitized, `-` → `_`)
+- **Metrics.** The 52 metrics of each bucket (`…inventory.*` and `…agent_state.*`; the name is sanitized, `-` → `_`)
   are published by pull in the module's `GET /metrics`;
   `sync.indexer.bulk.*` come from the bucket (0 again if the Client is rebuilt) and
   `sync.indexer.conflict.retries` from the process-wide query metrics.
