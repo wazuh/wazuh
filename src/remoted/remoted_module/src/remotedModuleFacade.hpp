@@ -577,7 +577,8 @@ private:
         // (RESTinio keeps its loop private); the forwarder owns a post-processing pool. Started here
         // so it is ready to forward as soon as the server accepts.
         const auto downstreamConfig = remoted::downstream::buildDownstreamConfig(m_config);
-        auto downstreamClient = std::make_shared<remoted::downstream::AsioUdsHttpClient>(downstreamConfig);
+        auto downstreamClient =
+            std::make_shared<remoted::downstream::AsioUdsHttpClient>(downstreamConfig, "engine and inventory sync");
         downstreamClient->start();
         m_downstreamClient = downstreamClient;
         m_forwarder = std::make_unique<remoted::downstream::DeferredForwarder>(
@@ -835,8 +836,8 @@ private:
         // VD's socket gets its own client: the forwarder's is tuned for the engine and inventory sync
         // (10 MiB answers, configurable deadlines), while VD's answers are a few bytes and its deadlines
         // are VdClient's and remoted.vd_scan_*. Stopped in stop() phase 2, after both handlers are gone.
-        m_vdHttpClient =
-            std::make_shared<remoted::downstream::AsioUdsHttpClient>(remoted::common::VdClient::httpClientConfig());
+        m_vdHttpClient = std::make_shared<remoted::downstream::AsioUdsHttpClient>(
+            remoted::common::VdClient::httpClientConfig(), "vulnerability detector");
         m_vdHttpClient->start();
         auto vdClient = std::make_shared<remoted::common::VdClient>(m_vdHttpClient);
         m_controlHandler = std::make_unique<remoted::control::ControlHandler>(

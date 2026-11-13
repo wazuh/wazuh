@@ -15,6 +15,7 @@
 #include "downstreamConfig.hpp"
 
 #include <memory>
+#include <string>
 
 namespace remoted::downstream
 {
@@ -33,7 +34,12 @@ namespace remoted::downstream
     class AsioUdsHttpClient final : public IDownstreamClient
     {
     public:
-        explicit AsioUdsHttpClient(DownstreamConfig config);
+        /**
+         * @param config Deadlines, I/O thread count and response cap.
+         * @param name What the client serves (e.g. "vulnerability detector"), named in its start, stop
+         * and I/O thread log lines so the clients of one process can be told apart.
+         */
+        explicit AsioUdsHttpClient(DownstreamConfig config, std::string name = "downstream");
         ~AsioUdsHttpClient() override;
 
         AsioUdsHttpClient(const AsioUdsHttpClient&) = delete;
