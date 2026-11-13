@@ -12,6 +12,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <errno.h>
+#include <pthread.h>
 #include <stdlib.h>
 
 #include "../../analysisd/analysisd.h"
@@ -34,8 +36,28 @@ extern analysisd_state_t analysisd_state;
 extern queue_status_t queue_status;
 extern OSHash *analysisd_agents_state;
 
+extern pthread_mutex_t agents_state_mutex;
+
+/* cmocka parameter check: the table argument is the expected one and agents_state_mutex is held */
+static int check_table_and_agents_state_locked(const LargestIntegralType value, const LargestIntegralType check_value_data) {
+    if (value != check_value_data) {
+        return 0;
+    }
+
+    int error = pthread_mutex_trylock(&agents_state_mutex);
+
+    if (error == 0) {
+        pthread_mutex_unlock(&agents_state_mutex);
+        print_error("agents_state_mutex is not held\n");
+        return 0;
+    }
+
+    return error == EBUSY;
+}
+
 analysisd_agent_state_t * get_node(const char *agent_id);
 void w_analysisd_clean_agents_state(int *sock);
+int cmp_agent_id(const void *a, const void *b);
 /* setup/teardown */
 
 static int test_setup(void ** state) {
@@ -715,6 +737,15 @@ void test_asys_get_node_existing_node(void ** state) {
 }
 
 void test_w_analysisd_clean_agents_state_empty_table(void ** state) {
+    int *connected_agents = NULL;
+    os_calloc(1, sizeof(int), connected_agents);
+    connected_agents[0] = OS_INVALID;
+
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
+
     expect_value(__wrap_OSHash_Begin, self, analysisd_agents_state);
     will_return(__wrap_OSHash_Begin, NULL);
 
@@ -726,9 +757,6 @@ void test_w_analysisd_clean_agents_state_empty_table(void ** state) {
 void test_w_analysisd_clean_agents_state_completed(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
 
-    expect_value(__wrap_OSHash_Begin, self, analysisd_agents_state);
-    will_return(__wrap_OSHash_Begin, test_data->hash_node);
-
     int *connected_agents = NULL;
     os_calloc(1, sizeof(int), connected_agents);
     connected_agents[0] = OS_INVALID;
@@ -738,10 +766,13 @@ void test_w_analysisd_clean_agents_state_completed(void ** state) {
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
     will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
 
-    expect_value(__wrap_OSHash_Next, self, analysisd_agents_state);
+    expect_check(__wrap_OSHash_Begin, self, check_table_and_agents_state_locked, cast_to_largest_integral_type(analysisd_agents_state));
+    will_return(__wrap_OSHash_Begin, test_data->hash_node);
+
+    expect_check(__wrap_OSHash_Next, self, check_table_and_agents_state_locked, cast_to_largest_integral_type(analysisd_agents_state));
     will_return(__wrap_OSHash_Next, NULL);
 
-    expect_value(__wrap_OSHash_Delete_ex, self, analysisd_agents_state);
+    expect_check(__wrap_OSHash_Delete_ex, self, check_table_and_agents_state_locked, cast_to_largest_integral_type(analysisd_agents_state));
     expect_value(__wrap_OSHash_Delete_ex, key, "001");
     will_return(__wrap_OSHash_Delete_ex, test_data->agent_state);
 
@@ -753,17 +784,18 @@ void test_w_analysisd_clean_agents_state_completed(void ** state) {
 void test_w_analysisd_clean_agents_state_completed_without_delete(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
 
-    expect_value(__wrap_OSHash_Begin, self, analysisd_agents_state);
-    will_return(__wrap_OSHash_Begin, test_data->hash_node);
-
     int *connected_agents = NULL;
-    os_calloc(1, sizeof(int), connected_agents);
+    os_calloc(2, sizeof(int), connected_agents);
     connected_agents[0] = 1;
+    connected_agents[1] = OS_INVALID;
 
     expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
     expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
     will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
+
+    expect_value(__wrap_OSHash_Begin, self, analysisd_agents_state);
+    will_return(__wrap_OSHash_Begin, test_data->hash_node);
 
     expect_value(__wrap_OSHash_Next, self, analysisd_agents_state);
     will_return(__wrap_OSHash_Next, NULL);
@@ -778,9 +810,6 @@ void test_w_analysisd_clean_agents_state_completed_without_delete(void ** state)
 void test_w_analysisd_clean_agents_state_query_fail(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
 
-    expect_value(__wrap_OSHash_Begin, self, analysisd_agents_state);
-    will_return(__wrap_OSHash_Begin, test_data->hash_node);
-
     int *connected_agents = NULL;
 
     expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
@@ -793,6 +822,46 @@ void test_w_analysisd_clean_agents_state_query_fail(void ** state) {
     w_analysisd_clean_agents_state(&sock);
 
     os_free(test_data->agent_state);
+}
+
+void test_w_analysisd_clean_agents_state_unsorted_active_agents(void ** state) {
+    test_struct_t *test_data  = (test_struct_t *)*state;
+    // The table entry must hold an id that bsearch() only finds once the list is sorted.
+    // With {5, 1, 3} unsorted, bsearch() probes the middle element (1) first, so the
+    // default "001" key is found even without the qsort().
+    test_data->hash_node->key = "005";
+
+    int *connected_agents = NULL;
+    os_calloc(4, sizeof(int), connected_agents);
+    connected_agents[0] = 5;
+    connected_agents[1] = 1;
+    connected_agents[2] = 3;
+    connected_agents[3] = OS_INVALID;
+
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
+
+    expect_value(__wrap_OSHash_Begin, self, analysisd_agents_state);
+    will_return(__wrap_OSHash_Begin, test_data->hash_node);
+
+    expect_value(__wrap_OSHash_Next, self, analysisd_agents_state);
+    will_return(__wrap_OSHash_Next, NULL);
+
+    int sock = 1;
+
+    w_analysisd_clean_agents_state(&sock);
+
+    os_free(test_data->agent_state);
+}
+
+void test_cmp_agent_id(void ** state) {
+    int a = 1, b = 2, c = 1;
+
+    assert_true(cmp_agent_id(&a, &b) < 0);
+    assert_true(cmp_agent_id(&b, &a) > 0);
+    assert_int_equal(cmp_agent_id(&a, &c), 0);
 }
 
 int main(void) {
@@ -809,6 +878,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_analysisd_clean_agents_state_completed, test_setup_agent, test_teardown_agent),
         cmocka_unit_test_setup_teardown(test_w_analysisd_clean_agents_state_completed_without_delete, test_setup_agent, test_teardown_agent),
         cmocka_unit_test_setup_teardown(test_w_analysisd_clean_agents_state_query_fail, test_setup_agent, test_teardown_agent),
+        cmocka_unit_test_setup_teardown(test_w_analysisd_clean_agents_state_unsorted_active_agents, test_setup_agent, test_teardown_agent),
+        cmocka_unit_test(test_cmp_agent_id),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
