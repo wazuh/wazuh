@@ -171,9 +171,9 @@ def indexer():
 def _run_server(tmp_path_factory, name):
     """The real module pair booted by the testtool's --serve mode.
 
-    --no-vd keeps the vulnerability scanner facade down: the server's scanner
-    seam then reports feed-ready and answers every scan as a legitimate skip
-    (D22's skip row), so VD-flagged sessions still index deterministically.
+    --no-vd keeps the vulnerability scanner facade down, so no CVE feed is
+    needed. With no scanner behind it the server defers every VD-flagged data
+    session and on-demand scan with a 503 + Retry-After and indexes nothing.
     """
     testtool = os.environ.get("INVSYNC_TESTTOOL", str(SRC_DIR / "build" / "bin" / "inventory_sync_server_testtool"))
     workdir = tmp_path_factory.mktemp(name)

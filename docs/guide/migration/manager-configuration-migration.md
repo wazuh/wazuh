@@ -262,7 +262,7 @@ The table names the common ones; the rule covers every top-level element not in 
 
 ### `<vulnerability-detection>` section
 
-The `<vulnerability-detection>` section is preserved in 5.0 but the `<index-status>` option has been removed.
+The `<vulnerability-detection>` section is preserved in 5.0 but the `<enabled>` and `<index-status>` options have been removed.
 
 **4.x:**
 ```xml
@@ -276,13 +276,14 @@ The `<vulnerability-detection>` section is preserved in 5.0 but the `<index-stat
 **5.0:**
 ```xml
 <vulnerability-detection>
-  <enabled>yes</enabled>
   <feed-update-interval>60m</feed-update-interval>
 </vulnerability-detection>
 ```
 
-Remove the `<index-status>` element from your configuration: left in place it is an unknown option and
-the manager does not start. `<enabled>` and `<feed-update-interval>` carry over unchanged, except that an interval of zero (in any unit) is now rejected.
+Remove the `<enabled>` and `<index-status>` elements from your configuration: left in place each is an
+unknown option and the manager does not start. Vulnerability detection runs on every 5.0 manager node
+and cannot be disabled. `<feed-update-interval>` carries over unchanged, except that an interval of zero
+(in any unit) is now rejected.
 
 ### `<indexer>` section
 

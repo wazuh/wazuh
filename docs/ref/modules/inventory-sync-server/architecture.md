@@ -88,7 +88,7 @@ sequenceDiagram
         alt feed_offset mismatch
             VQ-->>R: 409 {"error":"version_mismatch","current_version":N}
         else offset matches: run the vulnerability scan SYNCHRONOUSLY
-            alt scan succeeded (or was legitimately skipped)
+            alt scan succeeded (or had nothing to scan)
                 VQ->>IDX: stage the inventory bulk + flush() (the lane's connector)
                 VQ-->>R: 200 — guarantees scan AND ingest
             else scan failed
@@ -178,8 +178,7 @@ the indexer never delays the strand that is deciding whether to admit the next s
 
 Sessions whose `Start.option` is `VDFirst` or `VDSync` carry data the vulnerability scanner must
 evaluate. They run through a dedicated lane so that the scan can GATE the response: a `200` for a
-VD session guarantees the scan ran (unless this node runs no scanner — see the table below) AND the
-inventory was flushed; a failed scan answers `500` with **nothing indexed**.
+VD session guarantees the scan ran AND the inventory was flushed; a failed scan answers `500` with **nothing indexed**.
 
 ```mermaid
 flowchart LR
@@ -199,14 +198,13 @@ The gates, in order:
 
 | Situation | Answer | Why |
 |---|---|---|
-| CVE feed still downloading, or the scanner is enabled here but still starting up | `503` + `Retry-After` | Rejected WITHOUT processing, so the re-POST applies scan and ingest together and nothing ever blocks waiting for the feed or the scanner. The delay is `inventory_sync_server_vd_feed_retry_after_seconds`. |
+| Scanner not ready: still starting up, CVE feed still downloading, or its start failed | `503` + `Retry-After` | Rejected WITHOUT processing, so the re-POST applies scan and ingest together and nothing ever blocks waiting for the feed or the scanner. Every node runs the scanner, so a session is never acknowledged unscanned: the agent would not send it again. A scanner that failed to start stays in this state until the manager is restarted: `vulnerability-scanner` logs the failure as an error, these deferrals are then logged at warning level (throttled) instead of debug, and `GET /vulnerability-detector/status` reports `failed`. The delay is `inventory_sync_server_vd_feed_retry_after_seconds`. |
 | Lane queue full | `503` `{"error":"scan capacity exhausted","code":503}` | The queue is deliberately short (`vd_scan_queue_slots`): scans are slow, and an early 503 beats a late timeout — a timed-out agent re-POSTs and re-does scan+ingest in full. |
 | No healthy indexer host when a lane worker picks the session up | `503` (generic body) | Checked before the scan: a scan whose inventory could never land would waste minutes to answer the same `503`. The feed gate above is also re-checked here, answering `503` + `Retry-After` again if the feed became unready while the session waited. |
-| `Start.feed_offset` differs from this node's current feed offset (only while this node runs a scanner) | `409` `{"error":"version_mismatch","current_version":N}` | Counted as `vd.offset_mismatch.total`; the agent rebuilds the session against `current_version`. |
+| `Start.feed_offset` differs from this node's current feed offset | `409` `{"error":"version_mismatch","current_version":N}` | Counted as `vd.offset_mismatch.total`; the agent rebuilds the session against `current_version`. |
 | Scan succeeded | index + flush → `200` | The strong contract: 200 = scanned AND ingested. |
 | Scan threw | `500` `{"error":"vulnerability scan failed","code":500}` | Zero documents indexed; the agent retries next cycle and the re-POST redoes both halves. |
-| Scan legitimately skipped (scanner disabled, or enabled but failed to start) | index + `200` | Inventory must keep flowing even with the scanner off or broken. |
-| VD session on a node running no scanner | admitted with no version check, then index + `200` | With no scanner there is no feed version to disagree about, and an agent still carrying an offset from before the module was disabled would otherwise be rejected on every cycle, forever. A scanner that is enabled here but still starting is answered `503` above instead, so packages and vulnerabilities keep going together whenever the module is up. |
+| Nothing to scan (a first synchronization with an empty inventory) | index + `200` | The scanner itself reports there was nothing to evaluate; counted as `vd.scans.skipped`. |
 | Shutdown | `503` to everything queued | The lane joins its workers; a scan in flight finishes (there is no cancellation point inside the scanner). |
 
 Two pieces coordinate the lane with the rest of the system:

@@ -432,17 +432,6 @@ namespace remoted::control
         }
 
     private:
-        /// This node's VD feed offset, or nothing while VD reports itself disabled.
-        std::optional<uint64_t> getVdFeedOffset() const
-        {
-            const auto state = m_vdClient->getFeedState();
-            if (!state.enabled)
-            {
-                return std::nullopt;
-            }
-            return state.offset;
-        }
-
         void processNotify(AgentId id,
                            std::shared_ptr<const AgentEntry> entry,
                            const NotifyData& data,
@@ -577,14 +566,7 @@ namespace remoted::control
                         tasksJson.push_back(std::move(taskJson));
                     }
                     response["tasks"] = std::move(tasksJson);
-                    // Omitted while VD is disabled on this node (#41101): the agent requests a
-                    // re-scan only off an advertised offset and leaves a missing one alone, and a
-                    // disabled VD refuses every scan -- advertising its 0 would have the agents
-                    // retry a request that can never succeed for as long as they run.
-                    if (const auto vdFeedOffset = this->getVdFeedOffset())
-                    {
-                        response["vd_feed_offset"] = *vdFeedOffset;
-                    }
+                    response["vd_feed_offset"] = m_vdClient->getOffset();
 
                     HttpResponse httpResp;
                     httpResp.status = 200;

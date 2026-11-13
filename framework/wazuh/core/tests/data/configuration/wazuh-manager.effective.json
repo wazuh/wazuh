@@ -86,7 +86,6 @@
         }
     },
     "vulnerability-detection": {
-        "enabled": true,
         "feed-update-interval": "60m",
         "pageSize": 100,
         "numSlices": 2

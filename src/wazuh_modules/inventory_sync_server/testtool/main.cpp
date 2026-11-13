@@ -25,12 +25,16 @@
  *                                  [--logFile <file>] [--wait <seconds>] [--verbose]
  *
  * It is also the QA suite's server harness: --serve boots the modules and keeps the socket
- * open until SIGTERM/SIGINT (no inputs), and --no-vd skips the vulnerability scanner facade --
- * the server's scanner seam degrades gracefully (feedReady() passes, scans report a legitimate
- * skip), so plain ingestion scenarios run without paying the CVE feed bring-up.
+ * open until SIGTERM/SIGINT (no inputs), and --no-vd skips the vulnerability scanner facade, so
+ * plain ingestion scenarios run without paying the CVE feed bring-up. With no scanner behind it
+ * the server defers every VD-flagged data session and on-demand scan (503 + Retry-After).
+ * --stub-vd also skips the facade, but puts a scanner behind the server that is always ready and
+ * finds nothing: VD-flagged sessions ride the scan lane and are indexed, so a load test can
+ * measure the server alone.
  */
 
 #include "flatbuffers/include/inventorySync_generated.h"
+#include "inventorySyncServerTestHooks.hpp"
 #include "inventory_sync_server.h"
 #include "keyStore.hpp"
 #include "vulnerabilityScannerFacade.hpp"
@@ -85,8 +89,43 @@ namespace
         uint32_t waitTime = 3;          ///< settle time after the last session (VD's async indexing)
         uint32_t feedTimeoutSecs = 300; ///< how long to retry 503 "feed not ready" answers
         bool verbose = false;
-        bool serve = false; ///< boot the modules and wait for SIGTERM/SIGINT instead of feeding inputs
-        bool noVd = false;  ///< do not start the vulnerability scanner facade (QA ingestion runs)
+        bool serve = false;  ///< boot the modules and wait for SIGTERM/SIGINT instead of feeding inputs
+        bool noVd = false;   ///< do not start the vulnerability scanner facade (QA ingestion runs)
+        bool stubVd = false; ///< like noVd, with an always-ready scanner that finds nothing (load tests)
+    };
+
+    /**
+     * @brief Scanner seam for --stub-vd: always ready, feed offset 0, every scan succeeds having
+     *        found nothing. It lets a load test drive VD-flagged sessions through the scan lane
+     *        and the indexer without a CVE feed. It proves nothing about detection.
+     */
+    class StubVdScanner final : public invsync::vd::IVdScanner
+    {
+    public:
+        bool feedReady() const override
+        {
+            return true;
+        }
+
+        bool startFailed() const override
+        {
+            return false;
+        }
+
+        std::uint64_t currentFeedOffset() const override
+        {
+            return 0;
+        }
+
+        invsync::vd::ScanVerdict scan(const invsync::sync::ValidatedSession&) override
+        {
+            return invsync::vd::ScanVerdict::Ok;
+        }
+
+        invsync::vd::AgentScanOutcome scanAgent(const std::string&) override
+        {
+            return invsync::vd::AgentScanOutcome::Ok;
+        }
     };
 
     TestConfig parseArgs(int argc, char* argv[])
@@ -97,7 +136,8 @@ namespace
                                      " <input.json>|<directory> [--config <file>] [--logFile <file>]"
                                      " [--wait <seconds>] [--feed-timeout <seconds>] [--verbose]\n"
                                      "       " +
-                                     std::string(argv[0]) + " --serve [--no-vd] [--config <file>] [--logFile <file>]");
+                                     std::string(argv[0]) +
+                                     " --serve [--no-vd|--stub-vd] [--config <file>] [--logFile <file>]");
         }
 
         TestConfig config;
@@ -137,6 +177,11 @@ namespace
             else if (arg == "--no-vd")
             {
                 config.noVd = true;
+            }
+            else if (arg == "--stub-vd")
+            {
+                config.noVd = true;
+                config.stubVd = true;
             }
         }
         if (config.input.empty() && !config.serve)
@@ -564,12 +609,18 @@ int main(int argc, char* argv[])
 
         // VD first: the server's start registers its scan coordinator and resolves the production
         // scanner adapter against the running facade. Under --no-vd the facade never starts and
-        // the server's adapter degrades to "skip legitimately, index anyway" (D22's skip row).
+        // the server defers every VD-flagged data session and on-demand scan.
         auto& vulnerabilityScanner = VulnerabilityScannerFacade::instance();
         if (!config.noVd)
         {
             std::cout << "[INFO] Starting vulnerability scanner..." << std::endl;
             vulnerabilityScanner.start(logSink, moduleConfig, true, true);
+        }
+        else if (config.stubVd)
+        {
+            // Before the server starts: it resolves its scanner seam once, at start.
+            invsync::test_hooks::setVdScannerFactoryForTests([]() -> std::shared_ptr<invsync::vd::IVdScanner>
+                                                             { return std::make_shared<StubVdScanner>(); });
         }
 
         // The server: cluster identity + the <indexer> block, verbatim, as cJSON. The socket only

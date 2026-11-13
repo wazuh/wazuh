@@ -99,14 +99,13 @@ namespace invsync::test
         std::atomic<int> m_flushEntered {0};
         /// What the VD scanner fake reports from feedReady() (D17 gates).
         std::atomic<bool> m_vdFeedReady {true};
-        /// When true, the scanner fake's scan() reports a legitimate skip instead of running.
+        /// What the VD scanner fake reports from startFailed().
+        std::atomic<bool> m_vdStartFailed {false};
+        /// When true, the scanner fake's scan() reports it had nothing to scan instead of running.
         std::atomic<bool> m_vdScanSkip {false};
         /// What the VD scanner fake reports from currentFeedOffset(). Defaults to 0 so tests that
         /// don't set a session's feed_offset (also defaulting to 0) see a match and aren't gated.
         std::atomic<std::uint64_t> m_vdCurrentOffset {0};
-        /// What the VD scanner fake reports from scannerRunning(). Defaults to true: the offset
-        /// gate applies, as it does on a node with vulnerability detection enabled.
-        std::atomic<bool> m_vdScannerRunning {true};
         /// What the scanner fake's scanAgent() reports -- the ON-DEMAND scan, which reports its
         /// failures by value rather than by exception. Defaults to Ok.
         std::atomic<invsync::vd::AgentScanOutcome> m_vdAgentScanOutcome {invsync::vd::AgentScanOutcome::Ok};
@@ -117,9 +116,6 @@ namespace invsync::test
         bool m_scanGateClosed {false};
         std::condition_variable m_scanGateCv;
         std::atomic<int> m_scanEntered {0}; ///< Times scan() was entered (before gate/injection).
-        /// The vdConfiguredEnabled the scanner factory was called with -- lets a test observe the
-        /// config.vd_configured_enabled -> scannerFactory chain without a live facade.
-        std::atomic<bool> m_vdConfiguredEnabled {false};
 
         void recordDestruction(const char* what)
         {
@@ -476,9 +472,9 @@ namespace invsync::test
             return m_events->m_vdFeedReady.load();
         }
 
-        bool scannerRunning() const override
+        bool startFailed() const override
         {
-            return m_events->m_vdScannerRunning.load();
+            return m_events->m_vdStartFailed.load();
         }
 
         std::uint64_t currentFeedOffset() const override
@@ -515,12 +511,8 @@ namespace invsync::test
     /// Installs a FakeVdScanner (sharing @p events) as the module's scan lane seam.
     inline void installFakeVdScanner(const std::shared_ptr<ConnectorEvents>& events)
     {
-        invsync::test_hooks::setVdScannerFactoryForTests(
-            [events](bool vdConfiguredEnabled) -> std::shared_ptr<invsync::vd::IVdScanner>
-            {
-                events->m_vdConfiguredEnabled.store(vdConfiguredEnabled);
-                return std::make_shared<FakeVdScanner>(events);
-            });
+        invsync::test_hooks::setVdScannerFactoryForTests([events]() -> std::shared_ptr<invsync::vd::IVdScanner>
+                                                         { return std::make_shared<FakeVdScanner>(events); });
     }
 
     /**
@@ -647,8 +639,7 @@ namespace invsync::test
                 return std::make_unique<invsync::indexer::IndexerConnectorAsyncAdapter>(
                     config, adapter.session(), std::move(logging));
             });
-        invsync::test_hooks::setVdScannerFactoryForTests(
-            [](bool vdConfiguredEnabled) { return invsync::vd::makeProductionVdScanner(vdConfiguredEnabled); });
+        invsync::test_hooks::setVdScannerFactoryForTests([] { return invsync::vd::makeProductionVdScanner(); });
     }
 
 } // namespace invsync::test

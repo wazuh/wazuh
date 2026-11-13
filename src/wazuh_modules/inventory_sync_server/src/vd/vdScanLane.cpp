@@ -41,18 +41,9 @@ namespace
      * 5xx is retryable, 4xx is terminal for this task type, 200 is done. */
     constexpr auto SCAN_OK_BODY {R"({"status":"ok"})"};
     /* 503, NOT a 200: no scan happened, and the dispatcher records a 200 as `completed`, which in
-     * MANAGER_TASKS means the work was performed. That distinction is the reason the table exists
-     * apart from TASKS, where `delivered` only ever meant "handed over".
-     *
-     * Reachable without a cluster: the row is admitted while this node has a scanner (admission
-     * refuses otherwise), and executed after it no longer does -- VD disabled and the manager
-     * restarted, or the module failing to load. Answering 200 there marks a scan that never ran as
-     * done, and nothing afterwards revisits it.
-     *
-     * Retryable rather than terminal because the condition can lift on the next restart, and a
-     * returning scanner should still do the work. It terminates regardless: vd_scan carries the
-     * default attempt budget, so this dead-letters after it runs out. */
-    constexpr auto SCAN_NO_SCANNER_BODY {R"({"error":"no vulnerability scanner on this node","code":503})"};
+     * MANAGER_TASKS means the work was performed. Retryable because a scanner that is starting or
+     * loading its feed gets there; one that failed to start does not, and vd_scan's attempt budget
+     * dead-letters the task. */
     constexpr auto SCAN_NOT_READY_BODY {R"({"error":"vulnerability scanner not ready","code":503})"};
     /// 404 so the dispatcher stops: the agent has no record to scan, and no amount of retrying
     /// will produce one. Most often it was deleted between the request and its execution.
@@ -102,8 +93,10 @@ namespace invsync::vd
             m_metrics->getOrCreateCounter(invsync::metrics::VD_SCANS_OK, "Vulnerability scans completed", "count");
         m_scansFailed = m_metrics->getOrCreateCounter(
             invsync::metrics::VD_SCANS_FAILED, "Vulnerability scans failed (the scanner threw)", "count");
-        m_scansSkipped = m_metrics->getOrCreateCounter(
-            invsync::metrics::VD_SCANS_SKIPPED, "Vulnerability scans skipped legitimately", "count");
+        m_scansSkipped =
+            m_metrics->getOrCreateCounter(invsync::metrics::VD_SCANS_SKIPPED,
+                                          "Vulnerability scans skipped because the session had nothing to scan",
+                                          "count");
         m_offsetMismatchTotal =
             m_metrics->getOrCreateCounter(invsync::metrics::VD_OFFSET_MISMATCH_TOTAL,
                                           "VD data sessions rejected for a stale or ahead-of-node feed offset",
@@ -374,17 +367,6 @@ namespace invsync::vd
                         finish(200, SCAN_OK_BODY);
                         break;
 
-                    case AgentScanOutcome::Skipped:
-                        m_scansSkipped->add();
-                        // WARN, not DEBUG1: a scan was requested of a node that cannot perform it,
-                        // which is a misconfiguration on the only node that will ever hold this row.
-                        LOGFN_WARN(logFn(),
-                                   "On-demand vulnerability scan for agent %s could not run: this node runs no "
-                                   "vulnerability scanner. The task will be retried and then dead-lettered.",
-                                   item.session.agentId.c_str());
-                        finish(503, SCAN_NO_SCANNER_BODY);
-                        break;
-
                     case AgentScanOutcome::NotReady:
                         // Not counted as a failed scan: nothing was attempted. Counting it would
                         // make vd.scans.failed read as a scanner problem during an ordinary feed
@@ -418,22 +400,9 @@ namespace invsync::vd
 
             // Offset gate: reject a VDFirst/VDSync session built against a feed offset this node
             // doesn't currently have, mirroring /scan/vd's version check on the REST on-demand
-            // path. Non-VD sessions don't carry a meaningful feed_offset.
-            //
-            // Only while this node runs a scanner, though. Without one -- vulnerability detection
-            // disabled, or failed to start -- there is no version to disagree about, so the
-            // session is admitted and takes the legitimate-skip path below, which indexes the
-            // agent's inventory without scanning it. Rejecting it instead would leave agents that
-            // hold an offset from before the module was disabled unable to index their packages
-            // at all (#38599).
-            //
-            // Gated on the scanner, not on the offset reading 0: a running scanner reports 0 too
-            // while the content manager's offset store is not answering yet (a window on every
-            // restart with a feed already on disk), and skipping the check there would index an
-            // agent's packages unscanned on a node whose vulnerability detection is enabled. A
-            // feed that is merely still loading never reaches this point either way (D17 answers
-            // it 503 above).
-            if (item.session.isVD && m_scanner->scannerRunning())
+            // path. Non-VD sessions don't carry a meaningful feed_offset. A feed that is still
+            // loading never reaches this point (D17 answers it 503 above).
+            if (item.session.isVD)
             {
                 // Read once: two loads could disagree if a feed update lands between them.
                 const auto currentOffset = m_scanner->currentFeedOffset();
@@ -451,7 +420,7 @@ namespace invsync::vd
                 }
             }
 
-            // THE gating of D22: scan first; only an OK (or a legitimate skip) may index.
+            // THE gating of D22: scan first; only an OK (or a session with nothing to scan) may index.
             ScanVerdict verdict {};
             const auto scanStart = std::chrono::steady_clock::now();
             const auto observeScanDuration = [this, &scanStart]
@@ -483,7 +452,7 @@ namespace invsync::vd
             {
                 m_scansSkipped->add();
                 LOGFN_DEBUG1(logFn(),
-                             "Vulnerability scan for agent %s skipped legitimately; indexing its inventory anyway.",
+                             "Vulnerability scan for agent %s skipped: nothing to scan; indexing its inventory.",
                              item.session.agentId.c_str());
             }
             else

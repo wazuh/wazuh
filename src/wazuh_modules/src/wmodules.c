@@ -160,7 +160,7 @@ int wm_config() {
     // Read the manager configuration (/etc/wazuh-manager/wazuh-manager.conf): loaded once (the helper logs the error),
     // then each section of the effective document as cJSON. task-manager always exists
     // (default_modules[]), and so does vulnerability-detection: the effective document always carries
-    // its section (absent sections are inserted with their defaults), so `enabled` is the only switch.
+    // its section (absent sections are inserted with their defaults), so the module always runs.
     //
     // There is no `agent-upgrade` section here, and none in the schema: that module is agent-only.
     // The manager serves upgrades from the task manager, which reads their two settings from its own

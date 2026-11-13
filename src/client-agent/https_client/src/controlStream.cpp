@@ -501,7 +501,7 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
     }
 
     // Top-level (not nested under "agent"): the manager's current VD feed
-    // offset, when VD is enabled on the node that answered. Absent is left
+    // offset. Absent is left
     // alone -- unlike config_hash/settings_hash, a missing field must NOT be
     // treated as an observed 0; that would look like a confirmed "no offset"
     // to agent-info instead of "the manager didn't report one this time".

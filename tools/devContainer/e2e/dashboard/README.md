@@ -257,8 +257,7 @@ before the summary**, so a manifest that could not be written is `FAIL 10. manif
 
 ### Fixtures (`--probe-json` / `--findings-json`) — what they really need
 
-They exercise the verdicts a live manager will not produce on demand: a feed in `failed`, one with
-`enabled:false`, one `ready` with zero findings for the 5.x agent. **Check 9's feed verdict is the
+They exercise the verdicts a live manager will not produce on demand: a feed in `failed`, one `ready` with zero findings for the 5.x agent. **Check 9's feed verdict is the
 only part that runs without the stack**: with `--probe-json` it is evaluated even when checks 1, 2,
 3 or 5 failed, and its line is the verdict itself (`FAIL 9. vd (got: feed status=failed, …)`).
 Everything else still needs what it needs — the browser part of the view needs the dashboard and a
@@ -320,7 +319,6 @@ agent id**:
 | Probe | Verdict |
 |---|---|
 | unreachable / `{"error": …}` | FAIL `probe unreachable…` (no findings query) |
-| `enabled: false` | SKIP `vulnerability-detector disabled in config` (no findings query) |
 | `status: failed` | FAIL immediately (no findings query) |
 | `available`, `ready`, `offset > 0`, `last_successful_update > 0`, ≥ 1 finding **for the 5.x agent** | PASS (the CVE is sampled and the view is opened) |
 | the same, with 0 findings for the 5.x agent | FAIL `feed ready, 0 findings indexed for agent 002`, plus the last `scan completed` line of the manager log when there is one |
