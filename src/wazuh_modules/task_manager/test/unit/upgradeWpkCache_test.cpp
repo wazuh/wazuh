@@ -16,6 +16,8 @@
 
 #include <gtest/gtest.h>
 
+#include <sys/stat.h>
+
 #include <atomic>
 #include <string>
 #include <thread>
@@ -100,6 +102,41 @@ TEST(UpgradeFileHash, DigestComparisonIsCaseInsensitive)
 }
 
 // ---- the WPK cache -------------------------------------------------------------------------------
+
+TEST(UpgradeWpkCache, RejectsFileNamesThatArePathsBeforeDownloading)
+{
+    const TempDir dir;
+    FakeWpkRepository repository;
+    repository.scriptDownload(WPK_URL, {true, CONTENT_A, 200, 0, {}, false});
+    auto options {optionsIn(dir, 1)};
+    options.upgradeDir += "upgrade/";
+    ASSERT_EQ(::mkdir(options.upgradeDir.c_str(), 0700), 0);
+    dir.writeFile("outside.wpk", CONTENT_B);
+    WpkCache cache {repository, options};
+    StopToken stop;
+
+    const std::vector<std::string> names {"",
+                                          ".",
+                                          "..",
+                                          "../outside.wpk",
+                                          "nested/agent.wpk",
+                                          "./agent.wpk",
+                                          "/agent.wpk",
+                                          "nested\\agent.wpk",
+                                          std::string {"agent.wpk\0suffix", 16}};
+    for (const auto& name : names)
+    {
+        SCOPED_TRACE(name);
+        auto request {requestFor(SHA1_A)};
+        request.fileName = name;
+        EXPECT_EQ(cache.ensure(request, stop), UpgradeError::WpkFileDoesNotExist);
+        EXPECT_TRUE(cache.pathFor(name).empty());
+    }
+    EXPECT_EQ(repository.totalDownloadCalls(), 0U);
+    EXPECT_EQ(dir.read("outside.wpk"), CONTENT_B);
+    EXPECT_FALSE(dir.exists("upgrade/agent.wpk"));
+    EXPECT_FALSE(dir.exists("upgrade/.staging"));
+}
 
 TEST(UpgradeWpkCache, DownloadsOnceAndVerifiesTheDigest)
 {
@@ -347,6 +384,49 @@ TEST(UpgradeWpkCache, CapsHowManyDownloadsRunAtOnce)
 
     EXPECT_EQ(repository.totalDownloadCalls(), static_cast<std::size_t>(DISTINCT_FILES));
     EXPECT_LE(repository.peakConcurrentDownloads(), 2);
+}
+
+TEST(UpgradeWpkCache, RejectsLocalPathAliasesAndEmbeddedNuls)
+{
+    const TempDir dir;
+    dir.writeFile(WPK_FILE, CONTENT_A);
+    dir.writeFile("nested\\agent.wpk", CONTENT_A);
+    FakeWpkRepository repository;
+    WpkCache cache {repository, optionsIn(dir)};
+
+    const std::vector<std::string> names {
+        "./agent.wpk", ".staging/../agent.wpk", "nested\\agent.wpk", std::string {"agent.wpk\0suffix", 16}};
+    ASSERT_EQ(::mkdir((dir.path() + ".staging").c_str(), 0700), 0);
+    for (const auto& name : names)
+    {
+        SCOPED_TRACE(name);
+        std::string sha1 {"unchanged"};
+        EXPECT_EQ(cache.verifyLocal(name, sha1), UpgradeError::WpkFileDoesNotExist);
+        EXPECT_EQ(sha1, "unchanged");
+    }
+    EXPECT_EQ(repository.totalDownloadCalls(), 0U);
+}
+
+TEST(UpgradeWpkCache, PreservesBarePublishedAndCustomFileNames)
+{
+    const TempDir dir;
+    FakeWpkRepository repository;
+    repository.scriptDownload(WPK_URL, {true, CONTENT_A, 200, 0, {}, false});
+    auto options {optionsIn(dir)};
+    options.upgradeDir.pop_back();
+    WpkCache cache {repository, options};
+    StopToken stop;
+
+    for (const auto* name : {"wazuh_agent_v5.0.0-rc1_linux_amd64.deb.wpk", "custom package+1..wpk", ".custom.wpk"})
+    {
+        SCOPED_TRACE(name);
+        EXPECT_EQ(cache.pathFor(name), dir.path() + name);
+        EXPECT_EQ(cache.ensure({WPK_URL, name, SHA1_A}, stop), UpgradeError::Success);
+        EXPECT_EQ(dir.read(name), CONTENT_A);
+        std::string sha1;
+        EXPECT_EQ(cache.verifyLocal(name, sha1), UpgradeError::Success);
+        EXPECT_EQ(sha1, SHA1_A);
+    }
 }
 
 TEST(UpgradeWpkCache, VerifiesALocalFileWithoutDownloadingAnything)

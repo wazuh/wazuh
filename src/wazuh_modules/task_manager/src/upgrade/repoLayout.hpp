@@ -126,9 +126,9 @@ namespace task_manager::upgrade
      * macOS directory order INVERTS across v4.9.0 -- <pkg>/<arch> after, <arch>/<pkg> before -- which
      * is a property of the published repository, not a typo.
      *
-     * Only the >= v4.9.0 Linux shape can fail: it is the only one that puts the package type in the
-     * path, so an agent whose distribution resolved to no package family, with no `package_type` in
-     * the request to stand in for it, has no URL at all -> SystemNotSupported.
+     * A file name containing a path or embedded NUL is rejected with SystemNotSupported. The
+     * >= v4.9.0 Linux shape also returns SystemNotSupported when neither the distribution nor the
+     * request supplies a package type.
      */
     RepoLayoutResult resolveRepoLayout(const AgentInfo& agent, const RepoRequest& request);
 } // namespace task_manager::upgrade

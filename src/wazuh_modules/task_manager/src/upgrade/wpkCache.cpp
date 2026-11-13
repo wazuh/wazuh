@@ -9,6 +9,7 @@
  */
 
 #include "wpkCache.hpp"
+#include "wpkFileName.hpp"
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -55,7 +56,7 @@ namespace task_manager::upgrade
 
     std::string WpkCache::pathFor(const std::string& fileName) const
     {
-        return m_options.upgradeDir + fileName;
+        return isValidWpkFileName(fileName) ? m_options.upgradeDir + fileName : std::string {};
     }
 
     std::shared_ptr<std::mutex> WpkCache::lockFor(const std::string& path)
@@ -111,12 +112,12 @@ namespace task_manager::upgrade
 
     UpgradeError WpkCache::ensure(const Request& request, const StopToken& stop)
     {
-        if (request.fileName.empty() || request.sha1.empty())
+        const auto destPath {pathFor(request.fileName)};
+        if (destPath.empty() || request.sha1.empty())
         {
             return UpgradeError::WpkFileDoesNotExist;
         }
 
-        const auto destPath {pathFor(request.fileName)};
         const auto pathLock {lockFor(destPath)};
         std::lock_guard held {*pathLock};
 
@@ -277,6 +278,10 @@ namespace task_manager::upgrade
     UpgradeError WpkCache::verifyLocal(const std::string& fileName, std::string& sha1)
     {
         const auto path {pathFor(fileName)};
+        if (path.empty())
+        {
+            return UpgradeError::WpkFileDoesNotExist;
+        }
         const auto stamp {stampOf(path)};
         if (!stamp.has_value())
         {

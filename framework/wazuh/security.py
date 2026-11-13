@@ -218,7 +218,7 @@ def _check_reserved_target(user_id: int, current_user: str = None, run_as: bool 
 
 
 def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles: bool = False,
-                           static_roles: bool = False):
+                           static_roles: bool = False, run_as: bool = False):
     """Refuse an operation over a user that would put roles the caller cannot assign within its reach.
 
     Linking a role to a user needs 'security:update' over the role (`set_user_role`). Enabling the
@@ -241,7 +241,9 @@ def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles:
         the flag the target will have, not the one it has, so the caller passes True when enabling it.
     static_roles : bool
         Count the roles linked to the target, and every role when its run_as flag is already on. A
-        caller modifying its own account is exempt: it already holds all of them.
+        caller modifying its own account without a run_as token is exempt: it already holds all of them.
+    run_as : bool
+        Whether the request was made with a run_as token, whose subject is not the delegated user.
 
     Raises
     ------
@@ -254,7 +256,7 @@ def _check_role_escalation(user_id: int, current_user: str = None, run_as_roles:
         with AuthenticationManager() as auth_manager:
             target = auth_manager.get_user_id(user_id)
             caller = auth_manager.get_user(current_user) if current_user is not None else None
-        if not target or (caller and caller['id'] == user_id):
+        if not target or (not run_as and caller and caller['id'] == user_id):
             return
         roles.update(target['roles'])
         run_as_roles = run_as_roles or target['allow_run_as']
@@ -378,8 +380,9 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     WazuhError(5011)
         If the target is a reserved user and the caller is not a reserved user logged in without run_as.
     WazuhPermissionError(4000)
-        If the target is not the caller and the caller lacks 'security:update' over one of the target's
-        roles, or, when its run_as flag is on, over every role, those not created yet included.
+        Unless the caller resets its own password without a run_as token, if it lacks 'security:update'
+        over one of the target's roles, or, when the target's run_as flag is on, over every role,
+        those not created yet included.
 
     Returns
     -------
@@ -391,7 +394,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
     if password is not None:
         validate_password(password)
         _check_reserved_target(int(user_id[0]), current_user, run_as)
-        _check_role_escalation(int(user_id[0]), current_user, static_roles=True)
+        _check_role_escalation(int(user_id[0]), current_user, static_roles=True, run_as=run_as)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
