@@ -1324,7 +1324,8 @@ attempt; when the not-`Down` nodes are all parked by a 429 `Retry-After` ([Node 
 ### Conflicts of `deleteByQuery` and `updateByQuery`
 
 A 2xx whose `failures` are all `version_conflict_engine_exception` / 409, or with `version_conflicts > 0`, is a conflict. The budget is
-`CONFLICT_ATTEMPTS = 3` attempts with a wait of `CONFLICT_BASE = 3 s`, doubled up to `CONFLICT_CAP = 15 s`. Each conflict retry opens
+`QueryOptions.conflictAttempts` attempts (default `CONFLICT_ATTEMPTS = 3`, must be > 0; `1` never resends a by-query on a conflict)
+with a wait of `CONFLICT_BASE = 3 s`, doubled up to `CONFLICT_CAP = 15 s`. Each conflict retry opens
 a **fresh retry series** (independent clocks). Exhausted: `Failed(VersionConflict)` with the counts in `reason`. Any other `failures`
 entry is `Failed(ItemPermanent)` with the first one in `reason`; `timed_out` is a Retry under the retry rules.
 
@@ -1392,7 +1393,7 @@ the attempt in flight and returns `ClientClosed` (`Shutdown` when the gate is st
 Every index must be non-empty, made only of `[A-Za-z0-9_.*-]`, not made only of dots (libcurl collapses `.` and `..` path segments,
 so `..` would reach `/_delete_by_query` of every index) and not start with `_` (`_all`, an endpoint); the list of a DBQ/UBQ must not be
 empty. Also validated, with the same rules as a bucket's `RetryPolicy`: `retry.base > 0`, `retry.cap >= retry.base`,
-`retry.jitter` in `[0, 1]` (NaN refused), `retry.maxAttempts > 0` or unset, `retry.maxDuration > 0` or unset, `pageDeadline > 0`. Failures are `InvalidArgument` with the field first in `reason`, and no
+`retry.jitter` in `[0, 1]` (NaN refused), `retry.maxAttempts > 0` or unset, `retry.maxDuration > 0` or unset, `pageDeadline > 0`, `conflictAttempts > 0`. Failures are `InvalidArgument` with the field first in `reason`, and no
 request is made.
 
 ### Causes of a query

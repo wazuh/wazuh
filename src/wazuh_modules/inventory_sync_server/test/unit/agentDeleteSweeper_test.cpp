@@ -145,6 +145,36 @@ protected:
         return result;
     }
 
+    /// forget() while the only delete-by-query carrying the id is held, then the request answers @p failure (once;
+    /// the indexer answers a clean delete afterwards). The request is never resent with the withdrawn id: not by the
+    /// query layer (its id list predates the forget()), not by the sweeper's retry on the next pass. The deadline is
+    /// long enough for any resend of the query layer (a 5xx or 429 backoff, the 3 s conflict delay) to happen.
+    void expectFailureNotResentAfterForget(indexer_client::testing::Rule failure)
+    {
+        failure.hold = true;
+        failure.times = 1;
+        real.fake->addRule(std::move(failure));
+        start(WINDOW, 10000ms);
+        settle();
+        sweeper->note("000007");
+
+        ASSERT_TRUE(waitUntil([&] { return real.dbqRequests(CONFIG_INDEX).size() == 1; }, 4000ms));
+        sweeper->forget("000007");
+        real.fake->releaseHeld();
+
+        // A resend would succeed (the clean answer) and count no failure: the failure must be counted at once.
+        ASSERT_TRUE(waitUntil([&] { return sweeper->stats().failures == 1; }, 2500ms))
+            << "the failure was not final (a resend happened or is pending): " << real.dbqRequests(CONFIG_INDEX).size()
+            << " request(s)";
+        std::this_thread::sleep_for(WINDOW * 5 / 2); // Past the pass a retry would have run in.
+        EXPECT_EQ(1U, real.dbqRequests(CONFIG_INDEX).size()) << "the withdrawn id is never sent again";
+        EXPECT_EQ(0U, real.dbqRequests(STATS_INDEX).size()) << "nor to the second index";
+        EXPECT_EQ(1U, sweeper->stats().forgotten);
+        EXPECT_EQ(1U, sweeper->stats().runs);
+        sweeper->stop();
+        EXPECT_EQ(0U, sweeper->stats().dropped);
+    }
+
     RealIndexer real;
     std::unique_ptr<AgentDeleteSweeper> sweeper;
 };
@@ -537,4 +567,32 @@ TEST_F(AgentDeleteSweeperTest, ForgetDuringPassSparesUnsentChunksAndRetry)
     EXPECT_EQ(1U, sweeper->stats().runs);
     sweeper->stop();
     EXPECT_EQ(0U, sweeper->stats().dropped) << "a withdrawn id is not pending, so stop() has nothing to drop";
+}
+
+/// A sweep request answered 503 after forget() withdrew its only id: the query layer would retry a 5xx with the id list
+/// built before the forget() and delete the new agent's documents; each sweep request is sent once instead.
+TEST_F(AgentDeleteSweeperTest, ForgetDuring503IsNotResent)
+{
+    expectFailureNotResentAfterForget(dbqRuleFor(
+        CONFIG_INDEX,
+        503,
+        R"({"error":{"root_cause":[{"type":"unavailable","reason":"busy"}],"type":"unavailable","reason":"busy"},"status":503})"));
+}
+
+/// The same with a 429 (it costs the query layer no attempt, so one attempt alone would still wait it out and resend).
+TEST_F(AgentDeleteSweeperTest, ForgetDuring429IsNotResent)
+{
+    expectFailureNotResentAfterForget(
+        dbqRuleFor(CONFIG_INDEX,
+                   429,
+                   R"({"error":{"root_cause":[{"type":"es_rejected_execution_exception","reason":"busy"}],)"
+                   R"("type":"es_rejected_execution_exception","reason":"busy"},"status":429})"));
+}
+
+/// The same with an answer that reports a version conflict (the query layer resends a by-query on its own conflict
+/// budget, apart from the retry policy).
+TEST_F(AgentDeleteSweeperTest, ForgetDuringConflictIsNotResent)
+{
+    expectFailureNotResentAfterForget(dbqRuleFor(
+        CONFIG_INDEX, 200, R"({"took":1,"timed_out":false,"deleted":0,"version_conflicts":1,"failures":[]})"));
 }

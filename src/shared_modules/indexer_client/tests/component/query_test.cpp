@@ -428,8 +428,8 @@ TEST_F(QueryTest, Query429WithoutRetryAfterBacksOff)
     EXPECT_GT(g3, g2);
 }
 
-// retry.base = 0, retry.cap < retry.base, retry.jitter > 1 or NaN, retry.maxAttempts = 0, retry.maxDuration = 0
-// and pageDeadline = 0 ⇒ InvalidArgument naming the field, no request.
+// retry.base = 0, retry.cap < retry.base, retry.jitter > 1 or NaN, retry.maxAttempts = 0, retry.maxDuration = 0,
+// pageDeadline = 0 and conflictAttempts = 0 ⇒ InvalidArgument naming the field, no request.
 TEST_F(QueryTest, QueryRejectsZeroBase)
 {
     const auto node = fake();
@@ -453,13 +453,16 @@ TEST_F(QueryTest, QueryRejectsZeroBase)
     zeroAttempts.retry.maxAttempts = 0u;
     auto zeroDuration = fastOptions();
     zeroDuration.retry.maxDuration = ic::Duration {0};
+    auto zeroConflicts = fastOptions();
+    zeroConflicts.conflictAttempts = 0u;
     const std::vector<std::pair<ic::QueryOptions, std::string>> cases {{zeroBase, "retry.base"},
                                                                        {capBelow, "retry.cap"},
                                                                        {zeroPage, "pageDeadline"},
                                                                        {jitterAbove, "retry.jitter"},
                                                                        {jitterNan, "retry.jitter"},
                                                                        {zeroAttempts, "retry.maxAttempts"},
-                                                                       {zeroDuration, "retry.maxDuration"}};
+                                                                       {zeroDuration, "retry.maxDuration"},
+                                                                       {zeroConflicts, "conflictAttempts"}};
     for (const auto& [options, field] : cases)
     {
         auto search = query->search("idx", MATCH_ALL, options, in(5s));

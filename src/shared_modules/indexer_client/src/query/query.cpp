@@ -190,6 +190,10 @@ namespace indexer_client::detail::query
             {
                 return std::string("pageDeadline: must be > 0");
             }
+            if (options.conflictAttempts == 0)
+            {
+                return std::string("conflictAttempts: must be > 0");
+            }
             return std::nullopt;
         }
 
@@ -584,7 +588,7 @@ namespace indexer_client::detail::query
                             last.set(Cause::VersionConflict,
                                      static_cast<int>(r.status),
                                      std::to_string(response.versionConflicts) + " version conflicts");
-                            if (conflicts >= CONFLICT_ATTEMPTS)
+                            if (conflicts >= options.conflictAttempts)
                             {
                                 return fail<QueryResponse>(
                                     Cause::VersionConflict,

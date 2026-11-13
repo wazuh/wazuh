@@ -43,8 +43,10 @@ namespace invsync::indexer
      * `window` old, so each id waits between one and two windows. Each pass runs one delete-by-query PER INDEX (a
      * missing index does not void the other) with `terms` on `_id`, in chunks of at most MAX_IDS_PER_QUERY, without
      * a refresh (the indexer role may lack `indices:admin/refresh`). The documents a pass deletes are the
-     * residual. A chunk that fails is retried once on the next pass and then dropped; nothing is swept when no id is
-     * due. stop() wakes the thread, joins it and drops what is pending. Nothing here guarantees zero residue.
+     * residual. Each request is sent once (no retry inside the query layer, on a 5xx, a 429 or a version conflict
+     * alike): a chunk that fails is retried once on the next pass, without the ids withdrawn by then, and then
+     * dropped; nothing is swept when no id is due. stop() wakes the thread, joins it and drops what is pending.
+     * Nothing here guarantees zero residue.
      *
      * An agent id can be enrolled again as soon as its deletion answered, which is when its sweep is noted. forget()
      * withdraws that id: the `/config` and `/stats` endpoints call it once they accepted a write for the id, so the
@@ -95,8 +97,9 @@ namespace invsync::indexer
          * @brief Withdraws @p agentId from the sweep: a write for it was accepted after its deletion.
          *
          * Removes every pending note of the id and, when the pass in progress holds it, keeps the pass from sending it
-         * in a chunk that has not been sent yet (a delete-by-query already in flight cannot be recalled). The id is not
-         * retried later either. Cheap when nothing is pending: one atomic load, no lock. Counted in `forgotten` when it
+         * in a chunk that has not been sent yet. A delete-by-query already in flight cannot be recalled, but it is
+         * never resent: a failed one is retried on the next pass, which leaves the id out. The id is not retried later
+         * either. Cheap when nothing is pending: one atomic load, no lock. Counted in `forgotten` when it
          * withdrew something.
          */
         void forget(const std::string& agentId);

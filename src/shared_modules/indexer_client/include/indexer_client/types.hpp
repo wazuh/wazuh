@@ -316,6 +316,9 @@ namespace indexer_client
         RetryPolicy retry;
         Duration pageDeadline {Duration {30000}};
         bool expandWildcardsAll {false};
+        /// deleteByQuery / updateByQuery: how many requests a by-query whose answers report version conflicts may take
+        /// (the first included) before it ends Failed(VersionConflict); must be > 0. 1 never resends it on a conflict.
+        std::uint32_t conflictAttempts {3};
     };
 
     struct PitPage final

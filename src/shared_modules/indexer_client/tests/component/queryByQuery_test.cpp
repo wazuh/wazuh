@@ -181,3 +181,32 @@ TEST_F(QueryTest, ByQueryOutcomesEndToEnd)
     EXPECT_EQ(exhausted.cause, ic::Cause::RetryExhausted) << exhausted.reason;
     EXPECT_EQ(queries(*node).size(), 1u);
 }
+
+// conflictAttempts = 1: a by-query whose answer reports version conflicts is not resent -- one request, then
+// VersionConflict -- whatever the retry policy still allows; the request after it (a clean answer) runs alone.
+// Mutant: the budget stays CONFLICT_ATTEMPTS (a second request after the conflict delay).
+TEST_F(QueryTest, ByQueryOneConflictAttemptNeverResends)
+{
+    indexer_client::testing_hooks::setQueryConflictBaseMs(CONFLICT_BASE_MS);
+    const auto conflict = rule("POST", "/a/_(delete|update)_by_query", 200, byQueryResponse(1));
+    const auto clean = rule("POST", "/a/_(delete|update)_by_query", 200, byQueryResponse(0));
+    const auto node = fake({times(conflict, 2), clean});
+    ASSERT_NO_FATAL_FAILURE(start({node->baseUrl()}));
+    auto owner = client();
+    auto query = owner->query();
+
+    auto once = fastOptions();
+    once.conflictAttempts = 1;
+    auto before = q::queryStats();
+    auto dbq = query->deleteByQuery({"a"}, BY_AGENT, {}, once, in(10s));
+    EXPECT_EQ(dbq.cause, ic::Cause::VersionConflict) << dbq.reason;
+    EXPECT_EQ(queries(*node).size(), 1u);
+    auto ubq = query->updateByQuery({"a"}, BY_AGENT, once, in(10s));
+    EXPECT_EQ(ubq.cause, ic::Cause::VersionConflict) << ubq.reason;
+    EXPECT_EQ(queries(*node).size(), 2u);
+    EXPECT_EQ(delta(before, q::queryStats()).conflictRetries, 0u);
+
+    auto ok = query->deleteByQuery({"a"}, BY_AGENT, {}, once, in(10s));
+    ASSERT_TRUE(ok.ok()) << ic::toString(ok.cause) << ": " << ok.reason;
+    EXPECT_EQ(queries(*node).size(), 3u);
+}
