@@ -389,6 +389,7 @@ extern "C"
 
             result->http_code = response.httpCode;
             result->retry_after_seconds = response.retryAfterSeconds;
+            result->request_sent = response.requestSent;
             std::strncpy(result->body, response.body.c_str(), sizeof(result->body) - 1);
             std::strncpy(result->transport_error, response.curlError.c_str(),
                          sizeof(result->transport_error) - 1);

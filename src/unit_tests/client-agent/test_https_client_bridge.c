@@ -16,6 +16,7 @@
 #include "shared.h"
 #include "agentd.h"
 #include "https_client_bridge.h"
+#include "enrollment.h"
 #include "https_client.h"
 #include "task_registry_client.h"
 #include "vd_offset_client.h"
@@ -317,6 +318,9 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
  * this wrapper, so the only thing observable here is that the read happens with the right bounds. */
 static char g_resolved_options[512] = {0};
 
+/* What agent.https_enroll_timeout is set to; 0 leaves the default. */
+static int g_enroll_timeout_override = 0;
+
 int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, int min, int max, int default_val)
 {
     (void)high_name;
@@ -325,6 +329,10 @@ int __wrap_getDefine_Int_default(const char *high_name, const char *low_name, in
         char entry[80];
         snprintf(entry, sizeof(entry), "%s:%d:%d;", low_name, min, max);
         strncat(g_resolved_options, entry, sizeof(g_resolved_options) - strlen(g_resolved_options) - 1);
+
+        if (strcmp(low_name, "https_enroll_timeout") == 0 && g_enroll_timeout_override > 0) {
+            return g_enroll_timeout_override;
+        }
     }
 
     return default_val;
@@ -458,6 +466,7 @@ static int setup_test(void **state)
     g_https_client_stopping = false;
     g_populate_metadata_calls = 0;
     g_resolved_options[0] = '\0';
+    g_enroll_timeout_override = 0;
 
     /* What ClientConf() resolves in production; the loops read it from agt. */
     agt->enrollment.retry_max = 60;
@@ -871,6 +880,45 @@ static void test_enroll_reuses_the_configured_endpoint(void **state)
 
     assert_true(g_captured_enroll_valid);
     assert_string_equal(g_captured_enroll_config.server_endpoint, "wazuh-manager");
+}
+
+static void test_enroll_reads_its_own_timeout_option(void **state)
+{
+    (void)state;
+    expect_any(__wrap_hc_enroll, config);
+    will_return(__wrap_hc_enroll, 0L);
+    will_return(__wrap_hc_enroll, true);
+
+    hc_enroll_result_t result;
+    w_https_client_enroll("{}", "", NULL, NULL, &result);
+
+    assert_true(g_captured_enroll_valid);
+    assert_int_equal(g_captured_enroll_config.enroll_timeout_ms, HC_DEFAULT_ENROLL_TIMEOUT_MS);
+    assert_non_null(strstr(g_resolved_options, "https_enroll_timeout:1000:600000;"));
+    /* The per-request timeout of the other endpoints is not read for /enroll. */
+    assert_int_equal(g_captured_enroll_config.request_timeout_ms, 0);
+}
+
+static void test_enroll_timeout_getter_honours_an_override(void **state)
+{
+    (void)state;
+    g_enroll_timeout_override = 45000;
+
+    assert_int_equal(w_enrollment_timeout_ms(), 45000);
+    assert_non_null(strstr(g_resolved_options, "https_enroll_timeout:1000:600000;"));
+}
+
+/* Once per process, so everything about the warning is asserted in this one test. */
+static void test_enroll_timeout_below_the_manager_wait_warns_once(void **state)
+{
+    (void)state;
+    g_enroll_timeout_override = 20000;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "agent.https_enroll_timeout (20000 ms) is below the manager's default enrollment wait "
+                  "(30000 ms): the agent may abandon an enrollment the manager still applies.");
+    assert_int_equal(w_enrollment_timeout_ms(), 20000);
+    assert_int_equal(w_enrollment_timeout_ms(), 20000);
 }
 
 static void test_enroll_passes_body_and_password_through(void **state)
@@ -3525,6 +3573,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_absent_endpoint_leaves_the_field_empty, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_transport_config_not_identity, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_reuses_the_configured_endpoint, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_reads_its_own_timeout_option, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_timeout_getter_honours_an_override, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_enroll_timeout_below_the_manager_wait_warns_once, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_body_and_password_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_passes_the_keyed_credential_through, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_enroll_ignores_a_half_keyed_credential, setup_test, teardown_test),

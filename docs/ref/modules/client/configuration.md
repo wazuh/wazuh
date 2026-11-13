@@ -610,8 +610,20 @@ figure against `<global><agents_disconnection_time>` before raising either.
 ```ini
 # Per-request budget for /control, /stateless, /stats and /config, in
 # milliseconds (default: 10000, range 1000-600000). Covers DNS, TCP, TLS and
-# transfer -- there is no separate connect or handshake timeout.
+# transfer -- there is no separate connect or handshake timeout. It does not
+# apply to /enroll, which has its own budget below.
 agent.https_request_timeout=10000
+
+# Per-request budget for POST /enroll, in milliseconds (default: 35000,
+# range 1000-600000). It applies to every enrollment the agent sends: the
+# first-boot token bootstrap, wazuh-agent-auth, and re-enrollment. All of them
+# read it from internal_options.conf / local_internal_options.conf in the
+# installation directory, so an override in local_internal_options.conf holds
+# for each. It has to stay above what the manager still spends on the request
+# -- remoted's http_request_timeout (30 s by default) -- so the agent receives
+# the manager's answer instead of abandoning an enrollment that is applied
+# anyway. Below 30000 the agent logs a warning once.
+agent.https_enroll_timeout=35000
 
 # Per-request budget for large transfers: /stateful and both POST /download
 # kinds, config and WPK (default: 90000, range 1000-3600000)

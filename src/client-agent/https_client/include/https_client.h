@@ -92,6 +92,11 @@ typedef enum hc_result_t
     HC_RESULT_ERROR
 } hc_result_t;
 
+/* /enroll default budget; it must exceed remoted's default http_request_timeout, or the agent
+ * abandons an enrollment authd goes on to apply. */
+#define HC_DEFAULT_ENROLL_TIMEOUT_MS 35000u
+#define HC_MANAGER_REQUEST_TIMEOUT_MS 30000u
+
 #define HC_MAX_HOST 256
 #define HC_MAX_ID 16
 #define HC_MAX_KEY 256
@@ -180,6 +185,7 @@ typedef struct hc_config_t
     ///< here on, since it changes when a bundle is adopted.
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
+    uint32_t enroll_timeout_ms;   ///< Per /enroll request; 0 -> HC_DEFAULT_ENROLL_TIMEOUT_MS.
     uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
     ///< 0 -> 90000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
@@ -586,6 +592,10 @@ typedef struct hc_enroll_result_t
     long http_code;           ///< 0 = no HTTP response at all (transport/config
     ///< failure -- see hc_enroll()'s return value).
     long retry_after_seconds; ///< Parsed Retry-After header (0 = absent).
+    /// The request reached an established connection, so the manager may have acted on it
+    /// even when no answer came back. False for a failure before that: DNS, connect, a TLS
+    /// handshake the client refused, or a request never built.
+    bool request_sent;
     char body[HC_MAX_ENROLL_BODY]; ///< Raw response body (success or error JSON).
     /// Why the request failed below HTTP, in libcurl's own words (same contract as
     /// on_producer_pause's reason). Usually paired with http_code == 0, but a
