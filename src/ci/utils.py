@@ -19,6 +19,7 @@ print = functools.partial(print, flush=True)
 CURRENT_DIR = Path(__file__).parent
 HEADER_DIR = {
     'asan':                "=============== Running ASAN        ===============",
+    'clangformat':         "=============== Running clang-format ===============",
     'clean':               "=============== Cleaning library    ===============",
     'cleanfolder':         "=============== Clean build Folders ===============",
     'cppcheck':            "=============== Running cppcheck    ===============",

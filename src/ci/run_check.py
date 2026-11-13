@@ -105,6 +105,30 @@ def runASAN(moduleName, testToolConfig):
     utils.printGreen(msg="[ASAN: PASSED]")
 
 
+def runClangFormat(moduleName, fix=False):
+    """
+    Execute clang-format on the module's C and C++ files.
+
+    Args:
+        - moduleName: Library to be analyzed.
+        - fix: Format the files in place instead of checking them.
+
+    Returns:
+        - None
+
+    Raises:
+        - ValueError: Raises an exception when one or more files do not follow the coding style.
+    """
+    utils.printHeader(moduleName=moduleName, headerKey="clangformat")
+    files = subprocess.run(["git", "ls-files", "--"] + ["{}/*.{}".format(moduleName, ext) for ext in ("c", "h", "cpp", "hpp")],
+                           stdout=subprocess.PIPE, check=True, text=True).stdout.split()
+    mode = ["-i"] if fix else ["--dry-run", "--Werror"]
+    if subprocess.run(["clang-format"] + mode + files).returncode != 0:
+        utils.printFail(msg="[ClangFormat: FAILED]")
+        raise ValueError("Code is not compliant with the expected guidelines. Run python3 build.py --sformat {}".format(moduleName))
+    utils.printGreen(msg="[ClangFormat: PASSED]")
+
+
 def runCoverage(moduleName, target="agent"):
     """
     Execute code coverage for a library unit tests.
@@ -277,6 +301,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # We first run the fastest tests
     runCppCheck(moduleName=moduleName)
+    runClangFormat(moduleName=moduleName)
 
     # Making a full clean, downloading external dependencies and
     # building the corresponding target with tests flag enabled
