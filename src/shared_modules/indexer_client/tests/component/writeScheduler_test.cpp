@@ -121,7 +121,7 @@ TEST_F(WriteTest, ThresholdsFormBatches)
     EXPECT_EQ(sink->resolveHeld(), 10u);
 }
 
-// T3a/I23: weights 1 and 8 with a continuous backlog and a sink that takes 20 batches per window (a full DRR round is
+// Weights 1 and 8 with a continuous backlog and a sink that takes 20 batches per window (a full DRR round is
 // 2 + 16): the weight-1 bucket gets batches in every window.
 TEST_F(WriteTest, DrrNoStarvation)
 {

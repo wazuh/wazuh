@@ -125,7 +125,7 @@ namespace indexer_client::detail::write
 
         /// The single resolution path, first-wins on OpState::claimed. `bucket` is the op's, passed by the
         /// caller, which always holds it strongly (the Batch's, the writer's, the bucket being swept or requeued),
-        /// or null for an op whose bucket died (a group committed after its bucket died, D66b/D67b): the op keeps no
+        /// or null for an op whose bucket died (a group committed after its bucket died): the op keeps no
         /// reference to its bucket. Then: releases the payload once, counts the status and
         /// posts the completion to the pool (ticket completed, then the callback under a guard that releases the
         /// result reserve even if it throws; without a callback the reserve dies with the last Ticket), counted in the

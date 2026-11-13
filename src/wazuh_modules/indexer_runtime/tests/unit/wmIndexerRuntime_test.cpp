@@ -316,7 +316,7 @@ TEST(WmIndexerRuntimeExit, StateUsableDuringExit)
         "");
 }
 
-// Issue 18: the published RuntimeRef must live on the heap, never in static storage. A static one would be destroyed by
+// The published RuntimeRef must live on the heap, never in static storage. A static one would be destroyed by
 // exit() under a module thread whose join expired; StateUsableDuringExit cannot see that (the weak_ptr's control block
 // is kept alive by libindexer_client, so reading the destroyed object still looks fine, even under ASAN). dladdr()
 // finds every address inside a loaded image (the test binary or a shared object, .data and .bss included) and none on

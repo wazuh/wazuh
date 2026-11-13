@@ -117,7 +117,7 @@ TEST_F(OpenSearchPreserve, ReplacePreservingKeepsNestedUserPaths)
     std::int64_t version = 0;
     const auto source = getSource(m_index, "doc-1", &version);
     ASSERT_TRUE(source.has_value());
-    std::cout << "E6B-BODY preserve._source=" << source->dump() << "\n";
+    std::cout << "IC-BODY preserve._source=" << source->dump() << "\n";
     EXPECT_FALSE(source->at("os").contains("x")) << "a field the agent no longer sends must disappear";
     EXPECT_EQ(source->at("os").at("name"), "linux2");
     EXPECT_EQ(source->at("agent").at("id"), "001");
@@ -179,7 +179,7 @@ TEST_F(OpenSearchPreserve, UpsertEmptyCreatesAgentDoc)
         {"upsert", nlohmann::json::object()},
         {"scripted_upsert", true}};
     const auto bulk = raw("POST", "/_bulk", action.dump() + "\n" + script.dump() + "\n", "application/x-ndjson");
-    std::cout << "E6B-BODY upsert_empty.bulk=" << bulk.body << "\n";
+    std::cout << "IC-BODY upsert_empty.bulk=" << bulk.body << "\n";
     ASSERT_EQ(bulk.status, 200) << bulk.body;
     const auto response = nlohmann::json::parse(bulk.body);
     EXPECT_FALSE(response.at("errors").get<bool>());

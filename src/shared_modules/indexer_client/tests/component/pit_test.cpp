@@ -166,7 +166,7 @@ TEST_F(PitTest, OverlappingNextOnOneCursorRefused)
     EXPECT_EQ(numbers(second.value), (std::vector<std::int64_t> {3, 4})) << "the cursor did not go on";
 }
 
-// T7b: two cursors (slice 0/2 and 1/2) on different threads, opened and closed at different times: every request
+// Two cursors (slice 0/2 and 1/2) on different threads, opened and closed at different times: every request
 // carries the same id, the union of their hits is the index without duplicates, one creation, and the one delete
 // comes only after the last handle (the second cursor) goes. Mutant: delete when a cursor is destroyed.
 TEST_F(PitTest, TwoSlicesShareOnePit)

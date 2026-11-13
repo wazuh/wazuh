@@ -1240,7 +1240,7 @@ and `callbacksSkipped` grows. The contract for consumers: a consumer that needs 
 `CloseReport` field, the metrics publish both ([metrics](#metrics) and the [overrun summary](#log-lines)). `Dropped(QueueFull)` has no field of its own.
 
 **Destructor.** `~Client` on a consumer thread is `requestClose()` plus `awaitClosed()` with the shutdown deadline (or the default).
-On a runtime thread (also move-assignment over a live `Client` there) it keeps the pre-E5b behaviour: `requestClose()` plus the
+On a runtime thread (also move-assignment over a live `Client` there) it does not wait: `requestClose()` plus the
 immediate sweep (`closeClient(client, true)`: `close(ClientClosed)` and pending and lane operations resolved `Dropped(ClientClosed)`;
 delivered ones keep their course), counted as a usage error, so a usage error never loses a result.
 
@@ -2139,8 +2139,8 @@ literal durations were not reviewed one by one: most are generous waits, and a f
 `transportShutdown_test.cpp`) that passed every local run of the three jobs at 2 CPUs; a CI flake on any of them is scaled the same way.
 
 **Real-OpenSearch suite** (`tests/opensearch/`, `indexer_client_opensearch_test`; links the public `.so` and cpp-httplib for raw requests). Without
-a URL the suite SKIPs, except under `GITHUB_ACTIONS`, where it FAILs; a URL that does not answer within `scaled(120 s)` FAILs, once per run (later cases fail at once). Its indices are `ic-e6b-<case>-<pid>`; the global
-setup **deletes every `ic-e6b-*` index** left by an earlier run, so never point it at a cluster where another run of the suite is active.
+a URL the suite SKIPs, except under `GITHUB_ACTIONS`, where it FAILs; a URL that does not answer within `scaled(120 s)` FAILs, once per run (later cases fail at once). Its indices are `ic-ostest-<case>-<pid>`; the global
+setup **deletes every `ic-ostest-*` index** left by an earlier run, so never point it at a cluster where another run of the suite is active.
 Its suites:
 
 | Suite | Covers |
@@ -2151,8 +2151,8 @@ Its suites:
 | `OpenSearchSizes.*`, `OpenSearchLoad.*` | informative measurements |
 | `OpenSearchHealth.RequireClusterFailsFast` | the require-cluster case fails fast |
 | `OpenSearchFailures.*`, `OpenSearchSettingGuard.*` | a document the strict mapping refuses, the shard limit, a missing index without auto-creation; the cluster settings they change are restored |
-| `OpenSearchPayloadLimit.BulkOverTheLimitIsSplitUntilEverythingLands` | issue 26, on the `INDEXER_CLIENT_OPENSEARCH_SMALL_URL` node: a group three times its `http.max_content_length` is split after the 413 until every operation is `Ok` (one document per operation, more than one bulk); one document over the limit ends `Failed(PayloadTooLarge)` with 413 and is not indexed |
-| `OpenSearchOutage.StoppedNodeLosesNothingAndDuplicatesNothing` | issue 27: `docker stop` of the `INDEXER_CLIENT_OPENSEARCH_CONTAINER` node. While it is down a submit returns at once and nothing resolves; a client closed then ends every operation `Dropped(ClientClosed)` without the node; after `docker start` the queued operations land, the documents indexed before are there, and resending every id leaves one document per id. The node is started again whatever the case does |
+| `OpenSearchPayloadLimit.BulkOverTheLimitIsSplitUntilEverythingLands` | on the `INDEXER_CLIENT_OPENSEARCH_SMALL_URL` node: a group three times its `http.max_content_length` is split after the 413 until every operation is `Ok` (one document per operation, more than one bulk); one document over the limit ends `Failed(PayloadTooLarge)` with 413 and is not indexed |
+| `OpenSearchOutage.StoppedNodeLosesNothingAndDuplicatesNothing` | `docker stop` of the `INDEXER_CLIENT_OPENSEARCH_CONTAINER` node. While it is down a submit returns at once and nothing resolves; a client closed then ends every operation `Dropped(ClientClosed)` without the node; after `docker start` the queued operations land, the documents indexed before are there, and resending every id leaves one document per id. The node is started again whatever the case does |
 
 The 413 and outage cases have their own variables, gated like the URL (SKIP locally without them, FAIL under `GITHUB_ACTIONS`):
 `INDEXER_CLIENT_OPENSEARCH_SMALL_URL` is a second node started with a low `http.max_content_length` (a static node setting: it

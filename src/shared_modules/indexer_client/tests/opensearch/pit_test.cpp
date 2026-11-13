@@ -96,9 +96,9 @@ TEST_F(OpenSearchPit, ExpiredPitReturnsPitExpired)
         std::this_thread::sleep_for(indexer_client::testing::scaled(4s));
         const auto result = pit.value.search(search, after(indexer_client::testing::scaled(30s)));
         const auto body = rawPitSearch(ids[0]);
-        std::cout << "E6B-BODY pit.expired.a library=" << toString(result.cause) << " http=" << result.httpStatus
+        std::cout << "IC-BODY pit.expired.a library=" << toString(result.cause) << " http=" << result.httpStatus
                   << " reason=" << result.reason << "\n";
-        std::cout << "E6B-BODY pit.expired.a raw http=" << body.status << " body=" << body.body << "\n";
+        std::cout << "IC-BODY pit.expired.a raw http=" << body.status << " body=" << body.body << "\n";
         EXPECT_EQ(result.cause, Cause::PitExpired) << result.reason;
         // Every later call answers PitExpired without a request.
         EXPECT_EQ(pit.value.search(search, after(indexer_client::testing::scaled(5s))).cause, Cause::PitExpired);
@@ -116,14 +116,14 @@ TEST_F(OpenSearchPit, ExpiredPitReturnsPitExpired)
 
         const auto deleted = raw(
             "DELETE", "/_search/point_in_time", nlohmann::json {{"pit_id", nlohmann::json::array({ids[0]})}}.dump());
-        std::cout << "E6B-BODY pit.expired.b delete http=" << deleted.status << " body=" << deleted.body << "\n";
+        std::cout << "IC-BODY pit.expired.b delete http=" << deleted.status << " body=" << deleted.body << "\n";
         ASSERT_EQ(deleted.status, 200) << deleted.body;
 
         const auto result = pit.value.search(search, after(indexer_client::testing::scaled(30s)));
         const auto body = rawPitSearch(ids[0]);
-        std::cout << "E6B-BODY pit.expired.b library=" << toString(result.cause) << " http=" << result.httpStatus
+        std::cout << "IC-BODY pit.expired.b library=" << toString(result.cause) << " http=" << result.httpStatus
                   << " reason=" << result.reason << "\n";
-        std::cout << "E6B-BODY pit.expired.b raw http=" << body.status << " body=" << body.body << "\n";
+        std::cout << "IC-BODY pit.expired.b raw http=" << body.status << " body=" << body.body << "\n";
         EXPECT_EQ(result.cause, Cause::PitExpired) << result.reason;
     }
 }

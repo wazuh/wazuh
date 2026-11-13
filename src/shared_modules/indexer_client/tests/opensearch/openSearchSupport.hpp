@@ -16,12 +16,12 @@
 // Suite against a real OpenSearch. Gate: without INDEXER_CLIENT_OPENSEARCH_URL every case is
 // skipped, except under GITHUB_ACTIONS, where a missing URL fails (the workflow must never go green by skipping).
 // With the URL, requireCluster() polls /_cluster/health and fails when the cluster does not answer in the budget (once
-// per run: later cases fail at once). The global setup DELETES every `ic-e6b-*` index left by an earlier run; never
+// per run: later cases fail at once). The global setup DELETES every `ic-ostest-*` index left by an earlier run; never
 // point two concurrent runs at the same cluster.
 // The library is driven through its public API (RuntimeOwner, Client, writers, queries, PITs); only what the library
 // cannot express (an `"upsert":{}` line written by hand, response sizes with and without gzip, out-of-band PIT
-// deletes, reading `_source` back) goes through cpp-httplib. Measures are printed with the fixed prefix E6B-MEASURE.
-// Two cases need more than the node of URL_ENV (issues 26 and 27; each gated like the URL, skipped locally and failed
+// deletes, reading `_source` back) goes through cpp-httplib. Measures are printed with the fixed prefix IC-MEASURE.
+// Two cases need more than the node of URL_ENV (each gated like the URL, skipped locally and failed
 // under GITHUB_ACTIONS when its variable is missing): SMALL_URL_ENV, a second node started with a low static
 // `http.max_content_length` (the 413 split), and CONTAINER_ENV, the docker container of the URL_ENV node, which the
 // outage case stops and starts again (and always leaves started).
@@ -41,8 +41,8 @@
 namespace indexer_client::opensearch
 {
     constexpr const char* URL_ENV = "INDEXER_CLIENT_OPENSEARCH_URL";
-    constexpr const char* INDEX_PREFIX = "ic-e6b-";
-    constexpr const char* MEASURE = "E6B-MEASURE ";
+    constexpr const char* INDEX_PREFIX = "ic-ostest-";
+    constexpr const char* MEASURE = "IC-MEASURE ";
     /// A node whose `http.max_content_length` is low (CI and README: 16kb).
     constexpr const char* SMALL_URL_ENV = "INDEXER_CLIENT_OPENSEARCH_SMALL_URL";
     /// The docker container (name or id) of the URL_ENV node; never the e2e `wazuh-indexer`.
@@ -99,7 +99,7 @@ namespace indexer_client::opensearch
     /// Ids of every PIT the cluster holds (GET /_search/point_in_time/_all).
     std::vector<std::string> listPits();
 
-    /// Index of the current case: ic-e6b-<case in lowercase>-<pid>.
+    /// Index of the current case: ic-ostest-<case in lowercase>-<pid>.
     std::string caseIndex();
 
     /// Deletes every index matching `pattern` on `url` (the suite's global environment and each case's teardown use

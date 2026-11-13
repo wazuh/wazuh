@@ -7,7 +7,7 @@
 """Tests for the indexer A/B: the verdict rule, the drain maths, collect, and the dry runs.
 
 The verdict tests build sides at 0.90, 0.97 and 1.02 of each other: the three places around the
-0.95 / 1.00 thresholds that CA-E11c-2 names. The dry-run tests run the real scripts with
+0.95 / 1.00 thresholds of the verdict rule. The dry-run tests run the real scripts with
 --dry-run: no manager, container or indexer exists in the test, so anything they touched would
 fail loudly.
 """
@@ -69,7 +69,7 @@ def sides(ratio, base=1000.0, n=4):
 
 
 # ---------------------------------------------------------------------------
-# The verdict rule (CA-E11c-2)
+# The verdict rule
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("ratio, expected, code", [
     (0.90, "FAIL", 1),
@@ -446,7 +446,7 @@ def test_collect_reads_what_a_run_leaves(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# The dry runs (CA-E11c-1 and CA-E11c-3)
+# The dry runs
 # ---------------------------------------------------------------------------
 def dry(script, *args, env=None):
     full_env = dict(os.environ, **(env or {}))
@@ -486,7 +486,7 @@ def test_ab_indexer_refuses_an_odd_n():
 
 
 def test_the_lock_reexec_replays_every_argument(tmp_path):
-    """P1: the parse loop shifts the arguments away; the re-exec under the lock must replay them."""
+    """The parse loop shifts the arguments away; the re-exec under the lock must replay them."""
     lock = tmp_path / "measure.lock"
     out = subprocess.run(
         ["bash", os.path.join(BENCH, "ab_indexer.sh"), "--scenario", "drain-engine", "--n", "2",
@@ -570,7 +570,7 @@ def prepare(env, *args):
 
 
 def test_restore_side_when_the_other_side_adds_nothing_is_not_aborted_by_set_e(tmp_path):
-    """P2-1: v1's manifest is a subset of v2's, so restoring v2 subtracts nothing (grep . = rc 1)."""
+    """V1's manifest is a subset of v2's, so restoring v2 subtracts nothing (grep . = rc 1)."""
     home, conf, snaps, log, env = fake_manager(tmp_path)
     out = prepare(env, "--side", "v1", "--side-only", "--snapshots", str(snaps))   # v2 manifest has no extras
     assert out.returncode == 0, out.stdout + out.stderr
@@ -590,7 +590,7 @@ def test_restore_side_still_deletes_what_the_other_side_added(tmp_path):
 
 
 def test_restore_original_puts_the_internal_options_back(tmp_path):
-    """P3-10: the first --side keeps the original once; --restore-original brings it back."""
+    """The first --side keeps the original once; --restore-original brings it back."""
     home, conf, snaps, log, env = fake_manager(tmp_path)
     opts = conf / "wazuh-manager-internal-options.conf"
     original = opts.read_text()
@@ -636,7 +636,7 @@ def curl_stub(tmp_path):
 
 
 def test_indexer_credentials_go_on_stdin_not_in_argv(tmp_path):
-    """P3-9: the probe and the cleaner give curl the user through `-K -`."""
+    """The probe and the cleaner give curl the user through `-K -`."""
     log = tmp_path / "curl.log"
     env = dict(os.environ, PATH=f"{curl_stub(tmp_path)}:{os.environ['PATH']}", CURL_LOG=str(log),
                PYTHON=sys.executable, **idx_env(tmp_path, INDEXER_USER="admin", INDEXER_PASSWORD='s3cr"et\\pw'))
@@ -723,7 +723,7 @@ def run_campaign(work, tmp_path, extra_env=None, args=("--scenario", "drain-engi
 
 
 def test_stale_results_of_another_campaign_do_not_pass_an_aborted_run(tmp_path):
-    """P2: stale ab_metrics.json of an older campaign (a clear PASS) + a run that aborts: not a PASS, rc != 0."""
+    """Stale ab_metrics.json of an older campaign (a clear PASS) + a run that aborts: not a PASS, rc != 0."""
     work = bench_copy(tmp_path)
     stale_runs(work, campaign="20200101T000000Z-1")
     write_stub(work / "prepare_manager.sh", 'echo "STUB $*" > "$AB_STUB_OUT"\nexit 1\n')
@@ -734,7 +734,7 @@ def test_stale_results_of_another_campaign_do_not_pass_an_aborted_run(tmp_path):
 
 
 def test_an_aborted_scenario_never_exits_zero_even_if_the_report_passes(tmp_path):
-    """P2: the report alone says PASS (the runs carry this campaign's id), but a scenario aborted: rc 2."""
+    """The report alone says PASS (the runs carry this campaign's id), but a scenario aborted: rc 2."""
     work = bench_copy(tmp_path)
     stale_runs(work, campaign="fixed-campaign")
     write_stub(work / "prepare_manager.sh", 'exit 1\n')
@@ -744,7 +744,7 @@ def test_an_aborted_scenario_never_exits_zero_even_if_the_report_passes(tmp_path
 
 
 def test_report_reads_only_the_runs_of_the_current_campaign(tmp_path):
-    """P2: --n 2 after --n 4: the 4 leftover runs of the old campaign stay out of the medians."""
+    """--n 2 after --n 4: the 4 leftover runs of the old campaign stay out of the medians."""
     work = tmp_path
     stale_runs(work, campaign="old", ratio=0.5, n=4)             # would FAIL if it leaked in
     stale_runs(work, campaign="new", ratio=1.02, n=2)
@@ -815,7 +815,7 @@ def test_wait_quiet_times_out_while_the_count_keeps_growing(tmp_path):
 
 
 def test_a_failed_docker_pause_aborts_the_drain_run(tmp_path):
-    """P3: a drain run whose `docker pause` fails measures nothing: abort, no sender, no drain.json."""
+    """A drain run whose `docker pause` fails measures nothing: abort, no sender, no drain.json."""
     work = bench_copy(tmp_path)
     write_stub(work / "prepare_manager.sh", 'exit 0\n')
     write_stub(work / "run_benchmark.sh", 'touch "$AB_BENCH_MARK"\n')
@@ -853,7 +853,7 @@ def test_report_creates_the_output_directory(tmp_path):
 
 
 def test_the_drain_backlog_fits_both_queues():
-    """P3: 100,000 events x (payload + 2,048) must stay within the 1 GiB quota with margin at a 3 KiB payload,
+    """100,000 events x (payload + 2,048) must stay within the 1 GiB quota with margin at a 3 KiB payload,
     the options give both sides the same quota, and v2's global quota holds the engine's two buckets."""
     sc = json.load(open(os.path.join(BENCH, "scenarios", "ab_drain_engine.json")))
     lines = sum(1 for _ in open(os.path.join(BENCH, "sample_payloads", "engine", "syslog.log")))
@@ -873,7 +873,7 @@ def test_the_drain_backlog_fits_both_queues():
 
 
 def test_drain_syscollector_waits_on_the_inventory_indices_only(tmp_path):
-    """P3: the expected-total wait must not count VD's wazuh-states-vulnerabilities-* documents."""
+    """The expected-total wait must not count VD's wazuh-states-vulnerabilities-* documents."""
     import fnmatch
     out = dry("ab_indexer.sh", "--scenario", "drain-syscollector", "--no-warmup", "--n", "2",
               "--snapshots", str(tmp_path))
@@ -1256,7 +1256,7 @@ READY = "2026/11/06 18:00:00 wazuh-manager-modulesd: inventory-sync-server: INFO
 
 
 def test_wait_manager_ready_needs_the_reachable_line_after_the_restart_and_both_sockets(tmp_path):
-    """A2: the line must be logged AFTER the mark (a line of the previous start does not count)."""
+    """The line must be logged AFTER the mark (a line of the previous start does not count)."""
     out = ready_harness(tmp_path / "a", after="noise\n" + READY)
     assert "rc=0" in out.stdout and "ready: inventory_sync reachable" in out.stdout, out.stdout + out.stderr
     out = ready_harness(tmp_path / "b", before=READY, after="noise\n")
@@ -1277,7 +1277,7 @@ def test_a_manager_that_never_gets_ready_aborts_the_run(tmp_path):
 
 
 def test_a_deferred_agent_deletion_is_retried_not_fatal(tmp_path):
-    """A2(b): authd applies the DELETE later; the first cleanups still list bench-* agents."""
+    """authd applies the DELETE later; the first cleanups still list bench-* agents."""
     work = bench_copy(tmp_path)
     env = drain_stubs(tmp_path, work)
     count = tmp_path / "cleanup.count"
@@ -1313,7 +1313,7 @@ def test_index_total_delta_needs_the_pre_pause_baseline(tmp_path):
 
 
 def test_a_drain_run_takes_the_probe_baseline_before_the_pause(tmp_path):
-    """A6: a probe whose _stats never answers gets no baseline: the run aborts before `docker pause`."""
+    """A probe whose _stats never answers gets no baseline: the run aborts before `docker pause`."""
     work = bench_copy(tmp_path)
     env = drain_stubs(tmp_path, work)
     write_stub(tmp_path / "fakebin" / "curl", 'cat >/dev/null\ncase "$*" in *_stats*) exit 7;; esac\necho \'{"count":0}\'\n')
