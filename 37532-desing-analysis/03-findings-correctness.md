@@ -592,9 +592,12 @@ type=ATTR cgroup_id=40576 path=/var/lib/containerd/io.containerd.snapshotter.v1.
 ```
 
 The hook fires once on the overlay inode and again on the underlying upper filesystem's inode, whose
-dentry renders as the host-side snapshot path. Writes (`OPEN`) do not do this — both of their events
-carried the correct container path, differing only in `dev` — so this is an `ATTR`-path artifact, not a
-general one.
+dentry renders as the host-side snapshot path. Writes (`OPEN`) do not do this: both of their events
+carried the correct container path, differing only in `dev`. The host-form duplicate comes from the
+kprobe hooks, which overlayfs reaches a second time for the upper layer. `ATTR` has only a kprobe
+(`kprobe/security_inode_setattr`), kept on every file-hook step, so it duplicates on all of them;
+`UNLINK` also has an LSM program (`lsm/path_unlink`), which fires once, so it duplicates only on the
+kprobe step.
 
 **`dev` cannot be used to filter it out.** The obvious fix is to keep only events whose `dev` matches the
 container's rootfs device, but the measurements rule it out: the bind mount reports `dev=8388610`, the
@@ -614,6 +617,12 @@ second, independent reason for it, and makes it a hard requirement rather than a
 Scope actually measured: one runtime (Docker/containerd), one storage driver (overlayfs), one kernel,
 one file per mount type, `OPEN` and `ATTR` only. `UNLINK` on a bind mount and `RENAME` on a tmpfs were
 not exercised.
+
+**Updated 2026-11-12.** `UNLINK` on the overlay rootfs was measured with the BPF program as of #41224:
+one event with the container path on both LSM steps, plus a second with the host-side snapshot path on
+the kprobe step (openSUSE Leap 16, Amazon Linux 2023 and Ubuntu 26.04 respectively). `UNLINK` on a
+bind mount and `RENAME` on a tmpfs remain unmeasured. The consumer paragraph's inference ban covers the
+duplicate.
 
 ### Correction
 
