@@ -413,6 +413,7 @@ typedef struct _config {
 
     OSList *directories;                               /* List of directories to be monitored */
     OSList *container_directories;                     /* Container-scoped directories, never walked on the host */
+    int container_frequency;                          /* Seconds between container walks; zero disables periodic walks. */
     unsigned int container_enabled:1;                  /* <container_security><syscheck> present and enabled */
     OSList *wildcards;                                 /* List of wildcards to be monitored */
 

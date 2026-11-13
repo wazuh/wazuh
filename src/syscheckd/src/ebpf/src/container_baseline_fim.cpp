@@ -1788,8 +1788,8 @@ extern "C" void fim_run_container_baseline(void)
         return;
     }
 
-    // Nothing below may throw into main(): this runs on syscheckd's main
-    // thread, which has no handler of its own.
+    // This function has several callers on different threads, so exceptions must
+    // be contained here rather than escaping into any of those callers.
     try
     {
         // Listed, and admission refreshed, BEFORE the walk: the walk's rows are
