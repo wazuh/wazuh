@@ -58,12 +58,17 @@ add_executable(hlp_utest
   ${UNIT_SRC_DIR}/kvmap_test.cpp
   ${UNIT_SRC_DIR}/dsv_csv_test.cpp
   ${UNIT_SRC_DIR}/parse_field_test.cpp
+  ${UNIT_SRC_DIR}/objectBuild_diff_test.cpp
 )
 
-target_include_directories(hlp_utest PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/parsers)
+target_include_directories(hlp_utest PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/src/parsers
+  ${CMAKE_CURRENT_LIST_DIR}/src
+  ${CMAKE_CURRENT_LIST_DIR}/include/hlp
+)
 
 target_compile_definitions(hlp_utest PRIVATE HLP_TEST_TZDB_PATH="${CMAKE_SOURCE_DIR}/external/tzdata")
-target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main GTest::gtest)
+target_link_libraries(hlp_utest PRIVATE hlp pugixml::pugixml GTest::gtest_main GTest::gtest)
 gtest_discover_tests(hlp_utest PROPERTIES TEST_DISCOVERY_TIMEOUT 3600)
 
 endif(ENGINE_BUILD_TEST)

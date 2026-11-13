@@ -175,28 +175,28 @@ void BM_ParseKv_Flat(benchmark::State& state)
 {
     const auto n = static_cast<size_t>(state.range(0));
     const auto parser = hlp::parsers::getKVParser(kvParams());
-    runParser(state, parser, kvText(state.range(0), ""), {{"/out", n}});
+    runParser(state, parser, kvText(state.range(0), ""), {{TARGET, n}});
 }
 
 void BM_ParseKv_Dotted(benchmark::State& state)
 {
     const auto n = static_cast<size_t>(state.range(0));
     const auto parser = hlp::parsers::getKVParser(kvParams());
-    runParser(state, parser, kvText(state.range(0), "a."), {{"/out/a", n}});
+    runParser(state, parser, kvText(state.range(0), "a."), {{TARGET + "/a", n}});
 }
 
 void BM_ParseXml_Siblings(benchmark::State& state)
 {
     const auto n = static_cast<size_t>(state.range(0));
     const auto parser = hlp::parsers::getXMLParser(xmlParams());
-    runParser(state, parser, xmlSiblings(state.range(0)), {{"/out/r", n}});
+    runParser(state, parser, xmlSiblings(state.range(0)), {{TARGET + "/r", n}});
 }
 
 void BM_ParseXml_Attributes(benchmark::State& state)
 {
     const auto n = static_cast<size_t>(state.range(0));
     const auto parser = hlp::parsers::getXMLParser(xmlParams());
-    runParser(state, parser, xmlAttributes(state.range(0)), {{"/out/r", n}});
+    runParser(state, parser, xmlAttributes(state.range(0)), {{TARGET + "/r", n}});
 }
 
 void BM_ParseXml_AttributesWide(benchmark::State& state)
@@ -206,42 +206,47 @@ void BM_ParseXml_AttributesWide(benchmark::State& state)
     runParser(state,
               parser,
               xmlAttributesWide(state.range(0)),
-              {{"/out/r", static_cast<size_t>(WIDE_SIBLINGS)}, {"/out/r/s0", n / WIDE_SIBLINGS}});
+              {{TARGET + "/r", static_cast<size_t>(WIDE_SIBLINGS)}, {TARGET + "/r/s0", n / WIDE_SIBLINGS}});
 }
 
 void BM_ParseXml_WindowsData(benchmark::State& state)
 {
     const auto n = static_cast<size_t>(state.range(0));
     const auto parser = hlp::parsers::getXMLParser(xmlParams(true));
-    runParser(state, parser, xmlWindowsData(state.range(0)), {{"/out/EventData", n}});
+    runParser(state, parser, xmlWindowsData(state.range(0)), {{TARGET + "/EventData", n}});
 }
 
 void BM_ParseXml_RepeatedSibling(benchmark::State& state)
 {
     const auto n = static_cast<size_t>(state.range(0));
     const auto parser = hlp::parsers::getXMLParser(xmlParams());
-    runParser(state, parser, xmlRepeatedSibling(state.range(0)), {{"/out/r/a", n}});
+    runParser(state, parser, xmlRepeatedSibling(state.range(0)), {{TARGET + "/r/a", n}});
 }
 
 } // namespace
 
 // =============================================================================
-// Registrations: a range sweep and a single large run per benchmark.
+// Registrations: a range sweep per benchmark, plus two small sizes for the per-event cost.
 // =============================================================================
 
 #define REGISTER_SCALING_BENCH(name)                                                                                   \
-    BENCHMARK(name)->RangeMultiplier(4)->Range(16, 16384)->Unit(benchmark::kMicrosecond);                              \
-    BENCHMARK(name)->Arg(65536)->Iterations(1)->Unit(benchmark::kMicrosecond)
+    BENCHMARK(name)->RangeMultiplier(4)->Range(16, 65536)->Unit(benchmark::kMicrosecond)
+
+// Small objects: per-event cost with few members.
+BENCHMARK(BM_ParseKv_Flat)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ParseKv_Dotted)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ParseXml_Siblings)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ParseXml_Attributes)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ParseXml_WindowsData)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ParseXml_RepeatedSibling)->Arg(8)->Arg(32)->Unit(benchmark::kMicrosecond);
 
 REGISTER_SCALING_BENCH(BM_ParseKv_Flat);
 REGISTER_SCALING_BENCH(BM_ParseKv_Dotted);
 REGISTER_SCALING_BENCH(BM_ParseXml_Siblings);
 REGISTER_SCALING_BENCH(BM_ParseXml_Attributes);
 // Starts at 64: one attribute per sibling at least.
-BENCHMARK(BM_ParseXml_AttributesWide)->RangeMultiplier(4)->Range(64, 16384)->Unit(benchmark::kMicrosecond);
-BENCHMARK(BM_ParseXml_AttributesWide)->Arg(65536)->Iterations(1)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_ParseXml_AttributesWide)->RangeMultiplier(4)->Range(64, 65536)->Unit(benchmark::kMicrosecond);
 REGISTER_SCALING_BENCH(BM_ParseXml_WindowsData);
-// The memory of this case grows with the square of N: about 144 MiB at 4 096 and about 2.1 GiB at 16 384 in a Release
-// build, so larger sizes are not registered. --benchmark_filter cannot add sizes: to run a larger one, edit this range
-// locally (for example Range(16, 16384)) and filter on ^BM_ParseXml_RepeatedSibling/16384$.
-BENCHMARK(BM_ParseXml_RepeatedSibling)->RangeMultiplier(4)->Range(16, 4096)->Unit(benchmark::kMicrosecond);
+// Repeated siblings are appended to their array, so the memory of this case grows with N: the peak RSS of the process
+// (about 11 MiB with small sizes) is about 18 MiB at 16 384 and about 56 MiB at 65 536 in a Release build.
+REGISTER_SCALING_BENCH(BM_ParseXml_RepeatedSibling);
