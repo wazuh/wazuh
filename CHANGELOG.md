@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41273](https://github.com/wazuh/wazuh/pull/41273))
 - Added type validation for the `path` and `index` fields of FIM synchronization entries in `wazuh-db`. ([#41511](https://github.com/wazuh/wazuh/pull/41511))
 - Fixed `wazuh-remoted` not releasing the agent data it replaced on each agent startup message, and bounded the stored version. ([#41409](https://github.com/wazuh/wazuh/pull/41409))
+- Hardened the validation of the network inventory data in `wazuh-analysisd`. ([#TBD](https://github.com/wazuh/wazuh/pull/TBD))
 
 ### Agent
 
