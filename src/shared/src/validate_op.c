@@ -96,7 +96,35 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     char *tmp_buffer;
     char *ret;
     int i;
+    int line = 0;
+    bool line_start = true;
 
+#ifndef WIN32
+    struct stat st;
+    /* Open without following links, then accept only a regular file with a single name, owned by root
+     * or by the reading user itself. */
+    int fd = open(defines_file, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
+
+    if (fd < 0) {
+        if (errno != ENOENT) {
+            merror(FOPEN_ERROR, defines_file, errno, strerror(errno));
+        }
+        return (NULL);
+    }
+
+    if (fstat(fd, &st) < 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1 ||
+        (st.st_uid != 0 && st.st_uid != geteuid()) || (st.st_mode & (S_IWGRP | S_IWOTH))) {
+        merror(DEFINES_FILE_REFUSED, defines_file);
+        close(fd);
+        return (NULL);
+    }
+
+    if (fp = fdopen(fd, "r"), !fp) {
+        merror(FOPEN_ERROR, defines_file, errno, strerror(errno));
+        close(fd);
+        return (NULL);
+    }
+#else
     fp = wfopen(defines_file, "r");
     if (!fp) {
         if (errno != ENOENT) {
@@ -105,6 +133,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         return (NULL);
     }
     w_file_cloexec(fp);
+#endif
 
     /* Invalid call */
     if (!high_name || !low_name) {
@@ -116,6 +145,11 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     /* Read it */
     buf[OS_SIZE_1024] = '\0';
     while (fgets(buf, OS_SIZE_1024 , fp) != NULL) {
+        if (line_start) {
+            line++;
+        }
+        line_start = strchr(buf, '\n') != NULL;
+
         /* Commented or blank lines */
         if (buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n') {
             continue;
@@ -124,7 +158,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Messages not formatted correctly */
         buf_pt = strchr(buf, '.');
         if (!buf_pt) {
-            merror(FGETS_ERROR, defines_file, buf);
+            merror(FGETS_ERROR, defines_file, line);
             continue;
         }
 
@@ -140,7 +174,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Get the equal */
         buf_pt = strchr(buf_pt, '=');
         if (!buf_pt) {
-            merror(FGETS_ERROR, defines_file, buf);
+            merror(FGETS_ERROR, defines_file, line);
             continue;
         }
 
