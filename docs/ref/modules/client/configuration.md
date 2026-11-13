@@ -447,6 +447,7 @@ Delay in seconds after successful enrollment before starting normal agent operat
 - **Default value:** `20`
 - **Allowed values:** Positive integer (seconds) from `1` upward
 - **Note:** Allows time for manager to process new agent before receiving events; `0` is invalid and rejected by parser
+- **Enrollment token:** not applied after an enrollment-token bootstrap. The agent connects at once, and a node that has not loaded the new key yet answers `401 unknown_agent`, which the agent retries with that key for up to `agent.https_unknown_agent_retry` (see [HTTPS Connection Timing](#https-connection-timing)) instead of re-enrolling.
 
 #### use_source_ip
 
@@ -624,6 +625,12 @@ agent.https_backoff_cap=60000
 # Retry cadence for Startup after the manager rejects the agent's version,
 # in seconds (default: 60, range 1-86400)
 agent.https_rejected_retry_interval=60
+
+# How long a 401 unknown_agent (a manager node that has not synced this
+# agent's key yet) is retried with the current credential before
+# re-enrolling, in milliseconds (default: 30000, range 1000-600000). An
+# attempt started just before the end still runs to its request timeout.
+agent.https_unknown_agent_retry=30000
 
 # Compress request bodies with zstd (default: 1, range 0-1). On a 415 the
 # agent retries once uncompressed and disables compression for that stream;

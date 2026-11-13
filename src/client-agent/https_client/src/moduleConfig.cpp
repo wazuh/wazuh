@@ -68,6 +68,7 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);
     typed.backoffCapMs = orDefault<uint32_t>(config.backoff_cap_ms, 60000);
     typed.drainTimeoutMs = orDefault<uint32_t>(config.drain_timeout_ms, 5000);
+    typed.unknownAgentRetryBound = std::chrono::milliseconds {orDefault<uint32_t>(config.unknown_agent_retry_ms, 30000)};
     typed.controlMaxAttempts = orDefault<uint32_t>(config.control_max_attempts, 4);
     typed.statelessMaxAttempts = orDefault<uint32_t>(config.stateless_max_attempts, 5);
     typed.statefulMaxAttempts = orDefault<uint32_t>(config.stateful_max_attempts, 5);

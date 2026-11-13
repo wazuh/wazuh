@@ -27,7 +27,8 @@ RetrySender::RetrySender(IHttpPerformer& performer,
                          bool compressionEnabled,
                          CompressionGate* compressionGate,
                          AuthGate* authGate,
-                         std::string serverEndpoint)
+                         std::string serverEndpoint,
+                         std::chrono::milliseconds unknownAgentRetryBound)
     : m_performer(performer)
     , m_signer(signer)
     , m_clock(clock)
@@ -36,10 +37,11 @@ RetrySender::RetrySender(IHttpPerformer& performer,
     , m_compressionGate(compressionGate)
     , m_authGate(authGate)
     , m_serverEndpoint(std::move(serverEndpoint))
+    , m_unknownAgentRetryBound(unknownAgentRetryBound)
 {
 }
 
-RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waiter, uint32_t maxAttempts)
+RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waiter, uint32_t maxAttempts, Mode mode)
 {
     HttpRequestSpec base = spec;
     base.abortFlag = waiter.stopFlag();
@@ -108,23 +110,47 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
         }
     }
 
+    // Whether a surviving `unknown_agent` 401 may latch the gate. Without a window it always may.
+    bool escalate = true;
+
+    if (isUnknownAgent(result) && m_authGate != nullptr && m_unknownAgentRetryBound.count() > 0)
+    {
+        if (mode == Mode::Drain)
+        {
+            // The stop path never waits; it leaves an open window to the stream that owns it.
+            escalate = !m_authGate->unknownAgentWindowOpen();
+        }
+        else
+        {
+            result = retryUnknownAgent(base, waiter, std::move(result), escalate);
+        }
+    }
+
     if (result.outcome == OutcomeClass::Ok)
     {
         m_backoff.reset();
+
+        // Any accepted request proves the credential, whichever stream sent it.
+        if (m_authGate != nullptr && m_authGate->closeUnknownAgentWindow())
+        {
+            LOGFN_INFO(m_logFn, "https_client: the manager accepted the current credential again; "
+                       "no re-enrollment needed.");
+        }
     }
     else if (result.outcome == OutcomeClass::AuthFail)
     {
-        // A 401 that survived the one-shot fresh-timestamp retry above. Which of the three answers
-        // it deserves is the manager's to name, not ours to guess (#39064): only `unknown_agent`
-        // means the identity itself is gone, and only that pauses traffic and asks for
-        // re-enrollment. Every other class -- including Unclassified, the fail-safe reading -- is
-        // returned to the caller unescalated; the streams already keep the batch and retry on the
-        // next tick (statelessStream.cpp), so nothing storms and no second pause mechanism exists.
+        // A 401 that survived the one-shot fresh-timestamp retry and, for `unknown_agent`, the
+        // gate's window. Which of the three answers it deserves is the manager's to name, not ours
+        // to guess (#39064): only `unknown_agent` means the identity itself is gone, and only that
+        // pauses traffic and asks for re-enrollment. Every other class -- including
+        // Unclassified, the fail-safe reading -- is returned to the caller unescalated; the streams
+        // already keep the batch and retry on the next tick (statelessStream.cpp), so nothing storms
+        // and no second pause mechanism exists.
         const auto authClass = parseAuthFailClass(result.response.body);
 
         if (authClass == AuthFailClass::UnknownAgent)
         {
-            if (m_authGate != nullptr)
+            if (m_authGate != nullptr && escalate)
             {
                 m_authGate->reportAuthFailure(); // Once per incident. #37828.
             }
@@ -139,6 +165,142 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     }
 
     return result;
+}
+
+bool RetrySender::isUnknownAgent(const Result& result)
+{
+    return result.outcome == OutcomeClass::AuthFail &&
+           parseAuthFailClass(result.response.body) == AuthFailClass::UnknownAgent;
+}
+
+RetrySender::Result RetrySender::retryUnknownAgent(const HttpRequestSpec& base,
+                                                   Waiter& waiter,
+                                                   Result result,
+                                                   bool& escalate)
+{
+    escalate = false;
+
+    // Another stream already ran the window out and latched: the re-enrollment is under way.
+    if (m_authGate->paused())
+    {
+        return result;
+    }
+
+    const auto incidentsAtJoin = m_authGate->incidents();
+    const auto window = m_authGate->joinUnknownAgentWindow(m_clock.steadyNow(), m_unknownAgentRetryBound);
+
+    if (window.opened)
+    {
+        LOGFN_WARN(m_logFn,
+                   "https_client: the manager does not know this agent yet (401, unknown_agent); "
+                   "retrying the current credential with backoff before re-enrolling.");
+    }
+
+    for (uint32_t step = 0; m_clock.steadyNow() < window.deadline; step++)
+    {
+        const auto next = std::min(m_clock.steadyNow() + unknownAgentStep(step), window.deadline);
+
+        if (!waitUntil(waiter, next, window.generation))
+        {
+            result.outcome = OutcomeClass::Interrupted; // Shutdown during the wait.
+            return result;
+        }
+
+        // Latched, or the window was closed or replaced meanwhile: this stream no longer owns it.
+        if (m_authGate->paused() || !m_authGate->unknownAgentWindowCurrent(window.generation))
+        {
+            return result;
+        }
+
+        result = attemptOnce(base);
+
+        // The gate may have been disabled since the first attempt; same one-shot rule as send().
+        if (result.outcome == OutcomeClass::CompressionRejected && m_compressionGate != nullptr)
+        {
+            m_compressionGate->reportRejected();
+            result = attemptOnce(base);
+        }
+
+        if (isUnknownAgent(result))
+        {
+            m_authGate->noteUnknownAgent(m_clock.steadyNow());
+            continue;
+        }
+
+        if (result.outcome == OutcomeClass::AuthFail)
+        {
+            const auto authClass = parseAuthFailClass(result.response.body);
+
+            // A 401 without a recognised class (a proxy's, say) says nothing about the key.
+            if (authClass == AuthFailClass::Unclassified)
+            {
+                continue;
+            }
+
+            // The manager knows this agent again and names another problem: the window is over.
+            if (m_authGate->closeUnknownAgentWindow(window.generation))
+            {
+                LOGFN_INFO(m_logFn,
+                           "https_client: the manager knows this agent again (401, %s); no re-enrollment needed.",
+                           authFailClassName(authClass));
+            }
+
+            return result;
+        }
+
+        // Ok closes the window in send(). A transport error or a 5xx says nothing about the key,
+        // so the window stays open and the next 401 on any stream rejoins it.
+        return result;
+    }
+
+    // Ran out on an unclassified 401: like a transport error, it leaves the window to the next 401.
+    if (!isUnknownAgent(result))
+    {
+        return result;
+    }
+
+    // Only the closer of this window escalates, and only if no re-enrollment completed since the
+    // join; a window another stream closed first was either latched or saw the credential accepted.
+    if (m_authGate->closeUnknownAgentWindow(window.generation) && m_authGate->incidents() == incidentsAtJoin)
+    {
+        LOGFN_INFO(m_logFn, "https_client: the manager still answers unknown_agent after retrying the current "
+                   "credential; re-enrolling.");
+        escalate = true;
+    }
+
+    return result;
+}
+
+bool RetrySender::waitUntil(Waiter& waiter, std::chrono::steady_clock::time_point deadline, uint64_t generation)
+{
+    for (auto now = m_clock.steadyNow(); now < deadline; now = m_clock.steadyNow())
+    {
+        // Rounded up: a sub-millisecond remainder truncated to zero would spin until the deadline.
+        if (!waiter.waitFor(std::chrono::ceil<std::chrono::milliseconds>(deadline - now)))
+        {
+            return false;
+        }
+
+        // Re-checked on each wake-up (a latch or release wakes the control stream); a window closed
+        // by an accepted request wakes no one and is noticed when the step ends.
+        if (m_authGate->paused() || !m_authGate->unknownAgentWindowCurrent(generation))
+        {
+            return true;
+        }
+    }
+
+    return true;
+}
+
+std::chrono::milliseconds RetrySender::unknownAgentStep(uint32_t step)
+{
+    constexpr int64_t UNKNOWN_AGENT_STEP_BASE_MS = 1000;
+    constexpr int64_t UNKNOWN_AGENT_STEP_CAP_MS = 15000;
+
+    const auto ceiling = std::min(UNKNOWN_AGENT_STEP_BASE_MS << std::min<uint32_t>(step, 4), UNKNOWN_AGENT_STEP_CAP_MS);
+    // Equal jitter: at least half the step, so agents of one restarted worker do not retry in lockstep.
+    const auto jitter = static_cast<int64_t>(m_backoff.jitter01() * static_cast<double>(ceiling / 2));
+    return std::chrono::milliseconds {ceiling / 2 + jitter};
 }
 
 RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)

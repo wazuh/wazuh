@@ -124,7 +124,8 @@ StatelessStream::StatelessStream(const ModuleConfig& config,
                config.httpsCompressionEnabled,
                &compressionGate,
                &authGate,
-               config.serverEndpoint)
+               config.serverEndpoint,
+               config.unknownAgentRetryBound)
     , m_sink(sink)
     , m_collectHost(std::move(collectHost))
     , m_headerLine(buildHeaderLine(signer.agentId(), m_collectHost, m_headerTrim))
@@ -229,7 +230,7 @@ bool StatelessStream::flushDue(bool force) const
     return m_accumulator.flushDue(static_cast<uint64_t>(elapsed), eventBytesBudgetLocked());
 }
 
-OutcomeClass StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts)
+OutcomeClass StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts, RetrySender::Mode mode)
 {
     uint64_t eventBudget;
     std::string headerLine;
@@ -264,7 +265,7 @@ OutcomeClass StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint
                  static_cast<unsigned long long>(snapshot.eventCount),
                  body.size());
 
-    const auto result = m_sender.send(spec, waiter, maxAttempts);
+    const auto result = m_sender.send(spec, waiter, maxAttempts, mode);
     m_lastFlush = m_clock.steadyNow();
 
     if (result.outcome == OutcomeClass::Ok)
@@ -371,7 +372,7 @@ void StatelessStream::drain(Waiter& waiter)
     // atexit handler.
     for (uint32_t iteration = 0; iteration <= m_config.bufferCapMultiplier; iteration++)
     {
-        if (m_accumulator.empty() || flushOnce(waiter, m_config.drainTimeoutMs, 1) != OutcomeClass::Ok)
+        if (m_accumulator.empty() || flushOnce(waiter, m_config.drainTimeoutMs, 1, RetrySender::Mode::Drain) != OutcomeClass::Ok)
         {
             return;
         }

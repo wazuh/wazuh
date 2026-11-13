@@ -185,6 +185,8 @@ typedef struct hc_config_t
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
     uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
     uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
+    uint32_t unknown_agent_retry_ms; ///< How long a `401 unknown_agent` is retried with the
+    ///< current credential before re-enrolling; 0 -> 30000.
 
     /* Per-stream retry budgets. An attempt count is the TOTAL number of tries,
      * not the number of retries after the first: 1 means "send once, never
