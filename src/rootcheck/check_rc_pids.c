@@ -307,14 +307,11 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
  * lowering it leaves running processes above the new value */
 #define RC_PID_LIMIT 4194303
 
-/* Bound of the sweep: rootcheck.max_pid, capped at RC_PID_LIMIT */
+/* Bound of the sweep: rootcheck.max_pid, already capped by rc_read_max_pid() */
 static pid_t rc_sweep_limit(void)
 {
     if (rootcheck.max_pid <= 0) {
         return RC_MAX_PID_DEFAULT;
-    }
-    if (rootcheck.max_pid > RC_PID_LIMIT) {
-        return RC_PID_LIMIT;
     }
     return (pid_t)rootcheck.max_pid;
 }
@@ -585,6 +582,13 @@ void check_rc_pids()
 
 #ifdef __linux__
     if (noproc || scan_all_pids_linux(ps, &_errors, &_total) < 0) {
+        static int fallback_reported = 0;
+
+        if (!fallback_reported && rootcheck.max_pid > max_pid) {
+            mtwarn(ARGV0, "Hidden process check: /proc cannot be read, checking PIDs up to %d instead of %d.",
+                   (int)max_pid, rootcheck.max_pid);
+            fallback_reported = 1;
+        }
         loop_all_pids(ps, max_pid, &_errors, &_total);
     }
 #else

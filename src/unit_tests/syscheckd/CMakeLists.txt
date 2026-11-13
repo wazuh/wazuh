@@ -418,7 +418,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,system \
                            -Wl,--wrap,notify_rk \
                            -Wl,--wrap,getDefine_Int_default \
-                           -Wl,--wrap,_mtinfo")
+                           -Wl,--wrap,_mtinfo \
+                           -Wl,--wrap,_mtwarn")
 
   # The scan under test is Linux-only
   if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
