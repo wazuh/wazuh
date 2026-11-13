@@ -94,6 +94,22 @@ static int teardown_globals(void ** state) {
     return 0;
 }
 
+// Backs the mocked hash calls with the real agent data table
+static int setup_agent_data(void ** state) {
+    setup_globals(state);
+    __real_OSHash_SetFreeDataPointer(agent_data_hash, free);
+    mock_hashmap = agent_data_hash;
+    OSHash_Add_ex_check_data = 0;
+
+    return 0;
+}
+
+static int teardown_agent_data(void ** state) {
+    mock_hashmap = NULL;
+
+    return teardown_globals(state);
+}
+
 static int setup_test_mode(void ** state) {
     test_mode = 1;
 
@@ -4705,6 +4721,41 @@ void test_validate_control_msg_shutdown_success(void** state)
     free(r_msg);
 }
 
+// The startup message finds no entry for the agent and tries to add one
+static void expect_agent_version_add(int result)
+{
+    will_return(__wrap_OSHash_Update_ex, 0);
+    expect_value(__wrap_OSHash_Add_ex, self, agent_data_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "001");
+    will_return(__wrap_OSHash_Add_ex, result);
+}
+
+// Startup message of agent 001 with a version the manager rejects, which returns right after storing it
+static void startup_with_version(const char* version)
+{
+    keyentry key;
+    char r_msg[OS_SIZE_2048];
+    char* cleaned_msg = NULL;
+    int is_startup = 99, is_shutdown = 99;
+
+    snprintf(r_msg, sizeof(r_msg), "agent startup {\"version\":\"%s\"}", version);
+    keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_STARTUP from ''");
+
+    expect_string(__wrap_compare_wazuh_versions, version1, __ossec_version);
+    expect_string(__wrap_compare_wazuh_versions, version2, version);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
+    will_return(__wrap_compare_wazuh_versions, -1);
+
+    expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
+
+    assert_int_equal(validate_control_msg(&key, r_msg, strlen(r_msg), &cleaned_msg, &is_startup, &is_shutdown), 1);
+
+    os_free(cleaned_msg);
+    free_keyentry(&key);
+}
+
 void test_validate_control_msg_startup_success(void** state)
 {
     keyentry key;
@@ -4730,12 +4781,16 @@ void test_validate_control_msg_startup_success(void** state)
 
     expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
 
+    expect_agent_version_add(2);
+
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
     assert_int_equal(result, 1);
     assert_int_equal(is_startup, 1);
     assert_int_equal(is_shutdown, 0);
     assert_non_null(cleaned_msg);
+
+    assert_string_equal(__real_OSHash_Get(agent_data_hash, "001"), "v4.6.0");
 
     os_free(cleaned_msg);
     free_keyentry(&key);
@@ -4836,6 +4891,8 @@ void test_validate_control_msg_invalid_agent_version(void** state)
 
     expect_string(__wrap_rem_inc_recv_ctrl_startup, agent_id, "001");
 
+    expect_agent_version_add(2);
+
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
     assert_int_equal(result, 1); // We need to queue this message, for saving later
@@ -4844,9 +4901,45 @@ void test_validate_control_msg_invalid_agent_version(void** state)
 
     assert_string_equal(cleaned_msg, "agent startup {\"version\":\"v4.6.0\"}");
 
+    assert_string_equal(__real_OSHash_Get(agent_data_hash, "001"), "v4.6.0");
+
     os_free(cleaned_msg);
     free_keyentry(&key);
     free(r_msg);
+}
+
+void test_validate_control_msg_startup_replaces_agent_version(void** state)
+{
+    __real_OSHash_Add(agent_data_hash, "001", strdup("v4.5.0"));
+    will_return(__wrap_OSHash_Update_ex, 1);
+
+    startup_with_version("v4.6.0");
+
+    assert_string_equal(__real_OSHash_Get(agent_data_hash, "001"), "v4.6.0");
+}
+
+void test_validate_control_msg_startup_agent_version_already_added(void** state)
+{
+    __real_OSHash_Add(agent_data_hash, "001", strdup("v4.5.0"));
+    // Another thread adds the entry between the update and the add
+    expect_agent_version_add(1);
+
+    startup_with_version("v4.6.0");
+
+    assert_string_equal(__real_OSHash_Get(agent_data_hash, "001"), "v4.5.0");
+}
+
+void test_validate_control_msg_startup_long_agent_version(void** state)
+{
+    char version[OS_SIZE_1024];
+
+    memset(version, 'A', sizeof(version) - 1);
+    version[sizeof(version) - 1] = '\0';
+    expect_agent_version_add(2);
+
+    startup_with_version(version);
+
+    assert_int_equal(strlen(__real_OSHash_Get(agent_data_hash, "001")), OS_SIZE_32);
 }
 
 void test_validate_control_msg_get_agent_version_fail(void** state)
@@ -5551,11 +5644,14 @@ int main(void)
         cmocka_unit_test(test_validate_control_msg_hc_request_success),
         cmocka_unit_test(test_validate_control_msg_hc_request_error),
         cmocka_unit_test_setup_teardown(test_validate_control_msg_shutdown_success, setup_globals, teardown_globals),
-        cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_success, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_success, setup_agent_data, teardown_agent_data),
         cmocka_unit_test(test_validate_control_msg_keepalive_success),
         cmocka_unit_test(test_validate_control_msg_invalid_msg),
         cmocka_unit_test(test_validate_control_msg_invalid_msg_2),
-        cmocka_unit_test_setup_teardown(test_validate_control_msg_invalid_agent_version, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_validate_control_msg_invalid_agent_version, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_replaces_agent_version, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_agent_version_already_added, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_validate_control_msg_startup_long_agent_version, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_validate_control_msg_get_agent_version_fail, setup_globals, teardown_globals),
         // Tests save_controlmsg
         cmocka_unit_test_setup_teardown(test_save_controlmsg_agent_invalid_version, setup_globals_no_test_mode, teardown_globals),
