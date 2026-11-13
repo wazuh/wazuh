@@ -289,6 +289,8 @@ The root container is level 1: 256 nested containers (objects and arrays) parse,
 
 `parser::run()` turns either failure into a `base::Error` that carries the message only when tracing is enabled (test mode) and is empty otherwise, exactly as for any other parse failure.
 
+The XML parser creates one `json::PathWriter` per parse, and `xmlToJson` and the `windows` module read and write the document through it. Repeated sibling elements are appended to their array, which grows geometrically. The writer is described in the [JSON Path Writer](../base/README.md#json-path-writer) section of the `base` README.
+
 XML text and CDATA are leaves (`#text`) and do not add a level. A CDATA child is a leaf and does not produce a member of its own: `<a><![CDATA[x]]></a>` maps to `{"a":{"#text":"x"}}`.
 
 **Invariant**: building the document and walking it afterwards (parse, copy, serialization, merge) costs one recursion per level, and the cap is sized so that this recursion fits the default 8 MiB process stack. The stack requirement is part of the operator contract and lives in [Process limits](../../../../docs/ref/modules/engine/configuration.md#process-limits); the per-parser behavior is in the [parser reference](../../../../docs/ref/modules/engine/ref-parser.md). Neither is repeated here.
@@ -299,6 +301,7 @@ Used by DSV/CSV and KV parsers to split delimited fields while respecting quotin
 - `getField()` — parses a single field from input with configurable delimiter, quote, and escape characters
 - `unescape()` — removes escape characters from parsed values
 - `updateDoc()` — adds a key-value to the JSON (`setNullAsMembers` for an empty value, `setStringAsMembers` otherwise); the dots of the key nest the value in both cases (`a.b=` maps to `{"a":{"b":null}}`); rejects destination paths deeper than the nesting cap. Every token of the key is written as an object member, never as an array index: `123=v` maps to `{"123":"v"}` and `a.5=v` to `{"a":{"5":"v"}}`, and the cost does not depend on the value of a numeric key
+  `updateDoc()` has two overloads with the same contract: one takes a `json::Json&` (used by the DSV/CSV parser) and one takes a `json::PathWriter&` (used by the KV parser, which keeps one writer for the whole parse). `json::Json` scans the members of an object on every write, while the writer indexes objects with many members, so the cost of a document with many sibling members grows almost linearly instead of quadratically; see [JSON Path Writer](../base/README.md#json-path-writer).
 
 ### External Libraries
 
