@@ -30,6 +30,20 @@ All notable changes to this project will be documented in this file.
 - Fixed high CPU usage of the Linux users and groups inventory on hosts with many accounts. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 - Fixed the Linux groups inventory reporting no members for groups with a long member list. ([#41344](https://github.com/wazuh/wazuh/pull/41344))
 
+### Manager
+
+#### Fixed
+
+- Fixed `wazuh-analysisd` sending active responses for Windows events whose `win.eventdata.ipAddress` or `win.eventdata.destinationIp` is in the `white_list`, which let the agent block that address. As with `srcip`, no active response is sent for these events, whatever its command. The `::ffff:` prefix of an IPv4-mapped address is now removed regardless of case before checking the lists. ([#41261](https://github.com/wazuh/wazuh/pull/41261))
+- Fixed `wazuh-maild` and `wazuh-monitord` ending an email notification early when its text or subject contained a line with a single dot. ([#41176](https://github.com/wazuh/wazuh/pull/41176))
+- Fixed `wazuh-maild` stopping when an alert's text contained lines that start with `** Alert`, which `wazuh-analysisd` wrote to `alerts.log` as the start of new alerts. ([#41237](https://github.com/wazuh/wazuh/pull/41237))
+- Fixed `wazuh-maild` stopping on an alert whose location starts with `>`, and cutting the alert subject and location one character short when a `>` without `-` preceded the `->` separator. ([#41265](https://github.com/wazuh/wazuh/pull/41265))
+- Hardened how the vulnerability scanner processes syscollector deltas. ([#TBD](https://github.com/wazuh/wazuh/issues/TBD))
+
+#### Changed
+
+- Removed static-RSA key exchange from the default TLS cipher list of `wazuh-authd` (`<ciphers>` now ends in `!kRSA:@STRENGTH`), so enrollment over TLS 1.2 always uses an ephemeral key exchange. Existing installations keep their `ossec.conf` value and need to update it by hand. ([#41249](https://github.com/wazuh/wazuh/pull/41249))
+
 ## [v4.14.11]
 
 ### Manager
