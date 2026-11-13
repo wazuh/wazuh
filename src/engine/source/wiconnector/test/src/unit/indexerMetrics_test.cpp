@@ -59,6 +59,7 @@ indexer_client::ClientMetrics engineMetrics()
     auto& events = metrics.buckets[0];
     events.accepted = 100;
     events.ok = 90;
+    events.deduplicated = 3;
     events.retainedBytes = 1000;
     events.retries[static_cast<std::size_t>(indexer_client::RetryCause::Server5xx)] = 4;
     events.failed[static_cast<std::size_t>(indexer_client::FailCause::Ambiguous)] = 5;
@@ -67,6 +68,7 @@ indexer_client::ClientMetrics engineMetrics()
     events.latency.count = 3;
     auto& raw = metrics.buckets[1];
     raw.retainedBytes = 500;
+    raw.deduplicated = 2;
     raw.dropped[static_cast<std::size_t>(indexer_client::DropCause::QueueFull)] = 11;
     raw.rejected[static_cast<std::size_t>(indexer_client::RejectCause::PayloadTooLarge)] = 2;
     return metrics;
@@ -129,7 +131,8 @@ TEST(IndexerMetricsNamesTest, BucketNamesAreTheCatalogOfBothBuckets)
     EXPECT_TRUE(has(std::string {RAW_PREFIX} + "quota_bytes"));
 }
 
-/// The three legacy names stay, every bucket metric is registered, and all of them read ONE snapshot of the Client.
+/// The three legacy names stay, `indexer.events.deduplicated` sums both buckets, every bucket metric is registered,
+/// and all of them read ONE snapshot of the Client.
 TEST_F(IndexerMetricsTest, RegistersLegacyAndBucketMetricsFromOneSnapshot)
 {
     EXPECT_CALL(*client, metrics()).Times(1).WillOnce(Return(engineMetrics()));
@@ -137,11 +140,14 @@ TEST_F(IndexerMetricsTest, RegistersLegacyAndBucketMetricsFromOneSnapshot)
 
     wiconnector::registerIndexerMetrics(manager, connector, std::nullopt);
 
-    EXPECT_EQ(3U + wiconnector::WIndexerConnector::bucketMetricNames().size(), manager.count())
-        << "no runtime: the legacy three and the buckets' catalog only";
+    EXPECT_EQ(4U + wiconnector::WIndexerConnector::bucketMetricNames().size(), manager.count())
+        << "no runtime: the four indexer.* names and the buckets' catalog only";
     EXPECT_DOUBLE_EQ(1500.0, valueOf(manager, fastmetrics::names::INDEXER_QUEUE_SIZE));
     EXPECT_DOUBLE_EQ(18.0, valueOf(manager, fastmetrics::names::INDEXER_EVENTS_DROPPED));
     EXPECT_GE(valueOf(manager, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT), 0.0);
+    EXPECT_DOUBLE_EQ(5.0, valueOf(manager, fastmetrics::names::INDEXER_EVENTS_DEDUPLICATED));
+    EXPECT_DOUBLE_EQ(3.0, valueOf(manager, std::string {EVENTS_PREFIX} + "deduplicated"));
+    EXPECT_DOUBLE_EQ(2.0, valueOf(manager, std::string {RAW_PREFIX} + "deduplicated"));
 
     EXPECT_DOUBLE_EQ(100.0, valueOf(manager, std::string {EVENTS_PREFIX} + "accepted"));
     EXPECT_DOUBLE_EQ(4.0, valueOf(manager, std::string {EVENTS_PREFIX} + "retries.server_5xx"));

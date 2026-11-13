@@ -4,9 +4,12 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <cmath>
 #include <memory>
+#include <mutex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -16,6 +19,7 @@
 #include <mockIndexerClient.hpp>
 
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
 #include <spdlog/sinks/ostream_sink.h>
 #include <wiconnector/engineIndexerRuntime.hpp>
 #include <wiconnector/windexerconnector.hpp>
@@ -125,6 +129,41 @@ private:
     std::ostringstream m_lines;
     std::shared_ptr<spdlog::sinks::ostream_sink_mt> m_sink;
     logging::Level m_level;
+};
+
+/// A document id as generateDocId() returns it: DOC_ID_LENGTH characters of [A-Za-z0-9_-].
+bool isValidDocId(const std::string& id)
+{
+    if (id.size() != base::utils::generators::DOC_ID_LENGTH)
+    {
+        return false;
+    }
+    return std::all_of(
+        id.begin(), id.end(), [](unsigned char c) { return std::isalnum(c) != 0 || c == '_' || c == '-'; });
+}
+
+/// A random source that always fails (RAND_bytes' failure value).
+int failingRand(unsigned char*, int)
+{
+    return 0;
+}
+
+/// Installs a random source and restores the previous one when it goes out of scope.
+class DocIdRandSourceGuard
+{
+public:
+    explicit DocIdRandSourceGuard(base::utils::generators::detail::RandBytesFn fn)
+        : m_previous(base::utils::generators::detail::exchangeRandBytesForTesting(fn))
+    {
+    }
+
+    ~DocIdRandSourceGuard() { base::utils::generators::detail::exchangeRandBytesForTesting(m_previous); }
+
+    DocIdRandSourceGuard(const DocIdRandSourceGuard&) = delete;
+    DocIdRandSourceGuard& operator=(const DocIdRandSourceGuard&) = delete;
+
+private:
+    base::utils::generators::detail::RandBytesFn m_previous;
 };
 } // namespace
 
@@ -244,7 +283,7 @@ TEST_F(WIndexerConnectorTest, IndexPostsToEvents)
     EXPECT_EQ(op.kind, indexer_client::Op::Kind::IndexDataStream);
     EXPECT_EQ(op.index, "wazuh-alerts-5.x-0001");
     EXPECT_EQ(op.body, R"({"a":1})");
-    EXPECT_TRUE(op.id.empty());
+    EXPECT_TRUE(isValidDocId(op.id)) << op.id; // Every op carries a generated _id.
 }
 
 TEST_F(WIndexerConnectorTest, RawIndexPostsToRaw)
@@ -256,6 +295,20 @@ TEST_F(WIndexerConnectorTest, RawIndexPostsToRaw)
     EXPECT_TRUE(events->ops.empty());
     EXPECT_EQ(raw->ops.front().kind, indexer_client::Op::Kind::IndexDataStream);
     EXPECT_EQ(raw->ops.front().index, wiconnector::RAW_EVENTS_INDEX);
+    EXPECT_TRUE(isValidDocId(raw->ops.front().id)) << raw->ops.front().id;
+}
+
+TEST_F(WIndexerConnectorTest, SameBodyGetsDistinctIds)
+{
+    // The id is generated per call, not derived from the content: two identical events are two documents.
+    auto connector = makeConnector();
+    connector->index("wazuh-alerts-5.x-0001", R"({"a":1})");
+    connector->index("wazuh-alerts-5.x-0001", R"({"a":1})");
+
+    ASSERT_EQ(events->ops.size(), 2U);
+    EXPECT_TRUE(isValidDocId(events->ops[0].id)) << events->ops[0].id;
+    EXPECT_TRUE(isValidDocId(events->ops[1].id)) << events->ops[1].id;
+    EXPECT_NE(events->ops[0].id, events->ops[1].id);
 }
 
 TEST_F(WIndexerConnectorTest, BodyIsMoved)
@@ -294,6 +347,41 @@ TEST_F(WIndexerConnectorTest, RefusedPostIsNotCountedTwice)
     connector->index("wazuh-alerts-5.x-0001", R"({"a":3})");
     connector->index("wazuh-alerts-5.x-0001", R"({"a":4})");
     EXPECT_EQ(log.count("warning", "The indexer client refused an event"), 1U);
+    EXPECT_EQ(log.count("info", "The indexer client accepts events again"), 1U);
+}
+
+TEST_F(WIndexerConnectorTest, IdFailureIsDroppedAndWarnedOnce)
+{
+    const EngineLogCapture log;
+    indexer_client::ClientMetrics metrics;
+    metrics.buckets = {bucketMetrics("events", 0, 0, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
+    ON_CALL(*client, metrics()).WillByDefault(Return(metrics));
+    auto connector = makeConnector();
+
+    std::size_t opsAfterFailures = 0;
+    std::size_t opsAfterRecovery = 0;
+    // A fresh thread: a thread that already drew its per-thread prefix never calls the random source again.
+    std::thread worker(
+        [&]()
+        {
+            {
+                const DocIdRandSourceGuard guard(&failingRand);
+                connector->index("wazuh-alerts-5.x-0001", R"({"a":1})");
+                connector->index("wazuh-alerts-5.x-0001", R"({"a":2})");
+                opsAfterFailures = events->ops.size();
+            }
+            // The thread still has no prefix: the restored source draws it now.
+            connector->index("wazuh-alerts-5.x-0001", R"({"a":3})");
+            opsAfterRecovery = events->ops.size();
+        });
+    worker.join();
+
+    EXPECT_EQ(opsAfterFailures, 0U);
+    EXPECT_EQ(opsAfterRecovery, 1U);
+    ASSERT_EQ(events->ops.size(), 1U);
+    EXPECT_TRUE(isValidDocId(events->ops.front().id)) << events->ops.front().id;
+    EXPECT_EQ(connector->getDroppedEvents(), 2U);
+    EXPECT_EQ(log.count("warning", "could not generate a document id"), 1U);
     EXPECT_EQ(log.count("info", "The indexer client accepts events again"), 1U);
 }
 
@@ -426,7 +514,22 @@ TEST_F(WIndexerConnectorTest, MetricsOneSnapshotPerScrape)
         EXPECT_EQ(connector->getQueueSize(), 10U);
         EXPECT_GT(connector->getQueueUsagePercent(), 0.0);
         EXPECT_EQ(connector->getDroppedEvents(), 1U);
+        EXPECT_EQ(connector->getDeduplicatedEvents(), 0U);
     }
+}
+
+TEST_F(WIndexerConnectorTest, MetricsDeduplicatedSumsBothBuckets)
+{
+    indexer_client::ClientMetrics metrics;
+    metrics.buckets = {bucketMetrics("events", 0, 0, 1, 2, 3), bucketMetrics("raw", 0, 0, 4, 5, 6)};
+    metrics.buckets[0].deduplicated = 3;
+    metrics.buckets[1].deduplicated = 4;
+    EXPECT_CALL(*client, metrics()).WillOnce(Return(metrics));
+    auto connector = makeConnector();
+
+    EXPECT_EQ(connector->getDeduplicatedEvents(), 3U + 4);
+    // Deduplicated ops are successes: they never add to the losses.
+    EXPECT_EQ(connector->getDroppedEvents(), 1U + 2 + 3 + 4 + 5 + 6);
 }
 
 TEST_F(WIndexerConnectorTest, MetricsRefreshAfterTheTtl)
@@ -502,16 +605,62 @@ TEST_F(WIndexerConnectorTest, IndexAfterShutdownDiscards)
     EXPECT_DOUBLE_EQ(connector->getQueueUsagePercent(), 0.0);
 }
 
+TEST_F(WIndexerConnectorTest, DeduplicatedAfterShutdownIsTheLastSnapshot)
+{
+    indexer_client::ClientMetrics metrics;
+    metrics.buckets = {bucketMetrics("events", 0, 0, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
+    metrics.buckets[0].deduplicated = 5;
+    EXPECT_CALL(*client, metrics()).Times(1).WillOnce(Return(metrics));
+    auto connector = makeConnector();
+
+    EXPECT_EQ(connector->getDeduplicatedEvents(), 5U);
+    connector->shutdown();
+    // Past the TTL: the value comes from the last snapshot kept for a released Client, not from the cache window.
+    std::this_thread::sleep_for(wiconnector::WIndexerConnector::METRICS_TTL + std::chrono::milliseconds {50});
+    EXPECT_EQ(connector->getDeduplicatedEvents(), 5U);
+}
+
+TEST_F(WIndexerConnectorTest, IdFailureAfterShutdownCountsOnce)
+{
+    // After shutdown() the event is discarded before any id is generated: it counts once, and no id WARN is logged.
+    const EngineLogCapture log;
+    indexer_client::ClientMetrics metrics;
+    metrics.buckets = {bucketMetrics("events", 0, 0, 0, 0, 0), bucketMetrics("raw", 0, 0, 0, 0, 0)};
+    ON_CALL(*client, metrics()).WillByDefault(Return(metrics));
+    auto connector = makeConnector();
+    EXPECT_EQ(connector->getDroppedEvents(), 0U);
+    connector->shutdown();
+
+    // A fresh thread has no per-thread prefix: with the failing source, generating an id would throw.
+    std::thread worker(
+        [&]()
+        {
+            const DocIdRandSourceGuard guard(&failingRand);
+            connector->index("wazuh-alerts-5.x-0001", R"({"a":1})");
+        });
+    worker.join();
+
+    EXPECT_TRUE(events->ops.empty());
+    EXPECT_EQ(connector->getDroppedEvents(), 1U);
+    EXPECT_EQ(log.count("warning", "could not generate a document id"), 0U);
+}
+
 TEST_F(WIndexerConnectorTest, ConcurrentIndexing)
 {
-    // FakeWriter is not thread-safe: the events bucket is a mock that only counts.
+    // FakeWriter is not thread-safe: the events bucket is a mock that counts and records the ids under a mutex.
     auto counting = std::make_shared<NiceMock<indexer_client::MockWriter>>();
     std::atomic<int> posted {0};
+    std::mutex idsMutex;
+    std::vector<std::string> ids;
     ON_CALL(*counting, post(_))
         .WillByDefault(Invoke(
-            [&posted](indexer_client::Op)
+            [&posted, &idsMutex, &ids](indexer_client::Op op)
             {
                 ++posted;
+                {
+                    const std::lock_guard<std::mutex> lock(idsMutex);
+                    ids.push_back(std::move(op.id));
+                }
                 return indexer_client::Posted {true, indexer_client::Cause::None, {}};
             }));
     events.reset();
@@ -537,6 +686,10 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexing)
         thread.join();
     }
     EXPECT_EQ(posted.load(), THREADS * PER_THREAD);
+    // Every id distinct across threads.
+    const std::set<std::string> distinct(ids.begin(), ids.end());
+    EXPECT_EQ(distinct.size(), static_cast<std::size_t>(THREADS * PER_THREAD));
+    EXPECT_TRUE(std::all_of(ids.begin(), ids.end(), isValidDocId));
 }
 
 /****************************************************************************************

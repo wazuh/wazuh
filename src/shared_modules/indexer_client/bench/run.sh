@@ -19,8 +19,9 @@
 # submit microbenchmark (indexer_client_bench_submit) of the v2 write path with two APIs (column `api` of the rows).
 # api=post: P = 1, 4, 8 x cb none (handover move). api=submit: P = 1, 4, 8 x cb none (move), P = 1 x cb noop and
 # P = 1 x handover view; a variant adds api=post P = 1 and P = 8 with --indices 2 (the ops alternate between two indices,
-# as the engine's raw and events). Per row 5 runs: median and IQR of ns_per_op and the median of cpu_ns_per_op. IQR >
-# 0.04 of the median or < 4 valid runs => the row is repeated once. There is no gate: the v1 side (and the ratio to it)
+# like a producer without `_id` that alternates two indices; the engine's writes carry an `_id` and do not use that
+# cache). Per row 5 runs: median and IQR of ns_per_op and the median of cpu_ns_per_op. IQR > 0.04 of the median or < 4
+# valid runs => the row is repeated once. There is no gate: the v1 side (and the ratio to it)
 # was removed with the v1 library; the number measured with the v1 connector library is kept in the README. --cpus pins
 # every row, --cpus-p8 the P = 8 rows (default --cpus; both default none). --selfcheck: 1 run per row with --events
 # 20000; exit 0 only when every sample is valid.

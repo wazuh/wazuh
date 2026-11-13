@@ -312,8 +312,8 @@ TEST_F(BulkAmbiguousTest, FailPolicyNeverResentAfterCompletionException)
 }
 
 // A `_bulk` whose response goes over max_response_bytes was answered by the node, so
-// the indexer may have applied it. A bucket with onAmbiguous5xx = Fail and a bulk of 4 data-stream ops (no `_id`, as
-// the engine's events) ⇒ exactly one request, the 4 ops Failed(Ambiguous) with reason "ambiguous response over
+// the indexer may have applied it. A bucket with onAmbiguous5xx = Fail and a bulk of 4 data-stream ops (no `_id`) ⇒
+// exactly one request, the 4 ops Failed(Ambiguous) with reason "ambiguous response over
 // maxResponseBytes (not resent)", failed.ambiguous = 4, no split and one WARN that names the cap (not the status); a
 // Retry bucket (ops with `_id`, a resend overwrites) still halves the batch until every answer fits. Mutant: the old
 // code (Split under both policies: the halves are resent and the indexer receives every op twice).

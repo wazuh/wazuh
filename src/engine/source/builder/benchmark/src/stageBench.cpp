@@ -95,8 +95,9 @@ constexpr const char* CORPUS_EVENT {
 /// quota; with 4 MiB, about 47 MiB. Bigger --event-file events or more producers are not covered: lost > 0 marks the
 /// row invalid.
 constexpr std::uint64_t CORPUS_PAYLOAD_LOW {std::char_traits<char>::length(CORPUS_EVENT)};
-constexpr std::uint64_t ACTION_LINE_HIGH {256}; ///< {"create":{"_index":"wazuh-events-v5-other"}}\n and the body's \n.
-constexpr std::uint64_t MAX_RUN_PRODUCERS {8};  ///< run.sh: P = 1 and P = 8.
+/// {"create":{"_index":"wazuh-events-v5-other","_id":"<27 chars>"}}\n (~81 bytes) and the body's \n.
+constexpr std::uint64_t ACTION_LINE_HIGH {256};
+constexpr std::uint64_t MAX_RUN_PRODUCERS {8}; ///< run.sh: P = 1 and P = 8.
 static_assert(WATERMARK_BYTES / CORPUS_PAYLOAD_LOW * (CORPUS_PAYLOAD_LOW + indexer_client::RESULT_RESERVE_BYTES)
                       + MAX_RUN_PRODUCERS * static_cast<std::uint64_t>(BURST_OPS)
                             * (CORPUS_PAYLOAD_LOW + ACTION_LINE_HIGH + indexer_client::RESULT_RESERVE_BYTES)

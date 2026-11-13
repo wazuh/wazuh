@@ -15,11 +15,11 @@ namespace wiconnector
 /**
  * @brief Publishes the engine's indexer metrics on @p manager, as pull metrics registered once.
  *
- * - `indexer.queue.size`, `indexer.queue.usage.percent` and `indexer.events.dropped`: the connector's three getters,
- *   unchanged.
+ * - `indexer.queue.size`, `indexer.queue.usage.percent`, `indexer.events.dropped` and `indexer.events.deduplicated`:
+ *   the connector's four getters.
  * - `indexer_client.bucket.analysisd.{events,raw}.<field>`: the library's catalog of each bucket (accepted, rejected,
  *   dropped, failed and retries by cause, retained/charge/quota bytes, bulk requests and bytes, latency histogram),
- *   from the same cached snapshot the three getters read (WIndexerConnector::getBucketMetric()). After the
+ *   from the same cached snapshot the four getters read (WIndexerConnector::getBucketMetric()). After the
  *   connector's shutdown() they keep the last snapshot; once the connector is gone they read 0.
  * - With @p runtime: `indexer_client.{runtime,query,pit}.<field>` and `indexer_client.node.<i>.<field>` from
  *   RuntimeRef::snapshot(), through an indexer_client::MetricsSlot refreshed at most once per

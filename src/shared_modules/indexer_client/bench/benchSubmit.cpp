@@ -62,7 +62,7 @@ namespace
     constexpr auto MARK_TIMEOUT = std::chrono::seconds(30);      ///< A watermark (or the final drain) not reached.
     constexpr int PROBE_INTERVAL_MS {3600000};
     constexpr const char* INDEX_NAME {"bench-submit"};
-    /// With --indices 2 the odd ops of a burst go here (the engine alternates its raw and events indices).
+    /// With --indices 2 the odd ops of a burst go here (like a producer that alternates two indices).
     constexpr const char* INDEX_NAME_ALT {"bench-submit-raw"};
 
     /// --indices (1 or 2), set once by main before any producer starts.
@@ -79,7 +79,8 @@ namespace
         "                                   [--handover move|view] [--events N] [--pair N] [--indices 1|2]\n"
         "                                   [--csv-header]\n"
         "  --indices 2: the ops alternate between two indices (default 1).\n"
-        "  --api (default post): IWriter::post (bucket with trustedBodies, the engine path) or\n"
+        "  --api (default post): IWriter::post (bucket with trustedBodies; the ops carry no `_id`: it\n"
+        "  measures the no-`_id` path, not the engine's writes, which carry an `_id`) or\n"
         "  IWriter::submit (default bucket, the body is scanned); post has no callback, so it needs --cb none\n"
         "  (usage error otherwise, exit 2).\n"
         "  --events: per producer (multiple of 1000, > 5000; default 200000). Prints one 'SUBMIT,<csv>' line (see\n"
@@ -431,8 +432,8 @@ namespace
             spec.overflow.kind = indexer_client::Overflow::Kind::Reject;
             spec.bulk.maxBytes = BULK_BYTES;
             spec.onAmbiguous5xx = indexer_client::AmbiguousPolicy::Fail;
-            // --api post measures the engine path, whose bucket trusts its compact JSON bodies; submit keeps the
-            // default scan of the body for a newline.
+            // --api post measures the no-`_id` path (the engine's writes carry an `_id`), with a bucket that trusts
+            // compact JSON bodies; submit keeps the default scan of the body for a newline.
             spec.trustedBodies = api == "post";
             auto created = started.value.client("bench", {spec});
             if (!created.ok())

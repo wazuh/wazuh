@@ -403,6 +403,8 @@ TEST(EngineBucketSpecsTest, DefaultsBuildBothBuckets)
         EXPECT_EQ(spec->bulk.maxAge, std::chrono::seconds {20});
         // The v1 cut a bulk only by bytes and by time: no document count closes one.
         EXPECT_EQ(spec->bulk.maxDocs, std::numeric_limits<std::size_t>::max());
+        // A 409 on an op with a generated `_id` is a retry that already landed: a success.
+        EXPECT_EQ(spec->onConflict.kind, indexer_client::ConflictPolicy::Kind::Success);
     }
 }
 
