@@ -526,6 +526,27 @@ public:
     void indexDataStream(std::string_view index, std::string_view data);
 
     /**
+     * @brief Index a document to a data stream with a caller-supplied document id.
+     *
+     * A non-empty @p id is sent as the `_id` of the `create` action (JSON-escaped). The queue stores
+     * the serialized action, so every resend of the document (timeout, transport failure, 429, 503,
+     * 413) carries the same `_id`: the indexer answers a resend of an already applied document with a
+     * per-item 409 `version_conflict_engine_exception`, which is counted in getDeduplicatedEvents()
+     * instead of being indexed twice. An empty @p id queues exactly the action of the two-argument
+     * overload.
+     *
+     * @param index Data stream name. Must not be empty.
+     * @param id Document id; empty for an indexer-generated one. At most 512 bytes (before escaping).
+     * Must be valid UTF-8: it is JSON-escaped but not validated, and an invalid one makes the
+     * indexer reject the whole bulk.
+     * @param data Document. Must not be empty.
+     *
+     * @throws IndexerConnectorException if @p index or @p data is empty or @p id is longer than
+     * 512 bytes; nothing is queued then.
+     */
+    void indexDataStream(std::string_view index, std::string_view id, std::string_view data);
+
+    /**
      * @brief Queue the deletion of ONE document by id.
      *
      * Enqueued into the SAME queue as index(), which is what this method is for: the queue is FIFO
@@ -566,6 +587,15 @@ public:
      * (non-retryable status, 503 retries exhausted, or a per-item 429 in an HTTP 200 bulk response).
      */
     uint64_t getDroppedEvents() const;
+
+    /**
+     * @brief Get the total number of deduplicated events.
+     *
+     * @return The number of `create` items answered with a per-item 409
+     * `version_conflict_engine_exception` inside a 2xx bulk response since start: documents an
+     * earlier attempt had already applied (see indexDataStream()). They are not dropped events.
+     */
+    uint64_t getDeduplicatedEvents() const;
 
     /**
      * @brief Create a Point In Time (PIT) for the specified indices.
