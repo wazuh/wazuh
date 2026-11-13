@@ -55,6 +55,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-execd` keeping every repeated offender for the life of the process, so its memory grew with each new source that triggered an active response. ([#40540](https://github.com/wazuh/wazuh/pull/40540))
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
+- Fixed `wazuh-modulesd` wodles, such as `azure-logs`, hanging when osquery or docker-listener started at the same time. ([#41158](https://github.com/wazuh/wazuh/pull/41158))
 - Fixed the vulnerability scanner reporting no OS vulnerabilities for Windows 10 agents older than 20H2, which have no display version. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
 - Fixed the Azure Log Analytics integration never collecting the records ingested after a run with a `TimeGenerated` older than the newest record processed. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
 - Fixed the Azure Log Analytics integration skipping new records for up to a day after reading a record with a `TimeGenerated` ahead of the current time. ([#40538](https://github.com/wazuh/wazuh/pull/40538))
@@ -80,8 +81,16 @@ All notable changes to this project will be documented in this file.
 - Fixed the AWS module reading S3 objects of any size, in the buckets and in the `buckets`, `security_hub` and `security_lake` subscribers, and the decompressed content of any size of the `.gz` and `.zip` objects, not of the Parquet objects of `security_lake`. An object larger than 512 MiB, or whose decompressed content is, is now handled as a file that cannot be decompressed: the buckets exit with code 8, or skip it with `skip_on_error`, and the subscribers keep its message in the queue and end with exit code 7, or delete it with `skip_on_error`. ([#41059](https://github.com/wazuh/wazuh/pull/41059))
 - Fixed `PUT /active-response` rejecting with error 1652 the name of a command defined in the configuration. The name is now accepted when it maps to a single name in `ar.conf`, and error 1653 lists the accepted names when the command is used with different timeouts. ([#40570](https://github.com/wazuh/wazuh/issues/40570))
 - Fixed `wazuh-analysisd` not releasing the previous value when more than one decoder sets the same static field of an event, such as sibling decoders that extract `srcip` from different parts of the same log. ([#41080](https://github.com/wazuh/wazuh/pull/41080))
+- Fixed `wazuh-remoted` accepting a shared group file with NUL bytes and no line feed, such as a compiled CDB list, which blocked the delivery of the shared configuration to every agent of the group. The file is now rejected like any other binary file. ([#40727](https://github.com/wazuh/wazuh/issues/40727))
+- Fixed the GCP Pub/Sub integration stopping at a message too large for the Wazuh socket without acknowledging the batch, so the batch was received again on every run and the messages before that one were sent again. The message is now skipped with an error, as is an event too large in the `gcp-bucket` integration, and the messages already sent are acknowledged when a run stops. ([#41170](https://github.com/wazuh/wazuh/pull/41170))
+- Fixed a data race in the shared list getters that let the `wazuh-analysisd` rule matching threads read the newest event of an `if_matched_sid` or `if_matched_group` list without synchronizing with the thread that added it. ([#41215](https://github.com/wazuh/wazuh/pull/41215))
+- Fixed the configuration endpoints showing the cluster key and credentials unmasked in RBAC white mode to users with a configuration update permission over another node, or with the update permission that does not apply to the node. ([#41208](https://github.com/wazuh/wazuh/pull/41208))
 
 ### Agent
+
+#### Changed
+
+- Added a workflow that validates the FIM eBPF whodata events of every syscall on several kernels and filesystems. ([#32502](https://github.com/wazuh/wazuh/issues/32502))
 
 #### Fixed
 
@@ -89,19 +98,25 @@ All notable changes to this project will be documented in this file.
 - Hardened how the agent handles requests received from the manager. ([#40467](https://github.com/wazuh/wazuh/pull/40467))
 - Fixed `agent-auth` failing at random with `SSL error (2)` because it did not set the receive timeout of its enrollment socket. ([#40468](https://github.com/wazuh/wazuh/pull/40468))
 - Fixed the macOS agent package not monitoring the active response log. ([#40799](https://github.com/wazuh/wazuh/pull/40799))
+- Fixed firewall active responses ignoring failed firewall commands. ([#41111](https://github.com/wazuh/wazuh/pull/41111))
 - Fixed whodata dropping `chmod`, `chown` and write events without `O_CREAT` on paths under a symbolic link not configured with `follow_symbolic_link`. ([#39763](https://github.com/wazuh/wazuh/issues/39763))
+- Hardened agent PID file and Auditd plugin socket creation. ([#41045](https://github.com/wazuh/wazuh/pull/41045))
 - Fixed `wazuh-execd` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40529](https://github.com/wazuh/wazuh/pull/40529))
+- Fixed active response IP handling and rule scope on AIX and Windows. ([#41164](https://github.com/wazuh/wazuh/pull/41164))
 - Fixed FIM `<diff>` options parsing, whodata event loss, audit socket leak and bookmark double fclose. ([#39812](https://github.com/wazuh/wazuh/pull/39812))
 - Fixed `wazuh-logcollector` dropping a later line after an oversized `json` or `multi-line` line. ([#40826](https://github.com/wazuh/wazuh/pull/40826))
+- Fixed `wazuh-logcollector` dropping a line after an oversized Windows `syslog` or UTF-16 line. ([#41202](https://github.com/wazuh/wazuh/pull/41202))
 - Fixed `wazuh-logcollector` misaligning every later `multi-line` event of a file when a read reached `logcollector.max_lines` inside an event or a line with NUL bytes was dropped. ([#40974](https://github.com/wazuh/wazuh/pull/40974))
 - Fixed `wazuh-logcollector` keeping a local request connection open when the request could not be read, and not terminating a request of the maximum size. ([#40537](https://github.com/wazuh/wazuh/pull/40537))
 - Fixed `wazuh-execd` keeping every repeated offender for the life of the process, so its memory grew with each new source that triggered an active response. ([#40540](https://github.com/wazuh/wazuh/pull/40540))
+- Hardened how `wazuh-logcollector` opens the files it checks for binary content. ([#40664](https://github.com/wazuh/wazuh/pull/40664))
 - Fixed the `azure-logs` configuration reported by the Server API leaving out the requests and containers of each source. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed a memory leak in `wazuh-modulesd` each time the `azure-logs` configuration was requested. ([#40579](https://github.com/wazuh/wazuh/pull/40579))
 - Fixed the Windows agent reporting the wrong release for builds 15063 and 16299 when the registry has no `ReleaseId`. ([#40489](https://github.com/wazuh/wazuh/pull/40489))
 - Fixed FIM eBPF whodata missing renames, deletions and attribute changes processed before the operation completed. ([#40662](https://github.com/wazuh/wazuh/pull/40662))
 - Fixed the `ms-graph` configuration reported by the Server API leaving out the name of each resource and all its relationships but the last. `api_auth` is now an array with one item per block, and each resource lists its `name` and a `relationships` array. ([#40580](https://github.com/wazuh/wazuh/pull/40580))
 - Fixed `wazuh-syscheckd` crashing and leaving a core file when it is stopped or restarted during a FIM scan or synchronization. ([#40692](https://github.com/wazuh/wazuh/pull/40692))
+- Fixed the journald reader skipping unread entries after a journal rotation when `only-future-events` is enabled. ([#40750](https://github.com/wazuh/wazuh/issues/40750))
 - Fixed the rootcheck hidden-port check being skipped on Linux hosts without `netstat`, such as a default RHEL 9 install. ([#40815](https://github.com/wazuh/wazuh/pull/40815))
 - Fixed `wazuh-agentd` and `wazuh-logcollector` crashing or leaving a stale PID file when they are stopped while working. ([#40816](https://github.com/wazuh/wazuh/pull/40816))
 - Fixed Syscollector reporting no network inventory on Linux while an IPv4 address carries a label other than `<interface>` or `<interface>:<suffix>`, such as keepalived's `label vip`, and reporting the address under the wrong interface when its label is another interface's name. ([#40916](https://github.com/wazuh/wazuh/pull/40916))

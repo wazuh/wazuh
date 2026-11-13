@@ -195,7 +195,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                     firefoxAddon.location = getStringField(addonJson, "location");
                     firefoxAddon.path = getStringField(addonJson, "path");
 
-                    firefoxAddons.emplace_back(firefoxAddon);
+                    firefoxAddons.emplace_back(std::move(firefoxAddon));
                 }
             }
         }

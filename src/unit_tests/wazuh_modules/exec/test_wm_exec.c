@@ -35,7 +35,22 @@ int __wrap_sleep (unsigned int __seconds) {
     return mock();
 }
 
+#ifndef WIN32
+int __real_kill(pid_t pid, int sig);
+static bool fork_spawns_holder; // Start a long-lived process right before the real fork, as another module thread could
+static pid_t holder_pid;
+#endif
+
 pid_t __wrap_fork(void) {
+#ifndef WIN32
+    if (fork_spawns_holder) {
+        if ((holder_pid = __real_fork()) == 0) {
+            execlp("sleep", "sleep", "5", (char *)NULL);
+            _exit(1);
+        }
+        return __real_fork();
+    }
+#endif
     return mock_type(pid_t);
 }
 
@@ -415,6 +430,35 @@ static void test_wm_exec_exit_code_signal(void ** state) {
     // a signalled process and reads as 0 on Linux, which is what this guards against.
     assert_int_equal(wm_exec_exit_code(status), 128 + SIGKILL);
 }
+
+static void test_wm_exec_output_not_held_by_concurrent_child(void ** state) {
+    char command[] = "echo done";
+    char * output = NULL;
+    int status = -1;
+    const time_t start = time(NULL);
+
+    fork_spawns_holder = true;
+    const int ret = wm_exec(command, &output, &status, 0, NULL);
+    fork_spawns_holder = false;
+    const time_t elapsed = time(NULL) - start;
+
+    assert_true(holder_pid > 0);
+    // A holder that already exited would not hold the pipe, and the test would prove nothing
+    const bool holder_alive = waitpid(holder_pid, NULL, WNOHANG) == 0;
+
+    if (holder_alive) {
+        __real_kill(holder_pid, SIGKILL);
+        waitpid(holder_pid, NULL, 0);
+    }
+
+    assert_true(holder_alive);
+    assert_int_equal(ret, 0);
+    assert_int_equal(status, 0);
+    assert_non_null(output);
+    assert_true(elapsed < 3);
+
+    os_free(output);
+}
 #endif
 
 #else
@@ -568,7 +612,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_kill_children_parent, setup_modules, NULL),
 #ifndef WIN32
         cmocka_unit_test(test_wm_exec_exit_code_normal_exit),
-        cmocka_unit_test(test_wm_exec_exit_code_signal)
+        cmocka_unit_test(test_wm_exec_exit_code_signal),
+        cmocka_unit_test_setup_teardown(test_wm_exec_output_not_held_by_concurrent_child, setup_modules, teardown_modules)
 #endif
 #else
         cmocka_unit_test_setup_teardown(test_wm_append_handle_null_list, NULL, NULL),
