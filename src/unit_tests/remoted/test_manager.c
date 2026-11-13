@@ -93,6 +93,22 @@ static int teardown_globals(void ** state) {
     return 0;
 }
 
+// Backs the mocked hash calls with the real agent data table
+static int setup_agent_data(void ** state) {
+    setup_globals(state);
+    __real_OSHash_SetFreeDataPointer(agent_data_hash, agent_data_hash_cleaner);
+    mock_hashmap = agent_data_hash;
+    OSHash_Add_ex_check_data = 0;
+
+    return 0;
+}
+
+static int teardown_agent_data(void ** state) {
+    mock_hashmap = NULL;
+
+    return teardown_globals(state);
+}
+
 static int setup_test_mode(void ** state) {
     test_mode = 1;
 
@@ -4657,9 +4673,95 @@ void test_save_controlmsg_agent_invalid_version(void **state)
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
+    will_return(__wrap_OSHash_Update_ex, 0);
+
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
     free_keyentry(&key);
+}
+
+// The startup message finds no entry for the agent and tries to add one
+static void expect_agent_data_add(int result)
+{
+    will_return(__wrap_OSHash_Update_ex, 0);
+    expect_value(__wrap_OSHash_Add_ex, self, agent_data_hash);
+    expect_string(__wrap_OSHash_Add_ex, key, "001");
+    will_return(__wrap_OSHash_Add_ex, result);
+}
+
+// Startup message of agent 001 with a version the manager rejects, which returns right after storing the agent data
+static void startup_with_version(const char *version)
+{
+    char r_msg[OS_SIZE_4096] = {0};
+    char s_msg[OS_FLSIZE + 1] = {0};
+    keyentry key;
+
+    snprintf(r_msg, sizeof(r_msg), "agent startup {\"version\":\"%s\",\"other\":\"%s\"}", version, version);
+    snprintf(s_msg, OS_FLSIZE, "%s%s%s%s%s", CONTROL_HEADER, HC_ERROR, "{\"message\":\"", HC_INVALID_VERSION_RESPONSE, "\"}");
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
+
+    expect_string(__wrap_compare_wazuh_versions, version1, "v4.5.0");
+    expect_string(__wrap_compare_wazuh_versions, version2, version);
+    expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
+    will_return(__wrap_compare_wazuh_versions, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to connect agent: '001': 'Incompatible version'");
+
+    expect_value(__wrap_wdb_update_agent_status_code, id, 1);
+    expect_value(__wrap_wdb_update_agent_status_code, status_code, INVALID_VERSION);
+    expect_string(__wrap_wdb_update_agent_status_code, version, version);
+    expect_string(__wrap_wdb_update_agent_status_code, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_status_code, OS_SUCCESS);
+
+    expect_string(__wrap_send_msg, agent_id, "001");
+    expect_string(__wrap_send_msg, msg, s_msg);
+
+    expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
+
+    save_controlmsg(&key, r_msg, sizeof(r_msg), NULL);
+
+    free_keyentry(&key);
+}
+
+void test_save_controlmsg_startup_replaces_agent_data(void **state)
+{
+    __real_OSHash_Add(agent_data_hash, "001", cJSON_Parse("{\"version\":\"v4.4.0\"}"));
+    will_return(__wrap_OSHash_Update_ex, 1);
+
+    startup_with_version("v4.6.0");
+
+    cJSON *agent_data = __real_OSHash_Get(agent_data_hash, "001");
+    assert_string_equal(cJSON_GetObjectItem(agent_data, "version")->valuestring, "v4.6.0");
+}
+
+void test_save_controlmsg_startup_agent_data_already_added(void **state)
+{
+    __real_OSHash_Add(agent_data_hash, "001", cJSON_Parse("{\"version\":\"v4.4.0\"}"));
+    // Another thread adds the entry between the update and the add
+    expect_agent_data_add(1);
+
+    startup_with_version("v4.6.0");
+
+    cJSON *agent_data = __real_OSHash_Get(agent_data_hash, "001");
+    assert_string_equal(cJSON_GetObjectItem(agent_data, "version")->valuestring, "v4.4.0");
+}
+
+void test_save_controlmsg_startup_long_agent_version(void **state)
+{
+    char version[OS_SIZE_1024];
+
+    memset(version, 'A', sizeof(version) - 1);
+    version[sizeof(version) - 1] = '\0';
+    expect_agent_data_add(2);
+
+    startup_with_version(version);
+
+    cJSON *agent_data = __real_OSHash_Get(agent_data_hash, "001");
+    assert_int_equal(strlen(cJSON_GetObjectItem(agent_data, "version")->valuestring), OS_SIZE_32);
+    assert_int_equal(cJSON_GetArraySize(agent_data), 1);
 }
 
 void test_save_controlmsg_get_agent_version_fail(void **state)
@@ -5090,6 +5192,8 @@ void test_save_controlmsg_startup(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Unable to save last keepalive and set connection status as pending for agent: 001");
 
+    expect_agent_data_add(2);
+
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
     free_keyentry(&key);
@@ -5345,13 +5449,16 @@ int main(void)
         cmocka_unit_test(test_save_controlmsg_request_success),
         cmocka_unit_test(test_save_controlmsg_invalid_msg),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_agent_invalid_version, setup_globals_no_test_mode, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_startup_replaces_agent_data, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_startup_agent_data_already_added, setup_agent_data, teardown_agent_data),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_startup_long_agent_version, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_get_agent_version_fail, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_could_not_add_pending_data, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_unable_to_save_last_keepalive, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_update_msg_error_parsing, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_update_msg_unable_to_update_information, setup_test_mode, teardown_test_mode),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_update_msg_lookfor_agent_group_fail, setup_test_mode, teardown_test_mode),
-        cmocka_unit_test_setup_teardown(test_save_controlmsg_startup, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_startup, setup_agent_data, teardown_agent_data),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown, setup_globals, teardown_globals),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown_wdb_fail, setup_globals, teardown_globals),
     };
