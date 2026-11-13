@@ -13,6 +13,10 @@
 #include "dbFileItem.hpp"
 #include "dbTest.h"
 #include "fimDBTests/fimDBImpTests.hpp"
+#include <atomic>
+#include <chrono>
+#include <future>
+#include <thread>
 
 const auto insertStatement1 = R"({
         "table": "file_entry",
@@ -794,4 +798,316 @@ TEST_F(DBTestFixture, TestFimDBFilePatternSearchRemoveDuringSearch)
     EXPECT_EQ(searchPaths("/data/a0/%"), (std::vector<std::string> {"/data/a0/x"}));
     EXPECT_EQ(searchPaths("/data/ab/%"), (std::vector<std::string> {"/data/ab/y"}));
     EXPECT_EQ(fim_db_get_count_file_entry(), 2);
+}
+
+static void callbackFileUpdateAny(ReturnTypeCallback, const cJSON*, void*) {}
+
+static nlohmann::json fileRow(const std::string& path)
+{
+    nlohmann::json row;
+    DB::instance().getFile(path, [&row](const nlohmann::json & result)
+    {
+        row = result;
+    });
+    return row;
+}
+
+static nlohmann::json fileItemWithChecksum(const std::string& path, const std::string& checksum)
+{
+    nlohmann::json item = insertStatement1["data"].front();
+    item["path"] = path;
+    item["checksum"] = checksum;
+    return item;
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFileKeepsContent)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
+    const auto fileFIMTestUpdated {std::make_unique<FileItem>(updateStatement1["data"].front())};
+
+    ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
+    ASSERT_EQ(fim_db_file_update(fileFIMTestUpdated->toFimEntry(), callback_data_modified), FIMDB_OK);
+
+    ASSERT_EQ(fim_db_set_version_file(10), 0);
+
+    const auto row = fileRow("/etc/wgetrc");
+    EXPECT_EQ(row.at("checksum"), updateStatement1["data"].front().at("checksum"));
+    EXPECT_EQ(row.at("hash_sha1"), updateStatement1["data"].front().at("hash_sha1"));
+    EXPECT_EQ(row.at("version"), 10);
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFileOnlyRaises)
+{
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths({"/data/high"}));
+    ASSERT_EQ(fim_db_set_version_file(12), 0);
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths({"/data/low"}));
+
+    ASSERT_EQ(fim_db_set_version_file(10), 0);
+
+    EXPECT_EQ(fileRow("/data/high").at("version"), 12);
+    EXPECT_EQ(fileRow("/data/low").at("version"), 10);
+}
+
+// DBSync that runs a hook around the version update. Setting the version by reading the whole table
+// and rewriting each row lost a row written in between: the hook after a full read of the table is
+// that write. With the single update there is no such point, so the hook runs right before it.
+class DBSyncWithRaceHook final : public DBSync
+{
+    public:
+        using DBSync::DBSync;
+
+        void selectRows(const nlohmann::json& jsInput, ResultCallbackData callbackData) override
+        {
+            DBSync::selectRows(jsInput, callbackData);
+
+            if (jsInput.at("query").at("column_list") == nlohmann::json::array({"*"}))
+            {
+                runHookOnce();
+            }
+        }
+
+        void setEachEntryVersion(const std::string& tableName, const long long version) override
+        {
+            runHookOnce();
+            DBSync::setEachEntryVersion(tableName, version);
+        }
+
+        std::function<void(DBSync&)> m_hook;
+
+    private:
+        void runHookOnce()
+        {
+            if (m_hook)
+            {
+                const auto hook {std::move(m_hook)};
+                m_hook = nullptr;
+                hook(*this);
+            }
+        }
+};
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFileKeepsRowWrittenMeanwhile)
+{
+    constexpr auto NEW_CHECKSUM {"e89f3b4c21c2005896c964462da4766057dd94e9"};
+
+    auto dbsyncHandler {std::make_shared<DBSyncWithRaceHook>(HostType::AGENT,
+                                                             DbEngineType::SQLITE3,
+                                                             FIM_DB_MEMORY_PATH,
+                                                             FIMDBCreator<OS_TYPE>::CreateStatement(),
+                                                             DbManagement::PERSISTENT)};
+    FIMDB::instance().init([](modules_log_level_t, const std::string&) {}, dbsyncHandler, MAX_FILE_LIMIT, 100000);
+
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths({"/data/a", "/data/b", "/data/c"}));
+
+    // An event changes /data/b at the hook point. Like a real event, it carries no version, so
+    // the row gets the next one.
+    dbsyncHandler->m_hook = [&](DBSync & dbsync)
+    {
+        auto item = fileItemWithChecksum("/data/b", NEW_CHECKSUM);
+        item.erase("version");
+        item.erase("sync");
+
+        nlohmann::json input;
+        input["table"] = FIMDB_FILE_TABLE_NAME;
+        input["data"] = nlohmann::json::array({item});
+        dbsync.DBSync::syncRow(input, [](ReturnTypeCallback, const nlohmann::json&) {});
+    };
+
+    ASSERT_EQ(fim_db_set_version_file(10), 0);
+    ASSERT_FALSE(dbsyncHandler->m_hook) << "the concurrent write never ran";
+
+    const auto row = fileRow("/data/b");
+    EXPECT_EQ(row.at("checksum").get<std::string>(), NEW_CHECKSUM);
+    EXPECT_EQ(row.at("version"), 10);
+    EXPECT_EQ(fileRow("/data/a").at("version"), 10);
+    EXPECT_EQ(fileRow("/data/c").at("version"), 10);
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFileReportsADatabaseError)
+{
+    auto dbsyncHandler {std::make_shared<DBSyncWithRaceHook>(HostType::AGENT,
+                                                             DbEngineType::SQLITE3,
+                                                             FIM_DB_MEMORY_PATH,
+                                                             FIMDBCreator<OS_TYPE>::CreateStatement(),
+                                                             DbManagement::PERSISTENT)};
+    const auto loggedError {std::make_shared<std::string>()};
+    FIMDB::instance().init([loggedError](modules_log_level_t level, const std::string & log)
+    {
+        if (LOG_ERROR == level)
+        {
+            *loggedError = log;
+        }
+    }, dbsyncHandler, MAX_FILE_LIMIT, 100000);
+
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths({"/data/a"}));
+
+    dbsyncHandler->m_hook = [](DBSync&)
+    {
+        throw std::runtime_error {"disk I/O error"};
+    };
+
+    EXPECT_EQ(fim_db_set_version_file(10), -1);
+    EXPECT_EQ(*loggedError, "Error setting the version for table file_entry: disk I/O error");
+    EXPECT_EQ(fileRow("/data/a").at("version"), 1);
+}
+
+TEST_F(DBTestFixture, TestFimDBSetVersionFileUnderConcurrentWrites)
+{
+    constexpr auto ROWS {2000};
+    constexpr auto SET_VERSION_CALLS {50};
+
+    std::vector<std::string> paths;
+
+    for (auto i {0}; i < ROWS; ++i)
+    {
+        paths.push_back("/data/f" + std::to_string(i));
+    }
+
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths(paths));
+
+    std::vector<std::string> lastChecksum(ROWS, insertStatement1["data"].front().at("checksum").get<std::string>());
+    std::atomic<bool> stop {false};
+    std::atomic<int> writes {0};
+
+    std::thread writer
+    {
+        [&]()
+        {
+            callback_context_t callback;
+            callback.callback_txn = callbackFileUpdateAny;
+            callback.context = &ctx1;
+            unsigned int seed {12345};
+
+            while (!stop)
+            {
+                seed = seed * 1103515245u + 12345u;
+                const auto index {(seed >> 8) % ROWS};
+                const auto checksum {"checksum-" + std::to_string(++writes)};
+                const auto item {std::make_unique<FileItem>(fileItemWithChecksum(paths[index], checksum))};
+
+                if (fim_db_file_update(item->toFimEntry(), callback) == FIMDB_OK)
+                {
+                    lastChecksum[index] = checksum;
+                }
+            }
+        }};
+
+    auto version {100};
+
+    for (auto i {0}; i < SET_VERSION_CALLS; ++i)
+    {
+        // Let the writer land some rows between two calls
+        const auto writesBefore {writes.load()};
+
+        while (writes.load() < writesBefore + 20)
+        {
+            std::this_thread::yield();
+        }
+
+        version += 100;
+        EXPECT_EQ(fim_db_set_version_file(version), 0);
+    }
+
+    stop = true;
+    writer.join();
+
+    for (auto i {0}; i < ROWS; ++i)
+    {
+        const auto row = fileRow(paths[i]);
+        ASSERT_EQ(row.at("checksum"), lastChecksum[i]) << paths[i];
+        ASSERT_GE(row.at("version").get<int>(), version) << paths[i];
+    }
+}
+
+TEST_F(DBTestFixture, TestFimDBFileDelete)
+{
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths({"/data/a", "/data/b"}));
+
+    EXPECT_EQ(fim_db_file_delete("/data/a"), FIMDB_OK);
+
+    EXPECT_EQ(fim_db_get_count_file_entry(), 1);
+    EXPECT_EQ(fileRow("/data/b").at("path"), "/data/b");
+}
+
+static std::promise<void>* deleteCallbackEntered;
+static std::shared_future<void>* deleteCallbackRelease;
+
+static void callbackTestDeletedBlocking(ReturnTypeCallback result_type, const cJSON*, void*)
+{
+    EXPECT_EQ(result_type, ReturnTypeCallback::DELETED);
+    deleteCallbackEntered->set_value();
+    deleteCallbackRelease->wait();
+}
+
+TEST_F(DBTestFixture, TestFimDBQuiesceWaitsForDeleteInFlight)
+{
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths({"/data/a"}));
+
+    std::promise<void> entered;
+    std::promise<void> release;
+    std::shared_future<void> releaseFuture {release.get_future()};
+    deleteCallbackEntered = &entered;
+    deleteCallbackRelease = &releaseFuture;
+
+    std::thread deleter
+    {
+        []()
+        {
+            callback_context_t callback;
+            callback.callback = nullptr;
+            callback.callback_txn = callbackTestDeletedBlocking;
+            callback.context = nullptr;
+            EXPECT_EQ(fim_db_get_path("/data/a", callback, true), FIMDB_OK);
+        }};
+
+    ASSERT_EQ(entered.get_future().wait_for(std::chrono::seconds(10)), std::future_status::ready);
+
+    // The row is gone and its DELETED event is still being reported: quiesce has to wait for it
+    auto quiesced {std::async(std::launch::async, []()
+    {
+        fim_db_quiesce();
+    })};
+    EXPECT_EQ(quiesced.wait_for(std::chrono::milliseconds(200)), std::future_status::timeout);
+
+    release.set_value();
+    EXPECT_EQ(quiesced.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+    deleter.join();
+
+    // Initialized again to read the table: the delete in flight was applied
+    FIMDB::instance().init([](modules_log_level_t, const std::string&) {},
+                           FIMDB::instance().DBSyncHandler(), MAX_FILE_LIMIT, 100000);
+    EXPECT_EQ(fim_db_get_count_file_entry(), 0);
+}
+
+TEST_F(DBTestFixture, TestFimDBQuiesceStopsRowWrites)
+{
+    ASSERT_NO_FATAL_FAILURE(insertFilesWithPaths({"/data/a", "/data/b"}));
+
+    EXPECT_CALL(*mockLog, loggingFunction(testing::_, testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(*mockLog,
+                loggingFunction(LOG_WARNING, "FIM is busy or shutting down, version not set for table file_entry"));
+
+    fim_db_quiesce();
+
+    const auto updated {std::make_unique<FileItem>(fileItemWithChecksum("/data/a", "not-written"))};
+    callback_context_t callback;
+    callback.callback_txn = callbackFileUpdateAny;
+    callback.context = &ctx1;
+    EXPECT_EQ(fim_db_file_update(updated->toFimEntry(), callback), FIMDB_OK);
+
+    // A delete does not even find the row, so nothing is removed or reported
+    callback_context_t deleteCallback;
+    deleteCallback.callback_txn = callbackTestDeleted;
+    deleteCallback.context = nullptr;
+    EXPECT_EQ(fim_db_get_path("/data/b", deleteCallback, true), FIMDB_ERR);
+
+    EXPECT_EQ(fim_db_set_version_file(10), -1);
+
+    // Initialized again to read the table: nothing changed after the quiesce
+    FIMDB::instance().init([](modules_log_level_t, const std::string&) {},
+                           FIMDB::instance().DBSyncHandler(), MAX_FILE_LIMIT, 100000);
+    EXPECT_EQ(fim_db_get_count_file_entry(), 2);
+    const auto row = fileRow("/data/a");
+    EXPECT_EQ(row.at("checksum"), insertStatement1["data"].front().at("checksum"));
+    EXPECT_EQ(row.at("version"), 1);
 }

@@ -67,6 +67,12 @@ namespace DbSync
             virtual void closeAndDeleteDatabase(const std::string& path) = 0;
 
             /**
+             * @brief Raises the version of every row below it, in one statement.
+             */
+            virtual void setEachEntryVersion(const std::string& table,
+                                             const int64_t version) = 0;
+
+            /**
              * @brief Why opening the persistent database deleted it and created it again, or empty
              *        when it did not.
              */

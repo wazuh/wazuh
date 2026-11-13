@@ -217,6 +217,15 @@ class EXPORTED DBSync : public IDBSync
          * @throws dbsync_error if any database operation fails.
          */
         void increaseEachEntryVersion(const std::string& tableName) override;
+
+        /**
+         * @brief Raise the version column of every entry below it in a table, in one statement.
+         *
+         * @param tableName Name of the table to update.
+         * @param version   Version to set, entries already at or above it are left as they are.
+         * @throws dbsync_error if the table is unknown, has no version column or the update fails.
+         */
+        void setEachEntryVersion(const std::string& tableName, const long long version) override;
     private:
         DBSYNC_HANDLE m_dbsyncHandle;
         bool m_shouldBeRemoved;

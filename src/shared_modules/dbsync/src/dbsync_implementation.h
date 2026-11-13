@@ -85,6 +85,10 @@ namespace DbSync
 
             void closeAndDeleteDatabase(const DBSYNC_HANDLE handle, const std::string& path);
 
+            void setEachEntryVersion(const DBSYNC_HANDLE handle,
+                                     const std::string&  table,
+                                     const long long     version);
+
             std::string recreateReason(const DBSYNC_HANDLE handle);
 
             static bool isShuttingDown()

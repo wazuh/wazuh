@@ -53,7 +53,7 @@ Responsibilities:
 * Monitors configured directories for changes (create, modify, delete, move)
 * Triggers `fim_checker()` which leads to database transactions and `transaction_callback()`
 * Runs continuously in background thread launched at FIM startup
-* **Respects pause state** - checks `fim_pause_requested` before processing changes
+* **Pause** - the thread does not check `fim_pause_requested`. A pause holds `fim_realtime_mutex`, which the thread takes to read new events, so no new event is read until the resume. With inotify, events already read keep being processed
 
 ### **Integrity Scanning Thread**
 
@@ -143,6 +143,10 @@ if (atomic_int_get(&fim_flush_in_progress)) {
 perform_integrity_scan();
 ```
 
+**Version Update (`set_version`):**
+
+`set_version` raises the `version` column of every row below the requested value with a single `UPDATE` statement per table (`file_entry`, plus `registry_key` and `registry_data` on Windows). It writes no other column and never lowers a version, so a row changed by an event keeps its content. For realtime and whodata events, FIMDB treats a row write and the queueing of its stateful event as one unit: each `UPDATE` waits for the units in flight and runs between them. If they do not finish within 3 seconds, that table is left as it was, the command fails and the caller retries it. A retry is safe because versions are only raised.
+
 ---
 
 ## Event Flow Architecture
@@ -212,6 +216,8 @@ persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, state
 - Persisted to sync protocol database
 - Survive agent restarts and network failures
 - Synchronized periodically with manager
+
+**Agent stop:** when the agent stops, FIM first stops the row writes of realtime and whodata events and waits for the ones in flight, so the stateful event of every row they already wrote is queued. Only then the persistent queue is closed, and the FIM database is committed if no scan is running. A realtime or whodata event that arrives after that point writes no row, and the next scan detects the change again. The rows of a scan that is still running are not committed.
 
 ---
 

@@ -138,12 +138,22 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
 
     if (sync_thread_exited)
     {
+        fim_syscom_cleanup_pause();
+
+        /* Decided before the handle is destroyed: with a scan in progress fim.db is not torn
+         * down, so none of the rows that scan writes from here on is committed. */
+        bool scan_idle = (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0);
+
+        /* Stop the row writes and wait for the ones in flight, so the event of every row
+         * already written is queued while the handle below is still alive. */
+        fim_db_quiesce();
+
         /* Destroy the sync protocol handle so its SQLite connection to fim_sync.db is
          * closed cleanly (checkpointing and removing the -wal/-shm files) instead of
-         * being leaked (issue #37334). The write lock excludes the handle users that
-         * are not joined above (event persistence, syscom's fim_sync responses, the
-         * DataClean paths and the scheduled-scan asp_reset), which take it for reading
-         * around each call. */
+         * being leaked (issue #37334). The write lock only guards the handle: it excludes
+         * the handle users that are not joined above (event persistence, syscom's fim_sync
+         * responses, the DataClean paths and the scheduled-scan asp_reset), which take it
+         * for reading around each call. */
         w_rwlock_wrlock(&fim_sync_handle_rwlock);
         if (syscheck.sync_handle)
         {
@@ -152,9 +162,7 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
         }
         w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-        fim_syscom_cleanup_pause();
-
-        if (pthread_mutex_trylock(&syscheck.fim_scan_mutex) == 0)
+        if (scan_idle)
         {
             fim_db_teardown();
         }

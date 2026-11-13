@@ -29,6 +29,11 @@ enum SEARCH_FIELDS
 
 void DB::removeFile(const std::string& path)
 {
+    removeFile(path, []() {});
+}
+
+void DB::removeFile(const std::string& path, const std::function<void()>& afterRemove)
+{
     std::string encodedPath = path;
     FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
@@ -36,7 +41,7 @@ void DB::removeFile(const std::string& path)
     {
         DeleteQuery::builder().table(FIMDB_FILE_TABLE_NAME).data({{"path", encodedPath}}).rowFilter("").build()};
 
-    FIMDB::instance().removeItem(deleteQuery.query());
+    FIMDB::instance().removeItem(deleteQuery.query(), afterRemove);
 }
 
 void DB::getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback)
@@ -189,19 +194,23 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
             {
                 if (to_delete)
                 {
-                    DB::instance().removeFile(resultJson.at("path").get<std::string>());
-
-                    nlohmann::json patchedJson = resultJson;
-
-                    if (patchedJson.contains("inode") && patchedJson["inode"].is_number())
+                    // The DELETED callback runs under the lock of the removal, so a stop or a
+                    // version change cannot fall between the removal and its event.
+                    DB::instance().removeFile(resultJson.at("path").get<std::string>(),
+                                              [&callback, &resultJson]()
                     {
-                        patchedJson["inode"] = std::to_string(patchedJson["inode"].get<uint64_t>());
-                    }
+                        nlohmann::json patchedJson = resultJson;
 
-                    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson
-                    {
-                        cJSON_Parse(patchedJson.dump().c_str())};
-                    callback.callback_txn(ReturnTypeCallback::DELETED, spJson.get(), callback.context);
+                        if (patchedJson.contains("inode") && patchedJson["inode"].is_number())
+                        {
+                            patchedJson["inode"] = std::to_string(patchedJson["inode"].get<uint64_t>());
+                        }
+
+                        const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson
+                        {
+                            cJSON_Parse(patchedJson.dump().c_str())};
+                        callback.callback_txn(ReturnTypeCallback::DELETED, spJson.get(), callback.context);
+                    });
                 }
                 else
                 {

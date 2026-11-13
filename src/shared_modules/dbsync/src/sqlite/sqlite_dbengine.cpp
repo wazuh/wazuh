@@ -2356,3 +2356,38 @@ void SQLiteDBEngine::closeAndDeleteDatabase(const std::string& path)
         throw dbengine_error {DELETE_OLD_DB_ERROR};
     }
 }
+
+void SQLiteDBEngine::setEachEntryVersion(const std::string& table,
+                                         const int64_t version)
+{
+    if (0 == loadTableData(table))
+    {
+        throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
+
+    const auto& tableFields { m_tableFields[table] };
+    const bool hasVersion = std::any_of(tableFields.begin(), tableFields.end(),
+                                        [](const ColumnData & column)
+    {
+        return std::get<TableHeader::Name>(column) == "version";
+    });
+
+    if (!hasVersion)
+    {
+        throw dbengine_error { INVALID_TABLE };
+    }
+
+    // One statement, so no other write to the table fits between the rows it touches. It only
+    // writes the version column and never lowers it.
+    const auto stmt { getStatement("UPDATE " + table + " SET version=? WHERE version<?;") };
+    stmt->bind(1, version);
+    stmt->bind(2, version);
+
+    // LCOV_EXCL_START
+    if (SQLITE_ERROR == stmt->step())
+    {
+        throw dbengine_error { BIND_FIELDS_DOES_NOT_MATCH };
+    }
+
+    // LCOV_EXCL_STOP
+}

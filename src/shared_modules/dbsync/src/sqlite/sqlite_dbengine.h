@@ -157,6 +157,9 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void closeAndDeleteDatabase(const std::string& path) override;
 
+        void setEachEntryVersion(const std::string& table,
+                                 const int64_t version) override;
+
         std::string recreateReason() const override;
 
     private:

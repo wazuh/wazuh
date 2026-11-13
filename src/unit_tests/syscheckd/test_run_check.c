@@ -1793,7 +1793,7 @@ void test_persist_syscheck_msg_destroyed_sync_handle(void **state) {
     unsigned int original_enable_synchronization = syscheck.enable_synchronization;
 
     // The shutdown teardown destroyed the handle: the event must be dropped without
-    // touching the sync protocol (asp_persist_diff is not called).
+    // touching the sync protocol (asp_persist_diff is not called), and the drop is logged.
     syscheck.enable_synchronization = 1;
     syscheck.sync_handle = NULL;
 
@@ -1801,6 +1801,8 @@ void test_persist_syscheck_msg_destroyed_sync_handle(void **state) {
     cJSON_AddStringToObject(msg, "test", "data");
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6339): Persisting FIM event: {\"test\":\"data\"}");
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "FIM event not queued, the sync handle is closed: id 'test-id', version 1");
 
     // The fim_sync_handle_rwlock guard is taken around the handle check even when the
     // handle is NULL. Only the winagent build wraps these locks.
