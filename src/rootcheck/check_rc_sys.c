@@ -16,6 +16,16 @@
 #define RC_SYS_MAX_DEPTH 256
 #define RC_SYS_MAX_READ_SIZE (1024 * 1024 * 1024)
 
+#ifndef O_NOFOLLOW
+#define O_NOFOLLOW 0
+#endif
+#ifndef O_NOCTTY
+#define O_NOCTTY 0
+#endif
+#ifndef O_NONBLOCK
+#define O_NONBLOCK 0
+#endif
+
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
 static int read_sys_dir(const char *dir_name, int do_read);
@@ -95,28 +105,25 @@ static int read_sys_file(const char *file_name, int do_read)
     } else if (S_ISREG(statbuf.st_mode) && do_read) {
         char buf[OS_SIZE_1024];
         int fd;
-        ssize_t nr;
+        ssize_t nr = 0;
         long int total = 0;
 
-#ifndef WIN32
-        fd = open(file_name, O_RDONLY | O_NONBLOCK, 0);
-#else
-        fd = open(file_name, O_RDONLY, 0);
-#endif
+        fd = open(file_name, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_NOCTTY, 0);
 
         /* It may not necessarily open */
         if (fd >= 0) {
             struct stat fd_stat;
-            /* The entry may have been replaced since lstat */
             const int same_file = fstat(fd, &fd_stat) == 0 && S_ISREG(fd_stat.st_mode) &&
-                                  fd_stat.st_ino == statbuf.st_ino;
+                                  fd_stat.st_dev == statbuf.st_dev && fd_stat.st_ino == statbuf.st_ino;
 
             while (same_file && total <= statbuf.st_size && (nr = read(fd, buf, sizeof(buf))) > 0) {
                 total += nr;
             }
             close(fd);
 
-            if (!same_file || strcmp(file_name, "/dev/bus/usb/.usbfs/devices") == 0) {
+            if (!same_file || nr < 0) {
+                mtdebug2(ARGV0, "Skipping size check of '%s': file changed or could not be read.", file_name);
+            } else if (strcmp(file_name, "/dev/bus/usb/.usbfs/devices") == 0) {
                 /* Ignore .usbfs/devices */
             } else if (total != statbuf.st_size) {
                 struct stat statbuf2;
@@ -418,8 +425,8 @@ static int read_sys_dir(const char *dir_name, int do_read)
         i++;
     }
 
-    /* Anyone can create files here */
-    if (strcmp(dir_name, "/dev/shm") == 0) {
+    /* Content written by other users is not checked */
+    if (statbuf.st_mode & S_IWOTH) {
         do_read = 0;
     }
 #endif
