@@ -26,7 +26,7 @@
     - limit_maxagents:
         value: 'yes'
     - ciphers:
-        value:  'HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH'
+        value:  'HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:!kRSA:@STRENGTH'
     - ssl_verify_host:
         value: SSL_VERIFY_HOST
     - ssl_manager_cert:

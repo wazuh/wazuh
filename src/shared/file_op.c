@@ -660,17 +660,23 @@ float DirSize(const char *path) {
 int CreatePID(const char *name, int pid)
 {
     char file[256];
+    char pidfile[256];
     FILE *fp;
 
+    snprintf(pidfile, sizeof(pidfile), "%s-%d.pid", name, pid);
     snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
 
-    fp = wfopen(file, "a");
+    fp = w_fopen_nofollow(OS_PIDFILE, pidfile, "a");
     if (!fp) {
         return (-1);
     }
 
     fprintf(fp, "%d\n", pid);
+#ifndef WIN32
+    if (fchmod(fileno(fp), 0640) != 0) {
+#else
     if (chmod(file, 0640) != 0) {
+#endif
         merror(CHMOD_ERROR, file, errno, strerror(errno));
         fclose(fp);
         return (-1);
@@ -1306,10 +1312,11 @@ int checkBinaryFile(const char *f_name) {
     fpos_t fp_pos;
     int64_t offset;
     int64_t rbytes;
+    int64_t len;
 
     str[OS_MAXSTR] = '\0';
 
-    fp = wfopen(f_name, "r");
+    fp = wfopen(f_name, "rb");
 
      if (!fp) {
         merror("Unable to open file '%s' due to [(%d)-(%s)].", f_name, errno, strerror(errno));
@@ -1328,16 +1335,17 @@ int checkBinaryFile(const char *f_name) {
             return 1;
         }
 
-        /* Get the last occurrence of \n */
-        if (str[rbytes - 1] == '\n') {
-            str[rbytes - 1] = '\0';
+        /* A read without \n (last line or a line longer than OS_MAXSTR) must be checked too */
+        len = rbytes;
 
-            if ((long)strlen(str) != rbytes - 1)
-            {
-                mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
-                fclose(fp);
-                return 1;
-            }
+        if (str[len - 1] == '\n') {
+            str[--len] = '\0';
+        }
+
+        if ((int64_t)strlen(str) != len) {
+            mdebug2("Line contains some zero-bytes (valid=" FTELL_TT "/ total=" FTELL_TT ").", FTELL_INT64 strlen(str), FTELL_INT64 len);
+            fclose(fp);
+            return 1;
         }
     }
     fclose(fp);
@@ -5548,6 +5556,54 @@ FILE * w_fopen_vetted_follow(const char * path, const char * mode) {
 }
 
 
+/**
+ * @brief Opens a gzip file for w_compress_gzfile() and w_uncompress_gzfile()
+ *
+ * On Windows, gzopen() leaves a descriptor that child processes inherit and that blocks renaming or
+ * deleting the file, so the file is opened on a non-inheritable handle instead.
+ *
+ * @param path File to open
+ * @param mode "w" to create or truncate it, "rb" to read it
+ *
+ * @return zlib file, or NULL on error with errno set
+ */
+static gzFile w_gzopen_private(const char *path, const char *mode) {
+#ifdef WIN32
+    const bool write = strchr(mode, 'w') != NULL;
+    HANDLE hFile;
+    gzFile gzfp;
+    int fd;
+
+    // wCreateFile() sets errno itself only when it rejects a network path
+    errno = 0;
+    hFile = wCreateFile(path, write ? GENERIC_WRITE : GENERIC_READ,
+                        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                        write ? CREATE_ALWAYS : OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if (hFile == INVALID_HANDLE_VALUE) {
+        if (errno == 0) {
+            errno = w_win32_to_errno(GetLastError());
+        }
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)hFile, _O_BINARY | (write ? _O_WRONLY : _O_RDONLY)), fd < 0) {
+        CloseHandle(hFile);
+        return NULL;
+    }
+
+    // From here on the descriptor owns the handle
+    if (gzfp = gzdopen(fd, mode), gzfp == NULL) {
+        _close(fd);
+        return NULL;
+    }
+
+    return gzfp;
+#else
+    return gzopen(path, mode);
+#endif
+}
+
 int w_compress_gzfile(const char *filesrc, const char *filedst) {
     FILE *fd;
     gzFile gz_fd;
@@ -5611,7 +5667,7 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
 #endif
 
     /* Open compressed file */
-    gz_fd = gzopen(filedst, "w");
+    gz_fd = w_gzopen_private(filedst, "w");
     if (!gz_fd) {
         fclose(fd);
         merror("in w_compress_gzfile(): gzopen error %s (%d):'%s'",
@@ -5676,7 +5732,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     }
 
     /* Open compressed file */
-    gz_fd = gzopen(gzfilesrc, "rb");
+    gz_fd = w_gzopen_private(gzfilesrc, "rb");
     if (!gz_fd) {
         merror("in w_uncompress_gzfile(): gzopen error %s (%d):'%s'",
                 gzfilesrc,
@@ -5724,7 +5780,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii, unsigned int 
     fpos_t begin;
     FILE *fp;
 
-    fp = wfopen(file, "r");
+    fp = w_fopen_vetted_follow(file, "r");
 
     if (!fp) {
         mdebug1(OPEN_UNABLE, file);

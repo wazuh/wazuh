@@ -17,6 +17,7 @@
 #endif
 
 #define COMMANDSIZE_4096 4096
+#define AR_COMMAND_ATTEMPTS 5
 
 #define VERSION 1
 #define AR_MODULE_NAME "active-response"
@@ -80,7 +81,7 @@ const cJSON* get_alert_from_json(const cJSON *input);
 /**
  * Get srcip from input and validate that it is a valid IP address
  * @param input Input
- * @return char * with the srcip or NULL on fail or invalid IP
+ * @return char * with the srcip (the IPv4 address of a "::ffff:" mapped one) or NULL on fail or invalid IP
  * */
 const char* get_srcip_from_json(const cJSON *input);
 
@@ -142,7 +143,7 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
 
 /**
  * Check ip version from a string
- * Uses getaddrinfo() with AI_NUMERICHOST to validate IP format
+ * Accepts only the standard text form of an IPv4 address, or an IPv6 address
  * @param ip Ip to check version
  * @retval 4 If ip is ipv4
  * @retval 6 If ip is ipv6
@@ -211,6 +212,16 @@ bool build_hostsdeny_rules(const char *srcip, bool freebsd, char *rule, size_t r
  * */
 bool hosts_deny_rule_matches(const char *line, const char *rule);
 
+#define AIX_FILTER_DESCRIPTION "Access Denied by WAZUH"
+
+/**
+ * Check whether a "lsfilt -O" line is the AIX filter rule that firewall-drop created for srcip
+ * @param line Line from "lsfilt -v 4 -O"
+ * @param srcip IP to match exactly against the source address field
+ * @return true if the line is the deny rule srcip/32 -> 0.0.0.0/0 with the Wazuh description
+ * */
+bool aix_filter_rule_matches(const char *line, const char *srcip);
+
 /**
  * Copy a hosts.deny file without the Wazuh-managed rule and, if given, its legacy form
  * @param in hosts.deny opened for reading
@@ -239,5 +250,15 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
  * @param log_path Messages log file
  * */
 void unlock(const char *lock_path, const char *log_path);
+
+/**
+ * Run a command and check that it exits with 0. Retries with a growing delay
+ * while it cannot be started or exits with 4. Logs the command when it fails
+ * @param ar_name Active response name for the log
+ * @param path Binary to run
+ * @param argv NULL-terminated argument list
+ * @return OS_SUCCESS or OS_INVALID
+ * */
+int execute_command_with_retry(const char *ar_name, const char *path, char * const *argv);
 
 #endif

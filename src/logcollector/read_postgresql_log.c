@@ -129,11 +129,17 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
                 p++;
             }
 
+            /* A line with only whitespace adds nothing to the message */
+            if (*p == '\0') {
+                continue;
+            }
+
             /* Append to the saved buffer, leaving room for the separator and the terminator */
-            if (sizeof(buffer) - buffer_len > strlen(str) + 1) {
+            const size_t append_len = strlen(p);
+
+            if (sizeof(buffer) - buffer_len > append_len + 1) {
                 buffer[buffer_len] = ' ';
-                buffer[buffer_len + 1] = '\0';
-                strncat(buffer, str, str_len + 3);
+                memcpy(buffer + buffer_len + 1, p, append_len + 1);
             }
         }
 

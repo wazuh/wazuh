@@ -11,7 +11,9 @@
 
 #include <set>
 #include <chrono>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "igroup_wrapper.hpp"
 #include "ipasswd_wrapper.hpp"
@@ -79,6 +81,9 @@ class UserGroupsProvider
         };
 
         /// @brief Retrieves groups for each user and returns a vector of pairs containing UID and their associated groups.
+        /// @note Membership comes from one group enumeration (members of each group plus the user's primary group),
+        /// not from one getgrouplist() call per user; getgrouplist() is only asked about a user that no enumerated group
+        /// lists. The group names it sees are cached in s_groupNamesCache with the same lifetime as the memberships.
         /// @param uids A set of user IDs (UIDs) to filter the results. If empty, all users are processed.
         /// @return A vector of pairs, where each pair contains a UID and a vector of GIDs representing the groups associated with that UID.
         /// @note This method is used internally to gather user-group associations before formatting the results into JSON.
@@ -98,6 +103,8 @@ class UserGroupsProvider
 
         // Static thread-local cache for getUserGroups results
         static thread_local std::unordered_map<uid_t, std::vector<gid_t>> s_userGroupsCache;
+        // Group names from the same group enumeration, valid as long as s_userGroupsCache
+        static thread_local std::unordered_map<gid_t, std::string> s_groupNamesCache;
         static thread_local std::chrono::steady_clock::time_point s_cacheTimestamp;
         static thread_local bool s_cacheValid;
         static constexpr std::chrono::seconds s_cacheTimeout{60};

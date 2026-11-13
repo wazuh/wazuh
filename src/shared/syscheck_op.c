@@ -98,9 +98,14 @@ int remove_empty_folders(const char *path) {
             if (!(subdir && *subdir)) {
                 // Remove empty folder
                 mdebug1("Removing empty directory '%s'.", parent);
-                if (rmdir_ex(parent) != 0) {
-                    mwarn("Empty directory '%s' couldn't be deleted. ('%s')", parent, strerror(errno));
-                    retval = -1;
+                // Plain rmdir(): another thread may have just stored a file in it, which must be kept
+                if (rmdir(parent) != 0) {
+                    if (errno == ENOTEMPTY || errno == EEXIST) {
+                        mdebug1("Directory '%s' is no longer empty, it is kept.", parent);
+                    } else {
+                        mwarn("Empty directory '%s' couldn't be deleted. ('%s')", parent, strerror(errno));
+                        retval = -1;
+                    }
                 } else {
                     // Get parent and remove it if it's empty
                     retval = remove_empty_folders(parent);

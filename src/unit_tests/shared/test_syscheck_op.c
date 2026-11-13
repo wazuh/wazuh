@@ -353,6 +353,11 @@ static void test_normalize_path_null_input(void **state) {
 }
 
 /* remove_empty_folders tests */
+static void expect_rmdir_call(const char *path, int ret) {
+    expect_string(__wrap_rmdir, path, path);
+    will_return(__wrap_rmdir, ret);
+}
+
 static void test_remove_empty_folders_success(void **state) {
 #ifndef TEST_WINAGENT
     char *input = "queue/diff/local/test-dir/";
@@ -378,7 +383,7 @@ static void test_remove_empty_folders_success(void **state) {
     snprintf(message, OS_SIZE_1024, "Removing empty directory '%s'.", first_subdir);
     expect_string(__wrap__mdebug1, formatted_msg, message);
 
-    expect_rmdir_ex_call(first_subdir, 0);
+    expect_rmdir_call(first_subdir, 0);
 
     expect_wreaddir_call(second_subdir, mock_directory_content);
 
@@ -421,14 +426,14 @@ static void test_remove_empty_folders_recursive_success(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
 
-    expect_rmdir_ex_call(parent_dirs[0], 0);
+    expect_rmdir_call(parent_dirs[0], 0);
 
     // Remove dir1
     expect_wreaddir_call(parent_dirs[1], NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
 
-    expect_rmdir_ex_call(parent_dirs[1], 0);
+    expect_rmdir_call(parent_dirs[1], 0);
 
     expect_wreaddir_call(parent_dirs[2], mock_directory_content);
 
@@ -465,9 +470,9 @@ static void test_remove_empty_folders_relative_path(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
     expect_string(__wrap__mdebug1, formatted_msg, messages[2]);
 
-    expect_rmdir_ex_call(parent_dirs[0], 0);
-    expect_rmdir_ex_call(parent_dirs[1], 0);
-    expect_rmdir_ex_call(parent_dirs[2], 0);
+    expect_rmdir_call(parent_dirs[0], 0);
+    expect_rmdir_call(parent_dirs[1], 0);
+    expect_rmdir_call(parent_dirs[2], 0);
 
     ret = remove_empty_folders(input);
 
@@ -506,9 +511,9 @@ static void test_remove_empty_folders_absolute_path(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
     expect_string(__wrap__mdebug1, formatted_msg, messages[2]);
 
-    expect_rmdir_ex_call(parent_dirs[0], 0);
-    expect_rmdir_ex_call(parent_dirs[1], 0);
-    expect_rmdir_ex_call(parent_dirs[2], 0);
+    expect_rmdir_call(parent_dirs[0], 0);
+    expect_rmdir_call(parent_dirs[1], 0);
+    expect_rmdir_call(parent_dirs[2], 0);
 
     ret = remove_empty_folders(input);
 
@@ -556,15 +561,42 @@ static void test_remove_empty_folders_error_removing_dir(void **state) {
     snprintf(remove_dir_message, OS_SIZE_1024, "Removing empty directory '%s'.", parent_dir);
     expect_string(__wrap__mdebug1, formatted_msg, remove_dir_message);
 
-    expect_rmdir_ex_call(parent_dir, -1);
+    expect_rmdir_call(parent_dir, -1);
 
     snprintf(dir_not_deleted_message, OS_SIZE_1024,
-        "Empty directory '%s' couldn't be deleted. ('Directory not empty')", parent_dir);
+        "Empty directory '%s' couldn't be deleted. ('%s')", parent_dir, strerror(EACCES));
     expect_string(__wrap__mwarn, formatted_msg, dir_not_deleted_message);
 
+    errno = EACCES;
     ret = remove_empty_folders(input);
 
     assert_int_equal(ret, -1);
+}
+
+static void test_remove_empty_folders_dir_filled_meanwhile(void **state) {
+#ifndef TEST_WINAGENT
+    char *input = "queue/diff/local/test-dir/";
+    static const char *parent_dir = "queue/diff/local/test-dir";
+#else
+    char *input = "queue/diff\\local\\test-dir\\";
+    static const char *parent_dir = "queue/diff\\local\\test-dir";
+#endif
+    char remove_dir_message[OS_SIZE_1024];
+    char kept_message[OS_SIZE_1024];
+
+    expect_wreaddir_call(parent_dir, NULL);
+
+    snprintf(remove_dir_message, OS_SIZE_1024, "Removing empty directory '%s'.", parent_dir);
+    expect_string(__wrap__mdebug1, formatted_msg, remove_dir_message);
+
+    // Another thread stored a file after the listing: the folder and its content are kept
+    expect_rmdir_call(parent_dir, -1);
+
+    snprintf(kept_message, OS_SIZE_1024, "Directory '%s' is no longer empty, it is kept.", parent_dir);
+    expect_string(__wrap__mdebug1, formatted_msg, kept_message);
+
+    errno = ENOTEMPTY;
+    assert_int_equal(remove_empty_folders(input), 0);
 }
 
 #if defined(TEST_SERVER)
@@ -4941,6 +4973,7 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_remove_empty_folders_absolute_path),
         cmocka_unit_test(test_remove_empty_folders_non_empty_dir),
         cmocka_unit_test(test_remove_empty_folders_error_removing_dir),
+        cmocka_unit_test(test_remove_empty_folders_dir_filled_meanwhile),
 
 #if defined(TEST_SERVER)
         /* sk_decode_sum tests */

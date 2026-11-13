@@ -11,6 +11,7 @@
 #include <atomic>
 #include <cstdio>
 #include <future>
+#include <mutex>
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 
@@ -2363,6 +2364,93 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     {
         t.join();
     }
+}
+
+static void runPortsDuplicatedScan(const bool portsAll, const std::vector<std::string>& expectedPorts)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                   R"([{"inode":10,"local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"cupsd","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},
+                                                                       {"inode":10,"local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"cupsd-dup","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},
+                                                                       {"inode":11,"local_ip":"10.0.0.1","local_port":22,"pid":0,"process_name":"sshd","protocol":"tcp","remote_ip":"10.0.0.2","remote_port":5000,"rx_queue":0,"state":"established","tx_queue":0},
+                                                                       {"inode":11,"local_ip":"10.0.0.1","local_port":22,"pid":0,"process_name":"sshd-dup","protocol":"tcp","remote_ip":"10.0.0.2","remote_port":5000,"rx_queue":0,"state":"established","tx_queue":0},
+                                                                       {"inode":20,"local_ip":"127.0.0.53","local_port":53,"pid":0,"process_name":"resolved","protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"","tx_queue":0},
+                                                                       {"inode":20,"local_ip":"127.0.0.53","local_port":53,"pid":0,"process_name":"resolved-dup","protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"","tx_queue":0},
+                                                                       {"inode":21,"local_ip":"0.0.0.0","local_port":5353,"pid":0,"process_name":"avahi","protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"","tx_queue":0}])")));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            const auto delta = nlohmann::json::parse(data);
+
+            if (delta.at("type") == "dbsync_ports")
+            {
+                wrapper.callbackMock(delta.at("operation").get<std::string>() + ":" +
+                                     delta.at("data").at("protocol").get<std::string>() + ":" +
+                                     std::to_string(delta.at("data").at("local_port").get<int>()) + ":" +
+                                     delta.at("data").at("process_name").get<std::string>());
+            }
+        }
+    };
+
+    for (const auto& expected : expectedPorts)
+    {
+        EXPECT_CALL(wrapper, callbackMock(expected)).Times(1);
+    }
+
+    std::promise<void> portsScanned;
+    std::once_flag portsScannedOnce;
+    std::function<void(const modules_log_level_t, const std::string&)> logCallback
+    {
+        [&portsScanned, &portsScannedOnce](const modules_log_level_t /*level*/, const std::string & log)
+        {
+            if (log == "Ending ports scan")
+            {
+                std::call_once(portsScannedOnce, [&portsScanned]()
+                {
+                    portsScanned.set_value();
+                });
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData, &logCallback, portsAll]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          reportFunction,
+                                          logCallback,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, portsAll, false, false, false, false, false, false, true);
+        }
+    };
+
+    const auto scanResult {portsScanned.get_future().wait_for(std::chrono::seconds{30})};
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    ASSERT_EQ(std::future_status::ready, scanResult);
+}
+
+TEST_F(SyscollectorImpTest, PortsDuplicated)
+{
+    runPortsDuplicatedScan(false, {"INSERTED:tcp:631:cupsd", "INSERTED:udp:53:resolved", "INSERTED:udp:5353:avahi"});
+}
+
+TEST_F(SyscollectorImpTest, PortsAllDuplicated)
+{
+    runPortsDuplicatedScan(true, {"INSERTED:tcp:631:cupsd", "INSERTED:tcp:22:sshd", "INSERTED:udp:53:resolved", "INSERTED:udp:5353:avahi"});
 }
 
 TEST_F(SyscollectorImpTest, sanitizeJsonValues)

@@ -50,6 +50,11 @@ static int nb_release_slot(netbuffer_t * buffer, int sock) {
     return was_unassociated;
 }
 
+/* Slot of an fd, or NULL when out of range. Caller must hold the mutex. */
+static sockbuffer_t * nb_slot(netbuffer_t * buffer, int sock) {
+    return (buffer->buffers && sock >= 0 && sock <= buffer->max_fd) ? &buffer->buffers[sock] : NULL;
+}
+
 int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_unassociated) {
     w_mutex_lock(&mutex);
 
@@ -62,6 +67,13 @@ int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_
     if (!retval) {
         *was_unassociated = nb_release_slot(recv, sock);
         nb_release_slot(send, sock);
+    } else {
+        // The slot stays open, so give the claim back for a later close attempt
+        sockbuffer_t * sockbuf = nb_slot(recv, sock);
+
+        if (sockbuf) {
+            sockbuf->closing = 0;
+        }
     }
 
     w_mutex_unlock(&mutex);
@@ -69,12 +81,32 @@ int nb_close_socket(netbuffer_t * recv, netbuffer_t * send, int sock, int * was_
     return retval;
 }
 
+int nb_claim_close(netbuffer_t * recv, int sock, size_t counter) {
+    int claimed = 0;
+
+    w_mutex_lock(&mutex);
+
+    sockbuffer_t * sockbuf = nb_slot(recv, sock);
+
+    // A close for a connection that is already gone, or already being closed, does nothing
+    if (sockbuf && sockbuf->bqueue && !sockbuf->closing &&
+        (counter == NB_CLOSE_ANY || counter > rem_getCounter(sock))) {
+        sockbuf->closing = 1;
+        rem_setCounter(sock, global_counter);
+        claimed = 1;
+    }
+
+    w_mutex_unlock(&mutex);
+
+    return claimed;
+}
+
 int nb_mark_associated(netbuffer_t * buffer, int sock, size_t counter) {
     int marked = 0;
 
     w_mutex_lock(&mutex);
 
-    sockbuffer_t * sockbuf = (buffer->buffers && sock >= 0 && sock <= buffer->max_fd) ? &buffer->buffers[sock] : NULL;
+    sockbuffer_t * sockbuf = nb_slot(buffer, sock);
 
     // A message older than the last close of this fd belongs to a previous connection
     if (sockbuf && sockbuf->bqueue && !sockbuf->associated && counter > rem_getCounter(sock)) {
@@ -87,13 +119,6 @@ int nb_mark_associated(netbuffer_t * buffer, int sock, size_t counter) {
     return marked;
 }
 
-/*
- * Receive available data from the network and push as many message as possible
- * Returns -2 on data corruption at application layer (header).
- * Returns -1 on system call error: recv().
- * Returns 0 if no data was available in the socket.
- * Returns the number of bytes received on success.
-*/
 int nb_recv(netbuffer_t * buffer, int sock) {
     long recv_len;
     unsigned long i;
@@ -102,7 +127,14 @@ int nb_recv(netbuffer_t * buffer, int sock) {
 
     w_mutex_lock(&mutex);
 
-    sockbuffer_t * sockbuf = &buffer->buffers[sock];
+    sockbuffer_t * sockbuf = nb_slot(buffer, sock);
+
+    // A released slot must not be re-allocated by a stale event for its fd
+    if (!sockbuf || !sockbuf->bqueue) {
+        recv_len = NB_NOT_OPEN;
+        goto end;
+    }
+
     unsigned long data_ext = sockbuf->data_len + receive_chunk;
 
     // Extend data buffer
@@ -190,7 +222,11 @@ int nb_send(netbuffer_t * buffer, int socket) {
 
     w_mutex_lock(&mutex);
 
-    if (buffer->buffers[socket].bqueue) {
+    sockbuffer_t * sockbuf = nb_slot(buffer, socket);
+
+    if (!sockbuf || !sockbuf->bqueue) {
+        sent_bytes = NB_NOT_OPEN;
+    } else {
 
         ssize_t peeked_bytes = bqueue_peek(buffer->buffers[socket].bqueue, data, send_chunk, BQUEUE_NOFLAG);
         if (peeked_bytes > 0) {

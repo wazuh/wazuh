@@ -12,6 +12,7 @@
 
 #include "shared.h"
 #include "os_net/os_net.h"
+#include "maild.h"
 
 /* Return codes (from SMTP server) */
 #define VALIDBANNER     "220"
@@ -47,6 +48,36 @@
 #define MAIL_DEBUG(x,y,z) if(MAIL_DEBUG_FLAG) merror(x,y,z)
 
 
+char *OS_DotStuff(const char *text, bool *line_start)
+{
+    char *out;
+    size_t j = 0;
+
+    /* Each input char yields at most two: a bare CR/LF becomes CRLF, a leading dot is doubled */
+    os_malloc(strlen(text) * 2 + 1, out);
+
+    for (const char *c = text; *c != '\0'; c++) {
+        if (*c == '\r' || *c == '\n') {
+            if (*c == '\r' && c[1] == '\n') {
+                c++;
+            }
+            out[j++] = '\r';
+            out[j++] = '\n';
+            *line_start = true;
+            continue;
+        }
+
+        if (*line_start && *c == '.') {
+            out[j++] = '.';
+        }
+        out[j++] = *c;
+        *line_start = false;
+    }
+
+    out[j] = '\0';
+    return out;
+}
+
 int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *replyto, char *idsname, FILE *fp, const struct tm *p)
 {
     wfd_t *sendmail = NULL;
@@ -54,6 +85,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     char *msg;
     char snd_msg[128];
     char buffer[2049];
+    bool line_start = true;
 
     buffer[2048] = '\0';
 
@@ -268,7 +300,9 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         if (sendmail) {
             fprintf(sendmail->file_in, "%s", buffer);
         } else {
-            OS_SendTCP(socket, buffer);
+            char *stuffed = OS_DotStuff(buffer, &line_start);
+            OS_SendTCP(socket, stuffed);
+            os_free(stuffed);
         }
     }
 

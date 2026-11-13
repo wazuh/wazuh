@@ -23,7 +23,8 @@
 
 /* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
-#define AUDIT_SOCKET                "queue/sockets/audit"
+// Root-owned directory; only root creates this socket and connects to it.
+#define AUDIT_SOCKET                "queue/audit"
 #define MAX_CONN_RETRIES            5          // Max retries to reconnect to Audit socket
 #define AUDIT_CONF_FILE             "tmp/af_wazuh.conf"
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
@@ -93,6 +94,7 @@ typedef struct fim_tmp_file {
 typedef struct diff_data {
     int file_size;
     int size_limit;
+    unsigned int lock_slot;
 
     char *compress_folder;
     char *compress_file;
@@ -696,6 +698,34 @@ char *fim_file_diff(const char *filename, const directory_t *configuration);
  * @param filename Path of the file that has been deleted
  */
 void fim_diff_process_delete_file(const char *filename);
+
+/**
+ * @brief Initializes the locks used by report_changes
+ */
+void fim_diff_init(void);
+
+/**
+ * @brief Result of running the diff/fc command
+ */
+typedef enum fim_diff_exec_rc {
+    FIM_DIFF_EXEC_SAME,     ///< The files are the same
+    FIM_DIFF_EXEC_DIFF,     ///< The output file holds the differences, possibly cut at the output limit
+    FIM_DIFF_EXEC_TIMEOUT,  ///< The command exceeded its time limit and was killed
+    FIM_DIFF_EXEC_MEMORY,   ///< The command exceeded its memory limit
+    FIM_DIFF_EXEC_FAILED,   ///< The command ran and failed
+    FIM_DIFF_EXEC_ERROR     ///< The command could not be run
+} fim_diff_exec_rc;
+
+/**
+ * @brief Compares two files with diff (fc on Windows) with bounded time, memory and output, without a shell
+ *
+ * @param old_file Previous content
+ * @param new_file Current content
+ * @param out_file File to create with the differences; it must not exist
+ *
+ * @return Result of the comparison
+ */
+fim_diff_exec_rc fim_diff_exec(const char *old_file, const char *new_file, const char *out_file);
 
 #ifdef WIN32
 /**

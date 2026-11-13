@@ -142,17 +142,10 @@ int main (int argc, char **argv) {
                         return OS_INVALID;
                     }
 
-                    if (exec_cmd4[0] != NULL) {
-                        wfd = wpopenv(pfctl_path, exec_cmd4, W_BIND_STDOUT);
-                        if (!wfd) {
-                            memset(log_msg, '\0', OS_MAXSTR);
-                            snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", pfctl_path, strerror(errno));
-                            write_debug_file(argv[0], log_msg);
-                            cJSON_Delete(input_json);
-                            os_free(pfctl_path);
-                            return OS_INVALID;
-                        }
-                        wpclose(wfd);
+                    if (exec_cmd4[0] != NULL && execute_command_with_retry(argv[0], pfctl_path, exec_cmd4) != OS_SUCCESS) {
+                        cJSON_Delete(input_json);
+                        os_free(pfctl_path);
+                        return OS_INVALID;
                     }
                 }
             }
@@ -191,30 +184,11 @@ int main (int argc, char **argv) {
             wpclose(wfd);
         }
 
-        if (exec_cmd1[0] != NULL) {
-            wfd = wpopenv(pfctl_path, exec_cmd1, W_BIND_STDOUT);
-            if (!wfd) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", pfctl_path, strerror(errno));
-                write_debug_file(argv[0], log_msg);
-                cJSON_Delete(input_json);
-                os_free(pfctl_path);
-                return OS_INVALID;
-            }
-            wpclose(wfd);
-        }
-
-        if (exec_cmd2[0] != NULL) {
-            wfd = wpopenv(pfctl_path, exec_cmd2, W_BIND_STDOUT);
-            if (!wfd) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1, "Error executing '%s' : %s", pfctl_path, strerror(errno));
-                write_debug_file(argv[0], log_msg);
-                cJSON_Delete(input_json);
-                os_free(pfctl_path);
-                return OS_INVALID;
-            }
-            wpclose(wfd);
+        if ((exec_cmd1[0] != NULL && execute_command_with_retry(argv[0], pfctl_path, exec_cmd1) != OS_SUCCESS) ||
+            (exec_cmd2[0] != NULL && execute_command_with_retry(argv[0], pfctl_path, exec_cmd2) != OS_SUCCESS)) {
+            cJSON_Delete(input_json);
+            os_free(pfctl_path);
+            return OS_INVALID;
         }
         os_free(pfctl_path);
 
