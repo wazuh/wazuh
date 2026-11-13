@@ -17,6 +17,23 @@ certificate resolution the module does at run time.
 
 Nothing here needs a container engine, a network, or a real registry.
 
+## Amazon ECR
+
+The same server also answers as the three Amazon ECR hosts the module recognises, selected with
+``flavor``:
+
+- ``ecr-public`` answers as ``public.ecr.aws``: a Bearer token from ``/token/``, always anonymous.
+- ``ecr-private`` answers as ``123456789012.dkr.ecr.us-east-1.amazonaws.com``: a ``Basic`` token
+  that only the AWS API endpoint, ``api.ecr.us-east-1.amazonaws.com``, can issue. The registry
+  never accepts anything else, and answers ``400`` and a ``DENIED`` body to a token it did not
+  issue, which is what the real registry was measured to do.
+
+The API endpoint verifies the AWS Signature Version 4 of the ``GetAuthorizationToken`` request
+itself. The verification is written here with Python's ``hmac`` and ``hashlib`` alone, so it
+shares nothing with the C++ signer it checks. A wrong secret key is answered with the AWS
+``InvalidSignatureException`` shape and a message that quotes the request, to prove that the
+module does not copy that text into its log.
+
 ## What it implements
 
 The subset of the OCI distribution API the module actually uses:
@@ -33,13 +50,18 @@ Every request is recorded, so a test can assert on what was *not* requested. Tha
 the unchanged-image case checkable: the assertion is "no blob was fetched", not "it was quick".
 """
 import base64
+import calendar
 import hashlib
+import hmac
 import json
 import os
+import re
+import secrets
 import ssl
 import subprocess
 import tempfile
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # The name the module insists on, and the port it uses implicitly.
@@ -51,8 +73,75 @@ CONTENT_HOST = 'pkg-containers.githubusercontent.com'
 
 TOKEN_VALUE = 'a-scripted-bearer-token'
 
+# Amazon ECR, as the module recognises it.
+ECR_PUBLIC_HOST = 'public.ecr.aws'
+ECR_REGION = 'us-east-1'
+ECR_PRIVATE_HOST = '123456789012.dkr.ecr.%s.amazonaws.com' % ECR_REGION
+ECR_API_HOST = 'api.ecr.%s.amazonaws.com' % ECR_REGION
+ECR_TARGET = 'AmazonEC2ContainerRegistry_V20150921.GetAuthorizationToken'
 
-def issue_certificate(directory: str) -> tuple:
+# The AWS key pair the local API endpoint accepts, and the keystore keys the tests store it under.
+# Not real credentials.
+ECR_ACCESS_KEY_ID = 'AKIDEXAMPLETESTKEY'
+ECR_SECRET_ACCESS_KEY = 'SecretAccessKeyOfTheIntegrationTest/0123456789'
+ECR_KEYS = ('ecr_key_id', 'ecr_secret')
+
+# Every name the server answers for, and so every name the certificate and the hosts entry need.
+ALL_HOSTS = [REGISTRY_HOST, CONTENT_HOST, ECR_PUBLIC_HOST, ECR_PRIVATE_HOST, ECR_API_HOST]
+
+FLAVOR_HOSTS = {'ghcr': REGISTRY_HOST, 'ecr-public': ECR_PUBLIC_HOST, 'ecr-private': ECR_PRIVATE_HOST}
+
+
+def verify_sigv4(method: str, path: str, query: str, headers, body: bytes, access_key_id: str,
+                 secret_access_key: str, region: str, service: str = 'ecr', now: float = None) -> str:
+    """Verify an AWS Signature Version 4 header, written independently of the module's signer.
+
+    Returns ``'ok'`` or the reason it is not: ``'malformed'``, ``'unknown_key'``, ``'scope'``,
+    ``'clock'`` or ``'signature'``.
+    """
+    match = re.match(r'AWS4-HMAC-SHA256 Credential=([^/]+)/(\d{8})/([^/]+)/([^/]+)/aws4_request, '
+                     r'SignedHeaders=([^,]+), Signature=([0-9a-f]{64})$', headers.get('Authorization', ''))
+
+    if not match:
+        return 'malformed'
+
+    key_id, date, signed_region, signed_service, signed_headers, signature = match.groups()
+
+    if key_id != access_key_id:
+        return 'unknown_key'
+
+    if (signed_region, signed_service) != (region, service):
+        return 'scope'
+
+    amz_date = headers.get('X-Amz-Date', '')
+
+    try:
+        issued = calendar.timegm(time.strptime(amz_date, '%Y%m%dT%H%M%SZ'))
+    except ValueError:
+        return 'malformed'
+
+    if abs((time.time() if now is None else now) - issued) > 300 or not amz_date.startswith(date):
+        return 'clock'
+
+    canonical_headers = ''.join('%s:%s\n' % (name, ' '.join(headers.get(name, '').split()))
+                                for name in signed_headers.split(';'))
+    canonical_request = '\n'.join([method, path, query, canonical_headers, signed_headers,
+                                   hashlib.sha256(body).hexdigest()])
+    scope = '%s/%s/%s/aws4_request' % (date, region, service)
+    string_to_sign = '\n'.join(['AWS4-HMAC-SHA256', amz_date, scope,
+                                hashlib.sha256(canonical_request.encode()).hexdigest()])
+
+    key = ('AWS4' + secret_access_key).encode()
+
+    for part in (date, region, service, 'aws4_request'):
+        key = hmac.new(key, part.encode(), hashlib.sha256).digest()
+
+    expected = hmac.new(key, string_to_sign.encode(), hashlib.sha256).hexdigest()
+
+    return 'ok' if hmac.compare_digest(expected, signature) else 'signature'
+
+
+def issue_certificate(directory: str, hosts: list = None) -> tuple:
     """Create a throwaway CA and a certificate for the registry host.
 
     Returns ``(ca_certificate_path, server_certificate_path, server_key_path)``. The CA is what
@@ -65,12 +154,14 @@ def issue_certificate(directory: str) -> tuple:
     server_certificate = os.path.join(directory, 'server.crt')
     extensions = os.path.join(directory, 'server.ext')
 
+    names = ', '.join('DNS:%s' % host for host in (hosts or ALL_HOSTS))
+
     with open(extensions, 'w') as handle:
         handle.write(
-            'subjectAltName = DNS:%s, DNS:%s, DNS:localhost, IP:127.0.0.1\n'
+            'subjectAltName = %s, DNS:localhost, IP:127.0.0.1\n'
             'basicConstraints = CA:FALSE\n'
             'keyUsage = digitalSignature, keyEncipherment\n'
-            'extendedKeyUsage = serverAuth\n' % (REGISTRY_HOST, CONTENT_HOST)
+            'extendedKeyUsage = serverAuth\n' % names
         )
 
     def run(*arguments):
@@ -128,10 +219,18 @@ class Repository:
 
 
 class LocalRegistry:
-    """A TLS registry on 127.0.0.1:443, answering as ``ghcr.io``."""
+    """A TLS registry on 127.0.0.1:443, answering as ``ghcr.io`` or as an Amazon ECR host."""
 
-    def __init__(self, port: int = REGISTRY_PORT, content_authority: str = None):
+    def __init__(self, port: int = REGISTRY_PORT, content_authority: str = None, flavor: str = 'ghcr'):
         self.port = port
+        self.flavor = flavor
+        self.host = FLAVOR_HOSTS[flavor]
+
+        # ecr-private: the AWS key pair the API endpoint accepts, what it was asked, and the
+        # token it issued (the only one the registry then accepts).
+        self.aws_credential = None      # (access key id, secret access key)
+        self.api_requests = []          # one dict per POST: verification result and headers
+        self.issued_token = None
 
         # Where a layer request is redirected. The real registry sends layers to a
         # different host, and that difference is load-bearing: libcurl only withholds the
@@ -170,7 +269,78 @@ class LocalRegistry:
                     self.wfile.write(body)
 
             def _authorized(self):
+                if registry.flavor == 'ecr-private':
+                    return (registry.issued_token is not None and
+                            registry.issued_token != registry.expired_token and
+                            self.headers.get('Authorization') == 'Basic %s' % registry.issued_token)
+
                 return self.headers.get('Authorization') == 'Bearer %s' % TOKEN_VALUE
+
+            def _refuse(self, repository_name=None):
+                """The answer to a request that carries no accepted token."""
+                if registry.flavor == 'ecr-private':
+                    if self.headers.get('Authorization'):
+                        # Measured against the real registry: a token it did not issue is a 400.
+                        registry.refused_tokens += 1
+                        self._send(400, b'{"errors":[{"code":"DENIED","message":"Your Authorization Token is invalid."}]}',
+                                   {'Content-Type': 'application/json'})
+                    else:
+                        self._send(401, b'{"errors":[{"code":"UNAUTHORIZED"}]}',
+                                   {'WWW-Authenticate': 'Basic realm="https://%s/",service="ecr.amazonaws.com"'
+                                                        % registry.host})
+                    return
+
+                if registry.flavor == 'ecr-public':
+                    challenge = 'Bearer realm="https://%s/token/",service="%s",scope="aws"' % (registry.host, registry.host)
+                elif registry.port != 443:
+                    challenge = ('Bearer realm="https://%s:%d/token",service="%s",scope="repository:%s:pull"'
+                                 % (registry.host, registry.port, registry.host, repository_name))
+                else:
+                    challenge = ('Bearer realm="https://%s/token",service="%s",scope="repository:%s:pull"'
+                                 % (registry.host, registry.host, repository_name))
+
+                self._send(401, b'{"errors":[{"code":"UNAUTHORIZED"}]}',
+                           {'WWW-Authenticate': challenge, 'Content-Type': 'application/json'})
+
+            def do_POST(self):  # noqa: N802 - the name the base class requires
+                """The AWS API endpoint: ``GetAuthorizationToken``, signature verified."""
+                body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+                path, _, query = self.path.partition('?')
+                outcome = 'no_credential'
+
+                if registry.aws_credential and self.headers.get('X-Amz-Target') == ECR_TARGET:
+                    outcome = verify_sigv4('POST', path, query, self.headers, body, registry.aws_credential[0],
+                                           registry.aws_credential[1], ECR_REGION)
+
+                registry.api_requests.append({'outcome': outcome, 'host': self.headers.get('Host'),
+                                              'target': self.headers.get('X-Amz-Target'),
+                                              'authorization': self.headers.get('Authorization', '')})
+
+                if outcome == 'ok':
+                    password = 'registry-password-' + secrets.token_hex(8)
+                    registry.issued_password = password
+                    registry.issued_token = base64.b64encode(('AWS:' + password).encode()).decode()
+                    answer = json.dumps({'authorizationData': [{
+                        'authorizationToken': registry.issued_token,
+                        'expiresAt': time.time() + 43200,
+                        'proxyEndpoint': 'https://%s' % ECR_PRIVATE_HOST}]}).encode()
+                    self._send(200, answer, {'Content-Type': 'application/x-amz-json-1.1'})
+                    return
+
+                if outcome in ('unknown_key', 'no_credential'):
+                    answer = {'__type': 'UnrecognizedClientException',
+                              'message': 'The security token included in the request is invalid.'}
+                elif outcome == 'clock':
+                    answer = {'__type': 'InvalidSignatureException',
+                              'message': 'Signature expired: the request is too far from the server time'}
+                else:
+                    # The shape AWS answers a bad signature with, and its habit of quoting the
+                    # request: the module must not copy any of this into its log.
+                    answer = {'__type': 'InvalidSignatureException',
+                              'message': 'The request signature we calculated does not match the signature you '
+                                         'provided. Authorization: %s' % self.headers.get('Authorization', '')}
+
+                self._send(400, json.dumps(answer).encode(), {'Content-Type': 'application/x-amz-json-1.1'})
 
             def do_GET(self):  # noqa: N802 - the name the base class requires
                 registry.requests.append(self.path)
@@ -242,13 +412,7 @@ class LocalRegistry:
                     return
 
                 if not self._authorized():
-                    challenge = ('Bearer realm="https://%s:%d/token",service="%s",scope="repository:%s:pull"'
-                                 % (REGISTRY_HOST, registry.port, REGISTRY_HOST, repository.name)
-                                 if registry.port != 443 else
-                                 'Bearer realm="https://%s/token",service="%s",scope="repository:%s:pull"'
-                                 % (REGISTRY_HOST, REGISTRY_HOST, repository.name))
-                    self._send(401, b'{"errors":[{"code":"UNAUTHORIZED"}]}',
-                               {'WWW-Authenticate': challenge, 'Content-Type': 'application/json'})
+                    self._refuse(repository.name)
                     return
 
                 body = repository.resolve(reference)
@@ -271,7 +435,16 @@ class LocalRegistry:
                     return
 
                 if not self._authorized():
-                    self._send(401, b'{"errors":[{"code":"UNAUTHORIZED"}]}')
+                    self._refuse(repository.name)
+                    return
+
+                # A token that dies while the image is being read: the first layer request is
+                # answered 400 DENIED, as a token the registry no longer accepts was measured to
+                # be, and so is every request that still carries that token afterwards.
+                if (registry.expire_token_on_first_layer and registry.expired_token is None
+                        and digest in repository.layer_digests):
+                    registry.expired_token = registry.issued_token
+                    self._refuse(repository.name)
                     return
 
                 body = repository.blobs[digest]
@@ -305,6 +478,10 @@ class LocalRegistry:
         self.redirect_authorization = None
         self.anonymous_token_attempts = 0
         self.rejected_credentials = []
+        self.refused_tokens = 0
+        self.issued_password = None
+        self.expire_token_on_first_layer = False
+        self.expired_token = None
 
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(certificate, key)

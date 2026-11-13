@@ -1,0 +1,29 @@
+- sections:
+    - section: container_images
+      elements:
+        - enabled:
+            value: 'yes'
+        - scan_on_start:
+            value: 'yes'
+        - interval:
+            value: 1h
+        - ca_bundle:
+            value: CA_BUNDLE
+        - references:
+            elements:
+              - ref:
+                  value: REFERENCE
+              - ref:
+                  value: SECOND_REFERENCE
+        - registry_auth:
+            elements:
+              - registry:
+                  elements:
+                    - host:
+                        value: 123456789012.dkr.ecr.us-east-1.amazonaws.com
+                    - access_key_id_keystore_key:
+                        value: ecr_key_id
+                    - secret_access_key_keystore_key:
+                        value: ecr_secret
+                    - region:
+                        value: us-east-1

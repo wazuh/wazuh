@@ -1,0 +1,11 @@
+- name: A public ECR reference is inventoried with no credential configured
+  description: The same image is also configured as a saved archive, and both must store the same packages
+  configuration_parameters:
+    CA_BUNDLE: CA_BUNDLE
+    REFERENCE: public.ecr.aws/docker/library/alpine:1.0
+    ARCHIVE_PATH: ARCHIVE_PATH
+  metadata:
+    flavor: ecr-public
+    repository: docker/library/alpine
+    reference: public.ecr.aws/docker/library/alpine:1.0
+    archive: true

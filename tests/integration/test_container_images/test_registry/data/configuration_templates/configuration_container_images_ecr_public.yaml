@@ -1,0 +1,17 @@
+- sections:
+    - section: container_images
+      elements:
+        - enabled:
+            value: 'yes'
+        - scan_on_start:
+            value: 'yes'
+        - interval:
+            value: 1h
+        - ca_bundle:
+            value: CA_BUNDLE
+        - references:
+            elements:
+              - ref:
+                  value: REFERENCE
+              - archive:
+                  value: ARCHIVE_PATH
