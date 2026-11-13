@@ -6,7 +6,7 @@ Synchronization options are not available in this stage. State synchronization a
 
 The block is optional. When the block is present, all settings have defaults and the module can be disabled with `<enabled>no</enabled>`.
 
-> **Note:** Images are read from two kinds of source. On disk through `<archive>`: saved image archives (`docker save`) and OCI image layout directories. From a remote registry through `<ref>`, which supports GitHub Container Registry (`ghcr.io`). The `<local>` entry type is accepted by the parser and reported as unimplemented.
+> **Note:** Images are read from two kinds of source. On disk through `<archive>`: saved image archives (`docker save`) and OCI image layout directories. From a remote registry through `<ref>`, which supports GitHub Container Registry (`ghcr.io`) and Amazon Elastic Container Registry (public and private). The `<local>` entry type is accepted by the parser and reported as unimplemented.
 
 ---
 
@@ -61,9 +61,9 @@ This enables the module with default settings:
 |--------|------|---------|-------------|
 | `references` | section | empty | Container section for image sources. |
 | `references/archive` | string | empty | Path to a saved image archive or to an OCI image layout directory. This element can be repeated. |
-| `references/ref` | string | empty | Image in a remote GHCR registry, by tag, by digest, or by both. This element can be repeated. |
+| `references/ref` | string | empty | Image in a remote GHCR or Amazon ECR registry, by tag, by digest, or by both. This element can be repeated. |
 | `registry_auth` | section | empty | Container section for per-registry credentials. See [Registry Credentials](#registry-credentials). |
-| `ca_bundle` | string | detected | Path to the certificate bundle used to verify a registry. Detected at run time when unset. |
+| `ca_bundle` | string | detected | Path to the certificate bundle used to verify a registry, and the AWS API endpoint a private Amazon ECR token is requested from. Detected at run time when unset. |
 | `references/local` | string | empty | Image in the local container engine store. Accepted and reported as unimplemented. |
 
 ---
@@ -92,7 +92,7 @@ The grammar holds three entry types.
 | Entry | Meaning | Status |
 |-------|---------|--------|
 | `<archive>` | Saved image archive or OCI image layout on disk. | Implemented. |
-| `<ref>` | Image in a remote registry. | Implemented for `ghcr.io`. |
+| `<ref>` | Image in a remote registry. | Implemented for `ghcr.io` and Amazon ECR. |
 | `<local>` | Image in the local container engine store. | Accepted, reported as unimplemented. |
 
 ```xml
@@ -101,6 +101,8 @@ The grammar holds three entry types.
   <archive>/var/tmp/images/myapp-oci-layout</archive>
   <ref>ghcr.io/owner/app:1.4</ref>
   <ref>ghcr.io/owner/other@sha256:2f3a4b5c6d7e8f900112233445566778899aabbccddeeff00112233445566778</ref>
+  <ref>public.ecr.aws/docker/library/alpine:3.20</ref>
+  <ref>123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable</ref>
 </references>
 ```
 
@@ -112,7 +114,7 @@ wazuh-modulesd:container_images: WARNING: NOT IMPLEMENTED: the '<local>' referen
 
 ### Remote References
 
-A `<ref>` entry names an image in GitHub Container Registry, by tag, by digest, or by both:
+A `<ref>` entry names an image in GitHub Container Registry or in Amazon Elastic Container Registry, by tag, by digest, or by both:
 
 ```xml
 <ref>ghcr.io/owner/app:1.4</ref>
@@ -123,10 +125,20 @@ A `<ref>` entry names an image in GitHub Container Registry, by tag, by digest, 
 
 An entry with no tag and no digest is read as `latest`, matching every other registry client. An entry carrying both a tag and a digest is pinned by the digest: the registry is asked for that digest, and the tag is not used to select the image.
 
-Only `ghcr.io` is supported. A reference naming any other registry, or naming none at all, is reported and skipped rather than fetched from somewhere it was not asked for:
+Three kinds of registry are supported, told apart by the host of the reference:
+
+| Registry | Host | Repository path | Credential |
+|----------|------|-----------------|------------|
+| GitHub Container Registry | `ghcr.io` | `owner/name`, at least two components | Optional user name and token. |
+| Amazon ECR Public | `public.ecr.aws` | `alias/name`, at least two components | None. |
+| Amazon ECR private | `<12 digit account>.dkr.ecr.<region>.amazonaws.com` | One or more components, so `my-backend` is a complete repository | AWS access key, required. |
+
+The host is matched exactly. A host that only resembles one of these, such as `123456789012.dkr.ecr.us-east-1.amazonaws.com.example.org`, is not a supported registry. The region in a private host is validated as well: it has to look like an AWS region, such as `us-east-1`, `eu-west-3` or `us-gov-west-1`. The China domain (`amazonaws.com.cn`) is accepted by the parser but has not been verified against a real account. FIPS endpoints (`ecr-fips`) are not supported. A host with a port is not supported.
+
+A reference naming any other registry, or naming none at all, is reported and skipped rather than fetched from somewhere it was not asked for:
 
 ```sql
-wazuh-modulesd:container_images: WARNING: Reference 'docker.io/library/nginx:1.27' cannot be used: only ghcr.io is supported, and the reference names 'docker.io'.
+wazuh-modulesd:container_images: WARNING: Reference 'docker.io/library/nginx:1.27' cannot be used: only ghcr.io, public.ecr.aws and Amazon ECR private registries are supported, and the reference names 'docker.io'.
 ```
 
 An image published for several platforms is inventoried from the variant matching the agent's architecture. The operating system matched is always `linux`, not the agent's own: a container image is a Linux image whatever runs the engine, so on a macOS agent matching `darwin` would reject every image that exists. A reference that offers no matching variant is reported with the platforms it does offer:
@@ -190,6 +202,113 @@ A refusal at the manifest, after a token was issued for the credential, is not r
 
 No credential value is written to the log at any level, and the configuration dump reports the key names only.
 
+#### Amazon ECR
+
+A public ECR repository (`public.ecr.aws`) is read with no credential and needs no entry. Any entry configured for `public.ecr.aws` is ignored.
+
+A private ECR repository is read with an AWS access key. The module uses the key pair to sign a request to AWS that returns a registry token, and then sends that token to the registry. It does not need the AWS command line tools. The configuration names the keys, as for any other registry:
+
+```xml
+<registry_auth>
+  <registry>
+    <host>123456789012.dkr.ecr.us-east-1.amazonaws.com</host>
+    <access_key_id_keystore_key>ecr_key_id</access_key_id_keystore_key>
+    <secret_access_key_keystore_key>ecr_secret</secret_access_key_keystore_key>
+    <region>us-east-1</region>
+  </registry>
+</registry_auth>
+```
+
+| Element | Required | Meaning |
+|---------|----------|---------|
+| `host` | yes | The private registry host, exactly as written in the references. |
+| `access_key_id_keystore_key` | yes | Name of the key holding the AWS access key id. |
+| `secret_access_key_keystore_key` | yes | Name of the key holding the AWS secret access key. |
+| `region` | no | AWS region the credential is used in. |
+
+The values are deposited beforehand with the agent keystore, reading them from standard input so they do not appear in the shell history or in the process list:
+
+```
+echo "$AWS_ACCESS_KEY_ID" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ecr_key_id
+echo "$AWS_SECRET_ACCESS_KEY" | /var/ossec/bin/wazuh-agent-keystore -f container_images -k ecr_secret
+```
+
+The command is `wazuh-agent-keystore`, and the family is always `container_images`. Do not pass the value with `-v`: an argument is visible in the shell history and in the process list while the command runs.
+
+**Region.** A private host names its own region (`us-east-1` in the example above), and that is used when `<region>` is absent. When `<region>` is configured it overrides the host's: the token is requested from the configured region and one debug line names both regions when they differ. A configured region that is not a valid AWS region skips the entry with a warning. A `<region>` inside an entry for a host that is not an Amazon one, `ghcr.io` for instance, is reported and ignored, and the entry is otherwise applied. When the registry then refuses the token, the warning says so plainly and no second token is requested, because one from the same region would be refused the same way:
+
+```sql
+wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable' could not be resolved: the registry refused the token requested in the configured region 'eu-west-1', and the registry host is in 'us-east-1'. The configured <region> overrides the host's, so it has to be the registry's region. The token was not renewed.
+```
+
+**One entry per host.** An ECR entry uses the three AWS elements and cannot be mixed with `user_keystore_key` or `passkey_keystore_key`. The AWS elements apply only to a private Amazon ECR host, so an entry using them for another host, and an entry using the user and passkey elements for an Amazon host, are each reported and skipped.
+
+**Temporary credentials, instance profiles, environment variables and assumed roles are not supported.** The credential is a long-term IAM user access key held in the credential store.
+
+**Certificate bundle.** `<ca_bundle>`, or the bundle detected on the host, verifies two hosts: the registry and `api.ecr.<region>.amazonaws.com`, where the token is requested. A bundle holding only a private authority for an internal registry fails the signed request with `SSL certificate problem`, so it has to contain the Amazon roots as well.
+
+**Token reuse.** The registry token is requested once and reused for every reference of the same registry and the same credential, until ten minutes before it expires, when it is requested again. A failed request is never remembered, so a corrected credential works at the next scan. The reuse is keyed by the key names and not by the values, so after the secret is replaced in the store under the same key names the old token keeps being used until it expires or the registry refuses it. Restarting the agent starts from an empty cache.
+
+**Token renewal.** A token the registry says it refuses is dropped and replaced once, and the request is repeated. That is a `401`, or a `400` or `403` whose body names the token as invalid or expired, which is how a private registry was measured to answer a token it did not issue. When a layer is refused there is no body to read, so the manifest is requested again to find out. A `400` or `403` that does not name the token, a missing permission for instance, or a refusal by the content host after a redirect, is not a reason to ask AWS again: the reference fails with the reason and the shared token stays, so any number of references denied by a missing permission cost one signed request. A token refused after `<region>` overrode the host's region is not renewed either: see [Region](#amazon-ecr).
+
+**No anonymous retry, and what is remembered.** A private ECR registry has no anonymous access, so the retry without the credential that GHCR gets does not exist for it: a refused credential is the answer, and its error stands. Amazon ECR Public takes no credential, so there is none to refuse, and a `401` from it is reported as the registry requiring a credential for the reference, as for any anonymous read. The refusal memory of a scan applies to a private ECR repository under the account host and the repository, `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend`, not under the host: IAM grants access per repository. After one reference of a repository was refused, another tag of it fails at once with the same reason and nothing is requested. When AWS refuses the credential itself, with a `4xx` that is not throttling, the reason is remembered under the account host, since it is the same for every repository: a mistyped secret costs one signed call and one reason from AWS per scan, and the later references fail with it at once. A server error, throttling and a call that got no answer are not remembered. Nothing is remembered past the scan, so a corrected store works at the next one, and the token cache is never touched by this memory.
+
+**Retries of the token request.** The `GetAuthorizationToken` call is retried like the token exchange of any other registry: on `5xx`, on `429`, and on the `ThrottlingException` AWS answers with `400`, with the usual back-off, waiting for `Retry-After` when AWS sends one, and giving up at once when the module is asked to stop. A call that fails in a way that repeats itself, a certificate that does not verify or a URL that is not usable, is tried once. The call is made without content decoding, as a layer is requested.
+
+##### Permissions the IAM user needs
+
+Create a dedicated IAM user that can only pull, and give it nothing else. The actions the module's requests need, taken from the AWS documentation on pulling images, are:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchCheckLayerAvailability"
+      ],
+      "Resource": "arn:aws:ecr:us-east-1:123456789012:repository/my-backend"
+    }
+  ]
+}
+```
+
+`ecr:GetAuthorizationToken` does not support a resource, which is why it is granted on `*`. The other actions are limited to the repositories that are scanned. Add one resource per repository.
+
+> **Not verified.** This list is from the AWS documentation and was not exercised against a real AWS account while this feature was written. In particular it is not established which of the three repository actions the registry checks for the requests this module makes, and `ecr:BatchCheckLayerAvailability` may not be needed. Confirm it with an IAM user limited to one repository before relying on a narrower policy.
+
+##### Failures
+
+A reference whose credential is missing, invalid, expired or insufficient is reported with one line naming the reference and the reason, and the other references are still scanned. The stored inventory of that reference is kept. The first two lines below are produced by the module itself. The others are illustrative of the shape: the reason after the last colon is AWS's or the registry's own. A stored access key id that is not made of letters and digits is reported as `the stored access key id is not well-formed` without quoting it, and nothing is sent to AWS.
+
+```sql
+wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable' could not be resolved: no credential is configured for 123456789012.dkr.ecr.us-east-1.amazonaws.com, which needs a <registry> entry with access_key_id_keystore_key and secret_access_key_keystore_key.
+wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable' could not be resolved: the credential configured for 123456789012.dkr.ecr.us-east-1.amazonaws.com is missing from the agent credential store.
+wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable' could not be resolved: AWS did not issue a registry token: AWS does not accept the access key id (UnrecognizedClientException).
+wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable' could not be resolved: AWS did not issue a registry token: AWS rejected the signature, so the secret access key does not match the access key id (InvalidSignatureException).
+wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable' could not be resolved: the registry answered 403: DENIED: User: arn:aws:iam::123456789012:user/wazuh-ci is not authorized to perform: ecr:BatchGetImage on resource: arn:aws:ecr:us-east-1:123456789012:repository/my-backend.
+```
+
+An AWS error is reported as a sentence chosen by the module plus the AWS error type. The text AWS sends with the error is deliberately not copied into the log, because AWS may quote the request it received. A reason sent by the registry is cleaned and capped at 480 characters, which keeps a whole IAM denial with the principal and the resource ARN, as the `403` line above shows, and is replaced by its code alone when it looks like it quotes a header, an access key id or a token, or when it contains the stored credential. The ARNs an IAM denial names are identifiers and are kept.
+
+The reason is complete when the manifest is refused. When a layer is refused, the line carries the status only (`layer sha256:... could not be retrieved: the registry answered 403`), because the layer is streamed and its error body is not read.
+
+The same line appears for a clock problem. A signed request is refused when the agent clock is off by more than a few minutes, and the reason then says so:
+
+```sql
+wazuh-modulesd:container_images: WARNING: Reference '123456789012.dkr.ecr.us-east-1.amazonaws.com/my-backend:stable' could not be resolved: AWS did not issue a registry token: AWS refused the signature because the agent clock differs too much from AWS time, so the system time has to be corrected (InvalidSignatureException).
+```
+
+> **Not verified.** The message above, the `403` line, and the exact answer of AWS to an expired or insufficient credential were not observed against a real account. Only these were measured, on 19/10/2026, with no credential: a private registry answers an unauthenticated request with a `Basic` challenge, refuses a made-up token with `400` and `{"errors":[{"code":"DENIED","message":"Your Authorization Token is invalid."}]}`, and the AWS API answers an unsigned request with `400` and `MissingAuthenticationTokenException`. The form of an IAM denial above is the one AWS documents, not one that was observed.
+
 #### What the credential store protects
 
 The store keeps the credential out of `ossec.conf`, and therefore out of configuration backups, out of shared-configuration pushes and out of support bundles. That is what it is for.
@@ -202,7 +321,7 @@ Two keystore runs at the same time keep each other's keys. Each run takes an exc
 
 ### Certificate Verification
 
-A registry is verified against a certificate bundle. When `<ca_bundle>` is not set, the bundle is looked for at the usual locations for the distribution, in this order:
+A registry is verified against a certificate bundle. The same bundle verifies the AWS API endpoint a private Amazon ECR token is requested from. When `<ca_bundle>` is not set, the bundle is looked for at the usual locations for the distribution, in this order:
 
 ```
 /etc/ssl/certs/ca-certificates.crt
@@ -240,14 +359,19 @@ A scan that is asked to stop abandons what it is reading, including a layer tran
 
 ### Network Requirements
 
-Two hosts must be reachable over HTTPS on port 443:
+The hosts to allow over HTTPS on port 443 depend on the registries in use:
 
 | Host | What for |
 |------|----------|
-| `ghcr.io` | Authentication, image indexes and manifests. |
-| `pkg-containers.githubusercontent.com` | Layer contents. A layer request to `ghcr.io` is redirected here. |
+| `ghcr.io` | GHCR authentication, image indexes and manifests. |
+| `pkg-containers.githubusercontent.com` | GHCR layer contents. A layer request to `ghcr.io` is redirected here. |
+| `public.ecr.aws` | Amazon ECR Public authentication, image indexes and manifests. |
+| `*.cloudfront.net` | Amazon ECR Public layer contents. A layer request to `public.ecr.aws` is redirected to a CloudFront host (measured: `d2glxqk2uabbnd.cloudfront.net`). |
+| `<account>.dkr.ecr.<region>.amazonaws.com` | Private Amazon ECR image indexes, manifests and layer requests. |
+| `api.ecr.<region>.amazonaws.com` | The signed request that obtains the private registry token. |
+| Amazon S3 in the registry's region | Private Amazon ECR layer contents. AWS documents that private layers are served from S3. This was not measured here, so the exact host is not listed. |
 
-The redirect is followed, and the access token is deliberately not carried across it: the redirect target is already a signed URL, and sending the credential to it would disclose it to a host that does not need it.
+The redirects are followed, and the access token is deliberately not carried across them: the redirect target is already a signed URL, and sending the credential to it would disclose it to a host that does not need it. The signed request to `api.ecr.<region>.amazonaws.com` is never redirected.
 
 ### Archive Input Detection
 
@@ -330,7 +454,12 @@ An invalid module setting, meaning `enabled`, `scan_on_start` or `interval`, cau
 
 Anything wrong with a single entry inside `<references>` costs that entry only: it is logged with a warning and ignored, and the remaining references are still configured. This covers an entry name that is not one of the three types, and an entry whose value is empty. Unknown elements directly inside `<container_images>` are also logged with a warning and ignored.
 
-The same holds inside `<registry_auth>`: an entry naming no host, an entry whose host is not a bare host name (it carries a scheme, a path or whitespace), an entry naming no keystore key, and an unrecognised element are each reported and skipped, and the rest of the block is still applied.
+The same holds inside `<registry_auth>`: an entry naming no host, an entry whose host is not a bare host name (it carries a scheme, a path or whitespace), an entry naming no keystore key, and an unrecognised element are each reported and skipped, and the rest of the block is still applied. A second entry for a host already configured is reported and ignored, and the first is used, whatever tags either one uses. The host is read in lower case before any rule below looks at it. For an Amazon ECR entry the rules are:
+
+1. `access_key_id_keystore_key` and `secret_access_key_keystore_key` must both be present and non-empty, as `user_keystore_key` and `passkey_keystore_key` must both be for any other registry.
+2. `region`, when present, must look like an AWS region (`us-east-1`): two letters, one or more lower-case words, one or two digits.
+3. The host must be a private ECR registry, `<12 digit account>.dkr.ecr.<region>.amazonaws.com` or its `.amazonaws.com.cn` form, the shape the module reads. Any other host under `amazonaws.com`, an S3 or a FIPS one for instance, is reported and skipped.
+4. The AWS elements and `user_keystore_key` or `passkey_keystore_key` cannot be used in the same entry, and an Amazon host cannot use the user and passkey elements.
 
 A reference entry is skipped rather than rejected because rejecting it invalidates the whole module configuration, which stops `wazuh-modulesd` from starting; since the control script tests every daemon's configuration before starting any of them, a single empty entry would otherwise leave the agent with no daemon running.
 
@@ -339,7 +468,7 @@ A reference entry is skipped rather than rejected because rejecting it invalidat
 ## Platform Notes
 
 - The module is configured only on agents.
-- Images are read from disk, through saved archives and OCI image layout directories, and from GitHub Container Registry through `<ref>`. No container engine is involved.
+- Images are read from disk, through saved archives and OCI image layout directories, and from GitHub Container Registry and Amazon ECR through `<ref>`. No container engine and no AWS command line tool is involved.
 - Remote references are not supported on Windows agents.
 - Layers are streamed, gzip-compressed, zstd-compressed or plain, so no image is extracted to disk and the image filesystem is never reconstructed.
 - No existing module configuration options are changed by this block.

@@ -101,7 +101,7 @@ wazuh-modulesd:container_images: INFO: Scan ended. 1 references, 132 packages.
 - Berkeley DB `rpm` databases are not read; an image carrying only one is inventoried with zero packages and a warning.
 - Agent Sync Protocol synchronization is not implemented, so the stored inventory stays on the agent.
 - Vulnerability Detector integration is not implemented.
-- Remote images are read from GitHub Container Registry. Other registries, the container engine, Windows registry support, and Kubernetes integrations are not implemented.
+- Remote images are read from GitHub Container Registry and Amazon ECR. Other registries, the container engine, Windows registry support, and Kubernetes integrations are not implemented.
 
 ## Documentation
 
