@@ -260,6 +260,20 @@ namespace indexer_client::detail
             set(curl_easy_setopt(easy, CURLOPT_URL, request.url.c_str()));
             set(curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https"));
             set(curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L));
+            if (request.freshConnection)
+            {
+                // libcurl resends a request by itself only when it went over a reused connection that died without
+                // a response byte (curl 8.20 lib/transfer.c Curl_retry_request needs conn->bits.reuse; its other
+                // branch, a refused HTTP/2 stream, is not built). A fresh connection never has that bit (lib/url.c
+                // skips url_attach_existing with reuse_fresh), so the request leaves at most once. That holds only
+                // while curl makes no follow-up request: a follow-up skips the reuse_fresh check (lib/url.c
+                // `!reuse_fresh || followlocation`) and may attach a pooled connection. With no FOLLOWLOCATION and
+                // Basic credentials (never a multi-pass auth) the one follow-up left is the 417 answer to
+                // `Expect: 100-continue` (lib/http.c sets req.newurl), so these requests also go without Expect
+                // (below). The connection then joins the pool like any other; no FORBID_REUSE: the next such
+                // request opens its own.
+                set(curl_easy_setopt(easy, CURLOPT_FRESH_CONNECT, 1L));
+            }
 
             // TLS: the configured CA in memory (CURL_BLOB_NOCOPY over TransportShared, alive until the last
             // curl_multi_cleanup), else the system CA store loadTlsMaterial located (by path: curl reads it, and a
@@ -362,7 +376,10 @@ namespace indexer_client::detail
 
             // An explicit or suppressed Content-Type (curl would add a form type). `Expect` is left to curl, as the v1
             // does: 100-continue on bodies over 1 MiB, so the node can refuse (401, 413, 429) before the body is sent;
-            // measured at +18 % (TLS) and +5 % (clear) on a 4 MiB bulk against the fake.
+            // measured at +18 % (TLS) and +5 % (clear) on a 4 MiB bulk against the fake. Except with freshConnection:
+            // an empty `Expect:` suppresses it, because a keep-alive 417 to it makes curl send the request again as a
+            // follow-up (lib/http.c, req.newurl), which may go over a pooled connection and so be resent by curl
+            // (see FRESH_CONNECT above). The request carries no caller headers, so nothing overrides this.
             const auto append = [&state](const std::string& line)
             {
                 auto* list = curl_slist_append(state.headers, line.c_str());
@@ -374,6 +391,10 @@ namespace indexer_client::detail
                 return true;
             };
             if (sendsBody && !append((body ? "Content-Type: " + request.contentType : std::string("Content-Type:"))))
+            {
+                return CURLE_OUT_OF_MEMORY;
+            }
+            if (request.freshConnection && !append("Expect:"))
             {
                 return CURLE_OUT_OF_MEMORY;
             }
