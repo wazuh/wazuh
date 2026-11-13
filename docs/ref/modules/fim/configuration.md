@@ -262,11 +262,11 @@ Limits the number of files processed per second during a scheduled scan, reducin
 
 ### notify_first_scan
 
-Controls whether FIM generates stateless events for every file found during the very first scan after agent startup.
+Controls whether FIM generates stateless events for every file found during the initial baseline scan, before a previous FIM scan state exists.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
-- **Note:** When set to `yes`, every file in the monitored directories produces an alert on the initial baseline scan. This is useful for immediately populating a dashboard or confirming coverage, but can generate high alert volume on first run
+- **Note:** When set to `yes`, every file in the monitored directories produces an alert on the initial baseline scan. This is useful for immediately populating a dashboard or confirming coverage, but can generate high alert volume on first run. After a completed scan, later startup scans compare against the persisted FIM state and report changes found while realtime monitoring was stopped, regardless of this setting.
 
 ```xml
 <notify_first_scan>no</notify_first_scan>
@@ -929,7 +929,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 ### UC-11: notify_first_scan - baseline event generation
 
-**Objective:** Verify that enabling `notify_first_scan` causes FIM to generate an event for every file on the first scan after restart.
+**Objective:** Verify that enabling `notify_first_scan` causes FIM to generate an event for every file on the initial baseline scan when no previous FIM state exists.
 
 **Configuration:**
 ```xml
@@ -938,7 +938,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 ```
 
 **Steps:**
-1. Restart the Wazuh agent.
+1. Start the Wazuh agent with a new or empty FIM database.
 2. Wait for the first FIM scan to complete.
 
 **Expected result:** Stateless events are generated for all files in `/etc`, visible in the manager as initial scan events.

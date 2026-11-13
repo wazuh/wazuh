@@ -58,6 +58,8 @@ bool handle_all_paths_removed(void);
 
 /* First-sync flag priming (start_daemon helper) */
 void prime_fim_first_sync_from_marker(void);
+bool prime_fim_first_scan_from_marker(void);
+void persist_fim_first_scan_marker(time_t scan_end);
 #ifdef WIN32
 bool fim_has_configured_registries(void);
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
@@ -85,6 +87,7 @@ static bool stop_fim_integrity_on_sleep = false;
 static bool request_pause_after_sync = false;
 
 #define TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY "first_sync_completed"
+#define TEST_FIM_FIRST_SCAN_COMPLETED_METADATA_KEY "first_scan_completed"
 
 static void call_real_fim_run_integrity(void) {
 #ifdef TEST_WINAGENT
@@ -1620,6 +1623,36 @@ void test_prime_fim_first_sync_from_marker_keeps_flag_clear_when_absent(void **s
     assert_int_equal(syscheck.fim_first_sync_completed.data, 0);
 }
 
+void test_prime_fim_first_scan_from_marker_enables_restart_notifications(void **state) {
+    (void)state;
+    const int original_notify_scan = notify_scan;
+    notify_scan = 0;
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SCAN_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 123456);
+    assert_true(prime_fim_first_scan_from_marker());
+    assert_int_equal(notify_scan, 1);
+    notify_scan = original_notify_scan;
+}
+
+void test_prime_fim_first_scan_from_marker_keeps_fresh_baseline_quiet(void **state) {
+    (void)state;
+    const int original_notify_scan = notify_scan;
+    notify_scan = 0;
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SCAN_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+    assert_false(prime_fim_first_scan_from_marker());
+    assert_int_equal(notify_scan, 0);
+    notify_scan = original_notify_scan;
+}
+
+void test_persist_fim_first_scan_marker_uses_scan_end_time(void **state) {
+    (void)state;
+    expect_string(__wrap_fim_db_update_last_sync_time_value, table_name,
+                  TEST_FIM_FIRST_SCAN_COMPLETED_METADATA_KEY);
+    expect_value(__wrap_fim_db_update_last_sync_time_value, timestamp, 123456);
+    persist_fim_first_scan_marker(123456);
+}
+
 void test_fim_has_data_in_database_no_entries(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 0);
 #ifdef WIN32
@@ -1741,6 +1774,9 @@ int main(void) {
 #endif
         cmocka_unit_test(test_prime_fim_first_sync_from_marker_sets_flag_when_present),
         cmocka_unit_test(test_prime_fim_first_sync_from_marker_keeps_flag_clear_when_absent),
+        cmocka_unit_test(test_prime_fim_first_scan_from_marker_enables_restart_notifications),
+        cmocka_unit_test(test_prime_fim_first_scan_from_marker_keeps_fresh_baseline_quiet),
+        cmocka_unit_test(test_persist_fim_first_scan_marker_uses_scan_end_time),
         cmocka_unit_test(test_fim_has_data_in_database_no_entries),
         cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
         cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),

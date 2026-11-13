@@ -93,6 +93,7 @@ atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 
 atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
 
 #define FIM_FIRST_SYNC_COMPLETED_METADATA_KEY "first_sync_completed"
+#define FIM_FIRST_SCAN_COMPLETED_METADATA_KEY "first_scan_completed"
 
 // Prototypes
 #ifdef WIN32
@@ -769,6 +770,21 @@ STATIC void prime_fim_first_sync_from_marker(void) {
     }
 }
 
+// A fresh database needs a silent baseline unless notify_first_scan is enabled. Once a scan
+// has completed, the persistent database lets later startup scans report changes found while
+// realtime monitoring was stopped, without re-reporting unchanged entries.
+STATIC bool prime_fim_first_scan_from_marker(void) {
+    const bool scan_completed = fim_db_get_last_sync_time(FIM_FIRST_SCAN_COMPLETED_METADATA_KEY) > 0;
+    if (scan_completed) {
+        notify_scan = 1;
+    }
+    return scan_completed;
+}
+
+STATIC void persist_fim_first_scan_marker(time_t scan_end) {
+    fim_db_update_last_sync_time_value(FIM_FIRST_SCAN_COMPLETED_METADATA_KEY, (int64_t)scan_end);
+}
+
 void start_daemon()
 {
     if (fim_shutdown_process_on()) {
@@ -875,10 +891,14 @@ void start_daemon()
     // first sync already completed in a previous run — agent-info does not defer coordination
     // during the startup baseline-scan window, before fim_run_integrity sets it.
     prime_fim_first_sync_from_marker();
+    const bool first_scan_completed = prime_fim_first_scan_from_marker();
 
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
-    fim_scan();
+    const time_t scan_end = fim_scan();
+    if (!first_scan_completed && !fim_shutdown_process_on()) {
+        persist_fim_first_scan_marker(scan_end);
+    }
 
 #ifndef WIN32
     // Launch Real-time thread
