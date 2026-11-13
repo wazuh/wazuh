@@ -27,13 +27,14 @@ public:
     {
     }
 
-    void indexDataStream(std::string_view index, std::string_view data) override
+    void indexDataStream(std::string_view index, std::string_view id, std::string_view data) override
     {
-        m_inner->indexDataStream(index, data);
+        m_inner->indexDataStream(index, id, data);
     }
 
     uint64_t getQueueSize() const override { return m_inner->getQueueSize(); }
     uint64_t getDroppedEvents() const override { return m_inner->getDroppedEvents(); }
+    uint64_t getDeduplicatedEvents() const override { return m_inner->getDeduplicatedEvents(); }
 
     PointInTime createPointInTime(const std::vector<std::string>& indices,
                                   std::string_view keepAlive,

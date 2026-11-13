@@ -198,6 +198,15 @@ class IndexerConnectorAsyncImpl final
     size_t m_pendingDiscard504 {0};
     size_t m_pendingDiscard503Exhausted {0};
     size_t m_pendingDiscardOther {0};
+    /// Deduplication WARN edge (dispatch thread only, like m_consecutiveUnavailable): armed until a
+    /// bulk answer reports already applied `create` items, re-armed by an answer without any.
+    bool m_dedupArmed {true};
+    /// `create` items answered with a per-item 409 version_conflict_engine_exception (already
+    /// applied by an earlier attempt). Written on the dispatch thread, read by the metrics from
+    /// another thread.
+    std::atomic<uint64_t> m_deduplicated {0};
+    /// Parser for the deduplication count in onSuccess (dispatch thread only).
+    simdjson::dom::parser m_dedupParser;
     size_t m_maxQueueBytes {0};
     size_t m_flushInterval {FlushInterval};
     size_t m_bulkMaxBytes {BulkMaxBytes};
@@ -219,6 +228,41 @@ class IndexerConnectorAsyncImpl final
 public:
     static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
     static constexpr size_t DEFAULT_LOGGER_THREADS {1};    ///< Default number of error-logger threads.
+    static constexpr size_t MAX_DOC_ID_BYTES {512};        ///< Longest caller-supplied document id (before escaping).
+
+    /**
+     * @brief Whether one _bulk response item is a `create` the indexer had already applied.
+     *
+     * A resend of a document with a caller-supplied `_id` that an earlier attempt did apply is
+     * answered with a per-item 409 `version_conflict_engine_exception` on the `create` action.
+     *
+     * @param item One element of the response's "items" array.
+     * @return true only when the item has a "create" key whose "status" is 409 and whose
+     * "error.type" is "version_conflict_engine_exception"; false if any of them is missing or of
+     * another type.
+     */
+    static bool isAppliedCreateConflict(simdjson::dom::element item)
+    {
+        simdjson::dom::element create;
+        if (item["create"].get(create) != simdjson::SUCCESS)
+        {
+            return false;
+        }
+
+        int64_t status {0};
+        if (create["status"].get_int64().get(status) != simdjson::SUCCESS || status != HTTP_VERSION_CONFLICT)
+        {
+            return false;
+        }
+
+        std::string_view errorType;
+        if (create["error"]["type"].get_string().get(errorType) != simdjson::SUCCESS)
+        {
+            return false;
+        }
+
+        return errorType == "version_conflict_engine_exception";
+    }
 
     /**
      * @brief Cheap check of the "errors" field in the head of an OpenSearch _bulk response.
@@ -424,6 +468,14 @@ public:
                 size_t throttledCount = 0;
                 for (const auto& item : itemsArray)
                 {
+                    // An already applied `create` (resend of a document an earlier attempt indexed)
+                    // is counted by onSuccess as deduplicated: no line, not a failure.
+                    if (isAppliedCreateConflict(item))
+                    {
+                        ++itemIndex;
+                        continue;
+                    }
+
                     // Try to find the operation element (could be "index", "create", "delete")
                     simdjson::dom::element operationElement;
                     bool foundOperation = false;
@@ -632,8 +684,43 @@ public:
                     // of both in the logger queue (the main RSS driver under sustained load).
                     if (!bulkResponseHasErrors(response))
                     {
+                        m_dedupArmed = true;
                         m_queue->reportHealthyResponse(sequence);
                         return;
+                    }
+
+                    // Count the `create` items an earlier attempt had already applied (a resend
+                    // after a timeout or a lost connection). An unparseable answer, or one without
+                    // an "items" array, leaves the counter and the WARN edge untouched.
+                    if (simdjson::dom::array dedupItems;
+                        m_dedupParser.parse(response)["items"].get_array().get(dedupItems) == simdjson::SUCCESS)
+                    {
+                        size_t applied = 0;
+                        for (const auto& item : dedupItems)
+                        {
+                            if (isAppliedCreateConflict(item))
+                            {
+                                ++applied;
+                            }
+                        }
+
+                        if (applied > 0)
+                        {
+                            m_deduplicated.fetch_add(applied, std::memory_order_relaxed);
+                            if (m_dedupArmed)
+                            {
+                                LOGFN_WARN(m_logFn,
+                                           "Indexer already had %zu document(s) of a resent bulk (an earlier attempt "
+                                           "was applied after a timeout or connection loss); they were not indexed "
+                                           "twice.",
+                                           applied);
+                                m_dedupArmed = false;
+                            }
+                        }
+                        else
+                        {
+                            m_dedupArmed = true;
+                        }
                     }
 
                     // Dispatch to error logger (bounded queue: drop + warn when it is full).
@@ -745,8 +832,8 @@ public:
                     else
                     {
                         // 500, 502, 504 and any other status: not retried. 502/504 may mean the indexer
-                        // processed the bulk but the answer was lost; resending would duplicate documents
-                        // in data streams, which have no _id.
+                        // processed the bulk but the answer was lost; resending a data stream action without
+                        // an _id would duplicate documents. The engine now sends an _id, but the policy is kept.
                         m_consecutiveUnavailable = 0;
                         discardBatch(statusCode, bulkSize, error, responseBody, false);
                     }
@@ -900,7 +987,13 @@ public:
 
     void bulkIndexDataStream(std::string_view index, std::string_view data)
     {
-        constexpr auto FORMATTED_SIZE {24}; // {"create":{"_index":""}} + newlines"
+        bulkIndexDataStream(index, std::string_view(), data);
+    }
+
+    void bulkIndexDataStream(std::string_view index, std::string_view id, std::string_view data)
+    {
+        constexpr auto FORMATTED_SIZE {24};   // {"create":{"_index":""}} + newlines"
+        constexpr auto ID_FORMATTED_SIZE {9}; // ,"_id":""
 
         // Validate input parameters
         if (index.empty())
@@ -913,11 +1006,23 @@ public:
             throw IndexerConnectorException("Data cannot be empty for data stream: " + std::string(index));
         }
 
+        if (id.size() > MAX_DOC_ID_BYTES)
+        {
+            throw IndexerConnectorException("Document id longer than " + std::to_string(MAX_DOC_ID_BYTES) +
+                                            " bytes for data stream: " + std::string(index));
+        }
+
         std::string bulkData;
-        bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE);
+        bulkData.reserve(data.size() + index.size() + FORMATTED_SIZE +
+                         (id.empty() ? 0 : id.size() + ID_FORMATTED_SIZE));
 
         bulkData.append(R"({"create":{"_index":")");
         bulkData.append(index);
+        if (!id.empty())
+        {
+            bulkData.append(R"(","_id":")");
+            appendEscapedId(bulkData, id);
+        }
         bulkData.append(R"("}})");
         bulkData.append("\n");
         bulkData.append(data);
@@ -938,6 +1043,11 @@ public:
     uint64_t getDroppedEvents() const
     {
         return m_queue->droppedEvents();
+    }
+
+    uint64_t getDeduplicatedEvents() const
+    {
+        return m_deduplicated.load(std::memory_order_relaxed);
     }
 
     PointInTime

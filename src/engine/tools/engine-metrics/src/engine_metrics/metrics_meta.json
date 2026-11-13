@@ -55,5 +55,9 @@
   "indexer.events.dropped": {
     "category": "events",
     "unit": "count"
+  },
+  "indexer.events.deduplicated": {
+    "category": "events",
+    "unit": "count"
   }
 }

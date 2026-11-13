@@ -77,7 +77,7 @@ The consumer IDs are passed by the callers (`cmsync`, `iocsync`); the connector 
 
 ### Thread Safety
 
-Every public method except `requestShutdown()` acquires either a **shared lock** (read operations, indexing) or an **exclusive lock** (`shutdown`). After `shutdown()` resets the internal connector, subsequent calls degrade: `index()` returns (debug log), `getQueueSize()`/`getDroppedEvents()` return `0`, `isConsumerReadyForSync()` returns `false`, and the other query methods throw `std::runtime_error` (`IndexerConnectorAsync is not initialized`).
+Every public method except `requestShutdown()` acquires either a **shared lock** (read operations, indexing) or an **exclusive lock** (`shutdown`). After `shutdown()` resets the internal connector, subsequent calls degrade: `index()` returns (debug log), `getQueueSize()`/`getDroppedEvents()`/`getDeduplicatedEvents()` return `0`, `isConsumerReadyForSync()` returns `false`, and the other query methods throw `std::runtime_error` (`IndexerConnectorAsync is not initialized`).
 
 ### Graceful Shutdown
 
@@ -249,6 +249,7 @@ public:
 
     void shutdown();          // Destructive: resets the async connector under exclusive lock
     void requestShutdown();   // Non-destructive: sets abort flag for in-flight pagination loops
+    uint64_t getDeduplicatedEvents(); // Concrete class only (not in IWIndexerConnector): forwards to IIndexerConnectorAsync::getDeduplicatedEvents(); 0 after shutdown() or without a connector
     // ... all IWIndexerConnector overrides ...
 
 private:
@@ -286,9 +287,18 @@ private:
 
 ### Key Flows
 
-#### `index(index, data)`
+#### Indexing an event: `index(index, data)`
 
-Acquires shared lock, delegates to `indexDataStream()`. Exceptions are caught and logged as warnings (`Error indexing data: …`) — indexing failures do not propagate to callers.
+1. Acquires the shared lock.
+2. Generates a fresh `_id` on **every call** with `base::utils::generators::generateDocId()`: 27 base64url characters made of 8 bytes of a strictly increasing nanosecond clock (per thread) plus 12 random bytes per thread (`RAND_bytes`). Two calls with the same body are two documents: each copy of the per-environment fan-out and the raw document carry their own `_id`.
+3. Calls `IIndexerConnectorAsync::indexDataStream(index, id, data)` (three arguments), which queues `{"create":{"_index":"<ds>","_id":"<id>"}}` followed by the body.
+
+The `_id` travels inside the serialised action in the queue, so every resend (timeout, transport error, `429`/`503`, partition after a `413`) repeats the same `_id`. The indexer answers the duplicate with `409` `version_conflict_engine_exception`; the connector counts it as applied (no retry, no per-document log line, one `WARN` per streak) and exposes the count through `getDeduplicatedEvents()` (metric `indexer.events.deduplicated`). See the [indexer_connector](../../../../docs/ref/modules/indexer_connector/README.md) operator page.
+
+Limits and failures:
+- `_id` uniqueness is per backing index, so a resend that crosses a rollover of the data stream is indexed again (and its finding is duplicated). Accepted and documented.
+- If id generation fails (`RAND_bytes` fails when drawing a thread's prefix), `index()` logs one warning per event and the event is not indexed; it does not enter `indexer.events.dropped`.
+- Any other exception is caught and logged as a warning (`Error indexing data: …`) — indexing failures do not propagate to callers.
 
 #### `getPolicy(space, consumerIdToValidate?)`
 
@@ -356,7 +366,7 @@ Searches `.wazuh-settings` (`match_all`, `size=1`, source `engine` only); exactl
 
 ## Testing
 
-- **Unit tests** (`test/src/unit/wic_test.cpp`) — `ConfigTest` (`Config::toJson()` serialisation), `WIndexerConnectorTest` (constructor validation: empty/invalid JSON, zero `maxHitsPerRequest`; `index()` graceful handling; `shutdown()` / `requestShutdown()` semantics; concurrent indexing and shutdown) and `WIndexerConnectorMockTest`, which drives every query path (policy, hashes, IOC streaming, PIT and consumer validation, remote config, readiness, shutdown during pagination) through `MockIndexerConnectorAsync`.
+- **Unit tests** (`test/src/unit/wic_test.cpp`) — `ConfigTest` (`Config::toJson()` serialisation), `WIndexerConnectorTest` (constructor validation: empty/invalid JSON, zero `maxHitsPerRequest`; `index()` graceful handling; `shutdown()` / `requestShutdown()` semantics; concurrent indexing and shutdown) and `WIndexerConnectorMockTest`, which drives every query path (policy, hashes, IOC streaming, PIT and consumer validation, remote config, readiness, shutdown during pagination) through `MockIndexerConnectorAsync`. The `_id` and deduplication cases are `IndexGeneratesDistinctIdPerCall`, `IndexPassesDocIdFormat`, `IndexIdsUniqueAcrossThreads`, `IndexDropsEventWhenIdGenerationFails`, `GetDeduplicatedEventsForwardsToBackend` and `GetDeduplicatedEventsReturnsZeroAfterShutdown` (fixture `WIndexerConnectorMockTest`), plus `IndexerConnectorAsyncAdapterTest.ForwardsIdAsSecondArgument`.
 - **Mocks** — `MockWIndexerConnector` (`test/mocks/wiconnector/mockswindexerconnector.hpp`, namespace `wiconnector::mocks`) implements all `IWIndexerConnector` methods for downstream consumers; `MockIndexerConnectorAsync` (`mockIndexerConnectorAsync.hpp`) mocks the internal async seam.
 
 ## Consumers
@@ -368,4 +378,4 @@ Searches `.wazuh-settings` (`match_all`, `size=1`, source `engine` only); exactl
 | `iocsync` | `wIndexerConnector::iwIndexerConnector` | Reads IOC type hashes and streams IOC records for local KVDB synchronization |
 | `rawevtindexer` | `wIndexerConnector::iwIndexerConnector` | Indexes raw events into the wazuh-indexer |
 | `confremote` | `wIndexerConnector::iwIndexerConnector` | Retrieves remote engine configuration from `.wazuh-settings` |
-| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Creates the `WIndexerConnector` (only when event processing is enabled), injects it into consuming modules, exports `getQueueSize()`/`getDroppedEvents()` as metrics, and registers `requestShutdown()`/`shutdown()` on exit |
+| `main.cpp` | `wIndexerConnector::wIndexerConnector` | Creates the `WIndexerConnector` (only when event processing is enabled), injects it into consuming modules, exports `getQueueSize()`/`getDroppedEvents()`/`getDeduplicatedEvents()` as metrics, and registers `requestShutdown()`/`shutdown()` on exit |

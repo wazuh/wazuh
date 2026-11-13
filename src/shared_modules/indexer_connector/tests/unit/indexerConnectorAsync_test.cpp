@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <future>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -18,6 +19,8 @@
 #include <sstream>
 #include <string_view>
 #include <thread>
+#include <tuple>
+#include <vector>
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -45,6 +48,8 @@ using IndexerConnectorAsyncImplSmallBulkTwoUnavailable =
 // to back go out together in a single batch when the timer fires.
 using IndexerConnectorAsyncImplMultiItemBulk =
     IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 100000, 1, 1>;
+// 8192-byte bulk threshold (a 413 halves it to the 4096-byte minimum) and a 1-second flush timer.
+using IndexerConnectorAsyncImplSplitBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 8192, 1, 1>;
 
 namespace
 {
@@ -97,6 +102,201 @@ namespace
                                                  posts.end(),
                                                  [needle](const std::string& post)
                                                  { return post.find(needle) != std::string::npos; }));
+    }
+
+    // Answers a mocked POST with HTTP 200 and the given bulk response body.
+    void answerSuccessWith(const PostRequestParametersVariant& postParams, const std::string& body)
+    {
+        if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+        {
+            std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(body);
+        }
+        else
+        {
+            std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(body));
+        }
+    }
+
+    // The WARN a bulk answer with documents an earlier attempt had already applied produces (03-diseno §4).
+    constexpr std::string_view DEDUP_WARN_TAIL {"document(s) of a resent bulk (an earlier attempt was applied after a "
+                                                "timeout or connection loss); they were not indexed twice."};
+
+    std::string dedupWarn(size_t count)
+    {
+        return "Indexer already had " + std::to_string(count) + " " + std::string(DEDUP_WARN_TAIL);
+    }
+
+    // One item of a bulk response: `op` answered with `status`, failed with `errorType` unless it is empty.
+    std::string bulkItem(std::string_view op, int status, std::string_view errorType = {})
+    {
+        std::string item =
+            R"({")" + std::string(op) + R"(":{"_index":".ds-ds-000001","status":)" + std::to_string(status);
+        if (!errorType.empty())
+        {
+            item += R"(,"error":{"type":")" + std::string(errorType) + R"(","reason":"reason of )" +
+                    std::string(errorType) + R"("})";
+        }
+        item += "}}";
+        return item;
+    }
+
+    // A create answered 409 version_conflict_engine_exception: the document was already indexed.
+    std::string appliedConflictItem()
+    {
+        return bulkItem("create", 409, "version_conflict_engine_exception");
+    }
+
+    // An HTTP 200 bulk response reporting errors, with the given items.
+    std::string bulkResponse(const std::vector<std::string>& items)
+    {
+        std::string response = R"({"took":1,"errors":true,"items":[)";
+        for (size_t i = 0; i < items.size(); ++i)
+        {
+            response += (i == 0 ? "" : ",") + items[i];
+        }
+        response += "]}";
+        return response;
+    }
+
+    constexpr auto CLEAN_BULK_RESPONSE {R"({"took":1,"errors":false,"items":[]})"};
+
+    // NDJSON entry queued for a data-stream document with a caller-supplied id (`escapedId` already JSON-escaped).
+    std::string dataStreamEntry(std::string_view index, std::string_view escapedId, std::string_view data)
+    {
+        return R"({"create":{"_index":")" + std::string(index) + R"(","_id":")" + std::string(escapedId) + R"("}})" +
+               "\n" + std::string(data) + "\n";
+    }
+
+    // Records every mocked POST (body and URL, in arrival order) and how many were answered without throwing.
+    class PostLog
+    {
+    public:
+        size_t record(const RequestParamsVariant& requestParams)
+        {
+            std::string url;
+            std::visit([&url](auto&& request) { url = request.url.url(); }, requestParams);
+            size_t index = 0;
+            {
+                std::scoped_lock lock(m_mutex);
+                m_bodies.push_back(postedData(requestParams));
+                m_urls.push_back(std::move(url));
+                index = m_bodies.size() - 1;
+            }
+            m_cv.notify_all();
+            return index;
+        }
+
+        void markAnswered()
+        {
+            {
+                std::scoped_lock lock(m_mutex);
+                ++m_answered;
+            }
+            m_cv.notify_all();
+        }
+
+        // Waits (10 s at most) until `count` POSTs returned from their callback without throwing.
+        bool waitAnswered(size_t count)
+        {
+            std::unique_lock lock(m_mutex);
+            return m_cv.wait_for(lock, std::chrono::seconds(10), [this, count]() { return m_answered >= count; });
+        }
+
+        // Waits (10 s at most) until `predicate` holds for the bodies posted so far.
+        bool waitUntil(const std::function<bool(const std::vector<std::string>&)>& predicate)
+        {
+            std::unique_lock lock(m_mutex);
+            return m_cv.wait_for(lock, std::chrono::seconds(10), [this, &predicate]() { return predicate(m_bodies); });
+        }
+
+        std::vector<std::string> bodies() const
+        {
+            std::scoped_lock lock(m_mutex);
+            return m_bodies;
+        }
+
+        std::vector<std::string> urls() const
+        {
+            std::scoped_lock lock(m_mutex);
+            return m_urls;
+        }
+
+        size_t posts() const
+        {
+            std::scoped_lock lock(m_mutex);
+            return m_bodies.size();
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::condition_variable m_cv;
+        std::vector<std::string> m_bodies;
+        std::vector<std::string> m_urls;
+        size_t m_answered {0};
+    };
+
+    // Answers POST number `index` (0-based); may throw, as the connector's error callback does.
+    using PostResponder = std::function<void(size_t index, const PostRequestParametersVariant& postParams)>;
+
+    // Routes every POST of `mock` through `log` and `respond`. The body is recorded before the answer,
+    // which may throw (retryable errors); the POST counts as answered only when the answer returns.
+    void recordPosts(MockHTTPRequest& mock, PostLog& log, PostResponder respond)
+    {
+        EXPECT_CALL(mock, post(_, _, _))
+            .WillRepeatedly(Invoke(
+                [&log, respond = std::move(respond)](RequestParamsVariant requestParams,
+                                                     PostRequestParametersVariant postParams,
+                                                     ConfigurationParameters)
+                {
+                    const auto index = log.record(requestParams);
+                    respond(index, postParams);
+                    log.markAnswered();
+                }));
+    }
+
+    // Records the pauses IndexerBulkQueue requests (PauseObserver hook).
+    class PauseLog
+    {
+    public:
+        IndexerBulkQueue::PauseObserver observer()
+        {
+            return [this](std::chrono::milliseconds, bool externalRequest)
+            {
+                {
+                    std::scoped_lock lock(m_mutex);
+                    m_external = m_external || externalRequest;
+                }
+                m_cv.notify_all();
+            };
+        }
+
+        // Waits (10 s at most) for a pause requested through requestBackoff().
+        bool waitExternal()
+        {
+            std::unique_lock lock(m_mutex);
+            return m_cv.wait_for(lock, std::chrono::seconds(10), [this]() { return m_external; });
+        }
+
+    private:
+        std::mutex m_mutex;
+        std::condition_variable m_cv;
+        bool m_external {false};
+    };
+
+    // Waits (10 s at most) until `logs` holds at least `count` WARNING lines containing `needle`. The
+    // error logger runs on its own thread and has no completion hook, hence the bounded polling.
+    bool waitForWarnings(const ScopedLogCapture& logs, std::string_view needle, size_t count)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        while (logs.countAtLevel(Log::LOGLEVEL_WARNING, needle) < count)
+        {
+            if (std::chrono::steady_clock::now() >= deadline)
+            {
+                return false;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return true;
     }
 } // namespace
 
@@ -3972,4 +4172,693 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithZeroLoggerSizingFallsBackToDefa
             config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-logger-zero");
         connector.bulkIndex("id1", "index1", R"({"field":"value"})");
     });
+}
+
+// =============================================================================
+// Data-stream documents with a caller-supplied _id — Async
+// =============================================================================
+
+// A non-empty id becomes the `_id` of the create action.
+TEST_F(IndexerConnectorAsyncTest, BulkIndexDataStreamWithIdAction)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [](size_t, const PostRequestParametersVariant& postParams) { answerSuccess(postParams); });
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    const std::string data = R"({"@timestamp":"2026-01-01T00:00:00Z","msg":"with id"})";
+    connector.bulkIndexDataStream("ds", "abc_-9", data);
+
+    ASSERT_TRUE(log.waitAnswered(1)) << "Timeout waiting for the bulk";
+    const auto bodies = log.bodies();
+    ASSERT_EQ(bodies.size(), 1u);
+    EXPECT_EQ(bodies[0], std::string(R"({"create":{"_index":"ds","_id":"abc_-9"}})") + "\n" + data + "\n");
+}
+
+// The id is JSON-escaped: every action line parses and gives back the original id byte for byte.
+TEST_F(IndexerConnectorAsyncTest, BulkIndexDataStreamEscapesId)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [](size_t, const PostRequestParametersVariant& postParams) { answerSuccess(postParams); });
+
+    // Small bulk threshold: each document goes out in its own bulk, in push order.
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    const std::vector<std::string> ids {
+        R"(a"b\c)",
+        std::string("n\0l\x01\n\r\t\b\f\x1fz", 11),                 // controls and an embedded NUL
+        std::string("\xc3\xb1-\xe2\x82\xac-\xf0\x9f\x98\x80", 11)}; // UTF-8: 2, 3 and 4-byte characters
+    ASSERT_EQ(ids[1].size(), 11u);
+    ASSERT_EQ(ids[1][1], '\0');
+
+    for (size_t i = 0; i < ids.size(); ++i)
+    {
+        connector.bulkIndexDataStream("ds", ids[i], R"({"doc":)" + std::to_string(i) + "}");
+    }
+
+    ASSERT_TRUE(log.waitAnswered(ids.size())) << "Timeout waiting for the bulks";
+    const auto bodies = log.bodies();
+    ASSERT_EQ(bodies.size(), ids.size());
+
+    for (size_t i = 0; i < ids.size(); ++i)
+    {
+        SCOPED_TRACE("id #" + std::to_string(i));
+        const auto& body = bodies[i];
+        ASSERT_FALSE(body.empty());
+        ASSERT_EQ(body.back(), '\n');
+        const auto actionEnd = body.find('\n');
+        ASSERT_NE(actionEnd, std::string::npos);
+        ASSERT_EQ(body.find('\n', actionEnd + 1), body.size() - 1) << "exactly two NDJSON lines";
+
+        nlohmann::json action;
+        ASSERT_NO_THROW(action = nlohmann::json::parse(body.substr(0, actionEnd)));
+        ASSERT_NO_THROW(std::ignore = nlohmann::json::parse(body.substr(actionEnd + 1, body.size() - actionEnd - 2)));
+        EXPECT_EQ(action["create"]["_index"].get<std::string>(), "ds");
+        EXPECT_EQ(action["create"]["_id"].get<std::string>(), ids[i]);
+    }
+}
+
+// The 512-byte limit applies to the original id, before escaping; a longer id is rejected and
+// nothing is queued.
+TEST_F(IndexerConnectorAsyncTest, BulkIndexDataStreamIdLengthLimit)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [](size_t, const PostRequestParametersVariant& postParams) { answerSuccess(postParams); });
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    const std::string data = R"({"msg":"limit"})";
+    const std::string ascii512(512, 'a');
+    const std::string ascii513(513, 'a');
+    const std::string quotes512(512, '"'); // 1024 bytes once escaped
+    const std::string multibyte513 = std::string(511, 'a') + "\xc3\xa9";
+    ASSERT_EQ(multibyte513.size(), 513u);
+
+    EXPECT_THROW(connector.bulkIndexDataStream("ds", ascii513, data), IndexerConnectorException);
+    EXPECT_THROW(connector.bulkIndexDataStream("ds", multibyte513, data), IndexerConnectorException);
+    EXPECT_EQ(connector.getQueueSize(), 0u) << "a rejected id queues nothing";
+
+    connector.bulkIndexDataStream("ds", ascii512, data);
+    connector.bulkIndexDataStream("ds", quotes512, data);
+
+    ASSERT_TRUE(log.waitAnswered(2)) << "Timeout waiting for the bulks";
+
+    std::string escapedQuotes;
+    for (size_t i = 0; i < quotes512.size(); ++i)
+    {
+        escapedQuotes += R"(\")";
+    }
+
+    // The queue is FIFO: had a rejected id been queued, it would have been posted first.
+    const auto bodies = log.bodies();
+    ASSERT_EQ(bodies.size(), 2u);
+    EXPECT_EQ(bodies[0], dataStreamEntry("ds", ascii512, data));
+    EXPECT_EQ(bodies[1], dataStreamEntry("ds", escapedQuotes, data));
+    EXPECT_EQ(log.posts(), 2u);
+}
+
+// An empty id and the two-argument overload both queue the legacy action, without `_id`.
+TEST_F(IndexerConnectorAsyncTest, BulkIndexDataStreamEmptyIdKeepsLegacyAction)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [](size_t, const PostRequestParametersVariant& postParams) { answerSuccess(postParams); });
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    const std::string emptyIdData = R"({"msg":"empty id"})";
+    const std::string twoArgData = R"({"msg":"two arguments"})";
+    connector.bulkIndexDataStream("ds", "", emptyIdData);
+    connector.bulkIndexDataStream("ds", twoArgData);
+
+    ASSERT_TRUE(log.waitAnswered(2)) << "Timeout waiting for the bulks";
+    const auto bodies = log.bodies();
+    ASSERT_EQ(bodies.size(), 2u);
+    EXPECT_EQ(bodies[0], std::string(R"({"create":{"_index":"ds"}})") + "\n" + emptyIdData + "\n");
+    EXPECT_EQ(bodies[1], std::string(R"({"create":{"_index":"ds"}})") + "\n" + twoArgData + "\n");
+}
+
+// Every retried failure resends the same body, `_id` included, byte for byte — also when the
+// resend goes to another node.
+TEST_F(IndexerConnectorAsyncTest, DataStreamIdSurvivesRetry)
+{
+    struct Scenario
+    {
+        std::string name;
+        std::function<void(const PostRequestParametersVariant&)> firstAnswer;
+        bool alternateNodes;
+    };
+    const std::vector<Scenario> scenarios {
+        // Code 0: no HTTP answer at all; a request timeout takes this same path.
+        {"transport failure (code 0)",
+         [](const PostRequestParametersVariant& p) { answerError(p, "Timeout was reached", 0); },
+         false},
+        {"HTTP 429", [](const PostRequestParametersVariant& p) { answerError(p, "Too Many Requests", 429); }, false},
+        {"HTTP 503", [](const PostRequestParametersVariant& p) { answerError(p, "Service Unavailable", 503); }, false},
+        {"transport failure (code 0), next node",
+         [](const PostRequestParametersVariant& p) { answerError(p, "Couldn't connect to server", 0); },
+         true}};
+
+    const std::string data = R"({"@timestamp":"2026-01-01T00:00:00Z","msg":"retried"})";
+    const std::string expected = dataStreamEntry("ds", "evt-42", data);
+
+    for (const auto& scenario : scenarios)
+    {
+        SCOPED_TRACE(scenario.name);
+
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        std::atomic<int> selections {0};
+        if (scenario.alternateNodes)
+        {
+            ON_CALL(*mockSelector, getNext())
+                .WillByDefault(Invoke([&selections]() { return std::string(selections++ % 2 == 0 ? "n1" : "n2"); }));
+        }
+        else
+        {
+            ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+        }
+
+        PostLog log;
+        recordPosts(mockHttpRequest,
+                    log,
+                    [&scenario](size_t index, const PostRequestParametersVariant& postParams)
+                    {
+                        if (index == 0)
+                        {
+                            scenario.firstAnswer(postParams);
+                        }
+                        else
+                        {
+                            answerSuccess(postParams);
+                        }
+                    });
+
+        {
+            IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+            connector.bulkIndexDataStream("ds", "evt-42", data);
+
+            // Only the second (successful) answer returns without throwing.
+            ASSERT_TRUE(log.waitAnswered(1)) << "Timeout waiting for the resend";
+            EXPECT_EQ(log.posts(), 2u);
+            EXPECT_EQ(connector.getQueueSize(), 0u);
+
+            const auto bodies = log.bodies();
+            ASSERT_EQ(bodies.size(), 2u);
+            EXPECT_EQ(bodies[0], expected);
+            EXPECT_EQ(bodies[1], bodies[0]) << "the resend carries the same action and _id";
+
+            if (scenario.alternateNodes)
+            {
+                EXPECT_EQ(log.urls(), (std::vector<std::string> {"n1/_bulk", "n2/_bulk"}));
+            }
+        }
+
+        ::testing::Mock::VerifyAndClearExpectations(&mockHttpRequest);
+    }
+}
+
+// After a 413 the requeued batch is split into smaller bulks, mixed with documents queued
+// meanwhile; every action+document pair still goes out byte for byte, exactly once.
+TEST_F(IndexerConnectorAsyncTest, DataStreamIdSurvivesSplitAndMix)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    // Entry sizes (action + document + newlines) against the 8192-byte threshold, halved to 4096 by the
+    // 413: the four old entries (8500 bytes) wake the dispatcher only once the fourth is queued and go
+    // out together; after the 413 the queue drains [old-1, old-2], [old-3, old-4, new-1], [new-2]. Every
+    // send is triggered by the threshold, never by the flush timer (60 s below).
+    struct Doc
+    {
+        std::string id;
+        size_t entryBytes;
+    };
+    const std::vector<Doc> oldDocs {{"old-1", 2500}, {"old-2", 2500}, {"old-3", 2500}, {"old-4", 1000}};
+    const std::vector<Doc> newDocs {{"new-1", 1000}, {"new-2", 4200}};
+
+    const auto sizedData = [](const Doc& doc)
+    {
+        const auto overhead = dataStreamEntry("ds", doc.id, R"({"tag":")" + doc.id + R"(","pad":""})").size();
+        return R"({"tag":")" + doc.id + R"(","pad":")" + std::string(doc.entryBytes - overhead, 'p') + R"("})";
+    };
+
+    std::vector<std::string> oldData, newData, oldEntries, newEntries;
+    for (const auto& doc : oldDocs)
+    {
+        oldData.push_back(sizedData(doc));
+        oldEntries.push_back(dataStreamEntry("ds", doc.id, oldData.back()));
+        ASSERT_EQ(oldEntries.back().size(), doc.entryBytes);
+    }
+    for (const auto& doc : newDocs)
+    {
+        newData.push_back(sizedData(doc));
+        newEntries.push_back(dataStreamEntry("ds", doc.id, newData.back()));
+        ASSERT_EQ(newEntries.back().size(), doc.entryBytes);
+    }
+
+    std::promise<void> firstPostEntered;
+    auto firstPostEnteredFuture = firstPostEntered.get_future();
+    std::promise<void> newQueued;
+    std::shared_future<void> newQueuedFuture = newQueued.get_future().share();
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [&firstPostEntered, newQueuedFuture](size_t index, const PostRequestParametersVariant& postParams)
+                {
+                    if (index == 0)
+                    {
+                        // Hold the first send until the two new documents are queued, so that the
+                        // requeued batch shares the queue with them.
+                        firstPostEntered.set_value();
+                        static_cast<void>(newQueuedFuture.wait_for(std::chrono::seconds(10)));
+                        answerError(postParams, "Payload Too Large", 413);
+                    }
+                    else
+                    {
+                        answerSuccess(postParams);
+                    }
+                });
+
+    config["flush_interval_seconds"] = 60;
+    IndexerConnectorAsyncImplSplitBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    for (size_t i = 0; i < oldDocs.size(); ++i)
+    {
+        connector.bulkIndexDataStream("ds", oldDocs[i].id, oldData[i]);
+    }
+    ASSERT_EQ(firstPostEnteredFuture.wait_for(std::chrono::seconds(10)), std::future_status::ready)
+        << "Timeout waiting for the first bulk";
+    for (size_t i = 0; i < newDocs.size(); ++i)
+    {
+        connector.bulkIndexDataStream("ds", newDocs[i].id, newData[i]);
+    }
+    newQueued.set_value();
+
+    std::vector<std::string> allEntries = oldEntries;
+    allEntries.insert(allEntries.end(), newEntries.begin(), newEntries.end());
+
+    const auto resentOf = [](const std::vector<std::string>& bodies)
+    {
+        std::string resent;
+        for (size_t i = 1; i < bodies.size(); ++i)
+        {
+            resent += bodies[i];
+        }
+        return resent;
+    };
+    ASSERT_TRUE(log.waitUntil(
+        [&allEntries, &resentOf](const std::vector<std::string>& bodies)
+        {
+            const auto resent = resentOf(bodies);
+            return std::all_of(allEntries.begin(),
+                               allEntries.end(),
+                               [&resent](const std::string& entry) { return resent.find(entry) != std::string::npos; });
+        }))
+        << "Timeout waiting for every entry to go out after the 413";
+
+    const auto bodies = log.bodies();
+    std::string firstBulk;
+    for (const auto& entry : oldEntries)
+    {
+        firstBulk += entry;
+    }
+    EXPECT_EQ(bodies[0], firstBulk) << "the four documents go out together before the 413";
+    EXPECT_GE(bodies.size(), 3u) << "at least two bulks after the 413";
+
+    // Each pair goes out exactly once after the 413, byte for byte, and nothing else does.
+    const auto resent = resentOf(bodies);
+    size_t expectedBytes = 0;
+    for (const auto& entry : allEntries)
+    {
+        expectedBytes += entry.size();
+        size_t occurrences = 0;
+        for (auto pos = resent.find(entry); pos != std::string::npos; pos = resent.find(entry, pos + 1))
+        {
+            ++occurrences;
+        }
+        EXPECT_EQ(occurrences, 1u) << entry.substr(0, 48);
+    }
+    EXPECT_EQ(resent.size(), expectedBytes);
+
+    // At least one bulk after the 413 mixes requeued and newly queued documents.
+    const auto contains = [](const std::string& body, const std::vector<std::string>& entries)
+    {
+        return std::any_of(entries.begin(),
+                           entries.end(),
+                           [&body](const std::string& entry) { return body.find(entry) != std::string::npos; });
+    };
+    EXPECT_TRUE(std::any_of(bodies.begin() + 1,
+                            bodies.end(),
+                            [&](const std::string& body)
+                            { return contains(body, oldEntries) && contains(body, newEntries); }))
+        << "no bulk mixes old and new documents";
+}
+
+// A per-item 429 on a document with an id is dropped and counted, not resent nor deduplicated.
+TEST_F(IndexerConnectorAsyncTest, PerItem429WithIdIsDroppedNotResent)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    const auto throttled = bulkResponse({bulkItem("create", 429, "es_rejected_execution_exception")});
+
+    PauseLog pauses;
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [&throttled](size_t index, const PostRequestParametersVariant& postParams)
+                {
+                    if (index == 0)
+                    {
+                        answerSuccessWith(postParams, throttled);
+                    }
+                    else
+                    {
+                        answerSuccess(postParams);
+                    }
+                });
+
+    IndexerConnectorAsyncImplSmallBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer());
+
+    connector.bulkIndexDataStream("ds", "evt-429", R"({"msg":"throttled"})");
+
+    // The answer returned without throwing: the batch was not requeued.
+    ASSERT_TRUE(log.waitAnswered(1)) << "Timeout waiting for the bulk";
+    EXPECT_EQ(connector.getQueueSize(), 0u);
+
+    // The logger counts the drop before it requests the backoff.
+    ASSERT_TRUE(pauses.waitExternal()) << "Timeout waiting for the backoff after the per-item 429";
+
+    EXPECT_EQ(log.posts(), 1u);
+    EXPECT_EQ(connector.getDroppedEvents(), 1u);
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 0u);
+}
+
+// Create items answered 409 version_conflict_engine_exception are counted and reported by one
+// WARN, with no per-document line; another error in the same bulk still quotes its own document.
+TEST_F(IndexerConnectorAsyncTest, AppliedConflictsCountedAndWarnedOnce)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    const auto response = bulkResponse({appliedConflictItem(),
+                                        appliedConflictItem(),
+                                        appliedConflictItem(),
+                                        bulkItem("create", 400, "mapper_parsing_exception")});
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [&response](size_t index, const PostRequestParametersVariant& postParams)
+                {
+                    if (index == 0)
+                    {
+                        answerSuccessWith(postParams, response);
+                    }
+                    else
+                    {
+                        answerSuccess(postParams);
+                    }
+                });
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    for (const auto* tag : {"doc-A", "doc-B", "doc-C", "doc-D"})
+    {
+        connector.bulkIndexDataStream("ds", tag, std::string(R"({"doc":")") + tag + R"("})");
+    }
+
+    ASSERT_TRUE(log.waitAnswered(1)) << "Timeout waiting for the bulk";
+    ASSERT_NE(log.bodies()[0].find("doc-D"), std::string::npos) << "the four documents must go out in one bulk";
+
+    // Counted and reported on the dispatch thread, inside the answer.
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 3u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, dedupWarn(3)), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, DEDUP_WARN_TAIL), 1u);
+
+    // The logger walks the items in order: once the last one is logged, the 409s were handled.
+    ASSERT_TRUE(waitForWarnings(logs, "type mapper_parsing_exception", 1))
+        << "Timeout waiting for the mapper_parsing_exception line";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Error indexing document"), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "version_conflict_engine_exception"), 0u)
+        << "no per-document line for the applied conflicts";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING,
+                                R"(reason of mapper_parsing_exception') - Associated event: {"create":{"_index":"ds",)"
+                                R"("_id":"doc-D"}}\n{"doc":"doc-D"})"),
+              1u)
+        << "the mapper_parsing_exception line quotes its own document";
+    for (const auto* other : {"doc-A", "doc-B", "doc-C"})
+    {
+        EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, other), 0u) << other;
+    }
+    EXPECT_EQ(log.posts(), 1u);
+}
+
+// An applied conflict next to a per-item 429 and a cluster_block_exception: only the 429 is dropped,
+// the backoff is requested as before and nothing is requeued.
+TEST_F(IndexerConnectorAsyncTest, AppliedConflictsMixedWithThrottleAndBlock)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    const auto response = bulkResponse({appliedConflictItem(),
+                                        bulkItem("create", 429, "es_rejected_execution_exception"),
+                                        bulkItem("create", 403, "cluster_block_exception")});
+
+    PauseLog pauses;
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [&response](size_t index, const PostRequestParametersVariant& postParams)
+                {
+                    if (index == 0)
+                    {
+                        answerSuccessWith(postParams, response);
+                    }
+                    else
+                    {
+                        answerSuccess(postParams);
+                    }
+                });
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "", std::nullopt, pauses.observer());
+
+    for (const auto* tag : {"doc-applied", "doc-throttled", "doc-blocked"})
+    {
+        connector.bulkIndexDataStream("ds", tag, std::string(R"({"doc":")") + tag + R"("})");
+    }
+
+    ASSERT_TRUE(log.waitAnswered(1)) << "Timeout waiting for the bulk";
+    ASSERT_NE(log.bodies()[0].find("doc-blocked"), std::string::npos) << "the three documents must go out in one bulk";
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 1u);
+    EXPECT_EQ(connector.getQueueSize(), 0u) << "nothing requeued";
+
+    ASSERT_TRUE(pauses.waitExternal()) << "Timeout waiting for the backoff";
+    EXPECT_EQ(connector.getDroppedEvents(), 1u) << "only the 429 is dropped";
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 1u);
+    EXPECT_EQ(log.posts(), 1u);
+}
+
+// The dedup WARN is edge-triggered. It re-arms on a clean answer or on an error answer with an
+// `items` array and no applied conflict; an unparseable answer, or one without an `items` array,
+// neither re-arms it nor counts.
+TEST_F(IndexerConnectorAsyncTest, AppliedConflictWarnIsEdgeTriggered)
+{
+    const auto applied = bulkResponse({appliedConflictItem()});
+    const std::string clean = CLEAN_BULK_RESPONSE;
+    const auto notDeduplicable = bulkResponse({bulkItem("create", 400, "mapper_parsing_exception")});
+    // Marker, not a body: the post is answered with an HTTP 503 (the batch is requeued and resent).
+    const std::string UNAVAILABLE_503 = "<http 503>";
+
+    struct Sequence
+    {
+        std::string name;
+        std::vector<std::string> responses;
+        size_t expectedWarnings;
+        uint64_t expectedDeduplicated;
+        // 0 = one per response. A 503 answer requeues its document: one more POST than documents,
+        // and the 503 POST is not answered (its callback throws).
+        size_t documents {0};
+        size_t answered {0};
+        size_t posts {0};
+    };
+    const std::vector<Sequence> sequences {
+        {"(a) applied, applied, clean, applied", {applied, applied, clean, applied}, 2, 3},
+        {"(b) applied, not deduplicable, applied", {applied, notDeduplicable, applied}, 2, 2},
+        {"(c) applied, invalid body, applied", {applied, "not a json body", applied}, 1, 2},
+        {"(c) applied, no items, applied", {applied, R"({"took":1,"errors":true})", applied}, 1, 2},
+        {"(c) applied, items object, applied", {applied, R"({"took":1,"errors":true,"items":{}})", applied}, 1, 2},
+        {"(c) applied, items null, applied", {applied, R"({"took":1,"errors":true,"items":null})", applied}, 1, 2},
+        // An HTTP error answer goes through onError and does not end the streak.
+        {"(d) applied, HTTP 503, applied", {applied, UNAVAILABLE_503, applied}, 1, 2, 2, 2, 3}};
+
+    for (const auto& sequence : sequences)
+    {
+        SCOPED_TRACE(sequence.name);
+
+        // Installed before the connector: its threads log until the connector is destroyed.
+        ScopedLogCapture logs;
+
+        auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+        ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+        PostLog log;
+        recordPosts(mockHttpRequest,
+                    log,
+                    [&sequence, &UNAVAILABLE_503](size_t index, const PostRequestParametersVariant& postParams)
+                    {
+                        if (index < sequence.responses.size() && sequence.responses[index] == UNAVAILABLE_503)
+                        {
+                            answerError(postParams, "Service Unavailable", 503);
+                        }
+                        else if (index < sequence.responses.size())
+                        {
+                            answerSuccessWith(postParams, sequence.responses[index]);
+                        }
+                        else
+                        {
+                            answerSuccess(postParams);
+                        }
+                    });
+
+        {
+            // Small bulk threshold: one document, and one answer of the sequence, per bulk.
+            IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+            const auto documents = sequence.documents != 0 ? sequence.documents : sequence.responses.size();
+            const auto answered = sequence.answered != 0 ? sequence.answered : sequence.responses.size();
+            const auto posts = sequence.posts != 0 ? sequence.posts : sequence.responses.size();
+            for (size_t i = 0; i < documents; ++i)
+            {
+                connector.bulkIndexDataStream("ds", "evt-" + std::to_string(i), R"({"n":)" + std::to_string(i) + "}");
+            }
+
+            ASSERT_TRUE(log.waitAnswered(answered)) << "Timeout waiting for the bulks";
+            EXPECT_EQ(log.posts(), posts);
+            EXPECT_EQ(connector.getDeduplicatedEvents(), sequence.expectedDeduplicated);
+            EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, DEDUP_WARN_TAIL), sequence.expectedWarnings);
+            EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, dedupWarn(1)), sequence.expectedWarnings);
+        }
+
+        ::testing::Mock::VerifyAndClearExpectations(&mockHttpRequest);
+    }
+}
+
+// Only a create answered 409 with version_conflict_engine_exception is an applied document. Any
+// other conflict is neither counted nor warned about, and is still logged per document.
+TEST_F(IndexerConnectorAsyncTest, OtherConflictsAreNotDeduplicated)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    const auto response = bulkResponse({bulkItem("create", 409, "foo_exception"),
+                                        bulkItem("create", 400, "version_conflict_engine_exception"),
+                                        bulkItem("index", 409, "version_conflict_engine_exception"),
+                                        bulkItem("delete", 409, "version_conflict_engine_exception")});
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [&response](size_t index, const PostRequestParametersVariant& postParams)
+                {
+                    if (index == 0)
+                    {
+                        answerSuccessWith(postParams, response);
+                    }
+                    else
+                    {
+                        answerSuccess(postParams);
+                    }
+                });
+
+    IndexerConnectorAsyncImplMultiItemBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    for (const auto* tag : {"doc-1", "doc-2", "doc-3", "doc-4"})
+    {
+        connector.bulkIndexDataStream("ds", tag, std::string(R"({"doc":")") + tag + R"("})");
+    }
+
+    ASSERT_TRUE(log.waitAnswered(1)) << "Timeout waiting for the bulk";
+    ASSERT_NE(log.bodies()[0].find("doc-4"), std::string::npos) << "the four documents must go out in one bulk";
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 0u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, DEDUP_WARN_TAIL), 0u);
+
+    ASSERT_TRUE(waitForWarnings(logs, "Error deleting document", 1)) << "Timeout waiting for the per-document lines";
+    ASSERT_TRUE(waitForWarnings(logs, "Error indexing document", 3)) << "Timeout waiting for the per-document lines";
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Error indexing document"), 3u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "Error deleting document"), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "(type foo_exception"), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, "(type version_conflict_engine_exception"), 3u);
+    for (const auto* tag : {"doc-1", "doc-2", "doc-3", "doc-4"})
+    {
+        EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, std::string(R"("_id":")") + tag + R"("}})"), 1u) << tag;
+    }
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 0u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, DEDUP_WARN_TAIL), 0u);
+}
+
+// An applied conflict in an answer whose item count does not match the bulk: the logger keeps today's
+// mismatch WARN and the dispatch thread still counts the applied item.
+TEST_F(IndexerConnectorAsyncTest, AppliedConflictKeepsMismatchDiagnostic)
+{
+    // Installed before the connector: its threads log until the connector is destroyed.
+    ScopedLogCapture logs;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    const auto response = bulkResponse({appliedConflictItem(), bulkItem("create", 201)});
+
+    PostLog log;
+    recordPosts(mockHttpRequest,
+                log,
+                [&response](size_t index, const PostRequestParametersVariant& postParams)
+                {
+                    if (index == 0)
+                    {
+                        answerSuccessWith(postParams, response);
+                    }
+                    else
+                    {
+                        answerSuccess(postParams);
+                    }
+                });
+
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndexDataStream("ds", "evt-mismatch", R"({"msg":"one document, two items"})");
+
+    ASSERT_TRUE(log.waitAnswered(1)) << "Timeout waiting for the bulk";
+    EXPECT_EQ(connector.getDeduplicatedEvents(), 1u);
+    EXPECT_EQ(logs.countAtLevel(Log::LOGLEVEL_WARNING, dedupWarn(1)), 1u);
+
+    ASSERT_TRUE(waitForWarnings(logs, "Mismatch between the number of events (1) and response items (2)", 1))
+        << "Timeout waiting for the mismatch WARN";
+    EXPECT_EQ(log.posts(), 1u);
 }

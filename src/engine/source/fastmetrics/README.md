@@ -157,6 +157,7 @@ Constants and per-space formatters in `interface/fastmetrics/metric_names.hpp`, 
 | `indexer.queue.size` | PULL | `main.cpp` (only when the indexer connector is enabled) |
 | `indexer.queue.usage.percent` | PULL | `main.cpp` (only when the indexer connector is enabled) |
 | `indexer.events.dropped` | PULL | `main.cpp` (only when the indexer connector is enabled) |
+| `indexer.events.deduplicated` | PULL | `main.cpp` (only when the indexer connector is enabled) |
 | `router.queue.size` | PULL | `router/src/orchestrator.cpp` |
 | `router.queue.usage.percent` | PULL | `router/src/orchestrator.cpp` |
 | `router.queue.bytes.used` | PULL | `router/src/orchestrator.cpp` |

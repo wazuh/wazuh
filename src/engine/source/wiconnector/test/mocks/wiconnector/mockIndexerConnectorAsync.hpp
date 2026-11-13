@@ -12,9 +12,13 @@ namespace wiconnector::mocks
 class MockIndexerConnectorAsync : public ::wiconnector::IIndexerConnectorAsync
 {
 public:
-    MOCK_METHOD(void, indexDataStream, (std::string_view index, std::string_view data), (override));
+    MOCK_METHOD(void,
+                indexDataStream,
+                (std::string_view index, std::string_view id, std::string_view data),
+                (override));
     MOCK_METHOD(uint64_t, getQueueSize, (), (const, override));
     MOCK_METHOD(uint64_t, getDroppedEvents, (), (const, override));
+    MOCK_METHOD(uint64_t, getDeduplicatedEvents, (), (const, override));
     MOCK_METHOD(PointInTime,
                 createPointInTime,
                 (const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards),

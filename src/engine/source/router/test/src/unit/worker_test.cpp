@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstring>
 #include <future>
 #include <mutex>
 #include <optional>
@@ -14,6 +15,7 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <base/utils/generator.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <base/utils/timeUtils.hpp>
@@ -30,6 +32,54 @@
 
 using namespace router;
 using namespace testing;
+
+namespace
+{
+// Random source of the generators that fails while armed failures remain and works afterwards.
+std::atomic<int> g_pendingRandFailures {0};
+std::atomic<int> g_randCalls {0};
+
+int fakeRandFailingWhileArmed(unsigned char* buf, int n)
+{
+    const auto call = g_randCalls.fetch_add(1) + 1;
+    if (g_pendingRandFailures.load() > 0)
+    {
+        g_pendingRandFailures.fetch_sub(1);
+        return 0;
+    }
+    std::memset(buf, call & 0xff, static_cast<size_t>(n));
+    return 1;
+}
+
+// Restores the previous random source when the test ends.
+class RandSourceGuard
+{
+public:
+    explicit RandSourceGuard(base::utils::generators::detail::RandBytesFn fn)
+        : m_previous(base::utils::generators::detail::exchangeRandBytesForTesting(fn))
+    {
+    }
+
+    ~RandSourceGuard() { base::utils::generators::detail::exchangeRandBytesForTesting(m_previous); }
+
+    RandSourceGuard(const RandSourceGuard&) = delete;
+    RandSourceGuard& operator=(const RandSourceGuard&) = delete;
+
+private:
+    base::utils::generators::detail::RandBytesFn m_previous;
+};
+
+// What the tester callbacks of a two-event run observed.
+struct TwoEventsCapture
+{
+    std::mutex mutex;
+    int firstCalls {0};
+    int secondCalls {0};
+    std::optional<base::RespOrError<test::Output>> first;
+    std::optional<base::RespOrError<test::Output>> second;
+    std::promise<void> secondDone;
+};
+} // namespace
 
 class WorkerTest : public ::testing::Test
 {
@@ -87,6 +137,98 @@ protected:
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(ReturnRefOfCopy(base::Expression {}));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(ReturnRefOfCopy(std::string {"hash"}));
         EXPECT_CALL(*m_mockController, stop());
+    }
+
+    /**
+     * Runs two events through a TesterWorker whose random source fails for the first one only (the identifier of
+     * the first event cannot be generated). When firstCallbackThrows, the callback of the first event throws after
+     * recording its result.
+     */
+    void runTwoEvents(bool firstCallbackThrows, TwoEventsCapture& capture)
+    {
+        auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
+        test::Options opts(test::Options::TraceLevel::NONE, {}, "env1");
+
+        auto firstEvent = std::make_shared<test::TestingTuple>(
+            std::make_shared<json::Json>(R"({"n": 1})"),
+            opts,
+            [&capture, firstCallbackThrows](base::RespOrError<test::Output>&& output)
+            {
+                {
+                    std::lock_guard<std::mutex> lock(capture.mutex);
+                    ++capture.firstCalls;
+                    capture.first.emplace(std::move(output));
+                }
+                if (firstCallbackThrows)
+                {
+                    throw std::runtime_error("callback failure");
+                }
+            });
+
+        auto secondEvent = std::make_shared<test::TestingTuple>(std::make_shared<json::Json>(R"({"n": 2})"),
+                                                                opts,
+                                                                [&capture](base::RespOrError<test::Output>&& output)
+                                                                {
+                                                                    bool firstTime = false;
+                                                                    {
+                                                                        std::lock_guard<std::mutex> lock(capture.mutex);
+                                                                        firstTime = ++capture.secondCalls == 1;
+                                                                        capture.second.emplace(std::move(output));
+                                                                    }
+                                                                    if (firstTime)
+                                                                    {
+                                                                        capture.secondDone.set_value();
+                                                                    }
+                                                                });
+
+        // Only the second event reaches the pipeline
+        expectEnvironmentBuild("asset/test/0");
+        EXPECT_CALL(*m_mockController, subscribe(_, _)).Times(0);
+        EXPECT_CALL(*m_mockController, ingestGet(_)).Times(1).WillOnce([](base::Event&& ev) { return ev; });
+        EXPECT_CALL(*m_mockController, unsubscribeAll()).Times(1);
+
+        std::atomic<int> popCalls {0};
+        ON_CALL(*mockQueue, waitPop(_, _))
+            .WillByDefault(
+                [&](test::EventTest& ev, int64_t) -> bool
+                {
+                    const auto call = popCalls.fetch_add(1);
+                    if (call == 0)
+                    {
+                        ev = firstEvent;
+                        return true;
+                    }
+                    if (call == 1)
+                    {
+                        ev = secondEvent;
+                        return true;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    return false;
+                });
+
+        RandSourceGuard guard(&fakeRandFailingWhileArmed);
+        g_randCalls.store(0);
+        g_pendingRandFailures.store(0);
+
+        TesterWorker worker(m_envBuilder, mockQueue);
+        const router::test::EntryPost entryPost {"env1", cm::store::NamespaceId {"policy_name_0"}, 1000};
+        ASSERT_FALSE(worker.get()->addEntry(entryPost, false).has_value());
+        ASSERT_FALSE(worker.get()->enableEntry("env1").has_value());
+
+        // The next draw of the random source (the identifier of the first event) fails
+        g_pendingRandFailures.store(1);
+        worker.start();
+        const auto status = capture.secondDone.get_future().wait_for(std::chrono::seconds(2));
+        worker.stop();
+
+        // stop() joined the worker thread: the queue is not polled any more
+        const auto popsAfterStop = popCalls.load();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        EXPECT_EQ(popCalls.load(), popsAfterStop);
+
+        ASSERT_EQ(status, std::future_status::ready) << "The callback of the second event was not invoked";
+        EXPECT_EQ(g_pendingRandFailures.load(), 0) << "The random source was not used for the first event";
     }
 };
 
@@ -620,6 +762,137 @@ TEST_F(WorkerTest, TesterWorkerSetsTimestampAndEventId)
     std::string eventId;
     ASSERT_EQ(outEvent->getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
     EXPECT_FALSE(eventId.empty());
+}
+
+TEST_F(WorkerTest, TesterWorkerReportsIdGenerationFailure)
+{
+    TwoEventsCapture capture;
+    runTwoEvents(false, capture);
+    if (HasFatalFailure())
+    {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(capture.mutex);
+    EXPECT_EQ(capture.firstCalls, 1);
+    EXPECT_EQ(capture.secondCalls, 1);
+
+    ASSERT_TRUE(capture.first.has_value());
+    EXPECT_TRUE(base::isError(*capture.first));
+
+    ASSERT_TRUE(capture.second.has_value());
+    ASSERT_FALSE(base::isError(*capture.second));
+    const auto& outEvent = base::getResponse<test::Output>(*capture.second).event();
+    ASSERT_NE(outEvent, nullptr);
+    std::string eventId;
+    ASSERT_EQ(outEvent->getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
+    EXPECT_FALSE(eventId.empty());
+}
+
+TEST_F(WorkerTest, TesterWorkerSurvivesThrowingErrorCallback)
+{
+    TwoEventsCapture capture;
+    runTwoEvents(true, capture);
+    if (HasFatalFailure())
+    {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(capture.mutex);
+    EXPECT_EQ(capture.firstCalls, 1);
+    ASSERT_TRUE(capture.first.has_value());
+    EXPECT_TRUE(base::isError(*capture.first));
+
+    EXPECT_EQ(capture.secondCalls, 1);
+    ASSERT_TRUE(capture.second.has_value());
+    EXPECT_FALSE(base::isError(*capture.second));
+}
+
+TEST_F(WorkerTest, TesterWorkerReportsIngestTestFailure)
+{
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
+    test::Options opts(test::Options::TraceLevel::NONE, {}, "env1");
+    TwoEventsCapture capture;
+
+    auto firstEvent = std::make_shared<test::TestingTuple>(std::make_shared<json::Json>(R"({"n": 1})"),
+                                                           opts,
+                                                           [&capture](base::RespOrError<test::Output>&& output)
+                                                           {
+                                                               std::lock_guard<std::mutex> lock(capture.mutex);
+                                                               ++capture.firstCalls;
+                                                               capture.first.emplace(std::move(output));
+                                                           });
+    auto secondEvent = std::make_shared<test::TestingTuple>(std::make_shared<json::Json>(R"({"n": 2})"),
+                                                            opts,
+                                                            [&capture](base::RespOrError<test::Output>&& output)
+                                                            {
+                                                                bool firstTime = false;
+                                                                {
+                                                                    std::lock_guard<std::mutex> lock(capture.mutex);
+                                                                    firstTime = ++capture.secondCalls == 1;
+                                                                    capture.second.emplace(std::move(output));
+                                                                }
+                                                                if (firstTime)
+                                                                {
+                                                                    capture.secondDone.set_value();
+                                                                }
+                                                            });
+
+    // The test itself throws for the first event (the tester does not reset the controller then) and works for the
+    // second one.
+    expectEnvironmentBuild("asset/test/0");
+    EXPECT_CALL(*m_mockController, subscribe(_, _)).Times(0);
+    EXPECT_CALL(*m_mockController, ingestGet(_))
+        .Times(2)
+        .WillOnce([](base::Event&&) -> base::Event { throw std::runtime_error("controller failure"); })
+        .WillOnce([](base::Event&& ev) { return ev; });
+    EXPECT_CALL(*m_mockController, unsubscribeAll()).Times(1);
+
+    std::atomic<int> popCalls {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](test::EventTest& ev, int64_t) -> bool
+            {
+                const auto call = popCalls.fetch_add(1);
+                if (call == 0)
+                {
+                    ev = firstEvent;
+                    return true;
+                }
+                if (call == 1)
+                {
+                    ev = secondEvent;
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                return false;
+            });
+
+    TesterWorker worker(m_envBuilder, mockQueue);
+    const router::test::EntryPost entryPost {"env1", cm::store::NamespaceId {"policy_name_0"}, 1000};
+    ASSERT_FALSE(worker.get()->addEntry(entryPost, false).has_value());
+    ASSERT_FALSE(worker.get()->enableEntry("env1").has_value());
+
+    worker.start();
+    const auto status = capture.secondDone.get_future().wait_for(std::chrono::seconds(2));
+    worker.stop();
+
+    // stop() joined the worker thread: the queue is not polled any more
+    const auto popsAfterStop = popCalls.load();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_EQ(popCalls.load(), popsAfterStop);
+    ASSERT_EQ(status, std::future_status::ready) << "The callback of the second event was not invoked";
+
+    std::lock_guard<std::mutex> lock(capture.mutex);
+    EXPECT_EQ(capture.firstCalls, 1);
+    ASSERT_TRUE(capture.first.has_value());
+    ASSERT_TRUE(base::isError(*capture.first));
+    EXPECT_THAT(base::getError(*capture.first).message, HasSubstr("testing"));
+    EXPECT_THAT(base::getError(*capture.first).message, HasSubstr("controller failure"));
+
+    EXPECT_EQ(capture.secondCalls, 1);
+    ASSERT_TRUE(capture.second.has_value());
+    EXPECT_FALSE(base::isError(*capture.second));
 }
 
 TEST_F(WorkerTest, TesterWorkerKeepsDecoderTimestamp)
