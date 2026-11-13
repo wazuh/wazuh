@@ -37,6 +37,7 @@ All notable changes to this project will be documented in this file.
 
 - Updated embedded Python to 3.10.21 and refreshed the framework dependencies, including `pip`, `setuptools`, `wheel`, `cryptography`, `PyJWT`, `PyYAML`, `starlette`, `urllib3`, `requests`, `Werkzeug`, `python-multipart`, `grpcio`, `protobuf`, `psutil` and `idna`, to address known vulnerabilities and outdated packages. ([#41054](https://github.com/wazuh/wazuh/pull/41054))
 - Updated the Google Cloud dependencies (`google-cloud-storage`, `google-cloud-core`, `google-auth` and `google-resumable-media`) to releases that no longer rely on the `pkg_resources` module removed in `setuptools` 82. ([#41054](https://github.com/wazuh/wazuh/pull/41054))
+- Updated the embedded Python dependencies `anyio`, `certifi`, `multidict`, `pyasn1`, `PyJWT`, `setuptools`, `urllib3` and `Werkzeug`.
 
 ## [v4.10.5]
 
