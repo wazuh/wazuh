@@ -11,10 +11,6 @@
 #include "wmodules.h"
 #include "time_op.h"
 
-// Each halving reduces allowed_output_len by 2^n; 4 attempts covers worst-case JSON escape expansion
-// (e.g. a single control character encodes to 6 bytes, so 3 halvings are enough with one spare).
-#define WM_COMMAND_TRUNCATE_MAX_ATTEMPTS 4
-
 #ifdef WIN32
 #include <windows.h>
 
@@ -38,7 +34,11 @@ static char *wm_command_build_event_payload(const char *event_start,
                                             char **proc_argv,
                                             const wm_command_t *command,
                                             int status,
-                                            const char *payload_output);
+                                            const char *payload_output,
+                                            const char *trace_id,
+                                            size_t part,
+                                            size_t output_bytes,
+                                            size_t skipped_bytes);
 
 #ifdef WIN32
 static DWORD WINAPI wm_command_main(void *arg);             // Module main function. It won't return
@@ -57,7 +57,11 @@ static char *wm_command_build_event_payload(const char *event_start,
                                             char **proc_argv,
                                             const wm_command_t *command,
                                             int status,
-                                            const char *payload_output) {
+                                            const char *payload_output,
+                                            const char *trace_id,
+                                            size_t part,
+                                            size_t output_bytes,
+                                            size_t skipped_bytes) {
     cJSON *json_event = NULL;
     char *json_payload = NULL;
 
@@ -70,6 +74,15 @@ static char *wm_command_build_event_payload(const char *event_start,
     if (event_obj) {
         cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
         cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
+        if (part) {
+            cJSON_AddNumberToObject(event_obj, "sequence", (double)part);
+        }
+    }
+    if (trace_id) {
+        cJSON *trace = cJSON_AddObjectToObject(json_event, "trace");
+        if (trace) {
+            cJSON_AddStringToObject(trace, "id", trace_id);
+        }
     }
     if (tag) {
         cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
@@ -113,6 +126,12 @@ static char *wm_command_build_event_payload(const char *event_start,
         cJSON *process_io = cJSON_AddObjectToObject(process, "io");
         if (process_io) {
             cJSON_AddStringToObject(process_io, "text", payload_output ? payload_output : "");
+            if (part) {
+                cJSON_AddNumberToObject(process_io, "total_bytes_captured", (double)output_bytes);
+                if (skipped_bytes) {
+                    cJSON_AddNumberToObject(process_io, "total_bytes_skipped", (double)skipped_bytes);
+                }
+            }
         }
     }
 
@@ -120,6 +139,67 @@ static char *wm_command_build_event_payload(const char *event_start,
     cJSON_Delete(json_event);
 
     return json_payload;
+}
+
+// Bytes cJSON writes for c inside a JSON string.
+static size_t wm_command_json_char_len(unsigned char c) {
+    switch (c) {
+    case '"': case '\\': case '\b': case '\f': case '\n': case '\r': case '\t':
+        return 2;
+    default:
+        return c < 0x20 ? 6 : 1;
+    }
+}
+
+// A line that does not fit on its own is cut, and the rest of it is reported in skipped.
+size_t wm_command_next_part(const char *text, size_t len, size_t start, size_t budget, size_t *part_len, size_t *skipped) {
+    size_t used = 0;
+    size_t line_end = start;
+    size_t i = start;
+
+    *skipped = 0;
+
+    while (i < len && used + wm_command_json_char_len((unsigned char)text[i]) <= budget) {
+        used += wm_command_json_char_len((unsigned char)text[i]);
+        if (text[i++] == '\n') {
+            line_end = i;
+        }
+    }
+
+    if (i == len) {
+        *part_len = len - start;
+        return len;
+    }
+
+    if (line_end > start) {
+        *part_len = line_end - start;
+        return line_end;
+    }
+
+    *part_len = w_utf8_truncate_len(text + start, i - start);
+    const char *eol = memchr(text + i, '\n', len - i);
+    // No room for even one character: skip the rest instead of sending an empty event per line.
+    size_t next = (eol && *part_len) ? (size_t)(eol - text) + 1 : len;
+    *skipped = next - start - *part_len;
+    return next;
+}
+
+static void wm_command_send_event(int usec, wm_command_t *command, const char *extag, char *json_payload) {
+    if (!json_payload) {
+        mtwarn(WM_COMMAND_LOGTAG, "Could not build command event payload. Dropping event.");
+        return;
+    }
+#ifdef WIN32
+    (void)command;
+    if (wm_sendmsg(usec, 0, json_payload, extag, LOCALFILE_MQ) < 0) {
+#else
+    // modulesd stopping while the agent can't reach the manager is not an error.
+    if (wm_sendmsg_with_reconnect(usec, &command->queue_fd, json_payload, extag, LOCALFILE_MQ, WM_COMMAND_LOGTAG) < 0
+        && !wm_shutdown_requested) {
+#endif
+        mterror(WM_COMMAND_LOGTAG, "Unable to send command event to queue.");
+    }
+    os_free(json_payload);
 }
 
 // Command module context definition
@@ -393,9 +473,9 @@ void * wm_command_main(wm_command_t * command) {
 
         if (!command->ignore_output) {
             char *json_payload = NULL;
-            const char *raw_output = output ? output : "";
-            const char *payload_output = raw_output;
-            char *truncated_output = NULL;
+            // SendMSG() replaces invalid UTF-8 after the size checks below, which would grow the event past the limit.
+            char *text = w_utf8_filter(output ? output : "", true);
+            const size_t text_len = strlen(text);
             const size_t header_len = 3 + strlen(extag); // "1:" + extag + ":"
             const size_t max_message_len = header_len < OS_MAXSTR ? (OS_MAXSTR - header_len - 1) : 0;
 
@@ -445,133 +525,76 @@ void * wm_command_main(wm_command_t * command) {
                 proc_name = separator ? (separator + 1) : proc_argv0;
             }
 
-            size_t base_json_len = 0;
+            json_payload = wm_command_build_event_payload(event_start, command->tag, command_line, proc_name, proc_path,
+                                                          proc_argv, command, status, text, NULL, 0, 0, 0);
 
-            // Compute JSON overhead with all fields except output content.
-            {
-                char *base_payload = wm_command_build_event_payload(event_start,
-                                                                    command->tag,
-                                                                    command_line,
-                                                                    proc_name,
-                                                                    proc_path,
-                                                                    proc_argv,
-                                                                    command,
-                                                                    status,
-                                                                    "");
-                if (base_payload) {
-                    base_json_len = strlen(base_payload);
-                    os_free(base_payload);
-                }
-            }
-
-            // Build JSON payload (single event with full output).
-            json_payload = wm_command_build_event_payload(event_start,
-                                                          command->tag,
-                                                          command_line,
-                                                          proc_name,
-                                                          proc_path,
-                                                          proc_argv,
-                                                          command,
-                                                          status,
-                                                          payload_output);
-
-            // If the final message could be truncated at the MQ layer, truncate the output and rebuild.
             if (json_payload && max_message_len > 0 && strlen(json_payload) > max_message_len) {
-                const size_t output_len = strlen(raw_output);
-                size_t allowed_output_len = 0;
-                int attempts = 0;
+                const int split_output = getDefine_Int_default("wazuh_command", "split_output", 0, 1, 1);
+                unsigned char trace_bytes[16];
+                char trace_id[sizeof(trace_bytes) * 2 + 1];
 
-                if (base_json_len > 0 && max_message_len > base_json_len) {
-                    allowed_output_len = max_message_len - base_json_len;
+                os_free(json_payload);
+
+                // Shared by every part of this run.
+                randombytes(trace_bytes, sizeof(trace_bytes));
+                for (size_t i = 0; i < sizeof(trace_bytes); i++) {
+                    snprintf(trace_id + i * 2, 3, "%02x", trace_bytes[i]);
                 }
 
-                // Best-effort: keep JSON valid by truncating the output field before encoding.
-                if (allowed_output_len > 0) {
-                    if (allowed_output_len > output_len) {
-                        allowed_output_len = output_len;
-                    }
+                // Room left for the output, with every part field at its widest.
+                char *base_payload = wm_command_build_event_payload(event_start, command->tag, command_line, proc_name,
+                                                                    proc_path, proc_argv, command, status, "",
+                                                                    trace_id, text_len + 1, text_len, text_len);
+                const size_t base_len = base_payload ? strlen(base_payload) : max_message_len;
+                const size_t budget = max_message_len > base_len ? max_message_len - base_len : 0;
+                size_t part = 0;
+                size_t total_skipped = 0;
+                size_t start = 0;
 
-                    mtwarn(WM_COMMAND_LOGTAG, "Command output is too long to fit in a single message. Truncating.");
+                os_free(base_payload);
 
+                if (base_len >= max_message_len) {
+                    mtwarn(WM_COMMAND_LOGTAG, "Command '%s': the command details fill the whole message. Sending the event without output.",
+                           command->tag);
+                    wm_command_send_event(usec, command, extag,
+                                          wm_command_build_event_payload(event_start, command->tag, command_line, proc_name,
+                                                                         proc_path, proc_argv, command, status, "", NULL, 0, 0, 0));
+                } else {
                     do {
-                        os_free(truncated_output);
-                        truncated_output = NULL;
+                        size_t part_len;
+                        size_t skipped;
+                        size_t next = wm_command_next_part(text, text_len, start, budget, &part_len, &skipped);
+                        char *part_text;
 
-                        os_malloc(allowed_output_len + 1, truncated_output);
-                        memcpy(truncated_output, raw_output, allowed_output_len);
-                        truncated_output[allowed_output_len] = '\0';
-                        payload_output = truncated_output;
-
-                        os_free(json_payload);
-                        json_payload = NULL;
-
-                        json_payload = wm_command_build_event_payload(event_start,
-                                                                      command->tag,
-                                                                      command_line,
-                                                                      proc_name,
-                                                                      proc_path,
-                                                                      proc_argv,
-                                                                      command,
-                                                                      status,
-                                                                      payload_output);
-
-                        if (json_payload && strlen(json_payload) <= max_message_len) {
-                            break;
+                        if (!split_output) {
+                            skipped = text_len - start - part_len;
+                            next = text_len;
                         }
 
-                        // Reduce and try again (output escaping may enlarge JSON more than expected)
-                        allowed_output_len /= 2;
-                        attempts++;
-                    } while (allowed_output_len > 0 && attempts < WM_COMMAND_TRUNCATE_MAX_ATTEMPTS);
+                        os_malloc(part_len + 1, part_text);
+                        memcpy(part_text, text + start, part_len);
+                        part_text[part_len] = '\0';
 
-                    if (json_payload && strlen(json_payload) > max_message_len) {
-                        os_free(json_payload);
-                        json_payload = NULL;
+                        wm_command_send_event(usec, command, extag,
+                                              wm_command_build_event_payload(event_start, command->tag, command_line, proc_name,
+                                                                             proc_path, proc_argv, command, status, part_text,
+                                                                             trace_id, ++part, text_len, skipped));
+                        os_free(part_text);
+                        total_skipped += skipped;
+                        start = next;
+                    } while (start < text_len);
 
-                        // Last-resort: send a metadata-only event.
-                        mtwarn(WM_COMMAND_LOGTAG, "Command event is too large even after truncation. Dropping output but sending metadata-only event.");
-                        json_payload = wm_command_build_event_payload(event_start,
-                                                                      command->tag,
-                                                                      command_line,
-                                                                      proc_name,
-                                                                      proc_path,
-                                                                      proc_argv,
-                                                                      command,
-                                                                      status,
-                                                                      "");
+                    if (total_skipped) {
+                        mtwarn(WM_COMMAND_LOGTAG, "Command '%s': %zu bytes of output did not fit in the event and were dropped.",
+                               command->tag, total_skipped);
                     }
-                } else {
-                    mtwarn(WM_COMMAND_LOGTAG, "Command output is too long to fit in a single message. Dropping output but sending metadata-only event.");
-                    os_free(json_payload);
-                    json_payload = wm_command_build_event_payload(event_start,
-                                                                  command->tag,
-                                                                  command_line,
-                                                                  proc_name,
-                                                                  proc_path,
-                                                                  proc_argv,
-                                                                  command,
-                                                                  status,
-                                                                  "");
+                    mtdebug1(WM_COMMAND_LOGTAG, "Command '%s': output sent in %zu events.", command->tag, part);
                 }
-            }
-            if (json_payload) {
-            #ifdef WIN32
-                if (wm_sendmsg(usec, 0, json_payload, extag, LOCALFILE_MQ) < 0) {
-                    mterror(WM_COMMAND_LOGTAG, "Unable to send command event to queue.");
-                }
-            #else
-                // modulesd stopping while the agent can't reach the manager is not an error.
-                if (wm_sendmsg_with_reconnect(usec, &command->queue_fd, json_payload, extag, LOCALFILE_MQ, WM_COMMAND_LOGTAG) < 0
-                    && !wm_shutdown_requested) {
-                    mterror(WM_COMMAND_LOGTAG, "Unable to send command event to queue.");
-                }
-            #endif
-                os_free(json_payload);
             } else {
-                mtwarn(WM_COMMAND_LOGTAG, "Could not build command event payload. Dropping event.");
+                wm_command_send_event(usec, command, extag, json_payload);
             }
 
-            os_free(truncated_output);
+            os_free(text);
 
             os_free(tmp_full_path);
             free_strarray(proc_argv);
