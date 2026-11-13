@@ -360,10 +360,23 @@ statement.
 
 *(owner: this project + product · issue: #37533)*
 
-**True today.** `rt_engine.c:473-476` probes `/sys/kernel/security/lsm` and prefers the
-`lsm/file_open` program when BPF LSM is active, falling back to a kprobe variant otherwise. The
-object is built through a host-BTF fallback when no vendored `vmlinux.h` is present. Validated on
-exactly one configuration: Ubuntu 24.04.4, kernel 7.0.0-31, cgroup v2, BPF LSM active.
+**True today.** File-hook selection is a three-step fallback in `rt_open()`: LSM with `bpf_d_path`;
+LSM with the path walk when those programs fail to load; then kprobes, which an LSM attach failure
+goes to directly. The ATTR kprobe is kept on every step. Packaged agents ship CO-RE objects built
+against real kernel BTF (`prebuilt/<arch>/rt_file.bpf.o.provenance`). Measured with #41224's engine
+and objects (x86 `5f8c5375`, arm64 `5bcf86ad`):
+
+| Step the engine ends on | Hosts |
+| --- | --- |
+| LSM d_path | openSUSE Leap 16.0 (6.12), Amazon Linux 2023 arm64 (6.12, emulated) |
+| LSM walk | AlmaLinux 8.10 (4.18-553), Amazon Linux 2 (5.10), Amazon Linux 2023 x86_64 (6.1) |
+| kprobe | CentOS Linux 8.5 (4.18-348, no LSM path hooks), Ubuntu 20.04 HWE (5.15) and Ubuntu 26.04 (7.0) without BPF LSM, Amazon Linux 2023 arm64 (6.1, emulated; BPF LSM programs cannot attach) |
+
+Below the floor: Ubuntu 20.04 on 5.4 (no BPF ring buffer), Amazon Linux 2 on 4.14 and SLE 15 SP3 /
+openSUSE Leap 15.3 (no kernel BTF). Containers were measured under Docker (Podman's emulation on EL8)
+and under Kubernetes 1.34 (k3s, containerd) on a v1 and a hybrid host. Kubernetes 1.35 refuses to
+start its kubelet on either (`failCgroupV1: true`), so a Kubernetes node on a v1 or hybrid host is
+covered only up to 1.34. Full results in #41224.
 
 **The question.** Which of these does the product claim: BPF LSM required, kprobe fallback
 supported, CO-RE with vendored BTF, host-BTF only? Each implies a different minimum kernel and a
@@ -371,6 +384,10 @@ different test matrix — and Q3's packaged object has to be built for whichever
 the vendored-`vmlinux.h` decision is downstream of this one.
 
 **Answerable by:** a decision plus a test matrix run on more than one kernel.
+
+The test-matrix half of "Answerable by" is done. The decision remains; the recommendation is to
+claim the kprobe fallback as supported and the measured range above as the envelope, with BPF LSM
+used where the kernel offers it.
 
 ### Q14 — What privileges does the feature require, and what degrades without them?
 

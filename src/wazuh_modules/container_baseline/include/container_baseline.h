@@ -55,8 +55,8 @@
 extern "C" {
 #endif
 
-/* One `<directories tags="container">` entry to walk, translated by the caller
- * from its own config representation. */
+/* One `<container_security><syscheck><directories>` entry to walk, translated
+ * by the caller from its own config representation. */
 typedef struct cb_monitored_path_t {
     const char* internal_path;     /* In-container absolute path, e.g. "/etc". */
     int         recursion_level;   /* 0 = entry only, N = N levels deep, -1 = unlimited. */

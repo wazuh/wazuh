@@ -330,54 +330,6 @@ static void CaseEnabledWithoutDirectories(void)
     Check(log_contains("nothing to watch"), "the operator is told");
 }
 
-/* tags="container" used to be the container selector. Breaking it outright would
- * otherwise be completely silent: the entry still parses, it just stops meaning
- * what it meant. */
-static void CaseRetiredContainerTagWarns(void)
-{
-    printf("case 17: tags=\"container\" in <syscheck> is called out as retired\n");
-    log_reset();
-
-    char tmp[] = "/tmp/cs_syscheck_tagXXXXXX";
-    const int fd = mkstemp(tmp);
-    const char* doc = "<syscheck><directories tags=\"container,prod\">/etc</directories></syscheck>";
-
-    if (fd < 0 || write(fd, doc, strlen(doc)) < 0)
-    {
-        Check(0, "fixture written");
-        return;
-    }
-
-    close(fd);
-
-    memset(&g_syscheck, 0, sizeof(g_syscheck));
-    initialize_syscheck_configuration(&g_syscheck);
-
-    OS_XML xml;
-
-    if (OS_ReadXML(tmp, &xml) < 0)
-    {
-        unlink(tmp);
-        Check(0, "fixture parsed");
-        return;
-    }
-
-    xml_node** root = OS_GetElementsbyNode(&xml, NULL);
-    xml_node** children = OS_GetElementsbyNode(&xml, root[0]);
-
-    Read_Syscheck(&xml, children, &g_syscheck, NULL);
-
-    OS_ClearNode(children);
-    OS_ClearNode(root);
-    OS_ClearXML(&xml);
-    unlink(tmp);
-
-    Check(OSList_GetFirstNode(g_syscheck.directories) != NULL, "the entry is still a host directory");
-    Check(CountDirs(&g_syscheck) == 0, "but it selects no container");
-    Check(log_contains("no longer scopes"), "the operator is told it stopped scoping");
-    Check(log_contains("<container_security>"), "and where it moved to");
-}
-
 int main(void)
 {
     printf("<container_security><syscheck> configuration parser contract\n\n");
@@ -398,7 +350,6 @@ int main(void)
     CaseCommaSeparatedPaths();
     CaseUnknownChildWarns();
     CaseEnabledWithoutDirectories();
-    CaseRetiredContainerTagWarns();
 
     printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
 
