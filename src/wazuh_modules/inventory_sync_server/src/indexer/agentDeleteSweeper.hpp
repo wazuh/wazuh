@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -57,6 +58,9 @@ namespace invsync::indexer
     public:
         static constexpr std::size_t MAX_IDS_PER_QUERY {10000};
 
+        /// The clock that dates note() and judges an id's age.
+        using NowFn = std::function<std::chrono::steady_clock::time_point()>;
+
         struct Stats
         {
             std::uint64_t runs {0};      ///< Passes that had at least one id due.
@@ -71,11 +75,14 @@ namespace invsync::indexer
          * @param window Minimum age of an id before it is swept, and the tick.
          * @param deadline Deadline of each delete-by-query (the deletion budget, I146c).
          * @param closing The module's closing flag; a pass stops between chunks once it is set.
+         * @param now The clock that dates note() and judges an id's age (empty: steady_clock::now). The tick
+         * cadence always follows steady_clock, so a test can set the ages without stalling the thread.
          */
         AgentDeleteSweeper(std::shared_ptr<indexer_client::IQuery> query,
                            std::chrono::milliseconds window,
                            std::chrono::milliseconds deadline,
-                           std::shared_ptr<const std::atomic<bool>> closing);
+                           std::shared_ptr<const std::atomic<bool>> closing,
+                           NowFn now = {});
         ~AgentDeleteSweeper();
 
         AgentDeleteSweeper(const AgentDeleteSweeper&) = delete;
@@ -115,6 +122,7 @@ namespace invsync::indexer
         std::chrono::milliseconds m_window;
         std::chrono::milliseconds m_deadline;
         std::shared_ptr<const std::atomic<bool>> m_closing;
+        NowFn m_now;
 
         mutable std::mutex m_mutex;
         std::condition_variable m_cv;
