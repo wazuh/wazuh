@@ -9,6 +9,8 @@
  */
 
 #include "ca_bundle/ca_bundle.hpp"
+#include "common/zstdDecoder.hpp"
+#include "common/zstdEncoder.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/RestinioHttpServer.hpp"
 #include "http_server/caCertificateSource.hpp"
@@ -63,6 +65,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <variant>
 #include <vector>
 
 using namespace remoted::http;
@@ -302,6 +305,22 @@ TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
     // Unset (<=0) -> built-in default (this setting is not env-driven).
     raw.max_inflight_bytes = 0;
     EXPECT_EQ(buildHttpServerConfig(raw).maxInFlightBytes, 256U * 1024U * 1024U);
+}
+
+TEST(HttpServerConfigTest, ContentEncodingFlagFollowsTheCAbiField)
+{
+    // The C field has no sentinel: zero means off, not "module default".
+    auto raw = zeroedConfig();
+    raw.http_content_encoding_enabled = false;
+    EXPECT_FALSE(buildHttpServerConfig(raw).contentEncodingEnabled);
+
+    raw.http_content_encoding_enabled = true;
+    EXPECT_TRUE(buildHttpServerConfig(raw).contentEncodingEnabled);
+}
+
+TEST(HttpServerConfigTest, ContentEncodingDefaultsToEnabled)
+{
+    EXPECT_TRUE(HttpServerConfig {}.contentEncodingEnabled);
 }
 
 TEST(HttpServerConfigTest, MaxConnectionsStructWinsElseDefault)
@@ -3303,6 +3322,256 @@ TEST(HttpServerStreamingTest, TrickleReaderKeepsTheTransferAliveBeyondTheWriteTi
         << "the trickle was not slow enough to outlast the configured timers";
     EXPECT_TRUE(complete) << "a trickling reader was cut off; the per-write timer did not rearm";
     EXPECT_EQ(decoded, payload);
+}
+
+// ---------------------------------------------------------------------------
+// Response compression installed by the transport (CompressingResponder in buildRouter)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    constexpr auto OFFER_ZSTD = "Accept-Encoding: zstd\r\n";
+
+    std::size_t countOccurrences(const std::string& head, const std::string& lowerNeedle)
+    {
+        std::string lowered(head.size(), '\0');
+        std::transform(head.begin(), head.end(), lowered.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::size_t count = 0;
+        for (auto pos = lowered.find(lowerNeedle); pos != std::string::npos; pos = lowered.find(lowerNeedle, pos + 1))
+        {
+            ++count;
+        }
+        return count;
+    }
+
+    std::size_t compressorReservation(std::uint64_t sizeHint)
+    {
+        return remoted::common::ZstdEncoder::estimateMemory(sizeHint) +
+               remoted::common::ZstdEncoder::inputBufferSize(sizeHint) +
+               remoted::common::ZstdEncoder::outputBufferSize(sizeHint);
+    }
+
+    class CompressionWiringTest : public ::testing::Test
+    {
+    protected:
+        void SetUp() override
+        {
+            m_cert = remoted::test::generateTestCertificate("rmt_compression_wiring");
+            if (!m_cert)
+            {
+                GTEST_SKIP() << "openssl not available to generate a test certificate";
+            }
+            m_cleanup = std::make_unique<remoted::test::ScratchFileCleanup>(
+                std::vector<std::string> {m_cert->certPath, m_cert->keyPath});
+        }
+
+        void TearDown() override
+        {
+            for (auto& server : m_servers)
+            {
+                server->stop();
+            }
+        }
+
+        // Built directly, not through buildHttpServerConfig(): the flag under test is set explicitly.
+        HttpServerConfig baseConfig()
+        {
+            HttpServerConfig config;
+            config.caPublicationRecordPath = ""; // not under test here (avoids the default var/run WARN, addendum §1)
+            config.port = static_cast<std::uint16_t>(34000 + (::getpid() % 4000) + m_portOffset++);
+            config.certificatePath = m_cert->certPath;
+            config.privateKeyPath = m_cert->keyPath;
+            config.contentEncodingEnabled = true;
+            return config;
+        }
+
+        // Starts a server whose POST /stream streams m_payload with its exact size as the hint.
+        void startStreaming(const HttpServerConfig& config, bool compressible = true)
+        {
+            auto server = makeHttpServer();
+            server->addRoute(
+                Method::Post,
+                "/stream",
+                [this, compressible](std::shared_ptr<const HttpRequest> request,
+                                     std::shared_ptr<IHttpResponder> responder)
+                {
+                    // `request` (and with it the admission reservation) is held until stream() returns.
+                    StreamResponse response;
+                    response.headers.emplace_back("Content-Type", "application/octet-stream");
+                    response.source = std::make_shared<BufferByteSource>(m_payload);
+                    response.compressible = compressible;
+                    response.sizeHint = m_payload.size();
+                    responder->stream(std::move(response));
+                },
+                /*countAgainstBudget=*/true,
+                ResponseMode::Streamable);
+            server->start(config);
+            m_servers.push_back(std::move(server));
+        }
+
+        std::string post(const HttpServerConfig& config, const std::string& extraHeaders)
+        {
+            return remoted::test::sendSignedRequest(
+                config.port, remoted::test::testAgentKey(), "/stream", "{}", /*readLimit=*/0, extraHeaders);
+        }
+
+        // Asserts a complete chunked body with no Content-Encoding, carrying m_payload as is.
+        void expectPlain(const std::string& raw)
+        {
+            ASSERT_FALSE(raw.empty()) << "no response from the server";
+            const auto [head, body] = remoted::test::splitResponse(raw);
+            EXPECT_FALSE(headerPresent(head, "content-encoding")) << head;
+            std::vector<std::size_t> sizes;
+            bool complete = false;
+            EXPECT_EQ(remoted::test::decodeChunked(body, sizes, complete), m_payload);
+            EXPECT_TRUE(complete);
+        }
+
+        // Asserts a complete chunked body labelled zstd exactly once that decodes to m_payload.
+        void expectCompressed(const std::string& raw)
+        {
+            ASSERT_FALSE(raw.empty()) << "no response from the server";
+            const auto [head, body] = remoted::test::splitResponse(raw);
+            EXPECT_TRUE(headerPresent(head, "transfer-encoding: chunked")) << head;
+            EXPECT_FALSE(headerPresent(head, "content-length:")) << head;
+            EXPECT_EQ(countOccurrences(head, "content-encoding:"), 1U) << head;
+            EXPECT_TRUE(headerPresent(head, "content-encoding: zstd")) << head;
+
+            std::vector<std::size_t> sizes;
+            bool complete = false;
+            const auto frame = remoted::test::decodeChunked(body, sizes, complete);
+            EXPECT_TRUE(complete) << "the terminating 0-length chunk is missing";
+            const auto always = [](std::size_t)
+            {
+                return true;
+            };
+            const auto decoded = remoted::common::zstdDecode(frame, always, always);
+            ASSERT_TRUE(std::holds_alternative<std::string>(decoded));
+            EXPECT_EQ(std::get<std::string>(decoded), m_payload);
+        }
+
+        const std::string m_payload = patternPayload(70000);
+        int m_portOffset {0};
+        std::vector<std::unique_ptr<IHttpServer>> m_servers;
+        std::optional<remoted::test::TestCertificate> m_cert;
+        std::unique_ptr<remoted::test::ScratchFileCleanup> m_cleanup;
+    };
+} // namespace
+
+TEST_F(CompressionWiringTest, OfferedAndEnabledCompresses)
+{
+    auto config = baseConfig();
+    config.contentEncodingEnabled = true;
+    startStreaming(config);
+
+    expectCompressed(post(config, OFFER_ZSTD));
+}
+
+TEST_F(CompressionWiringTest, NotOfferedIsPlain)
+{
+    const auto config = baseConfig();
+    startStreaming(config);
+
+    expectPlain(post(config, ""));
+    expectPlain(post(config, "Accept-Encoding: gzip\r\n"));
+}
+
+TEST_F(CompressionWiringTest, ADisabledFlagIsPlain)
+{
+    auto config = baseConfig();
+    config.contentEncodingEnabled = false;
+    startStreaming(config);
+
+    expectPlain(post(config, OFFER_ZSTD));
+}
+
+TEST_F(CompressionWiringTest, ANotCompressibleHintIsPlain)
+{
+    const auto config = baseConfig();
+    startStreaming(config, /*compressible=*/false);
+
+    expectPlain(post(config, OFFER_ZSTD));
+}
+
+TEST_F(CompressionWiringTest, ABufferedRouteIgnoresTheOffer)
+{
+    const auto config = baseConfig();
+    auto server = makeHttpServer();
+    server->addRoute(Method::Post,
+                     "/stream",
+                     [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
+                     { responder->send(HttpResponse::json(200, R"({"ok":true})")); });
+    server->start(config);
+    m_servers.push_back(std::move(server));
+
+    const auto raw = post(config, OFFER_ZSTD);
+    ASSERT_FALSE(raw.empty()) << "no response from the server";
+    const auto [head, body] = remoted::test::splitResponse(raw);
+    EXPECT_NE(head.find(" 200 "), std::string::npos) << head;
+    EXPECT_FALSE(headerPresent(head, "content-encoding")) << head;
+    EXPECT_EQ(body, R"({"ok":true})");
+}
+
+TEST_F(CompressionWiringTest, ABudgetAtItsMinimumIsPlain)
+{
+    auto config = baseConfig();
+    config.maxInFlightBytes = config.maxBodySize + 4096;
+    startStreaming(config);
+
+    expectPlain(post(config, OFFER_ZSTD));
+}
+
+TEST_F(CompressionWiringTest, ABudgetJustAboveTheFloorCompressesAndOneByteLessDoesNot)
+{
+    // While the handler streams, the budget holds the admission of the "{}" request (2 + 4096);
+    // compressing must still leave maxBodySize + 4096 free.
+    const auto admission = std::size_t {2} + 4096;
+    const auto reservation = compressorReservation(m_payload.size());
+
+    auto exact = baseConfig();
+    exact.contentEncodingEnabled = true;
+    exact.maxInFlightBytes = exact.maxBodySize + 4096 + reservation + admission;
+    startStreaming(exact);
+    expectCompressed(post(exact, OFFER_ZSTD));
+
+    auto oneLess = baseConfig();
+    oneLess.contentEncodingEnabled = true;
+    oneLess.maxInFlightBytes = exact.maxInFlightBytes - 1;
+    startStreaming(oneLess);
+    expectPlain(post(oneLess, OFFER_ZSTD));
+}
+
+TEST_F(CompressionWiringTest, RepeatedAcceptEncodingLinesAreReadAsOneList)
+{
+    auto config = baseConfig();
+    startStreaming(config);
+
+    // A zstd;q=0 on any line withdraws the offer, whatever its position or the spelling of the name.
+    expectPlain(post(config, "Accept-Encoding: zstd\r\nAccept-Encoding: zstd;q=0\r\n"));
+    expectPlain(post(config, "Accept-Encoding: zstd\r\naccept-encoding: zstd;q=0\r\n"));
+    // An offer on a later line counts as well.
+    expectCompressed(post(config, "Accept-Encoding: gzip\r\nAccept-Encoding: zstd\r\n"));
+}
+
+TEST_F(CompressionWiringTest, CompressionNeverTakesMoreThanHalfTheBudget)
+{
+    // A small body cap keeps the admission minimum (maxBodySize + 4096) below the half of the budget, so
+    // the half is the floor: after reserving, as many bytes as were taken must remain free.
+    const auto admission = std::size_t {2} + 4096;
+    const auto reservation = compressorReservation(m_payload.size());
+
+    auto exact = baseConfig();
+    exact.maxBodySize = 4096;
+    exact.maxInFlightBytes = 2 * (reservation + admission);
+    ASSERT_GT(exact.maxInFlightBytes / 2, exact.maxBodySize + 4096);
+    startStreaming(exact);
+    expectCompressed(post(exact, OFFER_ZSTD));
+
+    auto twoLess = baseConfig();
+    twoLess.maxBodySize = 4096;
+    twoLess.maxInFlightBytes = exact.maxInFlightBytes - 2;
+    startStreaming(twoLess);
+    expectPlain(post(twoLess, OFFER_ZSTD));
 }
 
 // ---------------------------------------------------------------------------

@@ -225,6 +225,19 @@ namespace remoted::http
             return tryReserveImpl(bytes, /*countsRequest=*/false);
         }
 
+        /**
+         * @brief tryReserveUncounted() that also leaves at least @p keep bytes available.
+         *
+         * Grants only if, in the same compare-exchange, @p bytes fit and @p keep bytes stay free
+         * afterwards, so a caller holding optional memory never pushes the budget below the room
+         * a new admission needs. A refusal changes nothing. A @p keep above the available bytes
+         * refuses even a 0-byte request. When the budget is disabled it grants 0 tracked bytes.
+         */
+        std::optional<Reservation> tryReserveUncountedKeeping(std::size_t bytes, std::size_t keep) noexcept
+        {
+            return tryReserveImpl(bytes, /*countsRequest=*/false, keep);
+        }
+
         /// @brief Remaining budget in bytes (meaningless while the budget is disabled).
         std::size_t availableBytes() const noexcept
         {
@@ -258,7 +271,7 @@ namespace remoted::http
         }
 
     private:
-        std::optional<Reservation> tryReserveImpl(std::size_t bytes, bool countsRequest) noexcept
+        std::optional<Reservation> tryReserveImpl(std::size_t bytes, bool countsRequest, std::size_t keep = 0) noexcept
         {
             if (m_maxBytes == 0)
             {
@@ -273,7 +286,8 @@ namespace remoted::http
             std::size_t current = m_availableBytes.load(std::memory_order_relaxed);
             do
             {
-                if (bytes > current)
+                // The second test runs only once bytes <= current: no sum, so no overflow.
+                if (bytes > current || keep > current - bytes)
                 {
                     // Counted here and only here, and only for admissions: this is the shed
                     // decision the transport turns into a 503. An uncounted (auxiliary)

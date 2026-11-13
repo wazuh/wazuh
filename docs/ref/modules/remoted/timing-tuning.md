@@ -102,7 +102,7 @@ These have no option. They are the ceilings the tunable values have to fit under
 **Slow or satellite links.** Work the upload budget first (invariant 3): the ceiling is
 `http_read_timeout × link rate`, and inventory bodies compress ~16:1 on the wire, so the effective
 payload allowance is much larger than the raw figure suggests. The two casualties, in order, are
-(a) WPK downloads, which are binary and do not compress, and where the manager gives up before the
+(a) WPK downloads, which are binary and which the manager never compresses, and where the manager gives up before the
 agent does: below roughly 0.8–1.1 Mbit/s it tears the stream down (isolated to
 [`remoted.http_write_timeout`](configuration.md#remotedhttp_write_timeout): 5/10 aborts at the
 shipped 10 s, 0/5 at 120 s on the same shaper), so a real 11,977,198 B WPK needs ~1.06 Mbit/s to
@@ -163,10 +163,18 @@ Answer these once per deployment; they decide which of the knobs above you will 
   response is what turns one session into two managers' work.
 - **Compression.** The agent compresses request bodies with zstd by default
   (`agent.https_compression_enabled`). If a manager or proxy in the path refuses it, the agent
-  takes a `415`, retries the request uncompressed once and disables compression for that stream —
-  self-healing, at the cost of one wasted attempt per stream and of the 16:1 wire saving that the
-  slow-link budget above assumes. Decide it once, on both sides
+  takes a `415`, retries the request uncompressed once and disables compression for **all of its
+  send paths until it restarts** (the gate is shared and one-way) — self-healing, at the cost of one
+  wasted attempt and of the 16:1 wire saving that the slow-link budget above assumes. Decide it once,
+  on both sides
   ([`remoted.http_content_encoding_enabled`](configuration.md#remotedhttp_content_encoding_enabled)).
+  The manager side also covers responses: a `config` download is compressed when the agent offers
+  `zstd`, and each compressed download holds the compressor's memory (up to about 3.7 MiB) from
+  `remoted.max_inflight_bytes` for the whole transfer, so a mass configuration refresh spends budget
+  as well as bandwidth; compressed downloads never take more than half of the budget, so when the
+  other half would not remain free the manager serves those downloads uncompressed, and the requests
+  that need the budget to be admitted and decoded are not displaced. Turning the option off to stop response compression also triggers
+  the agent's `415` latch on its next compressed request.
 - **Cluster shape.** Internal options are per node. An agent that alternates between nodes is
   throttled independently on each, so its worst-case wazuh-db write rate is one write per window
   **per node**. Set timing options identically on every node, or accept node-dependent behavior.

@@ -742,6 +742,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ProtocolVersion"
         - $ref: "#/components/parameters/ContentEncoding"
+        - $ref: "#/components/parameters/AcceptEncoding"
       description: |
         Serves the two files an agent pulls from the manager: its centralized configuration
         (`merged.mg`) and a WPK upgrade package. The only route that answers with a **streamed**
@@ -779,6 +780,15 @@ paths:
         so the agent retries rather than installing an incomplete file. The descriptor is re-`fstat`ed
         after every chunk, and a size or mtime change aborts the transfer rather than serving a
         mixture of two versions.
+
+        **Response compression.** A `config` answer is zstd-compressed when
+        `remoted.http_content_encoding_enabled` is on and `Accept-Encoding` offers `zstd`; the
+        response then carries `Content-Encoding: zstd`, stays chunked (no `Content-Length`) and is one
+        zstd frame (level 3) that decompresses to the `merged.mg` file. A WPK, an error, a request
+        without the offer, the option off, or a manager that cannot spare the compressor's memory
+        (it takes it from the in-flight byte budget and leaves at least half of it free, and never less
+        than `https.max_body_size` plus 4 KiB) answers exactly as an uncompressed response does. No `Vary` header is sent.
+        `config_hash` is computed over the plain file.
       requestBody:
         required: true
         content:
@@ -795,6 +805,9 @@ paths:
         "200":
           description: |
             The resource, streamed with chunked transfer encoding.
+          headers:
+            Content-Encoding:
+              $ref: "#/components/headers/Content-Encoding"
           content:
             application/octet-stream:
               schema: { type: string, format: binary }
@@ -1418,6 +1431,14 @@ components:
         type: string
         example: 'Bearer error="invalid_token", error_description="unknown_agent"'
 
+    Content-Encoding:
+      description: |
+        `zstd` when the body is compressed; absent otherwise. Sent only on a `config` answer to a
+        request that offered `zstd` in `Accept-Encoding`.
+      schema:
+        type: string
+        enum: ["zstd"]
+
   responses:
     Unauthorized:
       description: |
@@ -1518,6 +1539,19 @@ components:
       schema:
         type: string
         enum: ["zstd"]
+      example: "zstd"
+
+    AcceptEncoding:
+      name: Accept-Encoding
+      in: header
+      required: false
+      description: |
+        Offers `zstd` for the response body (`q` weights per RFC 9110 section 12.4.2; `zstd;q=0`, a
+        malformed weight or another parameter on any `zstd` element means `zstd` is not offered,
+        even if another element offers it; `gzip`, `identity` and `*` do not offer `zstd`). Honored only on `/download`, and only when
+        `remoted.http_content_encoding_enabled` is on.
+      schema:
+        type: string
       example: "zstd"
 
   schemas:
