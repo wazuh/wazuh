@@ -1450,6 +1450,79 @@ void test_getDefine_String_not_found(void **state)
     expect_assert_failure(getDefine_String("analysisd", "rule_tree_memory_warning"));
 }
 
+/* getDefine_Int_default */
+
+void test_getDefine_Int_default_absent(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.sleep=50\n");
+
+    assert_int_equal(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768), 32768);
+}
+
+void test_getDefine_Int_default_present(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.max_pid=65536\n");
+
+    assert_int_equal(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768), 65536);
+}
+
+void test_getDefine_Int_default_local(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.max_pid=32768\n");
+    write_defines(OSSEC_LDEFINES, "rootcheck.max_pid=4194304\n");
+
+    assert_int_equal(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768), 4194304);
+}
+
+void test_getDefine_Int_default_only_local(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.sleep=50\n");
+    write_defines(OSSEC_LDEFINES, "rootcheck.max_pid=100000\n");
+
+    assert_int_equal(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768), 100000);
+}
+
+void test_getDefine_Int_default_out_of_range(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.max_pid=1000\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for rootcheck.max_pid: '1000'.");
+
+    expect_assert_failure(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768));
+}
+
+void test_getDefine_Int_default_not_numeric(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.max_pid=all\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for rootcheck.max_pid: 'all'.");
+
+    expect_assert_failure(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768));
+}
+
+/* Past the int range: refused instead of wrapping to 40000 */
+void test_getDefine_Int_default_overflow(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.max_pid=4295007296\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for rootcheck.max_pid: '4295007296'.");
+
+    expect_assert_failure(getDefine_Int_default("rootcheck", "max_pid", 32768, 4194304, 32768));
+}
+
+void test_getDefine_Int_overflow(void **state)
+{
+    write_defines(OSSEC_DEFINES, "rootcheck.sleep=4294967346\n");
+
+    expect_string(__wrap__merror_exit, formatted_msg,
+                  "(2302): Invalid definition for rootcheck.sleep: '4294967346'.");
+
+    expect_assert_failure(getDefine_Int("rootcheck", "sleep", 0, 1000));
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -1520,6 +1593,15 @@ int main(void) {
         cmocka_unit_test_teardown(test_getDefine_String, teardown_defines),
         cmocka_unit_test_teardown(test_getDefine_String_local, teardown_defines),
         cmocka_unit_test_teardown(test_getDefine_String_not_found, teardown_defines),
+        // Tests getDefine_Int_default
+        cmocka_unit_test_teardown(test_getDefine_Int_default_absent, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_default_present, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_default_local, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_default_only_local, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_default_out_of_range, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_default_not_numeric, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_default_overflow, teardown_defines),
+        cmocka_unit_test_teardown(test_getDefine_Int_overflow, teardown_defines),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -539,6 +539,9 @@ cJSON *getSyscheckInternalOptions(void) {
     cJSON *rootcheckd = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(rootcheckd,"sleep",rootcheck.tsleep);
+#ifdef __linux__
+    cJSON_AddNumberToObject(rootcheckd,"max_pid",rootcheck.max_pid);
+#endif
     cJSON_AddItemToObject(internals,"rootcheck",rootcheckd);
     cJSON_AddItemToObject(root,"internal",internals);
 
