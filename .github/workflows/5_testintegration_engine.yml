@@ -38,20 +38,22 @@ on:
       # Ref list for every ref-based `make deps` download (src/Makefile:708)
       - 'tools/get_git_refs.sh'
       # Submodule gitlink: urlrequest, linked by conf and geo (source/conf/CMakeLists.txt:13,
-      # source/geo/CMakeLists.txt:17) and by indexer_connector. Moves together with src/Makefile:98.
+      # source/geo/CMakeLists.txt:17). Moves together with src/Makefile:98.
       - 'src/shared_modules/http-request'
       # include_directories (src/engine/CMakeLists.txt:195): loggerHelper.h, proc.hpp, zlibHelper.hpp
       - 'src/shared_modules/utils/**'
-      # commonDefs.h, on the indexer_connector/keystore include path (indexer_connector/CMakeLists.txt:33)
+      # commonDefs.h, on the keystore include path
       - 'src/shared_modules/common/**'
       # base links manager_config (source/base/CMakeLists.txt:47); schema embedded at build time
       # (manager_config/CMakeLists.txt:20)
       - 'src/shared_modules/manager_config/**'
-      # wiconnector links indexer_connector (source/wiconnector/CMakeLists.txt:24); its .so is
-      # uploaded and loaded by the engine at test time
-      - 'src/shared_modules/indexer_connector/**'
-      # linked by indexer_connector (indexer_connector/CMakeLists.txt:52); wazuh-manager-keystore
-      # (keystore/CMakeLists.txt:42) is run by setupEnvironment.py:53-82
+      # indexer_client: the engine's runtime and Client; its tests, bench and fake feed no target this job builds.
+      - 'src/shared_modules/indexer_client/**/CMakeLists.txt'
+      - 'src/shared_modules/indexer_client/include/**'
+      - 'src/shared_modules/indexer_client/src/**'
+      # content_manager: linked by cmcontent and the engine (source/cmcontent/CMakeLists.txt)
+      - 'src/shared_modules/content_manager/**'
+      # wazuh-manager-keystore (keystore/CMakeLists.txt:49) is run by setupEnvironment.py:53-82
       - 'src/shared_modules/keystore/**'
       # Other components' test trees, harnesses and tools: never linked into the engine.
       - '!src/shared_modules/utils/tests/**'
@@ -60,9 +62,8 @@ on:
       - '!src/shared_modules/utils/flatbuffers/**'
       - '!src/shared_modules/manager_config/tests/**'
       - '!src/shared_modules/manager_config/cli/**'
-      - '!src/shared_modules/indexer_connector/tests/**'
-      - '!src/shared_modules/indexer_connector/qa/**'
-      - '!src/shared_modules/indexer_connector/testtool/**'
+      - '!src/shared_modules/content_manager/tests/**'
+      - '!src/shared_modules/content_manager/testtool/**'
       - '!src/shared_modules/keystore/tests/**'
       - '!src/shared_modules/keystore/qa/**'
       - '!src/shared_modules/keystore/testtool/**'
@@ -148,8 +149,8 @@ jobs:
           name: wazuh-shared-libraries
           path: |
             src/build/lib/libwazuhext.so
-            src/build/lib/libindexer_connector.so
             src/build/lib/libcontent_manager.so
+            src/build/lib/libindexer_client.so
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}

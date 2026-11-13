@@ -875,4 +875,34 @@ TEST(ConfTest, InvalidUnsignedEnvironmentFallsBack)
     }
 }
 
+/************************************************************************
+ *                       Indexer TLS verification key
+ ************************************************************************/
+TEST(ConfIndexerVerify, DefaultsToTrue)
+{
+    logging::testInit();
+    unsetEnv("WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES");
+
+    conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+
+    EXPECT_TRUE(conf.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTIFICATES));
+}
+
+TEST(ConfIndexerVerify, EnvOverride)
+{
+    logging::testInit();
+
+    // The key is registered under `analysisd.indexer_ssl_verify_certificates`; standalone (what testInit enables)
+    // reads the environment only.
+    EXPECT_EQ(conf::key::INDEXER_SSL_VERIFY_CERTIFICATES, "analysisd.indexer_ssl_verify_certificates");
+
+    for (const auto* value : {"true", "false"})
+    {
+        setEnv("WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES", value);
+        conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
+        EXPECT_EQ(conf.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTIFICATES), std::string(value) == "true");
+    }
+
+    unsetEnv("WAZUH_INDEXER_SSL_VERIFY_CERTIFICATES");
+}
 } // namespace

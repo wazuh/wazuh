@@ -12,15 +12,20 @@
 #define _INVENTORY_SYNC_SERVER_FACADE_HPP
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdarg>
 #include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "common/clusterIdentity.hpp"
 #include "common/metricNames.hpp"
@@ -31,13 +36,10 @@
 #include "endpoints/syncEndpoint.hpp"
 #include "endpoints/vdScanEndpoint.hpp"
 #include "http_server/udsHttpServerConfig.hpp"
-#include "indexer/IIndexerConnectorAsync.hpp"
 #include "indexer/IIndexerConnectorSync.hpp"
-#include "indexer/IIndexerSession.hpp"
-#include "indexer/indexerConnectorAsyncAdapter.hpp"
-#include "indexer/indexerConnectorConfig.hpp"
-#include "indexer/indexerConnectorSyncAdapter.hpp"
-#include "indexer/indexerSessionAdapter.hpp"
+#include "indexer/agentDeleteSweeper.hpp"
+#include "indexer/indexerClientSyncAdapter.hpp"
+#include "indexer/indexerFactories.hpp"
 #include "inventory_sync_server.h"
 #include "loggerHelper.h"
 #include "proc.hpp"
@@ -52,6 +54,10 @@
 #include <uds_http_server/socketPathCheck.hpp>
 #include <uds_http_server/udsHttpServerFactory.hpp>
 
+#include <indexer_client/client.hpp>
+#include <indexer_client/metrics.hpp>
+#include <indexer_client/metricsSlot.hpp>
+#include <indexer_client/runtime.hpp>
 #include <wazuh_metrics/manager.hpp>
 
 #include <functional>
@@ -64,19 +70,6 @@ namespace invsync
     /// inventory_sync's C++ side does it -- and deliberately distinct from `:inventory-sync` so an
     /// operator can tell the two modules apart in wazuh-manager.log while both are running.
     constexpr auto INVENTORY_SYNC_SERVER_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server"};
-
-    /*
-     * Distinct tags for the three indexer objects, so their own log lines can be told apart. Passing
-     * one shared tag would make the session's, the sync connector's and the async connector's output
-     * indistinguishable, which matters most exactly when one of them is misbehaving.
-     *
-     * The `:suffix` form is load-bearing: LogFn::compose() truncates from the first '(', so a
-     * parenthesised suffix would be discarded, while a colon survives. These end up rendered as
-     * "...:inventory-sync-server:indexer(indexer-connector)" and so on.
-     */
-    constexpr auto INVENTORY_SYNC_SERVER_SESSION_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:indexer"};
-    constexpr auto INVENTORY_SYNC_SERVER_SYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:sync"};
-    constexpr auto INVENTORY_SYNC_SERVER_ASYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync-server:async"};
 
     /// Not a member: LogFn has hidden ELF visibility (loggerHelper.h wraps everything in a
     /// visibility pragma), so holding one as a field of a default-visibility class trips
@@ -100,13 +93,41 @@ namespace invsync
     constexpr std::size_t DEFAULT_MAX_SESSIONS_PER_AGENT {2};
     /// Retry-After fallback for rejected vulnerability-detection sessions (D17).
     constexpr int DEFAULT_VD_RETRY_AFTER_SECS {10};
-    /// 0 = no background flush timer: the pipeline workers and the VD scan lane own every flush,
-    /// so a flush failure always surfaces on the thread that must answer for it. A timer flush
-    /// that failed would have no responder to report to.
-    constexpr int PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS {0};
     /// modulesd's default for the ignored flush-interval option, mirrored here so start() can
     /// tell "left alone" from "an operator tuned a knob that does nothing" and warn on the latter.
+    /// There is no background flush at all: the pipeline workers and the VD scan lane own every
+    /// flush, so a flush failure always surfaces on the thread that must answer for it.
     constexpr int IGNORED_SYNC_FLUSH_INTERVAL_DEFAULT_SECS {20};
+    /// modulesd's default for the ignored request-timeout option, mirrored for the same reason:
+    /// the per-request timeout belongs to the process's indexer client runtime now.
+    constexpr int IGNORED_SYNC_REQUEST_TIMEOUT_DEFAULT_SECS {60};
+    /// modulesd's defaults for the `indexer_async_*` and monitoring options that no longer act, mirrored for
+    /// the same reason: the `agent-state` bucket has no timer flush, no error-logger queue and no per-bucket request
+    /// timeout, and node health belongs to the process's indexer client runtime.
+    constexpr int IGNORED_ASYNC_FLUSH_INTERVAL_DEFAULT_SECS {20};
+    constexpr int IGNORED_ASYNC_REQUEST_TIMEOUT_DEFAULT_SECS {60};
+    constexpr int IGNORED_ASYNC_LOGGER_QUEUE_SIZE_DEFAULT {8};
+    constexpr int IGNORED_ASYNC_LOGGER_THREADS_DEFAULT {1};
+    constexpr int IGNORED_MONITORING_INTERVAL_DEFAULT_SECS {10};
+    /// Global quota assumed for sizing the `inventory` bucket when no runtime was published (the
+    /// Client then fails to build anyway; this only keeps phase A total).
+    constexpr std::uint64_t FALLBACK_GLOBAL_QUOTA_BYTES {256ULL * 1024ULL * 1024ULL};
+    /// Request timeout assumed for the sweep window when no runtime was published (the runtime's own default).
+    constexpr std::chrono::milliseconds FALLBACK_REQUEST_TIMEOUT {60000};
+    /// What the sweep window adds to the request timeout: room for a late write to become searchable after one
+    /// `refresh_interval` of 1-5 s.
+    constexpr std::chrono::milliseconds AGENT_DELETE_SWEEP_MARGIN {5000};
+    /// How long a staged add may wait for bucket quota before its session fails Unavailable.
+    constexpr std::chrono::milliseconds INDEXER_BLOCK_TIMEOUT {2000};
+    /// Granularity of every adapter wait: how soon `closing` and a batch deadline are noticed.
+    constexpr std::chrono::milliseconds INDEXER_BLOCK_SLICE {250};
+    /// QueryOptions::pageDeadline of each adapter query.
+    constexpr std::chrono::milliseconds INDEXER_PAGE_DEADLINE {30000};
+    /// What stop() grants the Client to finish closing once both lanes are joined: whatever
+    /// is left belongs to sessions already answered 503.
+    constexpr std::chrono::milliseconds INDEXER_CLOSE_GRACE {1000};
+    /// Longest a cached Client metrics snapshot is served, so one scrape is one Client::metrics() call.
+    constexpr std::chrono::milliseconds INDEXER_METRICS_MAX_AGE {250};
 
     /**
      * @brief RocksDB store path, RESERVED for the ingestion pipeline. Nothing opens it yet.
@@ -162,7 +183,6 @@ namespace invsync
 
             m_config = configuration;
             m_indexerConfig = std::move(indexerConfig);
-            m_logFunction = logFunction;
             m_stopping = false;
             // Fresh escalation state for this run: a stale count carried over from a previous
             // start()/stop() cycle would desync reportFailedStart()'s "first attempt" ERROR branch
@@ -173,6 +193,8 @@ namespace invsync
             // Taking m_attemptMutex here would invert the documented lock order and could deadlock.
             m_failedStartAttempts = 0;
             m_lastIndexerAvailable.reset();
+            m_bucketWarningLogged = false;
+            m_agentStateWarningLogged = false;
             ++m_startGeneration;
 
             LOGFN_INFO(moduleLogFn(), "Starting inventory sync server (cluster='%s').", m_config.cluster_name);
@@ -186,6 +208,18 @@ namespace invsync
                            "connector's periodic flush is always disabled.",
                            m_config.indexer_sync_flush_interval_seconds);
             }
+
+            if (m_config.indexer_sync_request_timeout_seconds > 0 &&
+                m_config.indexer_sync_request_timeout_seconds != IGNORED_SYNC_REQUEST_TIMEOUT_DEFAULT_SECS)
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "'wazuh_modules.inventory_sync_server_indexer_sync_request_timeout_seconds' (%d) has no "
+                           "effect: the request timeout of the indexer client is "
+                           "'wazuh_modules.indexer_client_request_timeout_ms'.",
+                           m_config.indexer_sync_request_timeout_seconds);
+            }
+
+            warnIgnoredAsyncOptions();
 
             // The UDS server itself is started from run() (see tryStartHttpServer()), which keeps
             // start() fast and gives the retry loop for free. m_running is set only AFTER the
@@ -217,10 +251,11 @@ namespace invsync
                     return;
                 }
 
-                // NOTE: this runs from modulesd's signal handler, which calls every module's stop()
-                // sequentially before joining them all under one shared 30 s budget. Nothing here
-                // may block on I/O, and the transport's own drain window is deliberately short for
-                // the same reason.
+                // NOTE: this runs on modulesd's main thread, the indexer client runtime's
+                // owner: wm_shutdown_run() fixes the runtime's shutdown deadline, then calls every
+                // module's stop() sequentially before joining them all under one shared budget. So
+                // nothing here may block on unbounded I/O: the transport's own drain window is short
+                // and the Client gets INDEXER_CLOSE_GRACE once both lanes are joined.
                 LOGFN_INFO(moduleLogFn(), "Stopping inventory sync server.");
 
                 // Phase 1: stop ACCEPTING. After this returns no route handler will run again, but
@@ -231,15 +266,29 @@ namespace invsync
                     m_httpServer->stopAccepting();
                 }
 
-                // Phase 2: tear down the pipeline, the connectors and the session, in REVERSE
+                // Before the lanes stop: `closing` wakes every adapter wait within one
+                // slice, and requestClose() closes the Client's admission, so a worker still staging
+                // or waiting on the indexer answers its sessions 503 instead of holding the joins
+                // below for a whole batch budget.
+                if (m_indexerClosing)
+                {
+                    m_indexerClosing->store(true);
+                }
+                if (m_indexerClient)
+                {
+                    m_indexerClient->requestClose();
+                }
+
+                // Phase 2: tear down the lanes, the sweeper and the connectors, in REVERSE
                 // construction order. The pipeline goes FIRST -- its workers stage into the
-                // connectors, and stop() joins them (answering 503 to whatever was queued, WITHOUT
-                // waiting on indexer I/O), so by the time the connectors reset nothing touches
-                // them. All unconditional: the gate can legitimately leave only some of them
-                // built, and each carries live background threads from construction, so gating one
-                // reset on another's pointer would leak those threads. The endpoint handlers hold
-                // the pipeline and the connectors WEAKLY (see their makeHandler()) precisely so
-                // these resets stay destructive and the teardown stays ordered here.
+                // connectors and note() deletions to the sweeper, and stop() joins them (answering
+                // 503 to whatever was queued, WITHOUT waiting on indexer I/O), so by the time the
+                // rest resets nothing touches it. All unconditional: the gate can legitimately leave
+                // only some of them built, and the sweeper carries a live thread from construction,
+                // so gating one reset on another's pointer would leak it. The endpoint handlers hold
+                // the pipeline, the connectors, the Client and the writer WEAKLY (see their
+                // makeHandler()) precisely so these resets stay destructive and the teardown stays
+                // ordered here.
                 if (m_scanCoordinator)
                 {
                     // Out of the scanner's registry FIRST, so no feed-update call races the lane
@@ -263,9 +312,51 @@ namespace invsync
                 // a fresh registry -- reusing this one would accumulate dangling closures that the
                 // first release of the new cycle would invoke.
                 m_agentRegistry.reset();
-                m_indexerConnectorAsync.reset();
+                // Reverse construction order (client, writer, sweeper, sync connector): the sweeper
+                // first, after the lanes that note() to it. stop() wakes it, joins its thread (a
+                // pass in flight sees `closing` between chunks and its query answers ClientClosed)
+                // and drops the ids still pending, counted. Then worker 0's sync connector,
+                // whose destructor discard()s whatever it still held -- the pipeline and lane ones
+                // went with their owners above -- and the `agent-state` writer.
+                if (m_agentDeleteSweeper)
+                {
+                    m_agentDeleteSweeper->stop();
+                }
+                m_agentDeleteSweeper.reset();
                 m_indexerConnectorSync.reset();
-                m_indexerSession.reset();
+                m_agentStateWriter.reset();
+                // Both lanes are joined, so what the Client still has queued belongs to sessions
+                // already answered 503, or to /stats and /config documents already answered 200:
+                // a short, bounded drain, then the Client goes. What it could not send is
+                // in the CloseReport, at DEBUG.
+                if (m_indexerClient)
+                {
+                    const auto closed =
+                        m_indexerClient->awaitClosed(std::chrono::steady_clock::now() + INDEXER_CLOSE_GRACE);
+                    if (!closed.ok())
+                    {
+                        LOGFN_DEBUG1(moduleLogFn(),
+                                     "The indexer client did not close cleanly: %s (%s).",
+                                     indexer_client::toString(closed.cause),
+                                     closed.reason.c_str());
+                    }
+                    else
+                    {
+                        const auto& report = closed.value;
+                        LOGFN_DEBUG1(moduleLogFn(),
+                                     "The indexer client closed: drained=%zu, dropped (client closed)=%zu, dropped "
+                                     "(shutdown)=%zu, callbacks in flight=%zu, callbacks skipped=%zu, callback "
+                                     "overruns=%zu.",
+                                     report.drained,
+                                     report.droppedClientClosed,
+                                     report.droppedShutdown,
+                                     report.callbacksInFlight,
+                                     report.callbacksSkipped,
+                                     report.callbackOverruns);
+                    }
+                }
+                m_indexerClient.reset();
+                m_indexerClosing.reset();
 
                 // Phase 3: now it is safe to release the I/O runtime. Any responder still
                 // outstanding is force-closed, and a late send() becomes a well-defined no-op.
@@ -310,19 +401,16 @@ namespace invsync
         }
 
         /*
-         * Factories for the three indexer objects the gate builds, in order. The default, production
-         * values construct the real adapters; tests substitute fakes so the gate can be exercised
-         * without the real per-host health-check I/O.
+         * Factories for the indexer objects the gate builds, in order: the indexer_client Client with
+         * its two buckets, then the sync connectors over that Client. The default,
+         * production values build the real objects; tests substitute fakes so the gate can be
+         * exercised without a runtime.
          *
-         * Three separate factories rather than one bundle: a gate test needs to fail exactly one of
-         * the three while leaving the others healthy, which requires overriding them independently.
+         * Separate factories rather than one bundle: a gate test needs to fail exactly one of them
+         * while leaving the others healthy, which requires overriding them independently.
          */
-        using IndexerSessionFactory =
-            std::function<std::unique_ptr<invsync::indexer::IIndexerSession>(const nlohmann::json&, LoggingContext)>;
-        using IndexerConnectorSyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorSync>(
-            const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
-        using IndexerConnectorAsyncFactory = std::function<std::unique_ptr<invsync::indexer::IIndexerConnectorAsync>(
-            const nlohmann::json&, const invsync::indexer::IIndexerSession&, LoggingContext)>;
+        using IndexerClientFactory = invsync::indexer::IndexerClientFactory;
+        using IndexerConnectorSyncFactory = invsync::indexer::IndexerConnectorSyncFactory;
         /// Builds the scan lane's seam over the vulnerability scanner; tests substitute a fake so
         /// the D22 gating can be pinned without a CVE feed. Takes whether THIS node's own config
         /// has VD enabled (m_config.vd_configured_enabled), known before the scanner's own
@@ -330,30 +418,22 @@ namespace invsync
         using VdScannerFactory = std::function<std::shared_ptr<invsync::vd::IVdScanner>(bool)>;
 
         /**
-         * @brief TEST-ONLY. Override how the shared indexer session is constructed.
+         * @brief TEST-ONLY. Override how the module's indexer_client Client is obtained.
          *
          * Never called in production -- modulesd only ever calls start()/stop(). Exists so a test can
-         * drive the startup gate deterministically, without waiting on the real session's per-host
-         * health checks (5 s timeout each).
+         * drive the startup gate deterministically, without a process runtime.
          */
-        void setIndexerSessionFactoryForTests(IndexerSessionFactory factory)
+        void setIndexerClientFactoryForTests(IndexerClientFactory factory)
         {
             std::lock_guard<std::mutex> lock(m_lifecycleMutex);
-            m_indexerSessionFactory = std::move(factory);
+            m_indexerClientFactory = std::move(factory);
         }
 
-        /// TEST-ONLY. Override how the sync indexer connector is constructed. See above.
+        /// TEST-ONLY. Override how each worker's sync indexer connector is constructed. See above.
         void setIndexerConnectorSyncFactoryForTests(IndexerConnectorSyncFactory factory)
         {
             std::lock_guard<std::mutex> lock(m_lifecycleMutex);
             m_indexerConnectorSyncFactory = std::move(factory);
-        }
-
-        /// TEST-ONLY. Override how the async indexer connector is constructed. See above.
-        void setIndexerConnectorAsyncFactoryForTests(IndexerConnectorAsyncFactory factory)
-        {
-            std::lock_guard<std::mutex> lock(m_lifecycleMutex);
-            m_indexerConnectorAsyncFactory = std::move(factory);
         }
 
         /// TEST-ONLY. Override the scan lane's scanner seam. See above.
@@ -449,15 +529,21 @@ namespace invsync
             // Reached through remoted's authenticated /stats and /config routes. Registered separately
             // rather than sharing one handler because their real payloads will diverge. DATA class
             // (U4): these carry documents agents send through remoted -- payloads of agent origin
-            // that must charge the byte budget exactly like /stateful, not control-plane reads.
+            // that must charge the byte budget exactly like /stateful, not control-plane reads. Both
+            // post() into the `agent-state` bucket through the writer taken once in phase B, and gate
+            // on the Client's health.
+            // Both withdraw an admitted agent from the post-deletion sweep (forget()): a report of an agent
+            // enrolled again with a just-deleted id is the new agent's.
             m_httpServer->addRoute(invsync::endpoints::stats::method(),
                                    invsync::endpoints::stats::path(),
-                                   invsync::endpoints::stats::makeHandler(m_indexerConnectorAsync, clusterIdentity),
+                                   invsync::endpoints::stats::makeHandler(
+                                       m_indexerClient, m_agentStateWriter, clusterIdentity, m_agentDeleteSweeper),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             m_httpServer->addRoute(invsync::endpoints::config::method(),
                                    invsync::endpoints::config::path(),
-                                   invsync::endpoints::config::makeHandler(m_indexerConnectorAsync, clusterIdentity),
+                                   invsync::endpoints::config::makeHandler(
+                                       m_indexerClient, m_agentStateWriter, clusterIdentity, m_agentDeleteSweeper),
                                    wazuh::uds_http::RouteOptions {wazuh::uds_http::RouteClass::Data});
 
             // Whole-agent deletion (design doc 04): UDS-local, manager-internal, deferred to the
@@ -475,15 +561,12 @@ namespace invsync
                 // the terminal response is counted by the pipeline, the site that sends it, so an
                 // accepted deletion is counted exactly once.
                 //
-                // The async connector is in here because the deletion has a half that belongs to
-                // it: `wazuh-agent-config` and `wazuh-agent-stats` are written through that
-                // connector, so their deletes have to ride its own queue to be ordered after a
-                // report it has accepted but not yet pushed (see the route's header).
+                // The whole deletion -- the by-id half on `agent-state` included -- runs on the
+                // agent's pipeline worker: its dependencies went into the pipeline's
+                // SyncPipelineConfig::agentDeletion in phase B, so the route only validates, gates
+                // and enqueues.
                 const invsync::endpoints::delete_agent::Dependencies deleteDeps {
-                    m_syncPipeline,
-                    m_indexerConnectorSync,
-                    m_indexerConnectorAsync,
-                    invsync::metrics::RequestCounters::make(*m_metricsManager)};
+                    m_syncPipeline, m_indexerConnectorSync, invsync::metrics::RequestCounters::make(*m_metricsManager)};
 
                 // Its own response backstop, because this is the one route whose peer waits LONGER
                 // than the server-wide 300 s -- see responseTimeoutSeconds() for what the inverted
@@ -527,6 +610,7 @@ namespace invsync
 
             m_httpServer->start(config);
             registerTransportDiagnostics();
+            registerIndexerClientMetrics();
 
             LOGFN_INFO(moduleLogFn(),
                        "inventory sync server listening on '%s' (routes: GET /, GET %s, %s, %s, %s, %s and %s; "
@@ -642,30 +726,228 @@ namespace invsync
         }
 
         /**
+         * @brief Publish the Client's two buckets, the sync.indexer.* totals and the deletion sweep as pull metrics.
+         *
+         * Same shape as registerTransportDiagnostics(): the pulls are registered once per registry (it is never
+         * reset and has no unregister), behind a slot holding the Client WEAKLY plus a copy of the RuntimeRef --
+         * never a shared_ptr<IClient>, which would keep a stopped Client alive inside the registry. Every start
+         * repoints the slot; with no live Client every bucket value reads 0, and a rebuilt Client starts its bucket
+         * counters again from 0. One scrape costs one Client::metrics() call: the snapshot is cached for
+         * INDEXER_METRICS_MAX_AGE and every getter reads from it. The sweep's five counters read the sweeper through
+         * its own weak slot (0 without a live sweeper; a rebuilt sweeper starts again from 0). The process's runtime
+         * metrics go through the same slot: registerIndexerRuntimeMetrics().
+         *
+         * Called under m_lifecycleMutex (from startHttpServer()); the getters never take it.
+         */
+        void registerIndexerClientMetrics()
+        {
+            std::optional<indexer_client::RuntimeRef> runtime;
+            if (m_config.indexer_runtime != nullptr)
+            {
+                runtime = *static_cast<const indexer_client::RuntimeRef*>(m_config.indexer_runtime);
+            }
+            m_indexerMetricsSlot->repoint(m_indexerClient, std::move(runtime));
+            m_sweeperMetricsSlot->repoint(m_agentDeleteSweeper);
+
+            registerIndexerRuntimeMetrics();
+
+            if (m_indexerClientPullsRegistered)
+            {
+                return;
+            }
+            m_indexerClientPullsRegistered = true;
+
+            const auto slot = m_indexerMetricsSlot;
+
+            // The catalog's names are fixed by the consumer and the bucket, so a shape with no values
+            // enumerates them all; only the buckets' own metrics are published here (51 per bucket).
+            // The prefix carries the sanitized bucket name: `agent-state` becomes `agent_state`.
+            for (const auto* bucketName : {invsync::indexer::INVENTORY_BUCKET, invsync::indexer::AGENT_STATE_BUCKET})
+            {
+                indexer_client::ClientMetrics shape;
+                shape.consumer = invsync::indexer::INDEXER_CLIENT_CONSUMER;
+                shape.buckets.emplace_back();
+                shape.buckets.back().consumer = invsync::indexer::INDEXER_CLIENT_CONSUMER;
+                shape.buckets.back().bucket = bucketName;
+                const auto prefix = std::string("indexer_client.bucket.") +
+                                    indexer_client::sanitizeMetricName(invsync::indexer::INDEXER_CLIENT_CONSUMER) +
+                                    "." + indexer_client::sanitizeMetricName(bucketName) + ".";
+                std::vector<std::pair<std::string, indexer_client::MetricKind>> names;
+                indexer_client::forEachMetric(
+                    shape,
+                    [&names, &prefix](std::string_view name, indexer_client::MetricKind kind, double)
+                    {
+                        if (name.substr(0, prefix.size()) == prefix)
+                        {
+                            names.emplace_back(std::string(name), kind);
+                        }
+                    });
+
+                for (const auto& [name, kind] : names)
+                {
+                    m_metricsManager->registerPullMetric(
+                        name,
+                        [slot, name = name] { return static_cast<std::uint64_t>(slot->value(name)); },
+                        std::string("indexer_client ") +
+                            (kind == indexer_client::MetricKind::Counter ? "counter" : "gauge") + " of the module's '" +
+                            bucketName + "' bucket (0 without a live client)");
+                }
+            }
+
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::INDEXER_BULK_REQUESTS,
+                [slot]
+                {
+                    return slot->read([](const indexer_client::MetricsSlotSnapshot& snapshot)
+                                      { return inventoryBucket(snapshot).bulkRequests; });
+                },
+                "_bulk requests the 'inventory' bucket completed, whatever their outcome",
+                "requests");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::INDEXER_BULK_BYTES,
+                [slot]
+                {
+                    return slot->read([](const indexer_client::MetricsSlotSnapshot& snapshot)
+                                      { return inventoryBucket(snapshot).bulkBytes; });
+                },
+                "Body bytes of those _bulk requests (resends count again)",
+                "bytes");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::INDEXER_CONFLICT_RETRIES,
+                [slot]
+                {
+                    return slot->read(
+                        [](const indexer_client::MetricsSlotSnapshot& snapshot)
+                        { return snapshot.runtime ? snapshot.runtime->queries.conflictRetries : std::uint64_t {0}; });
+                },
+                "Version-conflict retries of the process's indexer queries (by-query calls included)",
+                "count");
+
+            const auto sweeper = m_sweeperMetricsSlot;
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::AGENT_DELETE_SWEEP_RUNS,
+                [sweeper] { return sweeper->read().runs; },
+                "Post-deletion sweep passes that had at least one agent due",
+                "count");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::AGENT_DELETE_SWEEP_FAILURES,
+                [sweeper] { return sweeper->read().failures; },
+                "Post-deletion sweep delete-by-query chunks that failed",
+                "count");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::AGENT_DELETE_SWEEP_RESIDUAL,
+                [sweeper] { return sweeper->read().residual; },
+                "wazuh-agent-config/wazuh-agent-stats documents the sweep found and deleted after an agent deletion",
+                "documents");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::AGENT_DELETE_SWEEP_DROPPED,
+                [sweeper] { return sweeper->read().dropped; },
+                "Agents the sweep abandoned: pending at stop, or in a chunk that failed twice",
+                "count");
+            m_metricsManager->registerPullMetric(
+                invsync::metrics::AGENT_DELETE_SWEEP_FORGOTTEN,
+                [sweeper] { return sweeper->read().forgotten; },
+                "Agents withdrawn from the sweep because a /config or /stats write for their id was accepted "
+                "(the id was enrolled again)",
+                "count");
+        }
+
+        /**
+         * @brief Publish the process's indexer_client runtime -- `indexer_client.{runtime,query,pit}.*` and
+         *        `indexer_client.node.<i>.*` from RuntimeRef::snapshot() -- as pull metrics.
+         *
+         * Only this module publishes them (it is always present in the manager; VD publishes its bucket alone), so
+         * they appear once per process. Registered once, the first time a runtime was published to the module; the
+         * node family is sized by that snapshot's node count, fixed for the life of the runtime (the catalog's
+         * contract, metrics.hpp). They read the same slot as the buckets, refreshed by its refreshLocked(), whose
+         * snapshot() is taken whether or not a Client is alive: these values do not depend on one.
+         *
+         * Called under m_lifecycleMutex; the getters never take it.
+         */
+        void registerIndexerRuntimeMetrics()
+        {
+            if (m_indexerRuntimePullsRegistered || m_config.indexer_runtime == nullptr)
+            {
+                return;
+            }
+            m_indexerRuntimePullsRegistered = true;
+
+            const auto slot = m_indexerMetricsSlot;
+
+            std::vector<std::pair<std::string, indexer_client::MetricKind>> names;
+            indexer_client::forEachMetric(
+                static_cast<const indexer_client::RuntimeRef*>(m_config.indexer_runtime)->snapshot(),
+                [&names](std::string_view name, indexer_client::MetricKind kind, double)
+                {
+                    for (const std::string_view prefix : {invsync::metrics::INDEXER_CLIENT_RUNTIME_PREFIX,
+                                                          invsync::metrics::INDEXER_CLIENT_NODE_PREFIX,
+                                                          invsync::metrics::INDEXER_CLIENT_QUERY_PREFIX,
+                                                          invsync::metrics::INDEXER_CLIENT_PIT_PREFIX})
+                    {
+                        if (name.substr(0, prefix.size()) == prefix)
+                        {
+                            names.emplace_back(std::string(name), kind);
+                            return;
+                        }
+                    }
+                });
+
+            for (const auto& [name, kind] : names)
+            {
+                const auto description = std::string("indexer_client ") +
+                                         (kind == indexer_client::MetricKind::Counter ? "counter" : "gauge") +
+                                         " of the process's indexer runtime (published by this module only)";
+                if (kind == indexer_client::MetricKind::Counter)
+                {
+                    m_metricsManager->registerPullMetric(
+                        name,
+                        [slot, name = name] { return static_cast<std::uint64_t>(slot->value(name)); },
+                        description);
+                    continue;
+                }
+                // Gauges can be fractions (a node's breaker window, for one): no truncation to an integer.
+                m_metricsManager->registerPullMetricDouble(
+                    name, [slot, name = name] { return slot->value(name); }, description);
+            }
+        }
+
+        /**
          * @brief Once per heartbeat: logs indexer availability TRANSITIONS, never steady state.
          *
-         * The only production caller of the connectors' isAvailable(); without it the log has no
-         * record of when the indexer went away or came back. Reads the connector without holding
-         * m_lifecycleMutex so a slow health round can never delay stop().
+         * Reads the Client's HealthView: usable = at least one node the runtime would
+         * send to. Without this the log has no record of when the indexer went away or came back.
+         * "Unreachable" is reported only once every node went through a probe round
+         * (HealthView::noUsableAfterProbes()); before the first round there is nothing to report.
+         * Copies the Client under m_lifecycleMutex and reads it without, so the read can never delay
+         * stop(); health() itself is a snapshot, no I/O.
          */
-        void logIndexerHealthTransition()
+        /// @return true while the Client's first probe round is still pending (the heartbeat then re-polls sooner).
+        bool logIndexerHealthTransition()
         {
             try
             {
-                std::shared_ptr<invsync::indexer::IIndexerConnectorAsync> connector;
+                std::shared_ptr<indexer_client::IClient> client;
                 {
                     std::lock_guard<std::mutex> lock(m_lifecycleMutex);
-                    connector = m_indexerConnectorAsync;
+                    client = m_indexerClient;
                 }
-                if (!connector)
+                if (!client)
                 {
-                    return; // not built yet; the gate reports its own progress
+                    return false; // not built yet; the gate reports its own progress
                 }
 
-                const bool available = connector->isAvailable();
+                const auto health = client->health();
+                const bool available = health.anyUsable();
+                if (!available && !health.noUsableAfterProbes().has_value())
+                {
+                    // Every node is born Down with no reason until the Client's first probe round: that
+                    // is "not known yet", not "unreachable". Stay silent and leave the last state unset, so the
+                    // first heartbeat after the round logs the real one.
+                    return true;
+                }
                 if (m_lastIndexerAvailable.has_value() && *m_lastIndexerAvailable == available)
                 {
-                    return;
+                    return false;
                 }
                 m_lastIndexerAvailable = available;
 
@@ -680,15 +962,60 @@ namespace invsync
                                "retried until one comes back; checking again every %d s.",
                                INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
                 }
+                return false;
             }
-            // LCOV_EXCL_START -- a connector mid-teardown is the only thrower, and forcing that
+            // LCOV_EXCL_START -- a Client mid-teardown is the only thrower, and forcing that
             // interleaving from a test would pin a race, not behaviour
             catch (...)
             {
                 // The next heartbeat retries. Never let this kill the worker: run()'s barrier
                 // deliberately does not re-enter the loop.
+                return false;
             }
             // LCOV_EXCL_STOP
+        }
+
+        /**
+         * @brief One WARN, at start(), naming the `indexer_async_*` and monitoring options that no longer act.
+         *
+         * Same rule as the two `indexer_sync_*` WARNs next to its call: silent while every option has its
+         * default (or <= 0, no opinion), so only an operator who tuned a knob that does nothing hears about it.
+         */
+        void warnIgnoredAsyncOptions() const
+        {
+            std::string tuned;
+            const auto check = [&tuned](const char* name, int value, int defaultValue)
+            {
+                if (value > 0 && value != defaultValue)
+                {
+                    tuned += std::string(tuned.empty() ? "" : ", ") + "'wazuh_modules." + name + "' (" +
+                             std::to_string(value) + ")";
+                }
+            };
+            check("inventory_sync_server_indexer_async_flush_interval_seconds",
+                  m_config.indexer_async_flush_interval_seconds,
+                  IGNORED_ASYNC_FLUSH_INTERVAL_DEFAULT_SECS);
+            check("inventory_sync_server_indexer_async_request_timeout_seconds",
+                  m_config.indexer_async_request_timeout_seconds,
+                  IGNORED_ASYNC_REQUEST_TIMEOUT_DEFAULT_SECS);
+            check("inventory_sync_server_indexer_async_logger_queue_size",
+                  m_config.indexer_async_logger_queue_size,
+                  IGNORED_ASYNC_LOGGER_QUEUE_SIZE_DEFAULT);
+            check("inventory_sync_server_indexer_async_logger_threads",
+                  m_config.indexer_async_logger_threads,
+                  IGNORED_ASYNC_LOGGER_THREADS_DEFAULT);
+            check("inventory_sync_server_indexer_monitoring_interval_seconds",
+                  m_config.indexer_monitoring_interval_seconds,
+                  IGNORED_MONITORING_INTERVAL_DEFAULT_SECS);
+            if (!tuned.empty())
+            {
+                LOGFN_WARN(moduleLogFn(),
+                           "%s: no effect since the indexer client replaced the async indexer connector. The "
+                           "'agent-state' bucket flushes on its own size and age bounds, the request timeout is "
+                           "'wazuh_modules.indexer_client_request_timeout_ms' and node health is checked by the "
+                           "indexer client runtime.",
+                           tuned.c_str());
+            }
         }
 
         /**
@@ -696,7 +1023,8 @@ namespace invsync
          *
          * Runs on any attempt that still has something to build, immediately before it tries -- so a
          * misconfigured <indexer> shows up here as `hosts=0` alongside whatever construction-failure
-         * reason follows, rather than as a silent mismatch later.
+         * reason follows, rather than as a silent mismatch later. Informative only: the Client takes
+         * hosts and ssl from the process runtime, which modulesd built from the same block.
          *
          * Counts and set/unset only -- never values. The hosts can contain credentials in the URL
          * and the certificate paths are not useful in a log line.
@@ -740,9 +1068,7 @@ namespace invsync
         enum class FailureStage
         {
             Configuration,
-            IndexerSession,
             SyncIndexerConnector,
-            AsyncIndexerConnector,
             SyncPipeline,
             VdScanLane,
             HttpServer
@@ -788,13 +1114,14 @@ namespace invsync
             {
                 case FailureStage::Configuration:
                     return {"module configuration", "the 'wazuh_modules.inventory_sync_server_*' settings"};
-                case FailureStage::IndexerSession:
-                    return {"indexer session",
-                            "indexer.hosts and indexer.ssl.* in /etc/wazuh-manager/wazuh-manager.conf"};
                 case FailureStage::SyncIndexerConnector:
-                    return {"sync indexer connector", "the 'inventory_sync_server_indexer_sync_*' settings"};
-                case FailureStage::AsyncIndexerConnector:
-                    return {"async indexer connector", "the 'inventory_sync_server_indexer_async_*' settings"};
+                    // The Client comes from the process's runtime: without one -- or with one
+                    // that refuses this consumer -- the runtime's own startup error names the cause.
+                    // Its two buckets are sized from the sync and async option families.
+                    return {"indexer client",
+                            "the indexer client runtime's errors earlier in the log ('wazuh_modules.indexer_client_*', "
+                            "indexer.* and the indexer credentials) and the 'inventory_sync_server_indexer_sync_*' "
+                            "and 'inventory_sync_server_indexer_async_*' settings"};
                 case FailureStage::SyncPipeline:
                     // The pipeline's extra worker connectors are built with the sync connector's
                     // configuration, so that family is the actionable one alongside its own.
@@ -818,9 +1145,9 @@ namespace invsync
          * The gate is "did construction throw" (configuration validity), never "is the indexer
          * reachable" -- the indexer is allowed to start after modulesd. Publishing happens
          * immediately on success so a persistently failing LATER stage cannot force a rebuilt slot
-         * (for the session that would mean a full round of per-host health checks every heartbeat;
+         * (for the Client that would mean a new client() and zeroed bucket counters every heartbeat;
          * `TheSucceedingSlotsAreNotRebuiltWhileAnotherRetries` pins this). Construction runs WITHOUT
-         * m_lifecycleMutex so stop() never queues behind the health checks; the generation re-check
+         * m_lifecycleMutex so stop() never queues behind it; the generation re-check
          * at publish keeps a stale attempt out of a newer start()/stop() cycle.
          *
          * @return false if this attempt must not continue -- the build failed (already reported) or
@@ -865,8 +1192,8 @@ namespace invsync
         /**
          * @brief One startup attempt: resolve configuration, build what is missing, open the socket.
          *
-         * Three phases so the slow part -- the session's synchronous `GET /_cat/health` per host,
-         * 5 s timeout each -- does NOT hold the mutex stop() needs: stop() can set m_stopping
+         * Three phases so construction -- the Client, the sweeper's thread, the lanes' workers and
+         * the scanner seam -- does NOT hold the mutex stop() needs: stop() can set m_stopping
          * immediately and the m_stopping checks in phase B bail early.
          */
         void tryStartHttpServer()
@@ -882,12 +1209,13 @@ namespace invsync
             std::lock_guard<std::mutex> attemptLock(m_attemptMutex);
 
             wazuh::uds_http::UdsHttpServerConfig serverConfig;
-            nlohmann::json sessionConfig;
-            nlohmann::json syncConnectorConfig;
-            nlohmann::json asyncConnectorConfig;
-            IndexerSessionFactory sessionFactory;
+            IndexerClientFactory clientFactory;
             IndexerConnectorSyncFactory syncFactory;
-            IndexerConnectorAsyncFactory asyncFactory;
+            const void* indexerRuntime {nullptr};
+            std::vector<indexer_client::BucketSpec> bucketSpecs;
+            invsync::indexer::AdapterOptions adapterOptions;
+            std::chrono::milliseconds sweepWindow {FALLBACK_REQUEST_TIMEOUT + AGENT_DELETE_SWEEP_MARGIN};
+            std::shared_ptr<std::atomic<bool>> closing;
             invsync::sync::SyncPipelineConfig pipelineConfig;
             std::size_t pipelineWorkers {1};
             std::string pipelineClusterName;
@@ -896,18 +1224,19 @@ namespace invsync
             VdScannerFactory scannerFactory;
             bool vdConfiguredEnabled {false};
             std::uint64_t generation {0};
-            bool needSession {false};
+            bool needClient {false};
+            bool needWriter {false};
+            bool needSweeper {false};
             bool needSync {false};
-            bool needAsync {false};
             bool needPipeline {false};
             bool needLane {false};
 
             /*
              * ---- Phase A: snapshot under the lifecycle lock. No I/O, so stop() never waits. ----
              *
-             * Wrapped in try/catch like the other two phases: it copies the <indexer> JSON and builds
-             * two overlays, and a throw escaping to run()'s barrier kills the worker -- and with it
-             * the 60 s retry -- for the rest of the daemon's life.
+             * Wrapped in try/catch like the other two phases: it builds strings and bucket specs, and a
+             * throw escaping to run()'s barrier kills the worker -- and with it the 60 s retry -- for
+             * the rest of the daemon's life.
              */
             try
             {
@@ -925,9 +1254,10 @@ namespace invsync
                 serverConfig = invsync::buildServerConfig(m_config);
                 m_resolvedSocketPath = serverConfig.socketPath;
 
-                needSession = !m_indexerSession;
+                needClient = !m_indexerClient;
+                needWriter = !m_agentStateWriter;
+                needSweeper = !m_agentDeleteSweeper;
                 needSync = !m_indexerConnectorSync;
-                needAsync = !m_indexerConnectorAsync;
                 needPipeline = !m_syncPipeline;
                 needLane = !m_vdScanLane;
 
@@ -938,6 +1268,13 @@ namespace invsync
                 {
                     m_agentRegistry = std::make_shared<invsync::vd::AgentInFlightRegistry>();
                 }
+                // Likewise one per cycle: stop() sets it (waking every adapter wait) and drops it, so
+                // the next cycle's adapters start with a fresh, unset flag.
+                if (!m_indexerClosing)
+                {
+                    m_indexerClosing = std::make_shared<std::atomic<bool>>(false);
+                }
+                closing = m_indexerClosing;
 
                 laneWorkers = resolveVdWorkers(m_config);
                 laneConfig.workers = laneWorkers;
@@ -949,9 +1286,8 @@ namespace invsync
                 scannerFactory = m_vdScannerFactory;
                 vdConfiguredEnabled = m_config.vd_configured_enabled;
 
-                sessionFactory = m_indexerSessionFactory;
+                clientFactory = m_indexerClientFactory;
                 syncFactory = m_indexerConnectorSyncFactory;
-                asyncFactory = m_indexerConnectorAsyncFactory;
 
                 pipelineWorkers = resolveSyncWorkers(m_config);
                 pipelineConfig.maxQueueBytes = m_config.sync_queue_bytes > 0
@@ -967,19 +1303,72 @@ namespace invsync
                 }
                 pipelineClusterName = invsync::common::buildClusterIdentity(m_config).clusterName;
 
-                if (needSession || needSync || needAsync || needPipeline || needLane)
+                if (needClient || needWriter || needSweeper || needSync || needPipeline || needLane)
                 {
                     logIndexerSummary();
                 }
 
                 // Built on every attempt: any slot below -- the lane included -- may consume these
-                // on a retry where every other slot already succeeded.
-                sessionConfig = invsync::indexer::buildSessionConfig(m_indexerConfig, m_config);
-                syncConnectorConfig = invsync::indexer::buildSyncConnectorConfig(m_indexerConfig, m_config);
-                asyncConnectorConfig = invsync::indexer::buildAsyncConnectorConfig(m_indexerConfig, m_config);
+                // on a retry where every other slot already succeeded. One Client, two buckets:
+                //`agent-state` sized first from the async options and the runtime's global
+                // quota, then `inventory` from the sync options and what agent-state
+                // left, so a full agent-state can never starve /stateful.
+                // Every worker's chunk cap is shared over the lanes. snapshot() reads counters under
+                // leaf mutexes, no I/O; the sweep window comes from the same snapshot.
+                indexerRuntime = m_config.indexer_runtime;
+                std::uint64_t globalQuota {FALLBACK_GLOBAL_QUOTA_BYTES};
+                if (indexerRuntime != nullptr)
+                {
+                    const auto snapshot = static_cast<const indexer_client::RuntimeRef*>(indexerRuntime)->snapshot();
+                    globalQuota = snapshot.globalQuotaBytes;
+                    sweepWindow = std::chrono::duration_cast<std::chrono::milliseconds>(snapshot.requestTimeout) +
+                                  AGENT_DELETE_SWEEP_MARGIN;
+                }
+                // One request at most, like the sweeper's window: how long a pipeline worker keeps the agents of
+                // a failed batch held while its abandoned `_bulk` is unresolved.
+                pipelineConfig.abandonedWriteHold = sweepWindow;
+                const auto budgets = invsync::indexer::budgets(m_config);
 
-                // Correctness, not tuning: see PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS.
-                syncConnectorConfig["flush_interval_seconds"] = PIPELINE_CONNECTOR_FLUSH_INTERVAL_SECS;
+                std::string agentStateWarning;
+                const auto agentStateSpec =
+                    invsync::indexer::agentStateBucketSpec(m_config, globalQuota, &agentStateWarning);
+                if (!agentStateWarning.empty() && !m_agentStateWarningLogged)
+                {
+                    m_agentStateWarningLogged = true;
+                    LOGFN_WARN(moduleLogFn(),
+                               "'wazuh_modules.inventory_sync_server_indexer_async_max_queue_bytes' / "
+                               "'wazuh_modules.inventory_sync_server_indexer_async_bulk_max_bytes': %s.",
+                               agentStateWarning.c_str());
+                }
+
+                // agentStateBucketSpec() never takes more than half the global quota, so the
+                // subtraction cannot wrap; the guard only keeps that an invariant of this line.
+                const auto inventoryBudget =
+                    globalQuota > agentStateSpec.quotaBytes ? globalQuota - agentStateSpec.quotaBytes : 0;
+                std::string bucketWarning;
+                const auto inventorySpec = invsync::indexer::inventoryBucketSpec(
+                    m_config, inventoryBudget, INDEXER_BLOCK_TIMEOUT, &bucketWarning);
+                if (!bucketWarning.empty() && !m_bucketWarningLogged)
+                {
+                    m_bucketWarningLogged = true;
+                    LOGFN_WARN(moduleLogFn(),
+                               "'wazuh_modules.inventory_sync_server_indexer_sync_connector_max_bulk_size': %s.",
+                               bucketWarning.c_str());
+                }
+                bucketSpecs = {inventorySpec, agentStateSpec};
+
+                const auto lanes = pipelineWorkers + laneWorkers;
+                adapterOptions =
+                    invsync::indexer::AdapterOptions {invsync::indexer::chunkCap(inventorySpec.quotaBytes, lanes),
+                                                      INDEXER_BLOCK_SLICE,
+                                                      budgets,
+                                                      inventorySpec.retry,
+                                                      INDEXER_PAGE_DEADLINE};
+                if (indexerRuntime != nullptr)
+                {
+                    // settleAbandoned()'s bound (requestTimeout + 5 s) and its cut on the runtime's shutdown.
+                    adapterOptions.runtime = *static_cast<const indexer_client::RuntimeRef*>(indexerRuntime);
+                }
             }
             catch (const std::exception& e)
             {
@@ -994,86 +1383,93 @@ namespace invsync
             }
             // LCOV_EXCL_STOP
 
-            // ---- Phase B: construct WITHOUT the lifecycle lock. The health checks happen here. ----
+            // ---- Phase B: construct WITHOUT the lifecycle lock. ----
             //
-            // Chained so the first failure stops the attempt, for three reasons: reportFailedStart()
+            // Chained so the first failure stops the attempt, for two reasons: reportFailedStart()
             // increments the shared attempt counter, so reporting twice per heartbeat would halve the
-            // escalation clock and break the "60 attempts is about an hour" contract; the session
-            // validates the configuration the connectors depend on, so on a bad <indexer> block all
-            // three would fail and emit three messages for one root cause; and there is no point
-            // building connectors against a session that does not exist.
+            // escalation clock and break the "60 attempts is about an hour" contract; and there is no
+            // point building connectors, a sweeper or lanes over a Client that does not exist.
             //
             // Each stage publishes as soon as it succeeds -- see buildAndPublish() for why holding
-            // them as locals until the end would silently undo the shared session's whole benefit.
-            if (needSession &&
-                !buildAndPublish(m_indexerSession,
-                                 FailureStage::IndexerSession,
-                                 generation,
-                                 [&]
-                                 {
-                                     return sessionFactory(
-                                         sessionConfig,
-                                         LoggingContext {INVENTORY_SYNC_SERVER_SESSION_LOGTAG, m_logFunction});
-                                 }))
+            // them as locals until the end would rebuild the healthy slots on every retry.
+            //
+            // The Client, from the process's runtime: a null runtime or a refused
+            // client() fails the stage with the cause, and the heartbeat retries.
+            if (needClient && !buildAndPublish(m_indexerClient,
+                                               FailureStage::SyncIndexerConnector,
+                                               generation,
+                                               [&] { return clientFactory(indexerRuntime, bucketSpecs); }))
             {
                 return;
             }
 
             // Own a reference for the rest of this attempt. Taking a copy of the shared_ptr rather
-            // than reading the member again is what makes the connector constructions below safe
-            // outside the lock: stop() may clear the member at any moment, and a bare pointer into it
-            // would dangle while a connector's constructor is still running on it.
-            std::shared_ptr<invsync::indexer::IIndexerSession> session;
+            // than reading the member again is what makes the constructions below safe outside the
+            // lock: stop() may clear the member at any moment, and a bare pointer into it would
+            // dangle while a constructor is still running on it.
+            std::shared_ptr<indexer_client::IClient> client;
             {
                 std::lock_guard<std::mutex> lock(m_lifecycleMutex);
                 if (m_stopping || generation != m_startGeneration)
                 {
                     return;
                 }
-                session = m_indexerSession;
+                client = m_indexerClient;
             }
 
-            if (!session)
+            if (!client)
             {
-                return; // stop() raced us; nothing to build connectors on
+                return; // stop() raced us
+            }
+
+            // The `agent-state` writer, taken ONCE: /stats, /config and the deletion's
+            // by-id half all share it. A Client that declared the bucket returns one until
+            // requestClose(), so a null here is a closed or broken Client and fails the stage.
+            if (needWriter && !buildAndPublish(m_agentStateWriter,
+                                               FailureStage::SyncIndexerConnector,
+                                               generation,
+                                               [&] { return client->writer(invsync::indexer::AGENT_STATE_BUCKET); }))
+            {
+                return;
+            }
+
+            // The post-deletion sweeper: its own thread, the Client's query handle, a
+            // window of the runtime's request timeout + 5 s and the deletion budget per DBQ.
+            if (needSweeper &&
+                !buildAndPublish(m_agentDeleteSweeper,
+                                 FailureStage::SyncIndexerConnector,
+                                 generation,
+                                 [&]() -> std::shared_ptr<invsync::indexer::AgentDeleteSweeper>
+                                 {
+                                     auto query = client->query();
+                                     if (!query)
+                                     {
+                                         return nullptr;
+                                     }
+                                     return std::make_shared<invsync::indexer::AgentDeleteSweeper>(
+                                         std::move(query), sweepWindow, adapterOptions.budgets.deletion, closing);
+                                 }))
+            {
+                return;
             }
 
             if (needSync && !buildAndPublish(m_indexerConnectorSync,
                                              FailureStage::SyncIndexerConnector,
                                              generation,
-                                             [&]
-                                             {
-                                                 return syncFactory(
-                                                     syncConnectorConfig,
-                                                     *session,
-                                                     LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction});
-                                             }))
-            {
-                return;
-            }
-
-            if (needAsync &&
-                !buildAndPublish(m_indexerConnectorAsync,
-                                 FailureStage::AsyncIndexerConnector,
-                                 generation,
-                                 [&]
-                                 {
-                                     return asyncFactory(
-                                         asyncConnectorConfig,
-                                         *session,
-                                         LoggingContext {INVENTORY_SYNC_SERVER_ASYNC_LOGTAG, m_logFunction});
-                                 }))
+                                             [&] { return syncFactory(client, adapterOptions, closing, "w0"); }))
             {
                 return;
             }
 
             if (needPipeline)
             {
-                // Same counted-reference dance as the session: the pipeline reuses the published
-                // sync connector as its first worker's connector (it is otherwise idle -- its other
-                // job is the endpoint's admission isAvailable(), which is thread-safe), and builds
-                // one more per additional worker, all sharing the session.
+                // Same counted-reference dance as the Client: the pipeline reuses the published
+                // sync connector as its first worker's connector, `w0` (it is otherwise idle -- its
+                // other job is the endpoint's admission isAvailable(), which is thread-safe), and
+                // builds one more per additional worker, `w<i>`, all sharing the Client.
                 std::shared_ptr<invsync::indexer::IIndexerConnectorSync> syncConnector;
+                std::shared_ptr<indexer_client::IWriter> agentStateWriter;
+                std::shared_ptr<invsync::indexer::AgentDeleteSweeper> sweeper;
                 {
                     std::lock_guard<std::mutex> lock(m_lifecycleMutex);
                     if (m_stopping || generation != m_startGeneration)
@@ -1081,12 +1477,20 @@ namespace invsync
                         return;
                     }
                     syncConnector = m_indexerConnectorSync;
+                    agentStateWriter = m_agentStateWriter;
+                    sweeper = m_agentDeleteSweeper;
                 }
 
-                if (!syncConnector)
+                if (!syncConnector || !agentStateWriter || !sweeper)
                 {
                     return; // stop() raced us
                 }
+
+                // The by-id half of a whole-agent deletion, run on the agent's worker: held
+                // WEAKLY, so stop()'s resets stay destructive and an expired writer fails the
+                // deletion 503 instead of skipping the half.
+                pipelineConfig.agentDeletion = invsync::sync::AgentDeletionDeps {
+                    true, agentStateWriter, sweeper, closing, adapterOptions.budgets.deletion, INDEXER_BLOCK_SLICE};
 
                 if (!buildAndPublish(
                         m_syncPipeline,
@@ -1100,9 +1504,7 @@ namespace invsync
                             for (std::size_t i = 1; i < pipelineWorkers; ++i)
                             {
                                 connectors.emplace_back(
-                                    syncFactory(syncConnectorConfig,
-                                                *session,
-                                                LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction}));
+                                    syncFactory(client, adapterOptions, closing, "w" + std::to_string(i)));
                             }
                             return std::make_shared<invsync::sync::SyncPipeline>(pipelineConfig,
                                                                                  std::move(connectors),
@@ -1127,12 +1529,11 @@ namespace invsync
                             builtScanner = scannerFactory(vdConfiguredEnabled);
                             std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> connectors;
                             connectors.reserve(laneWorkers);
+                            // One cancellation tag per scan-lane worker, `vd<i>`.
                             for (std::size_t i = 0; i < laneWorkers; ++i)
                             {
                                 connectors.emplace_back(
-                                    syncFactory(syncConnectorConfig,
-                                                *session,
-                                                LoggingContext {INVENTORY_SYNC_SERVER_SYNC_LOGTAG, m_logFunction}));
+                                    syncFactory(client, adapterOptions, closing, "vd" + std::to_string(i)));
                             }
                             return std::make_shared<invsync::vd::VdScanLane>(laneConfig,
                                                                              builtScanner,
@@ -1237,7 +1638,7 @@ namespace invsync
             }
             else if (m_failedStartAttempts % ATTEMPTS_PER_ESCALATION == 0)
             {
-                // The label matters here, not just in the ERROR: with four stages the failing one can
+                // The label matters here, not just in the ERROR: with several stages the failing one can
                 // ALTERNATE between heartbeats, while the first-attempt ERROR is emitted only once per
                 // incident. Without it, an hour of log lines cannot say which part is stuck.
                 LOGFN_WARN(moduleLogFn(),
@@ -1293,7 +1694,9 @@ namespace invsync
             while (true)
             {
                 tryStartHttpServer();
-                logIndexerHealthTransition();
+                bool firstRoundPending = logIndexerHealthTransition();
+                const auto nextHeartbeat =
+                    std::chrono::steady_clock::now() + std::chrono::seconds(INVENTORY_SYNC_SERVER_HEARTBEAT_SECS);
 
                 std::unique_lock<std::mutex> lock(m_waitMutex);
                 if (m_stopping)
@@ -1302,9 +1705,16 @@ namespace invsync
                 }
 
                 LOGFN_DEBUG1(moduleLogFn(), "inventory sync server heartbeat.");
-                m_waitCv.wait_for(lock,
-                                  std::chrono::seconds(INVENTORY_SYNC_SERVER_HEARTBEAT_SECS),
-                                  [this]() { return m_stopping.load(); });
+                // Until the first probe round ends the indexer's state is unknown: look again every second, so
+                // "reachable" is logged when the round ends and not a whole heartbeat later. Health only.
+                while (firstRoundPending && std::chrono::steady_clock::now() < nextHeartbeat &&
+                       !m_waitCv.wait_for(lock, std::chrono::seconds(1), [this]() { return m_stopping.load(); }))
+                {
+                    lock.unlock(); // the poll takes m_lifecycleMutex: never under m_waitMutex
+                    firstRoundPending = logIndexerHealthTransition();
+                    lock.lock();
+                }
+                m_waitCv.wait_until(lock, nextHeartbeat, [this]() { return m_stopping.load(); });
 
                 if (m_stopping)
                 {
@@ -1335,12 +1745,9 @@ namespace invsync
 
         inventory_sync_server_config_t m_config {}; ///< Copy of the caller's configuration.
         std::string m_resolvedSocketPath;           ///< Path of the most recent start attempt, for diagnostics.
-        /// Owned copy of the <indexer> block, before the bulk-size/flush-interval overlay.
+        /// Owned copy of the <indexer> block; only logIndexerSummary() reads it (the Client takes hosts
+        /// and ssl from the process runtime). Kept for the C ABI field it comes from.
         nlohmann::json m_indexerConfig {nlohmann::json::object()};
-        /// Retained so the indexer connector -- built later, on the worker thread -- gets the same
-        /// LoggingContext the older inventory_sync module builds inline in its own start().
-        std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-            m_logFunction;
 
         /// HTTP-over-UDS transport. shared_ptr (not unique) so the transport-diagnostics pull
         /// metrics can hold a WEAK reference that expires the moment stop() resets this.
@@ -1354,20 +1761,83 @@ namespace invsync
         std::weak_ptr<wazuh::uds_http::IUdsHttpServer> m_transportDiagTarget;
         bool m_transportPullsRegistered {false};
 
-        /*
-         * The three indexer slots, each constructed at most once per start()/stop() cycle and memoised
-         * independently -- see buildAndPublish(). The session is retained so a retry of one connector
-         * does not pay for another round of host health checks.
+        /**
+         * @brief What the indexer_client pull metrics read: the Client WEAKLY, a copy of the
+         *        RuntimeRef, and the last snapshot of both, refreshed at most every INDEXER_METRICS_MAX_AGE.
+         *
+         * Owned by the facade and by every getter (shared_ptr), so it outlives the registry's use of it; its own
+         * mutex, never m_lifecycleMutex, so a scrape cannot contend with stop(). Every name is kept: the getters
+         * pick the buckets' and the runtime's.
          */
-        /// shared_ptr, not unique_ptr: an in-flight attempt takes a counted reference so stop()
-        /// clearing this member cannot dangle a connector constructor still running on it.
-        std::shared_ptr<invsync::indexer::IIndexerSession> m_indexerSession;
-        /// shared_ptr for the same reason as the async one below: the sync pipeline workers (F2) will
-        /// hold it weakly. The factory still returns unique_ptr; the assignment converts.
+        const std::shared_ptr<indexer_client::MetricsSlot> m_indexerMetricsSlot {
+            std::make_shared<indexer_client::MetricsSlot>(INDEXER_METRICS_MAX_AGE)};
+
+        /// The `inventory` bucket of a slot snapshot; all zeros without a live Client.
+        static indexer_client::BucketMetrics inventoryBucket(const indexer_client::MetricsSlotSnapshot& snapshot)
+        {
+            if (snapshot.client)
+            {
+                for (const auto& bucket : snapshot.client->buckets)
+                {
+                    if (bucket.bucket == invsync::indexer::INVENTORY_BUCKET)
+                    {
+                        return bucket;
+                    }
+                }
+            }
+            return {};
+        }
+        bool m_indexerClientPullsRegistered {false};
+        bool m_indexerRuntimePullsRegistered {false};
+
+        /// What the sweep's pull metrics read: the sweeper WEAKLY, under its own mutex (never m_lifecycleMutex).
+        struct SweeperMetricsSlot final
+        {
+            std::mutex mutex;
+            std::weak_ptr<invsync::indexer::AgentDeleteSweeper> sweeper;
+
+            void repoint(std::weak_ptr<invsync::indexer::AgentDeleteSweeper> target)
+            {
+                std::lock_guard<std::mutex> lock {mutex};
+                sweeper = std::move(target);
+            }
+
+            invsync::indexer::AgentDeleteSweeper::Stats read()
+            {
+                std::lock_guard<std::mutex> lock {mutex};
+                const auto live = sweeper.lock();
+                return live ? live->stats() : invsync::indexer::AgentDeleteSweeper::Stats {};
+            }
+        };
+        const std::shared_ptr<SweeperMetricsSlot> m_sweeperMetricsSlot {std::make_shared<SweeperMetricsSlot>()};
+        /// The bucket-sizing WARN (bulk cap clipped to the global quota) is said once per start().
+        bool m_bucketWarningLogged {false};
+        /// Same, for the `agent-state` bucket's sizing WARN (queue capped, bulk clipped).
+        bool m_agentStateWarningLogged {false};
+
+        /*
+         * The indexer slots, each constructed at most once per start()/stop() cycle and memoised
+         * independently -- see buildAndPublish() -- so a retry of a later stage does not rebuild
+         * the Client (whose bucket counters would restart from 0) or respawn the sweeper.
+         */
+        /// The module's indexer_client Client (consumer `inventory_sync_server`, buckets `inventory`
+        /// and `agent-state`), shared by every sync connector. shared_ptr: an
+        /// in-flight attempt takes a counted reference so stop() clearing this member cannot dangle
+        /// a constructor still running on it. stop() closes it before the lanes stop and drops it
+        /// after they are joined.
+        std::shared_ptr<indexer_client::IClient> m_indexerClient;
+        /// The `agent-state` writer, taken once from the Client. The /stats and /config
+        /// handlers and the pipeline's deletion deps hold it WEAKLY; stop() resets it before awaitClosed().
+        std::shared_ptr<indexer_client::IWriter> m_agentStateWriter;
+        /// The post-deletion sweeper; the pipeline holds it weakly, the sweep pulls read it
+        /// through m_sweeperMetricsSlot. stop() stops it after the lanes, before awaitClosed().
+        std::shared_ptr<invsync::indexer::AgentDeleteSweeper> m_agentDeleteSweeper;
+        /// Set by stop() before requestClose(); every adapter wait returns when it flips. One per cycle.
+        std::shared_ptr<std::atomic<bool>> m_indexerClosing;
+        /// Worker 0's sync connector, `w0`; also the /stateful admission's isAvailable(). shared_ptr
+        /// because the endpoint handlers hold it weakly. The factory returns unique_ptr; the
+        /// assignment converts.
         std::shared_ptr<invsync::indexer::IIndexerConnectorSync> m_indexerConnectorSync;
-        /// shared_ptr because the /stats and /config handlers hold it WEAKLY (which needs a shared
-        /// owner) -- the weak capture is what keeps stop()'s phase-2 reset destructive.
-        std::shared_ptr<invsync::indexer::IIndexerConnectorAsync> m_indexerConnectorAsync;
         /// The D18 statistics registry. Created ONCE and NEVER reset in stop(): counters must
         /// survive the HTTP server's restart retries (an operator reading /metrics after a retry
         /// wants totals, not a fresh zeroed registry). Everything downstream (pipeline, lane,
@@ -1388,35 +1858,39 @@ namespace invsync
         /// This server's registration in the scanner's neutral coordination registry.
         std::shared_ptr<invsync::vd::ServerScanCoordinator> m_scanCoordinator;
 
-        IndexerSessionFactory m_indexerSessionFactory {
-            [](const nlohmann::json& config, LoggingContext logging)
-            { return std::make_unique<invsync::indexer::IndexerSessionAdapter>(config, std::move(logging)); }};
-
-        /*
-         * The production connector factories are the only place that knows the seam it is handed wraps
-         * a real IndexerSession, so the unwrapping happens here. dynamic_cast on a reference rather
-         * than static_cast on purpose: a test that installs a fake session but leaves a production
-         * connector factory in place then gets a std::bad_cast, which buildAndPublish() catches and
-         * reports as a normal gate failure, instead of undefined behaviour.
-         */
-        IndexerConnectorSyncFactory m_indexerConnectorSyncFactory {
-            [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
+        /// Production: the runtime modulesd published. Null, or a client() it refuses, throws, so
+        /// buildAndPublish() reports the sync stage with the reason and the heartbeat retries. One
+        /// call with both buckets: the runtime refuses a second client() of the same consumer.
+        IndexerClientFactory m_indexerClientFactory {
+            [](const void* runtime,
+               const std::vector<indexer_client::BucketSpec>& buckets) -> std::shared_ptr<indexer_client::IClient>
             {
-                const auto& adapter = dynamic_cast<const invsync::indexer::IndexerSessionAdapter&>(session);
-                return std::make_unique<invsync::indexer::IndexerConnectorSyncAdapter>(
-                    config, adapter.session(), std::move(logging));
+                if (runtime == nullptr)
+                {
+                    throw std::runtime_error("no indexer_client runtime in this process");
+                }
+                auto client = static_cast<const indexer_client::RuntimeRef*>(runtime)->client(
+                    invsync::indexer::INDEXER_CLIENT_CONSUMER, buckets);
+                if (!client.ok())
+                {
+                    throw std::runtime_error(std::string("the indexer client refused the consumer (") +
+                                             indexer_client::toString(client.cause) + "): " + client.reason);
+                }
+                return client.value;
+            }};
+
+        IndexerConnectorSyncFactory m_indexerConnectorSyncFactory {
+            [](std::shared_ptr<indexer_client::IClient> client,
+               const invsync::indexer::AdapterOptions& options,
+               std::shared_ptr<const std::atomic<bool>> closing,
+               const std::string& tag) -> std::unique_ptr<invsync::indexer::IIndexerConnectorSync>
+            {
+                return std::make_unique<invsync::indexer::IndexerClientSyncAdapter>(
+                    std::move(client), options, std::move(closing), tag);
             }};
 
         VdScannerFactory m_vdScannerFactory {[](bool vdConfiguredEnabled)
                                              { return invsync::vd::makeProductionVdScanner(vdConfiguredEnabled); }};
-
-        IndexerConnectorAsyncFactory m_indexerConnectorAsyncFactory {
-            [](const nlohmann::json& config, const invsync::indexer::IIndexerSession& session, LoggingContext logging)
-            {
-                const auto& adapter = dynamic_cast<const invsync::indexer::IndexerSessionAdapter&>(session);
-                return std::make_unique<invsync::indexer::IndexerConnectorAsyncAdapter>(
-                    config, adapter.session(), std::move(logging));
-            }};
     };
 
 } // namespace invsync

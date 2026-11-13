@@ -6,10 +6,12 @@ on:
     paths:
       - ".github/workflows/5_testunit_dev-tools.yml"
       # Benchmark scrapers and monitor (tests/ imports bench_samples, bench_collect and monitor)
-      # and the run collator, which imports bench_samples from there.
+      # and the run collator, which imports bench_samples from there; the A/B report (ab_report.py)
+      # lives beside the collator.
       - "tools/devContainer/scripts/*.py"
       - "tools/devContainer/scripts/tests/**"
       - "tools/manager_benchmark/result_summary.py"
+      - "tools/manager_benchmark/ab_report.py"
       # test_scripts.py runs the shell helpers it covers.
       - "tools/manager_benchmark/*.sh"
       - "tools/manager_benchmark/tests/**"

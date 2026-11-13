@@ -51,12 +51,17 @@ namespace invsync::sync
         /// the competing writer cannot keep the conflict alive longer than its own allowance, so
         /// the facade feeds the connector's `max_retry_duration_seconds` here.
         int conflictRetryAfterSeconds {15};
+        /// The by-id half of a whole-agent deletion; default = by-query only.
+        AgentDeletionDeps agentDeletion;
+        /// How long a worker keeps the agents of a failed batch held in the registry while its connector
+        /// still holdsAbandonedWrite(): one request at most, so the runtime's request timeout + 5 s.
+        std::chrono::milliseconds abandonedWriteHold {65000};
     };
 
     /**
      * @brief The ingestion pipeline behind POST /stateful: workers sharded by agent id.
      *
-     * One worker (and ONE IndexerConnectorSync, private to it) per shard; a session lands on
+     * One worker (and ONE IIndexerConnectorSync, private to it) per shard; a session lands on
      * `hash(agentId) % workers`, which makes per-agent ordering a property of the topology instead
      * of a lock: two requests of the same agent -- a Cleans and the SyncData that re-populates it,
      * a delta and its checksum -- are applied in arrival order because they traverse the same
@@ -65,9 +70,11 @@ namespace invsync::sync
      *
      * Workers GROUP-COMMIT (design doc 03 §7): bulk sessions stage and their responses wait; the
      * flush happens when the staged bytes reach `bulkFlushBytes` or the shard's queue drains, and
-     * only then is the whole batch answered. Under low load the queue is empty after every session
-     * (flush-per-request latency); under a burst of small sessions the bulks grow on their own and
-     * the indexer sees a few large requests instead of a thousand tiny ones.
+     * only then is the batch answered -- each session by the outcome of ITS operations, so a
+     * rejected document fails its own session and not its batch-mates. Under low load the queue is
+     * empty after every session (flush-per-request latency); under a burst of small sessions the
+     * bulks grow on their own and the indexer sees a few large requests instead of a thousand tiny
+     * ones.
      */
     class SyncPipeline final
     {
@@ -160,6 +167,9 @@ namespace invsync::sync
             std::mutex mutex;
             std::condition_variable cv;
             std::deque<Item> queue;
+            /// Worker-thread only: agents held for an abandoned write (one registry count each), and until when.
+            std::vector<std::string> abandonedHolds;
+            std::chrono::steady_clock::time_point abandonedHoldUntil;
         };
 
         void workerLoop(std::size_t index);
@@ -172,16 +182,24 @@ namespace invsync::sync
         /// Pops the first queued item whose agent the registry lets this lane take (front, when
         /// no registry). Returns false when nothing is dispatchable RIGHT NOW.
         bool popDispatchable(Shard& shard, Item& item);
-        /// 503 when the worker's connector reports unavailable (retriable), 503 + Retry-After when
-        /// a by-query ran out of its version-conflict allowance (retriable contention), 500 otherwise.
-        void respondConnectorFailure(std::vector<Item>& items,
-                                     indexer::IIndexerConnectorSync& connector,
-                                     indexer::ConnectorError::Cause cause = indexer::ConnectorError::Cause::Other);
-        void
-        flushAndRespond(std::vector<Item>& batch, std::size_t& batchBytes, indexer::IIndexerConnectorSync& connector);
-        /// Moves the connector's own request and conflict counts into the metrics. Every path that
-        /// drives the connector must call it: an immediate session issues its I/O outside any batch.
-        void drainConnectorStats(indexer::IIndexerConnectorSync& connector);
+        /// Answers one item for a connector failure, by its cause alone: 503 for anything
+        /// transient, 503 + Retry-After when a by-query ran out of its version-conflict allowance,
+        /// 500 otherwise. Never re-asks isAvailable().
+        void respondFailure(Item& item, indexer::ConnectorError::Cause cause);
+        /// respondFailure() for each of @p items.
+        void respondConnectorFailure(std::vector<Item>& items, indexer::ConnectorError::Cause cause);
+        /// One sync.bulk.flush.failures.<failureMetric(cause)> increment (one failed session).
+        void countFlushFailure(indexer::ConnectorError::Cause cause);
+        /// Before answering a failed @p agentId: when @p connector still holdsAbandonedWrite(), takes one more
+        /// Pipeline count on the agent so the scan lane parks it after the answer (no shard is blocked).
+        void holdForAbandonedWrite(Shard& shard, indexer::IIndexerConnectorSync& connector, const std::string& agentId);
+        /// Drops the holds once the write resolved, the bound passed, or @p force (the worker is exiting).
+        void releaseAbandonedHolds(Shard& shard, indexer::IIndexerConnectorSync& connector, bool force);
+        /// Flushes the open batch and answers each session by its own outcome.
+        void flushAndRespond(Shard& shard,
+                             std::vector<Item>& batch,
+                             std::size_t& batchBytes,
+                             indexer::IIndexerConnectorSync& connector);
 
         SyncPipelineConfig m_config;
         /// Declared before m_processor: the processor resolves its counters from it. Never reset.
@@ -198,12 +216,10 @@ namespace invsync::sync
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkFlushes;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkBytesTotal;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsTotal;
-        std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkRequests;
-        std::shared_ptr<wazuh::metrics::ICounter> m_indexerBulkBytes;
-        std::shared_ptr<wazuh::metrics::ICounter> m_indexerConflictRetries;
         std::shared_ptr<wazuh::metrics::ICounter> m_indexerConflictExhausted;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresDocuments;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresExhausted;
+        std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresUnavailable;
         std::shared_ptr<wazuh::metrics::ICounter> m_flushFailuresOther;
         std::shared_ptr<wazuh::metrics::ICounter> m_bulkSessionsFailed;
         std::shared_ptr<wazuh::metrics::IHistogram> m_durationBulk;

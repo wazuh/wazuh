@@ -386,9 +386,30 @@ TEST_F(ContentRegistrationTest, AnInvalidSpecIsRefusedAtRegistration)
                  std::invalid_argument);
 }
 
+TEST_F(ContentRegistrationTest, AnInvalidKeepAliveIsRefusedAtRegistration)
+{
+    // OpenSearch refuses `5M` at the first PIT; the registration refuses it at once, naming the value.
+    auto broken = spec();
+    broken.source.pitKeepAlive = "5M";
+    try
+    {
+        ContentRegister registration {"bad.keepalive", broken, m_sink, std::make_shared<ScriptedPort>(), m_tokens};
+        FAIL() << "a keep-alive OpenSearch refuses was accepted";
+    }
+    catch (const std::invalid_argument& e)
+    {
+        EXPECT_NE(std::string {e.what()}.find("'5M'"), std::string::npos) << e.what();
+    }
+
+    // Surrounding spaces are ignored, as on the wire.
+    auto padded = spec();
+    padded.source.pitKeepAlive = " 5m ";
+    EXPECT_NO_THROW((ContentRegister {"padded.keepalive", padded, m_sink, std::make_shared<ScriptedPort>(), m_tokens}));
+}
+
 TEST_F(ContentRegistrationTest, ARegistrationWithoutTheHostsIndexerIsRefused)
 {
-    // The library never opens a connection of its own (D1).
+    // The library never opens a connection of its own.
     EXPECT_THROW((ContentRegister {"no.indexer", spec(), m_sink, nullptr, m_tokens}), std::invalid_argument);
 }
 

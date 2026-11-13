@@ -17,7 +17,7 @@ chunked transfer encoding is rejected.
 | `GET` | `/` | `200` | Liveness probe, answers `{"status":"ok","module":"inventory_sync_server"}`. Exempt from the in-flight byte budget, so it keeps answering under memory pressure. |
 | `GET` | `/metrics` | `200` | The module's runtime statistics as JSON (see [`GET /metrics`](#get-metrics) below). Budget-exempt, like the probe. |
 | `POST` | `/stateful` | `200` | One whole synchronization session (FlatBuffers `Message{FullSession}`). `200` `{"status":"ok"}` means applied AND flushed to the indexer (and scanned, for VD sessions); `{"status":"ok","noop":true}` means everything was filtered. Other statuses: `400` invalid session, `403` identity mismatch, `409` `{"status":"checksum_mismatch"}` for a `ModuleCheck` session (the agent full-resyncs) OR `{"error":"version_mismatch","current_version":N}` for a VDFirst/VDSync session whose `feed_offset` doesn't match this node's current VD feed offset (the agent retries with `current_version`; see [vulnerability-scanner's architecture.md](../vulnerability-scanner/architecture.md#feed-update-rescan-scanvd--rescandisconnectedagents)), `413` the session declares more bytes than the total budget, `500` failed: the indexer rejected items of the batch (other items of it may be stored) or a vulnerability scan failed, so the session is not confirmed and must be sent again, `503` not ready / no capacity / indexer contention — with a `Retry-After` header when the CVE feed is still downloading, when the scanner is enabled here but still starting up, or when a by-query ran out of its version-conflict allowance against a competing writer. |
-| `POST` | `/_internal/agents/delete` | `200` | Deletes every document of the agent named in the body (`{"agent_id":"7"}`), in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id, queued on the asynchronous connector that writes them so the deletion orders after a `/config` or `/stats` report that connector has accepted but not yet pushed. `200` `{"status":"ok"}` means the by-query half has run **and flushed**; the by-id half is queued. One documented window can still leave a state document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `503` indexer unavailable, the pipeline queue is full, or the module is stopping; `503` `{"error":"indexer contention","code":503,"reason":"version_conflicts"}` with `Retry-After` when the by-query half ran out of its version-conflict allowance against a competing writer (counted in `sync.indexer.conflict.exhausted`; the caller retries after the delay). |
+| `POST` | `/_internal/agents/delete` | `200` | Deletes every document of the agent named in the body (`{"agent_id":"7"}`), in two halves: `wazuh-states-*` by delete-by-query (this cluster's scope, deferred to the agent's worker shard so it orders after that agent's in-flight sessions), and the `wazuh-agent-config` / `wazuh-agent-stats` documents by document id on the ordered `agent-state` bucket that writes them, both on the agent's worker shard. `200` `{"status":"ok"}` means both halves have run and resolved. Two documented windows can still leave a document behind — see [Whole-agent deletion semantics](#whole-agent-deletion-semantics). Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `503` indexer unavailable, the pipeline queue is full, or the module is stopping; `503` `{"error":"indexer contention","code":503,"reason":"version_conflicts"}` with `Retry-After` when the by-query half ran out of its version-conflict allowance against a competing writer (counted in `sync.indexer.conflict.exhausted`; the caller retries after the delay). |
 | `POST` | `/_internal/vd/scan` | `200` | On-demand vulnerability rescan of the agent named in the body (`{"agent_id":"7"}`), executed on the VD scan lane. `200` `{"status":"ok"}` means the scan RAN. Manager-internal and UDS-local: the only caller is the Task Manager's dispatcher. `400` malformed body or no usable `agent_id`, `409` `scan_in_progress` when that agent already has a scan in flight, `404` `agent_not_found`, `500` the scan failed, `503` scan capacity exhausted, no healthy indexer host, the feed is still loading (with `Retry-After`), the scanner is not ready, this node runs no vulnerability scanner, or the module is stopping. See [On-demand vulnerability scans](#on-demand-vulnerability-scans). |
 | `POST` | `/stats` | `200` | Indexes the agent's statistics report into `wazuh-agent-stats` (see [`POST /stats`](#post-stats) below). Answers `{}`, which means accepted for indexing, not stored: see [what a `200` promises](#what-a-stats-or-config-200-promises). |
 | `POST` | `/config` | `200` | Indexes the agent's reported configuration into `wazuh-agent-config` (see [Indexing `/config`](#indexing-config) below). Answers `{}`, with the same acceptance semantics as `/stats`: see [what a `200` promises](#what-a-stats-or-config-200-promises). |
@@ -177,19 +177,17 @@ serialized) is answered `400` rather than crashing the handler. `/stats` behaves
 
 ## What a `/stats` or `/config` `200` promises
 
-Accepted for indexing, not stored. Both routes refuse the request when the indexer is unavailable and
-then hand the document to the ASYNCHRONOUS connector, which queues it and answers `{}` without waiting
-for the write. Three consequences, none of which reaches the agent that got the `200`:
+Accepted for indexing, not stored. Both routes refuse the request when no indexer node is usable and
+then `post` the document to the module's `agent-state` bucket of `indexer_client`, which queues it and
+answers `{}` without waiting for the write. Consequences:
 
-- **The queue is in memory.** It does not survive a restart (a stopping queue discards whatever it
-  still holds), and it is bounded by `max_queue_bytes`: past that bound `push()` discards the report.
-  The operator sees both, through the log line the queue writes on its first overflow and the count
-  of discarded events it reports when it drains again. The caller does not.
-- **The availability gate is a cached verdict.** `isAvailable()` reads the monitor's last health
-  check, refreshed every `monitoring_interval_seconds` (10 s by default), so a `200` can rest on a
-  probe up to that old.
-- **A `503` still means what it says.** An indexer that has been unreachable for longer than one
-  monitoring interval is reported as such; only the window inside that interval is not.
+- **A refusal is a `503`.** When the bucket's quota is full (`max_queue_bytes`), or the module is
+  closing, the write is refused and the agent gets `503`, logged once per window with the cause.
+  Previously the asynchronous connector dropped such a report silently and still answered `200`.
+- **The queue is in memory.** An accepted report that is still queued when the module stops is dropped
+  (counted in the shutdown's DEBUG summary). The agent's next push replaces it.
+- **The availability gate is a cached verdict.** It reads the client's last node health, refreshed by
+  its probes, so a `200` can rest on a probe a few seconds old.
 
 This is the opposite of the `/stateful` contract, whose `200` means applied AND flushed (see
 [The `/stateful` session semantics](#the-stateful-session-semantics)). The asymmetry is deliberate:
@@ -209,33 +207,25 @@ accepted, with or without leading zeros: the id is normalized to its canonical s
 one every document carries. A value that is not digits or does not fit a 32-bit unsigned value is
 `400`.
 
-The deletion has **two halves, one per writer**, because a document can only be deleted in order by
-the connector that writes it:
+The deletion has **two halves, one per writer**, both run by the agent's own pipeline worker, so two
+deletions of one agent never overlap and both order behind that agent's in-flight sessions:
 
 | Half | Indices | Mechanism | Ordered against |
 |---|---|---|---|
-| By query | `wazuh-states-*` | one `deleteByQuery`, cluster-scoped, on the sync connector | that agent's in-flight `/stateful` sessions, by the shard FIFO |
-| By document id | `wazuh-agent-config`, `wazuh-agent-stats` | one `bulkDelete` each, queued on the **asynchronous** connector at admission | that agent's `/config` and `/stats` reports, by the queue's FIFO |
+| By query | `wazuh-states-*` | one delete-by-query, cluster-scoped, through the worker's connector | that agent's in-flight `/stateful` sessions, by the shard FIFO |
+| By document id | `wazuh-agent-config`, `wazuh-agent-stats` | the agent's pending reports are cancelled, then one group with both deletes is committed on the **ordered** `agent-state` bucket | a report already sent: the bucket never sends a delete before an earlier op of the same document resolves |
 
-The second half is why a report in flight can no longer outlive its agent. Those two documents are
-written by `POST /config` and `POST /stats` through the asynchronous connector, which accumulates and
-pushes in batches; queueing their deletes on that same queue means a report it had accepted but not
-yet pushed is applied *before* the delete that follows it. A by-id delete also resolves against the
-live version map, so unlike a search-based one it is unaffected by the index refresh interval. Those
-two indices are therefore no longer in the by-query scope at all.
+A by-id delete resolves against the live version map, so unlike a search-based one it is unaffected
+by the index refresh interval. Those two indices are therefore not in the by-query scope at all.
 
 **Answered at completion.** The dispatcher records its task row `completed` on the `200`, so a `200`
 meaning "queued" would record a purge that has not happened. What it guarantees: the by-query half ran
-and flushed with no per-shard failures or skipped documents, and the by-id half was **queued**.
+and flushed with no per-shard failures or skipped documents, and both by-id deletes resolved. A missing
+index counts as success on both halves, and deleting a document that is not there is a no-op, so
+repeating a deletion is harmless — that is the caller's retry contract, and this task type has no
+attempt budget, so it retries until it succeeds. Both halves share one deadline (the deletion budget).
 
-That second half stays fire-and-forget by construction — the asynchronous connector's FIFO queue is
-the only thing that can order those deletes behind a report it has already accepted, and it exposes
-nothing to wait on. An index that does not exist counts as success, and deleting a document that is
-not there is a no-op, so repeating a deletion is harmless — that is the caller's retry contract, and
-this task type has no attempt budget, so it retries until it succeeds.
-
-One window can still leave a document behind, and it does not turn the `200` into a failure.
-Repeating the deletion clears it:
+Two windows can still leave a document behind, and neither turns the `200` into a failure:
 
 - **The index refresh interval, for `wazuh-states-*`.** A delete-by-query is a SEARCH, so it only sees
   refreshed segments. State documents the agent's last session wrote inside that interval are
@@ -243,7 +233,16 @@ Repeating the deletion clears it:
   would close this, but `_refresh` requires the `indices:admin/refresh` privilege, which the manager's
   least-privilege indexer role does not grant — granting it and restoring the refresh is tracked as a
   follow-up. In practice authd's `authd.purge_delay` (default 120 s) means the refresh has long since
-  happened by the time the query runs. The by-id half is not exposed to this window.
+  happened by the time the query runs. The by-id half is not exposed to this window. Repeating the
+  deletion clears it.
+- **A late report, for `wazuh-agent-config` and `wazuh-agent-stats`.** Cancelling the agent's pending
+  reports also releases a report that timed out on one indexer node, which may still apply it after the
+  delete reached another. A sweep one window later (the indexer client's request timeout plus 5 s)
+  deletes such documents by id, without a refresh, and counts them in `sync.agent_delete.sweep.residual`
+  (see the module's [metrics](metrics.md)). It is best effort: a sweep that fails twice gives up and
+  counts the ids in `sync.agent_delete.sweep.dropped`. A `/stats` or `/config` write accepted for the
+  agent id before its sweep ran withdraws the id from it (`sync.agent_delete.sweep.forgotten`): the id was
+  enrolled again, and the documents are the new agent's.
 
 ## On-demand vulnerability scans
 

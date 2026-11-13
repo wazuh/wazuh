@@ -139,7 +139,7 @@ element is rejected as a duplicate.
 | [Cluster](../../modules/cluster/configuration.md) | `cluster` | `wazuh_clusterd.debug` |
 | [Database Sync](../../modules/database-sync/configuration.md) | - | `wazuh_database.*` |
 | [Engine](../../modules/engine/configuration.md) | `cluster`, `logging`, `indexer` (read-only consumer) | `analysisd.*` |
-| [Indexer Connector](../../modules/indexer_connector/configuration.md) | `indexer` | - |
+| [Indexer Client](../../modules/indexer_client/configuration.md) | `indexer` | `wazuh_modules.indexer_client_*` |
 | [Inventory Sync Server](../../modules/inventory-sync-server/configuration.md) | `indexer` (read-only consumer) | `wazuh_modules.inventory_sync_server_*` |
 | [Logging](../../modules/logging/configuration.md) | `logging` | - |
 | [Remoted](../../modules/remoted/configuration.md) | `remote` (`legacy`, `https`, `agents`), `global` (read-only consumer) | `remoted.*`, `fim.*_limit`, `sca.checks_limit`, `syscollector.*_limit` |

@@ -5,6 +5,7 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include <sys/resource.h>
+#include <unistd.h>
 
 #include <agentcache/agentMetadataCache.hpp>
 #include <api/contentsync/handlers.hpp>
@@ -31,7 +33,6 @@
 #include <builder/builder.hpp>
 #include <cmcontent/contentTopic.hpp>
 #include <cmcontent/registration.hpp>
-#include <cmcontent/releasableIndexer.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
 #include <cmsync/cmsync.hpp>
@@ -65,6 +66,9 @@
 #include <store/store.hpp>
 #include <store/utils.hpp>
 #include <streamlog/logger.hpp>
+#include <wiconnector/engineConfigSource.hpp>
+#include <wiconnector/engineIndexerRuntime.hpp>
+#include <wiconnector/indexerMetrics.hpp>
 #include <wiconnector/windexerconnector.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
@@ -236,7 +240,7 @@ int main(int argc, char* argv[])
         const auto logFormat = base::managerConfig::logFormat();
         base::logging::initManager(
             {"logs/wazuh-manager.log", "logs/wazuh-manager.json", logFormat.plain, logFormat.json});
-        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (e.g. indexer_connector's monitoring) go to
+        // Shared-library lines logged through Log::GLOBAL_LOG_FUNCTION (e.g. the keystore's) go to
         // the same sink, as the removed logging::init() did.
         Log::assignLogFunction(logging::createStandaloneLogFunction());
     }
@@ -274,9 +278,19 @@ int main(int argc, char* argv[])
 
     // Load the configuration (types and ranges are checked here, as `-t` does)
     auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(internalOptionsPath()));
+    // The internal options as read now, before the privilege drop, for the indexer client's configuration source
+    // Standalone never reads the file, so its map stays empty (environment only).
+    std::map<std::string, std::string> indexerFileOptions;
     try
     {
         confManager.load();
+        if (!base::process::isStandaloneModeEnable())
+        {
+            for (auto& [key, value] : conf::FileLoader(internalOptionsPath())())
+            {
+                indexerFileOptions.emplace(key, std::move(value));
+            }
+        }
     }
     catch (const std::exception& e)
     {
@@ -330,8 +344,10 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
-    /// The Engine's one indexer connector, as the content registrations use it (D1 of the content
-    /// manager): the same instance indexerConnector forwards to, never a second connection.
+    /// The Engine's indexer_client runtime and its Client `analysisd` (reads: content and remote configuration).
+    /// Owned by the main thread: started and stopped here, and its exit handlers run here too.
+    std::shared_ptr<wiconnector::EngineIndexerRuntime> indexerRuntime;
+    /// The content registrations' indexer: the runtime's Client.
     std::shared_ptr<content_manager::IContentIndexer> contentIndexer;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<dumper::Dumper> dumper;
@@ -477,15 +493,24 @@ int main(int argc, char* argv[])
             LOG_INFO("HLP initialized");
         }
 
+        // Check if event processing is enabled
+        const bool enableProcessing = confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING);
+
+        // Indexer runtime, second stop phase: registered before the scheduler's handler, so it runs after the
+        // scheduler joined its threads. It waits for the Client without draining and joins the runtime; on its own
+        // (the runtime never reached beginStop()) it runs both phases.
+        if (enableProcessing)
+        {
+            indexerRuntime = std::make_shared<wiconnector::EngineIndexerRuntime>();
+            exitHandler.add([indexerRuntime]() { indexerRuntime->finishStop(); });
+        }
+
         // Scheduler -> Should be terminated before all modules to ensure any scheduled are stopped before shutdown
         {
             scheduler = std::make_shared<scheduler::Scheduler>();
             LOG_INFO("Scheduler initialized");
             exitHandler.add([scheduler]() { scheduler->stop(); });
         }
-
-        // Check if event processing is enabled
-        const bool enableProcessing = confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING);
 
         // Indexer Connector
         if (enableProcessing)
@@ -500,6 +525,7 @@ int main(int argc, char* argv[])
                     icConfig.ssl.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
                     icConfig.ssl.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_BUNDLE);
                     icConfig.ssl.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
+                    icConfig.ssl.verifyCertificates = confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTIFICATES);
                 }
                 return icConfig.toJson();
             };
@@ -511,66 +537,127 @@ int main(int argc, char* argv[])
                                              ? standAloneConfig()
                                              : base::managerConfig::sectionJson("indexer");
 
-                // Parse JSON and add max_queue_bytes from engine configuration
-                json::Json jsonCnf(baseJsonCnf);
+                // The v1 write options the engine keeps: validated here as before, then they size the
+                // `events` and `raw` buckets.
                 const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
-                jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
-                // The ranges of these settings are checked by confManager.load() (conf.cpp), as `-t` does
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES), "/bulk_max_bytes");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL),
-                                  "/flush_interval_seconds");
-                // Error-logger sizing: bounded queue + thread count (only error responses are queued)
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE), "/logger_queue_size");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS), "/logger_threads");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY),
-                                  "/max_retry_delay_seconds");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_REQUEST_TIMEOUT),
-                                  "/request_timeout_seconds");
-                jsonCnf.setUint64(confManager.get<size_t>(conf::key::INDEXER_MONITORING_INTERVAL),
-                                  "/monitoring_interval_seconds");
+                // Their ranges are checked by confManager.load() (conf.cpp), as `-t` does; the v1's request timeout
+                // and monitoring interval are only range-checked there, nothing here reads them.
+                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
+                const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
+                const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
+                // Error-logger sizing of the v1: ignored with a WARN if not the default.
+                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
+                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
 
-                // One connector for everything: event indexing and every content download share it,
-                // so there is one health monitor and an outage is reported once.
-                const auto asyncConnector = wiconnector::makeIndexerConnectorAsync(jsonCnf.str());
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(asyncConnector);
-                // The content topics hold their indexer for their whole life, so their share is
-                // released here too: the connector stops at this point, not when main returns.
-                auto releasableIndexer =
-                    std::make_shared<cmcontent::ReleasableIndexer>(content_manager::makeContentIndexer(asyncConnector));
-                contentIndexer = releasableIndexer;
-                exitHandler.add(
-                    [indexerConnector, releasableIndexer]()
+                // Reads (content and remote configuration) go through the engine's indexer_client runtime, started
+                // here on the main thread, after goDaemon() and the privilege drop. Its lines reach the
+                // engine's log under the daemon's own tag, as the content updater's lines; the function must be set
+                // before the runtime starts.
+                const auto standalone = base::process::isStandaloneModeEnable();
+                indexer_client::setLogFunction(
+                    [logFunction = logging::createStandaloneLogFunction(), standalone](const int level,
+                                                                                       const char* tag,
+                                                                                       const char* file,
+                                                                                       const int line,
+                                                                                       const char* func,
+                                                                                       const char* msg,
+                                                                                       va_list args)
                     {
-                        releasableIndexer->release();
+                        logFunction(level,
+                                    standalone ? tag : "wazuh-manager-analysisd:indexer-client",
+                                    file,
+                                    line,
+                                    func,
+                                    msg,
+                                    args);
+                    });
+                // The library takes the `<indexer>` section alone (`hosts`, `ssl`): not the v1 extras.
+                json::Json indexerSection;
+                indexerSection.setObject();
+                {
+                    const json::Json baseSection(baseJsonCnf);
+                    for (const auto* member : {"/hosts", "/ssl"})
+                    {
+                        if (const auto value = baseSection.getJson(member))
+                        {
+                            indexerSection.set(member, *value);
+                        }
+                    }
+                }
+                const wiconnector::EngineConfigSource indexerSource(
+                    indexerSection.str(),
+                    std::move(indexerFileOptions),
+                    wiconnector::keystoreCredentials(),
+                    [](const std::string& name) -> std::optional<std::string>
+                    {
+                        const auto* value = std::getenv(name.c_str());
+                        return value ? std::optional<std::string>(value) : std::nullopt;
+                    },
+                    []()
+                    {
+                        std::vector<std::string> names;
+                        for (auto** entry = environ; entry != nullptr && *entry != nullptr; ++entry)
+                        {
+                            const std::string_view var {*entry};
+                            names.emplace_back(var.substr(0, var.find('=')));
+                        }
+                        return names;
+                    });
+                for (const auto& warning : indexerSource.warnings())
+                {
+                    LOG_WARNING("{}", warning);
+                }
+                wiconnector::EngineWriteOptions writeOptions;
+                writeOptions.queueMaxBytes = maxQueueBytes;
+                writeOptions.bulkMaxBytes = bulkMaxBytes;
+                writeOptions.flushInterval = std::chrono::seconds {flushInterval};
+                writeOptions.maxRetryDelay = std::chrono::seconds {maxRetryDelay};
+                writeOptions.loggerQueueSize = loggerQueueSize;
+                writeOptions.loggerThreads = loggerThreads;
+                std::vector<std::string> bucketWarnings;
+                const auto started = indexerRuntime->start(standalone ? indexer_client::ProcessId::Standalone
+                                                                      : indexer_client::ProcessId::Analysisd,
+                                                           indexerSource,
+                                                           writeOptions,
+                                                           bucketWarnings);
+                for (const auto& warning : bucketWarnings)
+                {
+                    LOG_WARNING("{}", warning);
+                }
+                if (!started.ok())
+                {
+                    throw std::runtime_error(fmt::format(
+                        "indexer client: {} ({})", started.reason, indexer_client::toString(started.cause)));
+                }
+                const auto& runtimeConfig = started.value;
+
+                // Content downloads: the Client, with budgets above the runtime's timeouts and an immediate
+                // failure while every probed node is down, so an outage does not hold the scheduler.
+                auto contentOptions =
+                    content_manager::contentIndexerOptionsFor(runtimeConfig.requestTimeout, runtimeConfig.probeTimeout);
+                contentOptions.failFastWithoutNode = true;
+                contentIndexer = content_manager::makeContentIndexer(indexerRuntime->client(), contentOptions);
+
+                // Writes: the `events` and `raw` buckets of the same Client; reads as above.
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(
+                    indexerRuntime->client(), runtimeConfig.requestTimeout, indexerRuntime->queueCapacityBytes());
+
+                // First stop phase: registered after the scheduler's handler, so it runs before the
+                // scheduler stops. It closes the Client's admission (a read in flight returns ClientClosed, so no
+                // scheduler thread stays inside a call) and then releases the connector's writers and reader; the
+                // router and tester workers were joined before.
+                exitHandler.add(
+                    [indexerRuntime = indexerRuntime, indexerConnector]()
+                    {
+                        indexerRuntime->beginStop();
                         indexerConnector->shutdown();
                     });
 
-                // Register pull metric for indexer queue (output/egress)
-                std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
-                FASTMETRICS_PULL(uint64_t,
-                                 fastmetrics::names::INDEXER_QUEUE_SIZE,
-                                 [wIndexer]()
-                                 {
-                                     auto connector = wIndexer.lock();
-                                     return connector ? connector->getQueueSize() : 0;
-                                 });
-
-                FASTMETRICS_PULL(uint64_t,
-                                 fastmetrics::names::INDEXER_EVENTS_DROPPED,
-                                 [wIndexer]()
-                                 {
-                                     auto connector = wIndexer.lock();
-                                     return connector ? connector->getDroppedEvents() : 0;
-                                 });
-
-                auto indexerQueueUsageGetter = [wIndexer, maxQueueBytes]()
-                {
-                    auto connector = wIndexer.lock();
-                    auto currentSize = connector ? connector->getQueueSize() : 0;
-                    return maxQueueBytes > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueBytes) : 0.0;
-                };
-                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
+                // The indexer metrics (output/egress): the three queue metrics, every metric of the `events` and `raw`
+                // buckets and the runtime's (its nodes, queries and points in time), all as pull metrics.
+                wiconnector::registerIndexerMetrics(
+                    fastmetrics::manager(), indexerConnector, indexerRuntime->runtime());
 
                 LOG_INFO("Indexer Connector initialized");
             }
@@ -658,8 +745,7 @@ int main(int argc, char* argv[])
         // Raw Event Indexer
         if (enableProcessing)
         {
-            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
-                indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+            rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(indexerConnector);
             LOG_INFO("Raw Event Indexer initialized");
 
             if (remoteConf)

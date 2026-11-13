@@ -3147,7 +3147,9 @@ components:
     WazuhLogsSummary:
       type: object
       properties:
-          indexer-connector:
+          wazuh-manager-analysisd:indexer-client:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-manager-modulesd:indexer-client:
             $ref: '#/components/schemas/LogSummary'
           wazuh-manager-analysisd:
             $ref: '#/components/schemas/LogSummary'
@@ -7527,7 +7529,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - indexer-connector:
+                    - wazuh-manager-modulesd:indexer-client:
                         all: 24
                         info: 0
                         error: 0

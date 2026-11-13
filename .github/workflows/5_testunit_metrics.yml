@@ -17,7 +17,7 @@ on:
       - "VERSION.json"
       # build_external_deps runs `make deps`/`make build-external` (src/Makefile; its ref list comes
       # from tools/get_git_refs.sh, src/Makefile:708) and builds the http-request submodule
-      # (action.yml:35-43, also configured at src/CMakeLists.txt:244). A submodule bump changes only
+      # (action.yml:54-62, also configured at src/CMakeLists.txt:244). A submodule bump changes only
       # the gitlink path, which `http-request/**` would never match.
       - "src/Makefile"
       - "src/deps.lock.mk"

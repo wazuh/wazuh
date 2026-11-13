@@ -87,8 +87,13 @@ const socket = io();
 const MAX_POINTS = 300;
 
 // Injected by the dashboard server from metrics_meta.json.
-// Format: { "metric.name": { "category": "events|bytes|...", "unit": "count|bytes|percent|eps|items" } }
+// Format: { "metric.name": { "category": "events|bytes|...", "unit": "count|total|bytes|percent|eps|items|ms|state" } }
+// A per-node name is listed once with `<i>` for its index (indexer_client.node.<i>.window).
 const METRICS_META = {{ metrics_meta | safe }};
+
+function metricMeta(name) {
+    return METRICS_META[name] || METRICS_META[name.replace(/\\.\\d+\\./g, '.<i>.')];
+}
 
 // chartId → { type, prevValue }
 const charts = {};
@@ -111,7 +116,7 @@ function nameColor(name) {
 // Returns the dashboard section for a global metric.
 // Uses METRICS_META when available; falls back to name heuristics; defaults to "events".
 function metricCategory(name) {
-    const meta = METRICS_META[name];
+    const meta = metricMeta(name);
     if (meta && meta.category) return meta.category;
     // fallback heuristics so metrics added before updating the JSON still appear somewhere
     if (name.includes('.bytes')) return 'bytes';
@@ -125,10 +130,13 @@ const UNIT_AXIS = {
     'eps':     { title: 'Events/sec' },
     'items':   { title: 'Items' },
     'count':   { title: 'Delta/poll' },  // most counters
+    'total':   { title: 'Total' },       // pull counters: plotted cumulative
+    'ms':      { title: 'ms' },
+    'state':   { title: '0 available, 1 throttled, 2 down' },
 };
 
 function yAxisCfg(name, type) {
-    const meta = METRICS_META[name];
+    const meta = metricMeta(name);
     if (meta && meta.unit && UNIT_AXIS[meta.unit]) return UNIT_AXIS[meta.unit];
     // fallback heuristics
     if (name.endsWith('.percent') || name.includes('.usage.percent'))

@@ -423,6 +423,128 @@ TEST(VdScanLaneTest, ThePipelineParksItemsOfAnAgentWhoseScanIsInFlight)
     pipeline->stop();
 }
 
+namespace
+{
+    /// A pipeline sharing the lane fixture's registry and events, with @p hold as its abandoned-write window.
+    std::shared_ptr<invsync::sync::SyncPipeline> pipelineOn(LaneUnderTest& fixture, std::chrono::milliseconds hold)
+    {
+        invsync::sync::SyncPipelineConfig config;
+        config.abandonedWriteHold = hold;
+        return std::make_shared<invsync::sync::SyncPipeline>(
+            config,
+            std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
+                std::make_shared<FakeIndexerConnectorSync>(fixture.events, "sync")},
+            CLUSTER,
+            fixture.registry);
+    }
+
+    std::string pipelineBody(const char* agentId, const char* docId)
+    {
+        SessionSpec spec;
+        spec.agentId = agentId;
+        ValueSpec value;
+        value.id = docId;
+        return invsync::test::buildSyncDataSession(spec, {value});
+    }
+} // namespace
+
+/**
+ * The mirror of the lane's own wait: a pipeline batch fails with its `_bulk` still on the wire (the connector
+ * holdsAbandonedWrite()). The pipeline answers at once and keeps the agent held in the registry -- without
+ * blocking its shard -- so a VD session of that agent parks on the lane instead of writing its documents under
+ * the late `_bulk` through another connector. Once the write resolves the hold is dropped and the lane runs.
+ */
+TEST(VdScanLaneTest, APipelineAbandonedWriteParksTheLaneUntilItResolves)
+{
+    LaneUnderTest fixture;
+    auto pipeline = pipelineOn(fixture, std::chrono::seconds {30});
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_holdsAbandonedWrite.store(true);
+
+    auto failed = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p"), failed)));
+    EXPECT_EQ(503, failed->get().status) << "the agent is answered without waiting for the late write";
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn.clear();
+    }
+
+    auto vd = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted,
+              fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-vd", invsync::test::fb::Option_VDFirst, "001"), vd)));
+
+    // The shard is not blocked: another agent, and the held agent's own next session, still flow.
+    auto other = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("002", "doc-o"), other, "002")));
+    EXPECT_EQ(200, other->get().status);
+    auto again = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p2"), again)));
+    EXPECT_EQ(200, again->get().status);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds {300});
+    EXPECT_EQ(0, fixture.events->m_scanEntered.load()) << "the lane wrote under the pipeline's abandoned write";
+    EXPECT_FALSE(vd->answered());
+
+    fixture.events->m_holdsAbandonedWrite.store(false); // The late `_bulk` resolved.
+    EXPECT_EQ(200, vd->get().status);
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+    pipeline->stop();
+}
+
+/// The hold is bounded (request timeout + 5 s in production): past it the agent is released anyway.
+TEST(VdScanLaneTest, APipelineAbandonedWriteHoldEndsAtItsBound)
+{
+    LaneUnderTest fixture;
+    auto pipeline = pipelineOn(fixture, std::chrono::milliseconds {400});
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_holdsAbandonedWrite.store(true); // Never resolves.
+
+    auto failed = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p"), failed)));
+    EXPECT_EQ(503, failed->get().status);
+    const auto answeredAt = std::chrono::steady_clock::now();
+    EXPECT_FALSE(fixture.registry->isFree("001"));
+
+    ASSERT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+    const auto heldFor =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - answeredAt).count();
+    EXPECT_GE(heldFor, 300);
+    EXPECT_LT(heldFor, 2000);
+    pipeline->stop();
+    EXPECT_TRUE(fixture.registry->isFree("001"));
+}
+
+/// Stopping never keeps an agent held.
+TEST(VdScanLaneTest, StoppingThePipelineDropsAbandonedWriteHolds)
+{
+    LaneUnderTest fixture;
+    auto pipeline = pipelineOn(fixture, std::chrono::seconds {30});
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_holdsAbandonedWrite.store(true);
+
+    auto failed = std::make_shared<FutureResponder>();
+    ASSERT_TRUE(pipeline->enqueue(makeItem(pipelineBody("001", "doc-p"), failed)));
+    EXPECT_EQ(503, failed->get().status);
+    EXPECT_FALSE(fixture.registry->isFree("001"));
+
+    const auto started = std::chrono::steady_clock::now();
+    pipeline->stop();
+    EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds {2});
+    EXPECT_TRUE(fixture.registry->isFree("001"));
+}
+
 TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnceItFinishes)
 {
     LaneUnderTest fixture;
@@ -436,12 +558,12 @@ TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnce
         fixture.lane->tryEnqueue(makeItem(vdDeltaBody("doc-1", invsync::test::fb::Option_VDFirst, "001"), vdFirst)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
-    EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "an agent mid-scan cannot be quiesced instantly";
+    EXPECT_FALSE(coordinator.pauseAgent("001", "test", nullptr)) << "an agent mid-scan cannot be quiesced instantly";
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, vdFirst->get().status);
 
-    EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
+    EXPECT_TRUE(coordinator.pauseAgent("001", "test", nullptr));
     EXPECT_FALSE(fixture.registry->isFree("001")) << "a paused agent must not dispatch";
     coordinator.resumeAgent("001");
     EXPECT_TRUE(fixture.registry->isFree("001"));
@@ -449,12 +571,12 @@ TEST(VdScanLaneTest, AnAgentMidScanCannotBeQuiescedInstantlyButPauseSucceedsOnce
 
 /**
  * The scan succeeded, the INDEXING did not. That is not a scan failure and must not be reported as
- * one: the outcome depends on whether the connector still considers itself usable, because the two
- * answers mean different things to the agent. A reachable indexer failing one bulk is OUR problem
- * (500); an unreachable one is a transient outage the agent should back off from (503).
+ * one: the answer follows the failure's CAUSE alone, never a second look at isAvailable().
+ * A failure the connector does not classify is OUR problem (500); a transient one is an outage the
+ * agent should back off from (503).
  *
- * Either way the lane must flush whatever it had staged before answering -- the re-POST re-stages
- * the whole session, so leftover partial staging would be indexed twice.
+ * Either way the lane drops whatever it had staged before answering (discard(), not flush()): the
+ * re-POST re-stages the whole session, so leftover partial staging would be indexed twice.
  */
 TEST(VdScanLaneTest, IndexingFailingAfterAGoodScanAnswers500WhileTheIndexerLooksHealthy)
 {
@@ -475,19 +597,103 @@ TEST(VdScanLaneTest, IndexingFailingAfterAGoodScanAnswers500WhileTheIndexerLooks
     const auto ops = fixture.events->syncOps();
     ASSERT_FALSE(ops.empty());
     EXPECT_EQ("scan", std::get<0>(ops[0])) << "the scan ran and passed; only the indexing broke";
-    EXPECT_EQ(1, fixture.events->m_syncFlushes.load()) << "partial staging is drained before answering";
+    EXPECT_EQ(0, fixture.events->m_syncFlushes.load()) << "a failed staging is dropped, never sent";
+    EXPECT_EQ(1, fixture.events->m_discards.load()) << "partial staging is discarded before answering";
 
     EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }))
         << "a failed session must still release the agent, or it is fenced forever";
 }
 
-TEST(VdScanLaneTest, IndexingFailingWithAnUnavailableIndexerAnswers503)
+TEST(VdScanLaneTest, IndexingFailingWithAnUnavailableCauseAnswers503)
 {
     LaneUnderTest fixture;
     {
         std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
         fixture.events->m_syncThrowOn = "bulkIndex";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
     }
+    fixture.events->m_syncAvailable.store(true); // The cause alone decides, whatever the connector says.
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(503, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("Service unavailable"));
+    EXPECT_EQ(1, fixture.events->m_discards.load());
+}
+
+/// The flush of a good session can fail too (the real adapter reports it from flush()): the same table.
+TEST(VdScanLaneTest, AFailedFlushAfterAGoodScanFollowsItsCause)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::RetryExhausted;
+    }
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    EXPECT_EQ(503, responder->get().status) << "the retry budget ran out: the agent comes back";
+}
+
+/**
+ * A failed flush can leave a chunk whose `_bulk` is already on the wire: cancel() cannot stop it, and the
+ * pipeline's connectors cannot see it from their barriers. The lane answers at once but keeps the agent
+ * until that write settles, so the agent's next delete-by-query (a Cleans on the pipeline) cannot be
+ * overtaken by it. The fake's settle gate stands for the chunk still held by the indexer.
+ */
+TEST(VdScanLaneTest, AFailedFlushHoldsTheAgentUntilTheAbandonedWriteSettles)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->closeSettleGate();
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    EXPECT_EQ(503, responder->get().status) << "the agent is answered without waiting for the late write";
+    ASSERT_TRUE(waitFor([&] { return fixture.events->m_settleEntered.load() == 1; }))
+        << "the lane never waited for the abandoned write";
+    EXPECT_EQ(1, fixture.events->m_discards.load()) << "discard() comes first: it is what cancels the chunk";
+    std::this_thread::sleep_for(std::chrono::milliseconds {100});
+    EXPECT_FALSE(fixture.registry->isFree("001")) << "released with its write still on the wire";
+    EXPECT_FALSE(fixture.registry->couldAcquire("001", AgentInFlightRegistry::Lane::Pipeline, /*reentrant=*/true));
+
+    fixture.events->openSettleGate();
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); })) << "never released once settled";
+}
+
+/// Giving up (closing, or past the request timeout) still releases the agent: the wait is bounded, never a fence.
+TEST(VdScanLaneTest, AnUnsettledAbandonedWriteStillReleasesTheAgent)
+{
+    LaneUnderTest fixture;
+    {
+        std::lock_guard<std::mutex> lock(fixture.events->m_mutex);
+        fixture.events->m_syncThrowOn = "flush";
+        fixture.events->m_syncThrowCause = invsync::indexer::ConnectorError::Cause::Unavailable;
+    }
+    fixture.events->m_settleResult.store(invsync::indexer::AbandonedWrite::TimedOut);
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    EXPECT_EQ(503, responder->get().status);
+    EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
+    EXPECT_EQ(1, fixture.events->m_settleEntered.load());
+}
+
+/// The dispatch gate still refuses BEFORE the scan when the connector reports no usable node: a scan
+/// whose inventory could never land would waste minutes to answer a 503 already known.
+TEST(VdScanLaneTest, AnUnavailableConnectorAtDispatchAnswers503BeforeScanning)
+{
+    LaneUnderTest fixture;
     fixture.events->m_syncAvailable.store(false);
     auto responder = std::make_shared<FutureResponder>();
 
@@ -496,6 +702,7 @@ TEST(VdScanLaneTest, IndexingFailingWithAnUnavailableIndexerAnswers503)
     const auto response = responder->get();
     EXPECT_EQ(503, response.status);
     EXPECT_NE(std::string::npos, response.body.find("Service unavailable"));
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "nothing was scanned or staged";
 }
 
 TEST(VdScanLaneTest, StopAnswers503ToQueuedSessions)
@@ -797,7 +1004,7 @@ TEST(VdScanLaneTest, AnOnDemandScanFencesItsOwnAgentWithoutWaitingForItsOwnLaneH
     fixture.events->m_scanAgentHook = [&](const std::string& agentId)
     {
         const auto start = std::chrono::steady_clock::now();
-        fenced.store(coordinator->pauseAgent(agentId, "on-demand scan"));
+        fenced.store(coordinator->pauseAgent(agentId, "on-demand scan", nullptr));
         fenceMs.store(
             std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count());
         coordinator->resumeAgent(agentId);
@@ -825,11 +1032,107 @@ TEST(VdScanLaneTest, TheFenceStillWaitsForAnotherThreadsScanOfTheAgent)
     ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(scan)));
     ASSERT_TRUE(waitFor([&] { return fixture.events->m_scanEntered.load() == 1; }));
 
-    EXPECT_FALSE(coordinator.pauseAgent("001", "test")) << "the lane worker's hold is not this thread's";
+    EXPECT_FALSE(coordinator.pauseAgent("001", "test", nullptr)) << "the lane worker's hold is not this thread's";
 
     fixture.events->openScanGate();
     EXPECT_EQ(200, scan->get().status);
     EXPECT_TRUE(waitFor([&] { return fixture.registry->isFree("001"); }));
-    EXPECT_TRUE(coordinator.pauseAgent("001", "test"));
+    EXPECT_TRUE(coordinator.pauseAgent("001", "test", nullptr));
     coordinator.resumeAgent("001");
+}
+
+// --- A stopping scanner -----------------------------------------------------------
+//
+// VulnerabilityScannerFacade::stop() lowers isInitialized() first; from then on the adapter's scan() throws "VD
+// stopping" and its scanAgent() answers NotReady. The lane has to turn the first into a failed session (500, nothing
+// indexed: a skip would index an inventory that was never scanned) and the second into a retryable 503, without
+// taking its worker thread down.
+
+namespace
+{
+    /// The adapter's behaviour once its scanner is stopping.
+    class StoppedVdScanner final : public invsync::vd::IVdScanner
+    {
+    public:
+        bool feedReady() const override
+        {
+            return true;
+        }
+
+        bool scannerRunning() const override
+        {
+            return true;
+        }
+
+        std::uint64_t currentFeedOffset() const override
+        {
+            return 0;
+        }
+
+        invsync::vd::ScanVerdict scan(const invsync::sync::ValidatedSession&) override
+        {
+            scans.fetch_add(1);
+            throw std::runtime_error("VD stopping");
+        }
+
+        invsync::vd::AgentScanOutcome scanAgent(const std::string&) override
+        {
+            agentScans.fetch_add(1);
+            return invsync::vd::AgentScanOutcome::NotReady;
+        }
+
+        std::atomic<int> scans {0};
+        std::atomic<int> agentScans {0};
+    };
+
+    struct StoppedLaneUnderTest
+    {
+        std::shared_ptr<ConnectorEvents> events {std::make_shared<ConnectorEvents>()};
+        std::shared_ptr<AgentInFlightRegistry> registry {std::make_shared<AgentInFlightRegistry>()};
+        std::shared_ptr<StoppedVdScanner> scanner {std::make_shared<StoppedVdScanner>()};
+        std::shared_ptr<VdScanLane> lane {
+            std::make_shared<VdScanLane>(VdScanLaneConfig {},
+                                         scanner,
+                                         std::vector<std::shared_ptr<invsync::indexer::IIndexerConnectorSync>> {
+                                             std::make_shared<FakeIndexerConnectorSync>(events, "sync")},
+                                         registry,
+                                         CLUSTER,
+                                         nullptr)};
+    };
+} // namespace
+
+TEST(VdScanLaneTest, StoppedScannerFailsSession)
+{
+    StoppedLaneUnderTest fixture;
+    auto responder = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), responder)));
+
+    const auto response = responder->get();
+    EXPECT_EQ(500, response.status);
+    EXPECT_NE(std::string::npos, response.body.find("vulnerability scan failed"));
+    EXPECT_EQ(1, fixture.scanner->scans.load());
+    EXPECT_TRUE(fixture.events->syncOps().empty()) << "a session cut by stop() must index NOTHING";
+    EXPECT_EQ(0, fixture.events->m_syncFlushes.load());
+}
+
+TEST(VdScanLaneTest, StoppedScannerOnDemandIs503)
+{
+    StoppedLaneUnderTest fixture;
+    auto first = std::make_shared<FutureResponder>();
+
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(first)));
+    EXPECT_EQ(503, first->get().status);
+
+    // The worker thread is still alive: the next request (another agent, then a session) is answered too.
+    auto second = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeScanRequest(second, "002")));
+    EXPECT_EQ(503, second->get().status);
+
+    auto session = std::make_shared<FutureResponder>();
+    ASSERT_EQ(VdScanLane::Admission::Accepted, fixture.lane->tryEnqueue(makeItem(vdDeltaBody(), session)));
+    EXPECT_EQ(500, session->get().status);
+
+    EXPECT_EQ(2, fixture.scanner->agentScans.load());
+    EXPECT_TRUE(fixture.events->syncOps().empty());
 }

@@ -44,7 +44,7 @@ target_link_libraries(base
     PRIVATE
     # Loader of etc/wazuh-manager.conf (shared_modules/manager_config, C++ API): a target of the same
     # top-level tree (src/CMakeLists.txt adds it after engine/; names resolve at generate time), like
-    # indexer_connector for wiconnector. Never import build/lib/libmanager_config.a instead: a
+    # keystore for wiconnector. Never import build/lib/libmanager_config.a instead: a
     # UNIT_TEST tree builds it with coverage instrumentation.
     manager_config
 )

@@ -13,6 +13,7 @@
 #include "components/topicSpecValidation.hpp"
 #include "contentTopicSpec.hpp"
 #include "gtest/gtest.h"
+#include <chrono>
 #include <functional>
 #include <string>
 #include <variant>
@@ -100,6 +101,37 @@ TEST(TopicSpecValidationTest, RejectsAnUnusableSource)
         [](TopicSpec& s) { s.source.sourceFilter = nlohmann::json::array({"offset"}); },
         "source.sourceFilter");
     expectRejected(cursorSpec(), [](TopicSpec& s) { s.schedule.intervalSeconds = 0; }, "schedule.intervalSeconds");
+}
+
+TEST(TopicSpecValidation, RejectsBadKeepAlive)
+{
+    // Verified against OpenSearch: upper-case units, fractions and a bare number are refused.
+    for (const auto* bad : {"5M", "1.5m", "5", "0ms", "m", "5 m", "5x", "   "})
+    {
+        expectRejected(cursorSpec(), [bad](TopicSpec& s) { s.source.pitKeepAlive = bad; }, "source.pitKeepAlive");
+        try
+        {
+            auto spec = cursorSpec();
+            spec.source.pitKeepAlive = bad;
+            validateTopicSpec(spec);
+        }
+        catch (const std::invalid_argument& e)
+        {
+            EXPECT_NE(std::string {e.what()}.find(std::string {"'"} + bad + "'"), std::string::npos)
+                << "the message must name the value: " << e.what();
+        }
+    }
+}
+
+TEST(TopicSpecValidation, TrimsKeepAlive)
+{
+    for (const auto* good : {" 5m ", "5m", "300s", "\t5m", "5m ", "100ms", "1d"})
+    {
+        auto spec = cursorSpec();
+        spec.source.pitKeepAlive = good;
+        EXPECT_NO_THROW(validateTopicSpec(spec)) << "'" << good << "'";
+    }
+    EXPECT_EQ(content_manager::detail::parseKeepAlive(" 5m "), std::chrono::minutes {5});
 }
 
 TEST(TopicSpecValidationTest, AReadinessGateNeedsAConcreteIndexAndAnId)

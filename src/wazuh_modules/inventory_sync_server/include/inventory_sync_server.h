@@ -50,8 +50,8 @@ extern "C"
      * opinion, use the module default", and modulesd passes a 0 fallback for those
      * precisely so their defaults live in ONE place, this module. Two exceptions, both
      * documented on the field itself: `max_inflight_bytes` (where 0 is a real setting,
-     * so absent is signalled with a negative) and the nine indexer fields (where the
-     * default belongs to the shared connector library, not here, and modulesd mirrors it).
+     * so absent is signalled with a negative) and the indexer fields (whose defaults
+     * modulesd mirrors; see each one).
      *
      * The ALLOWED RANGE of each field is enforced by modulesd, not here, and it is stated
      * per field below. That is not documentation for its own sake: an out-of-range internal
@@ -164,7 +164,7 @@ extern "C"
         /* ---- Sync pipeline (the POST /stateful ingestion path) ---- */
         int sync_workers;                ///< Worker threads applying sessions to the indexer, sharded by
                                          ///< agent id (FIFO per agent). Each worker owns one
-                                         ///< IndexerConnectorSync built on the shared session.
+                                         ///< IndexerClientSyncAdapter on the shared indexer client.
                                          ///< Range 0..64. <=0 -> nproc/2, minimum 1.
         long long sync_queue_bytes;      ///< Early-rejection cap on payload bytes queued in the pipeline;
                                          ///< over it -> 503. A refinement UNDER max_inflight_bytes (which
@@ -188,66 +188,53 @@ extern "C"
                                          ///< across the pipeline and the scan lane; over it -> 503.
                                          ///< Range 1..1024. <=0 -> 2.
 
-        /* ---- SYNC indexer connector (IndexerConnectorSync) tuning. Overlaid onto the <indexer>
-         *      block below by buildSyncConnectorConfig() before construction. This is the same
-         *      connector class inventory_sync (the module this one will eventually replace) uses,
-         *      so these mirror its own tunables exactly.
-         *
-         *      Each field is named `indexer_sync_<the connector's own key name>`, so comparing this
-         *      block against the builder shows the mapping 1:1 and crossing the two families
-         *      produces a visible name mismatch instead of a silent no-op. <=0 -> connector
-         *      default. ---- */
-        int indexer_sync_max_bulk_size;           ///< Bulk size threshold, bytes, before a flush is
-                                                  ///< forced. -> `max_bulk_size`. <=0 -> 10 MiB.
-        int indexer_sync_flush_interval_seconds;  ///< Periodic flush interval, seconds, forced even if
-                                                  ///< the size threshold was not reached.
-                                                  ///< -> `flush_interval_seconds`. <=0 -> 20 s.
-        int indexer_sync_max_retry_delay_seconds; ///< Ceiling for the exponential retry backoff.
-                                                  ///< -> `max_retry_delay_seconds`. <=0 -> 15 s.
-                                                  ///< The connector's constructor REJECTS a value
-                                                  ///< below its base retry delay of 1, so modulesd
-                                                  ///< also enforces a minimum of 1 on the option.
-                                                  ///< Between that and the <=0 sentinel above, a
-                                                  ///< rejecting value cannot reach the connector
-                                                  ///< from configuration at all.
+        /* ---- SYNC half tuning. These feed the indexer_client `inventory` bucket
+         *      (indexer/indexerClientSyncAdapter.hpp: inventoryBucketSpec(), budgets()):
+         *      max_bulk_size stays the pipeline's group-commit threshold, connector_max_bulk_size is
+         *      the bucket's bytes per _bulk, the retry fields its retry policy and the module's time
+         *      budgets; flush_interval_seconds and request_timeout_seconds are accepted but ignored
+         *      (a WARN names the replacement). <=0 -> default, except where a field says 0 is a
+         *      real setting. ---- */
+        int indexer_sync_max_bulk_size;           ///< Group-commit threshold of the pipeline, request
+                                                  ///< bytes, before a batch is flushed. <=0 -> 10 MiB.
+        int indexer_sync_flush_interval_seconds;  ///< Accepted but ignored (the adapter has no
+                                                  ///< timer flush); a non-default value is WARNed.
+        int indexer_sync_max_retry_delay_seconds; ///< Ceiling of the `inventory` bucket's retry backoff
+                                                  ///< (`retry.cap`). <=0 -> 15 s. modulesd enforces a
+                                                  ///< minimum of 1 on the option.
 
-        /* ---- ASYNC indexer connector (IndexerConnectorAsync) tuning. Overlaid by
-         *      buildAsyncConnectorConfig().
-         *
-         *      CAUTION: `bulk_max_bytes` below is THE SAME CONCEPT as the sync connector's
-         *      `max_bulk_size` above, under a DIFFERENT key name. Handing either connector the
-         *      other's key is IGNORED SILENTLY -- no throw, no log, the built-in default applies
-         *      instead. That is exactly why the two families are separate fields fed by separate
-         *      internal options, and why each builder emits only the keys its own connector reads.
-         *      <=0 -> connector default. ---- */
-        int indexer_async_bulk_max_bytes;          ///< Bulk size threshold, bytes.
-                                                   ///< -> `bulk_max_bytes`. <=0 -> 4 MiB.
-        int indexer_async_flush_interval_seconds;  ///< Periodic flush interval, seconds.
-                                                   ///< -> `flush_interval_seconds`. <=0 -> 20 s.
-        int indexer_async_max_retry_delay_seconds; ///< Ceiling for the exponential retry backoff.
-                                                   ///< -> `max_retry_delay_seconds`. <=0 -> 15 s.
+        /* ---- ASYNC half tuning. These feed the indexer_client `agent-state` bucket of
+         *      POST /stats, POST /config and the deletion's by-id deletes
+         *      (indexer/indexerClientSyncAdapter.hpp: agentStateBucketSpec()): bulk_max_bytes
+         *      is the bucket's bytes per _bulk, max_retry_delay_seconds its retry cap and
+         *      max_queue_bytes its quota; flush_interval_seconds, logger_queue_size and
+         *      logger_threads are accepted but ignored (a WARN names them when not at their
+         *      default). <=0 -> default. ---- */
+        int indexer_async_bulk_max_bytes;          ///< `agent-state` bytes per _bulk (`bulk.maxBytes`),
+                                                   ///< clipped to fit its quota. <=0 -> 4 MiB.
+        int indexer_async_flush_interval_seconds;  ///< Accepted but ignored; a non-default
+                                                   ///< value is WARNed.
+        int indexer_async_max_retry_delay_seconds; ///< Ceiling of the `agent-state` bucket's retry
+                                                   ///< backoff (`retry.cap`). <=0 -> 15 s.
                                                    ///< Same minimum-of-1 story as the sync one.
-        int indexer_async_logger_queue_size;       ///< Bounded queue, in elements, for the async
-                                                   ///< error logger. -> `logger_queue_size`.
-                                                   ///< <=0 -> 8.
-        int indexer_async_logger_threads;          ///< Threads draining that error-logger queue.
-                                                   ///< -> `logger_threads`. <=0 -> 1.
+        int indexer_async_logger_queue_size;       ///< Accepted but ignored; a non-default
+                                                   ///< value is WARNed.
+        int indexer_async_logger_threads;          ///< Accepted but ignored; a non-default
+                                                   ///< value is WARNed.
 
         /**
-         * @brief Cap on the async connector's in-memory pending-bulk queue, bytes.
+         * @brief Quota of the `agent-state` bucket, bytes.
          *
-         * Maps to `max_queue_bytes`. THE ONE EXCEPTION to this header's sentinel rule: `0` here
-         * means the connector's own documented "unlimited", not "use the module default". modulesd
-         * therefore ships a real bounded default (64 MiB, matching what the engine uses for the
-         * same key) rather than a 0 placeholder, and an operator who genuinely wants an unbounded
-         * queue has to write `0` explicitly.
+         * Maps to the bucket's `quotaBytes`, bounded by the runtime's global quota: at most a quarter
+         * of it (what is left goes to `inventory`), at least one bulk plus its reserve, and at least
+         * 16 KiB so the two deletes of a deletion fit one Group. THE ONE EXCEPTION to this header's
+         * sentinel rule: `0` is a legal value, read as "a quarter of the global quota" (it meant
+         * "unlimited" for the retired async connector). modulesd ships a real default (64 MiB)
+         * rather than a 0 placeholder.
          *
          * The reason it cannot follow the usual `min=1` convention: getDefine_Int_default() calls
          * merror_exit() on an out-of-range value, so a minimum of 1 would turn a documented, legal
          * setting into a fatal modulesd abort.
-         *
-         * An unbounded queue is the only unbounded allocation this module can be configured to make
-         * -- see max_inflight_bytes above for how the transport side is bounded.
          */
         long long indexer_async_max_queue_bytes;
 
@@ -260,17 +247,14 @@ extern "C"
         /**
          * @brief The <indexer> configuration block, verbatim, as nested cJSON.
          *
-         * NOT a POD field, on purpose. The indexer connector consumes nested JSON with
-         * arrays -- hosts[], ssl.certificate_authorities[], plus ssl.certificate and
-         * ssl.key -- which a fixed-size C struct cannot express without flattening it here
-         * and re-nesting it on the other side. Passing the subtree through untouched keeps
-         * this header from having to track the indexer connector's schema at all.
+         * NOT a POD field, on purpose: nested JSON with arrays -- hosts[],
+         * ssl.certificate_authorities[], plus ssl.certificate and ssl.key -- which a fixed-size
+         * C struct cannot express without flattening it here and re-nesting it on the other side.
          *
-         * The `indexer_sync_*`/`indexer_async_*` fields above are overlaid onto a COPY of
-         * this subtree by the module before construction -- once per connector, each with
-         * only the keys its own connector reads. They are not expected to already be
-         * present in it. `hosts` and `ssl.*` are shared by both connectors and by the
-         * IndexerSession they are built from.
+         * The module only summarises it in a DEBUG line (counts, never values): its
+         * indexer_client Client takes hosts and ssl from the process runtime (`indexer_runtime`),
+         * which modulesd builds from the same block. The field stays so the struct's layout, and
+         * with it the ABI, does not change.
          *
          * OWNERSHIP: BORROWED for the duration of the start() call only. The module
          * deep-copies whatever it needs before returning, so the caller may free it as
@@ -292,22 +276,17 @@ extern "C"
         int control_max_sessions;         ///< Concurrent control-class sessions; over it -> 503.
                                           ///< Range 0..1024. <=0 -> 256.
 
-        /* ---- Per-request bound of both indexer connectors -- APPENDED, same ABI rule as above.
-         *      The connectors also accept 0 (no bound), but that is the unbounded-blocking bug this
-         *      option exists to prevent, so it is deliberately not reachable from here: the option's
-         *      minimum is 1 and <=0 means "use the connector default". ---- */
-        int indexer_sync_request_timeout_seconds;  ///< Cap, seconds, on one HTTP request against the
-                                                   ///< indexer. -> `request_timeout_seconds`.
-                                                   ///< <=0 -> 60 s.
-        int indexer_async_request_timeout_seconds; ///< Same, for the async connector.
-                                                   ///< -> `request_timeout_seconds`. <=0 -> 60 s.
+        /* ---- Per-request bound of the retired indexer connectors -- APPENDED, same ABI rule as
+         *      above. Accepted but ignored: the per-request timeout
+         *      is the process runtime's `wazuh_modules.indexer_client_request_timeout_ms`. A value
+         *      other than the default (60) is WARNed once per start. ---- */
+        int indexer_sync_request_timeout_seconds;  ///< Ignored. <=0 or 60 -> silent.
+        int indexer_async_request_timeout_seconds; ///< Ignored. <=0 or 60 -> silent.
 
-        /* ---- Shared health-monitor polling period -- APPENDED, same ABI rule as above. One field,
-         *      not two: both connectors share the session's single monitor, so there is exactly one
-         *      polling cadence per module. ---- */
-        int indexer_monitoring_interval_seconds; ///< Seconds between health-check rounds of the shared
-                                                 ///< session's monitor. -> `monitoring_interval_seconds`.
-                                                 ///< Range 1..3600. <=0 -> 10 s.
+        /* ---- Health-monitor polling period of the retired indexer session -- APPENDED, same ABI
+         *      rule as above. Accepted but ignored: node health belongs to the process's
+         *      indexer client runtime. A value other than the default (10) is WARNed once. ---- */
+        int indexer_monitoring_interval_seconds; ///< Ignored. Range 1..3600. <=0 or 10 -> silent.
 
         /* ---- Retry budget of the SYNC indexer connector -- APPENDED, same ABI rule as above.
          *      Bounds every retry loop of one operation by attempts and by wall-clock time;
@@ -342,6 +321,12 @@ extern "C"
                                     ///< window before the scanner's start() has run, instead
                                     ///< of treating "hasn't started yet" the same as "will
                                     ///< never run here".
+
+        /* ---- The process's indexer_client runtime -- APPENDED, same ABI rule as above. ---- */
+        const void* indexer_runtime; ///< Opaque `const indexer_client::RuntimeRef*` published by
+                                     ///< modulesd (wm_indexer_runtime_ref()); stable for the life of
+                                     ///< the process. NULL = no runtime: the sync stage of the
+                                     ///< startup gate fails and retries on the heartbeat.
     } inventory_sync_server_config_t;
 
     /**

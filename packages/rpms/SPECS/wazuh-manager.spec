@@ -916,7 +916,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libstdc++.so.6
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libgcc_s.so.1
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libcontent_manager.so
-%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_connector.so
+%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libindexer_client.so
+%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libwm_indexer_runtime.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libinventory_sync_server.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libkeystore_server.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libtask_manager.so

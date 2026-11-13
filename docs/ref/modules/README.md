@@ -13,7 +13,7 @@
 - [Database Sync](database-sync/README.md) - modulesd `database` module that keeps `global.db` in step with `client.keys` and `/etc/wazuh-manager/shared/`
 - [Engine](engine/README.md) - Event decoding and enrichment pipeline (`wazuh-manager-analysisd`)
 - [FIM](fim/README.md) - Agent module: File Integrity Monitoring with persistent state synchronization
-- [Indexer Connector](indexer_connector/README.md) - Shared library through which the Engine and the modulesd modules write to and read from the Wazuh Indexer (OpenSearch)
+- [Indexer Client](indexer_client/README.md) - modulesd's process-wide client for the Wazuh Indexer (OpenSearch): buckets, node health, credentials, metrics
 - [Integrations](integrations/README.md) - Agent modules: cloud services and third-party platform integrations
 - [Inventory Sync Server](inventory-sync-server/README.md) - Manager-side synchronization service for agent state data (HTTP over UDS)
 - [Keystore](keystore/README.md) - Encrypted credential storage (AES-256, RocksDB), served over UDS by the `keystore_server` module

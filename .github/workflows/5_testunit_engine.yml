@@ -22,19 +22,26 @@ on:
       # Ref list for every ref-based `make deps` download (GIT_REFS_LIST in src/Makefile)
       - 'tools/get_git_refs.sh'
       # Submodule gitlink: urlrequest, linked by conf and geo (target_link_libraries in
-      # source/conf/ and source/geo/CMakeLists.txt) and by indexer_connector. Moves together with HTTP_REQUEST_BRANCH.
+      # source/conf/ and source/geo/CMakeLists.txt). Moves together with HTTP_REQUEST_BRANCH.
       - 'src/shared_modules/http-request'
       # include_directories(${SHARED_MODULES}/utils) in src/engine/CMakeLists.txt: loggerHelper.h, proc.hpp, zlibHelper.hpp
       - 'src/shared_modules/utils/**'
-      # commonDefs.h, on the indexer_connector/keystore include path (include_directories(${SHARED_MODULES}/common) in indexer_connector/CMakeLists.txt)
+      # commonDefs.h, on the keystore include path
       - 'src/shared_modules/common/**'
       # base links manager_config (target_link_libraries(base) PRIVATE); schema embedded at build time
       # (MANAGER_CONFIG_SCHEMA_FILE -> embeddedSchema.hpp in manager_config/CMakeLists.txt)
       - 'src/shared_modules/manager_config/**'
-      # wiconnector links indexer_connector (target_link_libraries(wIndexerConnector_wIndexerConnector))
-      - 'src/shared_modules/indexer_connector/**'
-      # linked by indexer_connector (target_link_libraries(indexer_connector)); keyStore.hpp in
-      # wIndexerConnector_utest (its target_include_directories in source/wiconnector/CMakeLists.txt)
+      # indexer_client: the engine's runtime and Client; wIndexerConnector_utest also builds its mocks and fake (the
+      # bench feeds no engine target).
+      - 'src/shared_modules/indexer_client/**/CMakeLists.txt'
+      - 'src/shared_modules/indexer_client/include/**'
+      - 'src/shared_modules/indexer_client/src/**'
+      - 'src/shared_modules/indexer_client/tests/mocks/**'
+      - 'src/shared_modules/indexer_client/tests/fake/**'
+      # content_manager: linked by cmcontent and the engine (its target_link_libraries in source/cmcontent/CMakeLists.txt)
+      - 'src/shared_modules/content_manager/**'
+      # keyStore.hpp in wIndexerConnector_utest (its target_include_directories in
+      # source/wiconnector/CMakeLists.txt); the engine also links keystore_core
       - 'src/shared_modules/keystore/**'
       # Other components' test trees, harnesses and tools: never linked into the engine.
       - '!src/shared_modules/utils/tests/**'
@@ -43,9 +50,8 @@ on:
       - '!src/shared_modules/utils/flatbuffers/**'
       - '!src/shared_modules/manager_config/tests/**'
       - '!src/shared_modules/manager_config/cli/**'
-      - '!src/shared_modules/indexer_connector/tests/**'
-      - '!src/shared_modules/indexer_connector/qa/**'
-      - '!src/shared_modules/indexer_connector/testtool/**'
+      - '!src/shared_modules/content_manager/tests/**'
+      - '!src/shared_modules/content_manager/testtool/**'
       - '!src/shared_modules/keystore/tests/**'
       - '!src/shared_modules/keystore/qa/**'
       - '!src/shared_modules/keystore/testtool/**'

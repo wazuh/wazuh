@@ -114,14 +114,70 @@ group commits; `sync.indexer.bulk.*` counts the real requests those commits prod
 | `sync.bulk.flushes` | counter | count | **Successful** pipeline group-commit flushes (immediate-session and lane flushes are not counted here) | [`…indexer_sync_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_bulk_size) |
 | `sync.bulk.bytes.total` | counter | bytes | Request payload bytes (wire FlatBuffer size) of the sessions flushed by group commits — NOT the serialized indexer bytes (that is `sync.bytes.ingested`) | as above |
 | `sync.bulk.sessions.total` | counter | count | Sessions answered by group-commit flushes | as above |
-| `sync.indexer.bulk.requests` | counter | count | `_bulk` HTTP requests the sync connectors actually sent — attempts, splits and retries included, successful or not | [`…indexer_sync_connector_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_connector_max_bulk_size) |
-| `sync.indexer.bulk.bytes.total` | counter | bytes | Serialized NDJSON payload bytes those `_bulk` requests carried | as above |
-| `sync.indexer.conflict.retries` | counter | count | By-query version conflicts waited out and retried (delete-by-query and update-by-query alike). A conflict that clears on retry no longer fails the flush, so it never reaches `sync.bulk.flush.failures.documents`: this is the only manager-side measure of how often the indexer's refresh boundary is hit by a by-query. The `retry_on_conflict` retries of a bulk `update` item happen inside the indexer and are not counted here | [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds) |
+| `sync.indexer.bulk.requests` | counter | count | `_bulk` HTTP requests the `inventory` bucket sent (pull, read from the bucket; returns to 0 if the indexer client is rebuilt) | [`…indexer_sync_connector_max_bulk_size`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_connector_max_bulk_size) |
+| `sync.indexer.bulk.bytes.total` | counter | bytes | Serialized NDJSON payload bytes those `_bulk` requests carried (pull from the bucket; returns to 0 if the client is rebuilt) | as above |
+| `sync.indexer.conflict.retries` | counter | count | By-query version conflicts waited out and retried (delete-by-query and update-by-query alike); a process-wide counter, not tied to the bucket. A conflict that clears on retry no longer fails the flush, so it never reaches `sync.bulk.flush.failures.documents`: this is the only manager-side measure of how often the indexer's refresh boundary is hit by a by-query. The `retry_on_conflict` retries of a bulk `update` item happen inside the indexer and are not counted here; a `409` that survives them is retried on the bucket and counted in `indexer_client.bucket.inventory_sync_server.inventory.retries.version_conflict` | [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds) |
 | `sync.indexer.conflict.exhausted` | counter | count | By-query operations whose version-conflict allowance ran out, answered `503` with `Retry-After` instead of `500`: a competing writer of the same agent's documents kept conflicting through every re-run. One per failed operation (an immediate session, or a group commit whose deletion by-query failed, which also counts in `sync.bulk.flush.failures.documents`). The usual writer is a duplicate of the same session, re-sent by the agent after remoted stopped waiting for the first copy, so read it next to `remoted.forwarder.error.response_timeout` on the manager | [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds), [`remoted.downstream_stateful_response_timeout`](../remoted/configuration.md#remoteddownstream_stateful_response_timeout) |
-| `sync.bulk.flush.failures.documents` | counter | count | Group-commit flushes that failed because the indexer rejected documents, left deletions unconfirmed, or answered with a body that confirms nothing | — |
-| `sync.bulk.flush.failures.exhausted` | counter | count | Group-commit flushes that failed by an exhausted retry budget (persistent `429`, `502`, `503` or `504`, or transport failures) | [`…indexer_sync_max_retry_attempts`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_attempts), [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds) |
-| `sync.bulk.flush.failures.other` | counter | count | Group-commit flushes that failed for any other reason (hard rejections, unexpected state) | — |
-| `sync.bulk.sessions.failed` | counter | count | Sessions answered `500`/`503` by a failed or poisoned group commit — the blast radius: one bad flush punishes every session in its batch. Compare against `sync.bulk.sessions.total` to size the amplification | — |
+| `sync.bulk.flush.failures.documents` | counter | count | **Failed sessions** (counted per failed session, not per flush) whose failure was that the indexer rejected documents or a by-query's conflict allowance ran out; the answer is `500`, or `503` for the conflict (see [failure causes](architecture.md#failure-causes-and-http-answers)) | — |
+| `sync.bulk.flush.failures.exhausted` | counter | count | Failed sessions (per session) whose retry budget ran out (`RetryExhausted`); answered `503` | [`…indexer_sync_max_retry_attempts`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_attempts), [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds) |
+| `sync.bulk.flush.failures.unavailable` | counter | count | Failed sessions (per session) in the transient `503` class other than an exhausted retry budget: indexer unavailable, throttled, queue full, cancelled, shutdown, deadline expired | [`…indexer_sync_max_retry_duration_seconds`](configuration.md#wazuh_modulesinventory_sync_server_indexer_sync_max_retry_duration_seconds) |
+| `sync.bulk.flush.failures.other` | counter | count | Failed sessions (per session) for any other reason; answered `500` | — |
+| `sync.bulk.sessions.failed` | counter | count | Sessions answered `500`/`503` because their own operations failed. A failure no longer fails the whole batch: healthy sessions of the same group commit are answered `200`. Compare against `sync.bulk.sessions.total` | — |
+
+### Indexer client buckets — `indexer_client.bucket.inventory_sync_server.<bucket>.*`
+
+The module publishes, by pull, the 51 metrics of each of its two buckets next to its own, under the
+bucket name sanitized for a metric name (`-` becomes `_`, `src/shared_modules/indexer_client/src/metrics.cpp`):
+
+| Prefix | Bucket | What travels in it |
+|---|---|---|
+| `indexer_client.bucket.inventory_sync_server.inventory.*` | `inventory` | `/stateful` ingestion, the VD scan lane and the queries |
+| `indexer_client.bucket.inventory_sync_server.agent_state.*` | `agent-state` | `POST /stats`, `POST /config` and the by-id deletes of an agent deletion |
+
+Both carry the same families (names, types and meaning are the library's catalog:
+`src/shared_modules/indexer_client/README.md` section "Metrics"); they are not copied here, and they
+return to 0 if the `Client` is rebuilt. On `agent_state`, look at `rejected.<cause>` and `quota_bytes`
+when `/stats` or `/config` answer `503`: the bucket refuses new work when its quota is full
+(see [`…indexer_async_max_queue_bytes`](configuration.md#wazuh_modulesinventory_sync_server_indexer_async_max_queue_bytes)).
+
+### Indexer client runtime — `indexer_client.{runtime,node,query,pit}.*`
+
+The process's indexer client runtime is shared by every consumer in `wazuh-manager-modulesd`
+(this module, the vulnerability scanner and its feed), so its metrics are published **once per
+process, here only** — the vulnerability scanner's `/metrics` publishes its own bucket and nothing
+of these. They are read by pull from the runtime's snapshot, not from this module's `Client`: they
+are there, with real values, whether or not the module's `Client` is alive, and they do not return
+to 0 when the `Client` is rebuilt (the query and PIT counters are process-wide and never reset).
+
+| Prefix | What it counts |
+|---|---|
+| `indexer_client.runtime.*` | Threads, clients, the global queue charge against `global_quota_bytes`, usage errors |
+| `indexer_client.node.<i>.*` | One family per configured indexer host, `<i>` = its position in `<indexer><hosts>` (state, window, throttling, failures, latency) |
+| `indexer_client.query.*` | Every query of the process (searches, by-query calls, PIT pages): attempts, failovers, throttles, `conflict_retries`, response bytes in flight |
+| `indexer_client.pit.*` | Point-in-time contexts: open, reserved, created, deletes pending/confirmed/expired |
+
+The names, types and meaning are the library's catalog (`src/shared_modules/indexer_client/README.md`
+section "Metrics"). The node families are registered once, from the hosts the runtime started with.
+The vulnerability scanner's reads — its own scans' searches and the content feed's — have no bucket
+of their own: they show up here, in `indexer_client.query.*` and `indexer_client.pit.*`. Tuning:
+the [`wazuh_modules.indexer_client_*`](configuration.md#the-wazuh_modulesindexer_client_-family)
+family; otherwise diagnostic. `sync.indexer.conflict.retries` is `indexer_client.query.conflict_retries`
+under this module's own name.
+
+### Post-deletion sweep — `sync.agent_delete.sweep.*`
+
+After an agent deletion succeeds, the module notes the agent and, once the sweep window has passed,
+removes from `wazuh-agent-config` and `wazuh-agent-stats` what a late write may have left behind
+(see [the sweep](architecture.md#the-post-deletion-sweep)). All counters, cumulative for the process.
+`residual` counts documents; the others count passes, chunks or agents.
+
+| Metric | Type | Unit | Meaning | Tuning |
+|---|---|---|---|---|
+| `sync.agent_delete.sweep.runs` | counter | count | Sweep passes that had at least one agent due | the window is `indexer_client_request_timeout_ms + 5 s`: [`…request_timeout_ms`](configuration.md#the-wazuh_modulesindexer_client_-family) |
+| `sync.agent_delete.sweep.failures` | counter | count | Delete-by-query chunks of a pass that failed (the agents of a failed chunk are retried once on the next pass) | diagnostic — check the indexer and the logs |
+| `sync.agent_delete.sweep.residual` | counter | documents | Documents the sweeps found and deleted: the late write the deletion could not order behind. Non-zero is the sweep doing its job | diagnostic |
+| `sync.agent_delete.sweep.dropped` | counter | count | Agents abandoned without being swept: pending when the module stopped, or in a chunk that failed twice | diagnostic — the sweep is best effort and does not guarantee zero residue |
+| `sync.agent_delete.sweep.forgotten` | counter | count | Agents withdrawn from the sweep because the module accepted a `/stats` or `/config` write for their id while the sweep was pending: the id was enrolled again, and the sweep would have deleted the new agent's documents | diagnostic — non-zero means agent ids are reused shortly after their deletion |
 
 ### Documents — `sync.docs.*`, `sync.bytes.ingested`
 

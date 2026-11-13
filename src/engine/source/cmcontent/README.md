@@ -68,19 +68,22 @@ type, because the hash, the promotion and the status are all per space and per t
 sync services hold an `IContentTopic` instead, built by a `TopicFactory`, so their orchestration —
 which outcome makes a space FAILED, when a missing database forces a full reload — is unit-tested
 against a scripted topic (`cmcontent::mocks::FakeTopicRegistry`). `defaultTopicFactory(indexer)`
-builds real registrations over the Engine's one indexer connector.
+builds real registrations over the Engine's content indexer.
 
 **`runWithRetries`.** Runs a topic and retries `FailedTransport` and `FailedSink` up to
 `RetryPolicy::maxAttempts`, `waitSeconds` apart, stopping early on shutdown. A deferral, a
 configuration failure or a stop returns at once: retrying cannot change it within one run.
 
-### `releasableIndexer.hpp` — the topics' share of the connector
+**Which indexer the topics read through.** The topics read through `content_manager::makeContentIndexer` over the Engine's
+`indexer_client` `Client` `analysisd`, the same connection as the event writes
+(see [`wiconnector`](../wiconnector/README.md)). The Engine builds the options with `contentIndexerOptionsFor(requestTimeout, probeTimeout)` from the runtime's
+`request_timeout_ms` and `probe_timeout_ms`: the call and page deadlines are above the former, the first-probe wait above the latter, never below the library's defaults.
+It sets `failFastWithoutNode`: once every node has been probed and none is usable, a content call fails at once with the library's cause
+instead of waiting `probeDeadline`; before the first probe round the wait stays. Each attempt of a cycle with no node therefore fails in well under a second; the cycle keeps the retry waits of `runWithRetries`.
 
-The content topics and the event writer (`wiconnector`) share one `IndexerConnectorAsync`, and a
-topic holds its indexer for its whole life. `ReleasableIndexer` is the indexer the topics get:
-`main.cpp` releases it in the same exit handler that shuts the writer down, so the connector's queue
-and threads stop there rather than when `main` returns. `release()` waits for the requests in flight;
-after it every call fails as an unreachable indexer would.
+**Keep-alive.** `content_pit_keep_alive` (`analysisd.content_pit_keep_alive`) is validated when a topic is registered, with the library's
+`parseKeepAlive`: `<n><unit>`, unit `nanos|micros|ms|s|m|h|d` in lower case, `n` an integer of at least 1, surrounding spaces ignored
+(`5m`, `300s`, ` 5m ` accepted; `5M`, `1.5m`, `5` rejected, as OpenSearch does). A bad value fails the engine's start with an error naming it, instead of failing every content download later.
 
 ### `rulesetSink.hpp` — assemble in memory, swap the route
 
@@ -144,7 +147,6 @@ cmcontent/
 ├── include/cmcontent/
 │   ├── registration.hpp        # Topic names and specs
 │   ├── contentTopic.hpp        # IContentTopic, TopicFactory, runWithRetries
-│   ├── releasableIndexer.hpp   # The topics' indexer, released at shutdown
 │   ├── rulesetSink.hpp         # Sink and token store for one ruleset space
 │   ├── iocTypeSink.hpp         # Sink for one IOC type
 │   └── engineTokenStore.hpp    # Token store over the owner's state
@@ -169,8 +171,6 @@ cmcontent/
 - **registration** — topic names, no interval and no state path, the ruleset probe, the ungated
   `custom` space, both IOC manifest shapes, the IOC projection, page-size capping.
 - **contentTopic** — which statuses are retried, the attempt budget, stopping early.
-- **releasableIndexer** — forwarding, dropping its share on release, failing after it, waiting for
-  a request in flight.
 - **rulesetSink** — the token read from the router, orphan collection, malformed metadata, teardown,
   resource bucketing, route creation and hot-swap, old-namespace deletion, every reject and rollback.
 - **iocTypeSink** — staging naming, lower-cased keys, malformed documents skipped, target creation,
@@ -184,4 +184,4 @@ cmcontent/
 |---|---|
 | `cmsync` | One topic per tracked ruleset space |
 | `iocsync` | One topic per IOC type |
-| `main.cpp` | Builds the `defaultTopicFactory` over a `ReleasableIndexer` of the Engine's connector |
+| `main.cpp` | Builds the `defaultTopicFactory` over the content indexer of the Engine's `indexer_client` `Client` |

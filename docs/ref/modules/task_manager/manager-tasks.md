@@ -134,9 +134,10 @@ attempt. It then retires every pending row whose type this build has no handler 
 
 **A watchdog observes; it cannot fix.** There is no cancellation primitive available, so a handler
 that overruns is reported, not stopped. What handlers do get is a cooperative stop token, checked
-between units of work, which is what lets a multi-batch sweep honour the 30-second shutdown budget
-instead of only stopping between tasks. The stall report runs on the sweep's cadence
-(`manager_task_sweep_interval`, 60 s): a handler running more than 30 s past its type's budget is
+between units of work, which is what lets a multi-batch sweep honour modulesd's shutdown budget
+instead of only stopping between tasks: the shutdown runs on modulesd's main thread, which joins the
+module threads until 28 s after the signal (T0+28 s) and then exits. The stall report runs on the
+sweep's cadence (`manager_task_sweep_interval`, 60 s): a handler running more than 30 s past its type's budget is
 reported at WARN on every sweep until it finishes — see [If a run overruns](schedules.md#if-a-run-overruns).
 
 ---

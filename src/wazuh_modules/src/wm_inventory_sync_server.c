@@ -12,6 +12,7 @@
 #include "indexer-config.h"
 #include "inventory_sync_server.h"
 #include "sym_load.h"
+#include "wm_indexer_runtime.h"
 #include "wm_vulnerability_scanner.h"
 #include <cJSON.h>
 
@@ -84,10 +85,12 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
              config->vd_configured_enabled ? "yes" : "no");
 
     /* Split from the line above so the two indexer families stay visually distinct in the log, the
-     * same way they are in the configuration: their key names are NOT interchangeable. */
+     * same way they are in the configuration: their key names are NOT interchangeable. Each family
+     * sizes one bucket of the module's indexer client; the options marked "(ignored)" are accepted
+     * for compatibility and have no effect (the module WARNs once when one is not at its default). */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-             "indexer sync: max_bulk_size=%d, connector_max_bulk_size=%d, flush_interval_seconds=%d, "
-             "max_retry_delay_seconds=%d, request_timeout_seconds=%d, max_retry_attempts=%d, "
+             "indexer sync: max_bulk_size=%d, connector_max_bulk_size=%d, flush_interval_seconds=%d (ignored), "
+             "max_retry_delay_seconds=%d, request_timeout_seconds=%d (ignored), max_retry_attempts=%d, "
              "max_retry_duration_seconds=%d",
              config->indexer_sync_max_bulk_size,
              config->indexer_sync_connector_max_bulk_size,
@@ -97,8 +100,9 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
              config->indexer_sync_max_retry_attempts,
              config->indexer_sync_max_retry_duration_seconds);
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-             "indexer async: bulk_max_bytes=%d, flush_interval_seconds=%d, max_retry_delay_seconds=%d, "
-             "max_queue_bytes=%lld, logger_queue_size=%d, logger_threads=%d, request_timeout_seconds=%d",
+             "indexer async: bulk_max_bytes=%d, flush_interval_seconds=%d (ignored), max_retry_delay_seconds=%d, "
+             "max_queue_bytes=%lld, logger_queue_size=%d (ignored), logger_threads=%d (ignored), "
+             "request_timeout_seconds=%d (ignored)",
              config->indexer_async_bulk_max_bytes,
              config->indexer_async_flush_interval_seconds,
              config->indexer_async_max_retry_delay_seconds,
@@ -106,9 +110,9 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
              config->indexer_async_logger_queue_size,
              config->indexer_async_logger_threads,
              config->indexer_async_request_timeout_seconds);
-    /* Session-level, not per-connector: the one shared health monitor's polling period. */
+    /* Node health belongs to the process's indexer client runtime now. */
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
-             "indexer session: monitoring_interval_seconds=%d",
+             "indexer monitoring: monitoring_interval_seconds=%d (ignored)",
              config->indexer_monitoring_interval_seconds);
 }
 
@@ -246,9 +250,9 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
      * ranges and defaults rather than the 0 sentinel, because they are forwarded to a shared
      * library whose own defaults we mirror here. Each one names the connector key it maps to.
      *
-     * The two families are deliberately separate: IndexerConnectorSync reads `max_bulk_size`
-     * while IndexerConnectorAsync reads `bulk_max_bytes` for the same concept, and handing
-     * either the other's key is ignored silently. Keep the `indexer_sync_`/`indexer_async_`
+     * The two families are deliberately separate: they kept the key names of the sync and async
+     * connectors they replaced, `max_bulk_size` and `bulk_max_bytes` for the same concept, and
+     * handing either the other's key is ignored silently. Keep the `indexer_sync_`/`indexer_async_`
      * prefixes intact.
      *
      * Note the minimum of 1 on both `max_retry_delay_seconds`: the connector constructors reject
@@ -326,11 +330,11 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
         1,
         3600,
         60);
-    /* Minimum 0, NOT 1: 0 is the connector's own legitimate "unlimited", and
+    /* Minimum 0, NOT 1: 0 keeps its documented meaning as "no explicit size" -- the agent-state
+     * bucket then takes a quarter of the indexer client's global quota -- and
      * getDefine_Int_default() calls merror_exit() on an out-of-range value, so a minimum of 1
-     * would turn that documented setting into a fatal abort. The shipped default is bounded
-     * (64 MiB, the same value the engine uses for this key) because an unbounded queue is the
-     * only unbounded allocation this module can be configured to make. */
+     * would turn that documented setting into a fatal abort. Any value is capped at that quarter (or
+     * at 16 KiB within half of the global quota when the quarter is smaller). */
     config->indexer_async_max_queue_bytes =
         (long long)getDefine_Int_default("wazuh_modules",
                                          "inventory_sync_server_indexer_async_max_queue_bytes", /* -> max_queue_bytes */
@@ -338,9 +342,9 @@ static void wm_inventory_sync_server_read_tunables(inventory_sync_server_config_
                                          2147483647,
                                          64 * 1024 * 1024);
 
-    /* One option, not a sync/async pair: both connectors share the session's single health monitor,
-     * so there is exactly one polling cadence per module. Minimum 1: the connector rejects 0 (a zero
-     * period would busy-loop its monitor thread), so 0 is rejected here rather than forwarded. */
+    /* Ignored since the indexer client replaced the v1 session: node health is probed by the
+     * process runtime ('wazuh_modules.indexer_client_probe_interval_ms'). Still read, with its old range,
+     * so an existing setting neither aborts the start nor goes unnoticed (the module WARNs once). */
     config->indexer_monitoring_interval_seconds = getDefine_Int_default(
         "wazuh_modules",
         "inventory_sync_server_indexer_monitoring_interval_seconds", /* -> monitoring_interval_seconds */
@@ -430,6 +434,11 @@ void* wm_inventory_sync_server_main(wm_inventory_sync_server_t* data)
              * thread runs -- wm_config() reads the configuration before main() creates them. */
             cJSON* indexer_json = indexer_config ? cJSON_Duplicate(indexer_config, TRUE) : cJSON_CreateObject();
             config.indexer = indexer_json;
+
+            /* The process's indexer_client runtime, published by the main thread before any module
+             * thread exists; NULL without one, and the module's sync stage then fails
+             * and retries on its heartbeat. Stable for the life of the process. */
+            config.indexer_runtime = wm_indexer_runtime_ref();
 
             /* Race-free to read here: wm_vulnerability_scanner_main() only ever reads
              * data->vulnerability_detection (never mutates it in place -- see

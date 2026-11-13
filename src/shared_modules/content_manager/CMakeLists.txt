@@ -28,7 +28,7 @@ include_directories(${SRC_FOLDER}/external/nlohmann)
 include_directories(${SRC_FOLDER}/external/rocksdb/include)
 include_directories(${SHARED_MODULES})
 include_directories(${SHARED_MODULES}/utils)
-include_directories(${SHARED_MODULES}/indexer_connector/include)
+include_directories(${SHARED_MODULES}/indexer_client/include)
 
 link_directories(${SRC_FOLDER}/build/lib)
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
@@ -37,8 +37,7 @@ file(GLOB CONTENT_MANAGER_SRC "src/*.cpp")
 
 add_library(content_manager SHARED ${CONTENT_MANAGER_SRC})
 
-target_link_libraries(content_manager PRIVATE gcc_s wazuhext
-                                              rocksdb indexer_connector)
+target_link_libraries(content_manager PRIVATE gcc_s wazuhext rocksdb indexer_client)
 
 # PUBLIC so a host outside this tree (the Engine) gets the contract headers by linking the target,
 # instead of hard-coding a relative path to them. The content_manager_public_abi_c17 target below is

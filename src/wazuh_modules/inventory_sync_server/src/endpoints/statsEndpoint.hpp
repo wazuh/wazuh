@@ -12,7 +12,8 @@
 #define _INVSYNC_ENDPOINTS_STATS_ENDPOINT_HPP
 
 #include "common/clusterIdentity.hpp"
-#include "indexer/IIndexerConnectorAsync.hpp"
+#include "indexer/agentDeleteSweeper.hpp"
+#include "indexer_client/client.hpp"
 #include "sync/stateIndexAllowlist.hpp" // AGENT_STATS_INDEX -- shared with the deletion scope
 #include <uds_http_server/IUdsHttpServer.hpp>
 
@@ -115,34 +116,43 @@ namespace invsync::endpoints::stats
     /**
      * @brief Build the endpoint's route handler.
      *
-     * The returned handler replies inline: the write is fire-and-forget through the async connector,
-     * so there is nothing to wait for. The signature still takes a responder because the transport's
-     * deferred-response contract is what a later, acknowledged write would need.
+     * The returned handler replies inline: the write is a post() into the `agent-state` bucket, which has
+     * no per-op result to wait for. 200 means the client ADMITTED the op; a refusal (QueueFull, Unavailable,
+     * ClientClosed...) answers 503 so the agent retries -- there is no async queue left to absorb it, and
+     * the former silent 200 on a dropped write is gone.
      *
-     * @param connector The async indexer connector, held WEAKLY and locked at each point of use.
+     * @param client The module's indexer client, held WEAKLY and locked per request: only its health()
+     *               gates the write (any node not Down), so an outage answers 503 up front.
+     * @param writer The `agent-state` bucket's writer (an `ordered` bucket shared with the agent deletion),
+     *               taken once by the facade and held WEAKLY too.
      *
      * Weak, not a reference and not a shared_ptr, and the reason is not defensiveness:
      *
      *  - A reference would be safe *today* -- IUdsHttpServer::stopAccepting() guarantees no handler is
-     *    running or will run again, and the facade tears the connector down only after that returns.
+     *    running or will run again, and the facade releases the client only after that returns.
      *    It becomes a dangling reference the moment this handler defers its reply, because the
-     *    continuation then runs on another thread with no ordering against that teardown. Deferring is
-     *    exactly what this connector is being injected for.
+     *    continuation then runs on another thread with no ordering against that teardown.
      *  - A strong shared_ptr would be safe but would move the teardown: handler closures are stored in
      *    the transport's route table, which is co-owned by every outstanding responder, so the facade's
-     *    reset() would stop being destructive and the connector's destructor (with its background
-     *    threads) would run later, possibly on whatever thread releases the last responder.
+     *    reset() would stop being destructive and the client's close would run later, possibly on
+     *    whatever thread releases the last responder.
      *
-     * Weak keeps both properties: correct after deferral lands, and the facade's documented phase
-     * ordering stays true. The cost is one lock() per request and an explicit "it is gone" branch.
+     * Weak keeps both properties, and the facade's documented phase ordering stays true. The cost is one
+     * lock() per request and an explicit "it is gone" branch.
      *
      * @param cluster This manager's cluster name, taken BY VALUE (a small string, copied once per
-     *                registration) rather than by weak_ptr: unlike the connector, there is no
+     *                registration) rather than by weak_ptr: unlike the client, there is no
      *                background object with a teardown ordering to protect -- just a string whose
      *                lifetime the closure can own outright.
+     * @param sweeper The post-deletion sweeper, held WEAKLY like the client. Once a write is admitted the
+     *                handler calls its forget() for the agent: an agent enrolled again with the id of one
+     *                just deleted must not lose this document to that deletion's sweep. An expired
+     *                pointer skips the call.
      */
-    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<invsync::indexer::IIndexerConnectorAsync> connector,
-                                              invsync::common::ClusterIdentity cluster);
+    wazuh::uds_http::RouteHandler makeHandler(std::weak_ptr<indexer_client::IClient> client,
+                                              std::weak_ptr<indexer_client::IWriter> writer,
+                                              invsync::common::ClusterIdentity cluster,
+                                              std::weak_ptr<invsync::indexer::AgentDeleteSweeper> sweeper);
 
 } // namespace invsync::endpoints::stats
 

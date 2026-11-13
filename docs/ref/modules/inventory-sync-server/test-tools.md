@@ -105,8 +105,8 @@ answer:
   instead of reporting every count as zero.
 - **It warns when the agent has no documents to begin with.** A deletion that answers `200` having
   found nothing proves nothing; seed first with `POST /config` and `POST /stats` (see
-  `src/remoted/remoted_module/tools/send_agent_json.py`), and remember both write through the ASYNC connector,
-  so wait for the documents to appear before deleting.
+  `src/remoted/remoted_module/tools/send_agent_json.py`), and remember both are queued on the
+  `agent-state` bucket, so wait for the documents to appear before deleting.
 
 ## `inventory_sync_server_testtool` — integration driver
 
@@ -197,10 +197,11 @@ Set it explicitly only to deliberately exercise the mismatch path.
 
 The `--config` file is the same JSON the QA suite uses (`qa/config.json`): a
 `clusterName` (which the driver stamps into every session's `Start.cluster_name`, since the server
-answers `403` on a cluster mismatch; `cluster01` when absent), the `<indexer>` block with the hosts
-the module and the scanner should reach, and the indexer `username`/`password`, which the driver
-seeds into the keystore under `queue/keystore` in its working directory because the indexer
-connector refuses to start without them.
+answers `403` on a cluster mismatch; `cluster01` when absent), the `<indexer>` block with the hosts the module and the
+scanner should reach, `username`/`password` for the indexer, and an optional `internal_options`
+string of `key=value` lines handed to the indexer client's runtime as its internal options (for
+example `"wazuh_modules.indexer_client_request_timeout_ms=2000"`, which the sweep IT uses to shorten
+the sweep window).
 
 ## The integration QA (`qa/`)
 

@@ -11,8 +11,11 @@
 #include "common/clusterIdentity.hpp"
 #include "common/jsonNestingDepth.hpp"
 #include "endpoints/configEndpoint.hpp"
+#include "testIndexerConnectorFakes.hpp"
 
 #include <gtest/gtest.h>
+
+#include <chrono>
 
 #include <algorithm>
 #include <cstddef>
@@ -62,57 +65,34 @@ namespace
     }
 
     /**
-     * @brief Stand-in for the async indexer connector.
+     * @brief The Client and the `agent-state` writer the handler is wired to, over the shared fakes.
      *
-     * Local to this file rather than reused from testIndexerConnectorFakes.hpp on purpose: those fakes
-     * exist to drive the facade's startup gate and carry its teardown bookkeeping, none of which an
-     * endpoint test needs. Same reasoning as CapturingResponder above.
+     * Reuses testIndexerConnectorFakes.hpp's FakeIndexerClient and scripted FakeWriter: the endpoint only asks
+     * the Client for its health and posts into the writer, so those two are all it can observe. The Client is
+     * usable unless a test says otherwise (`events->m_clientUsable`).
      */
-    class FakeAsyncConnector final : public invsync::indexer::IIndexerConnectorAsync
+    struct Rig
     {
-    public:
-        explicit FakeAsyncConnector(bool available = true)
-            : m_available {available}
+        std::shared_ptr<invsync::test::ConnectorEvents> events {std::make_shared<invsync::test::ConnectorEvents>()};
+        std::shared_ptr<invsync::test::FakeIndexerClient> client {
+            std::make_shared<invsync::test::FakeIndexerClient>(events)};
+        std::shared_ptr<invsync::test::FakeWriter> writer {events->m_agentStateWriter};
+        /// A post-deletion sweeper that never runs a pass (no query, a one-hour window): what the handler withdraws
+        /// from it shows in its counters once stop() drops the rest.
+        std::shared_ptr<invsync::indexer::AgentDeleteSweeper> sweeper {
+            std::make_shared<invsync::indexer::AgentDeleteSweeper>(
+                nullptr, std::chrono::hours {1}, std::chrono::seconds {1}, nullptr)};
+
+        explicit Rig(bool usable = true)
         {
+            events->m_clientUsable.store(usable);
         }
 
-        bool isAvailable() const override
+        /// What the handler posted, in call order.
+        std::vector<indexer_client::Op> indexed() const
         {
-            return m_available;
+            return writer->posted();
         }
-
-        // Simulates a transient write-time failure (e.g. a queue/broker error) on an otherwise
-        // healthy, available connector -- distinct from isAvailable()==false, which the handler
-        // checks beforehand and never even reaches this call.
-        void index(std::string_view id, std::string_view index, std::string_view data) override
-        {
-            if (throwOnIndex)
-            {
-                throw std::runtime_error {"simulated indexer write failure"};
-            }
-            indexed.emplace_back(std::string {id}, std::string {index}, std::string {data});
-        }
-
-        bool throwOnIndex {false};
-
-        void indexDataStream(std::string_view index, std::string_view data) override
-        {
-            dataStreamed.emplace_back(std::string {index}, std::string {data});
-        }
-
-        /// On the seam for the deletion route's sake, never called by this endpoint -- recorded so a
-        /// regression that made /config delete something would fail a test instead of passing.
-        void bulkDelete(std::string_view id, std::string_view index) override
-        {
-            deleted.emplace_back(std::string {id}, std::string {index});
-        }
-
-        std::vector<std::tuple<std::string, std::string, std::string>> indexed;
-        std::vector<std::pair<std::string, std::string>> dataStreamed;
-        std::vector<std::pair<std::string, std::string>> deleted;
-
-    private:
-        bool m_available;
     };
 
     /// A fixed, non-empty identity most tests use -- only the cluster-stamping tests need a
@@ -122,38 +102,39 @@ namespace
         return {"test-cluster"};
     }
 
-    /// Sends one request through a fresh handler and returns what came back. The connector is available
-    /// unless a test says otherwise.
+    /// Sends one request through a fresh handler and returns what came back. The Client is usable
+    /// unless the rig says otherwise.
     HttpResponse run(const std::shared_ptr<const HttpRequest>& request,
-                     const std::shared_ptr<FakeAsyncConnector>& connector,
+                     const std::shared_ptr<Rig>& rig,
                      invsync::common::ClusterIdentity cluster)
     {
-        auto handler = invsync::endpoints::config::makeHandler(connector, std::move(cluster));
+        auto handler =
+            invsync::endpoints::config::makeHandler(rig->client, rig->writer, std::move(cluster), rig->sweeper);
         auto responder = std::make_shared<CapturingResponder>();
         handler(request, responder);
         EXPECT_EQ(1, responder->sendCount) << "the transport's exactly-once contract requires one send";
         return responder->captured.value_or(HttpResponse {});
     }
 
-    HttpResponse run(const std::shared_ptr<const HttpRequest>& request,
-                     const std::shared_ptr<FakeAsyncConnector>& connector)
+    HttpResponse run(const std::shared_ptr<const HttpRequest>& request, const std::shared_ptr<Rig>& rig)
     {
-        return run(request, connector, testClusterIdentity());
+        return run(request, rig, testClusterIdentity());
     }
 
     HttpResponse run(const std::shared_ptr<const HttpRequest>& request)
     {
-        return run(request, std::make_shared<FakeAsyncConnector>(), testClusterIdentity());
+        return run(request, std::make_shared<Rig>(), testClusterIdentity());
     }
 
-    /// Parses the data half of the single write a test expects `connector` to have received.
-    nlohmann::json soleIndexedDocument(const FakeAsyncConnector& connector)
+    /// Parses the document of the single write a test expects the rig to have received.
+    nlohmann::json soleIndexedDocument(const Rig& rig)
     {
-        if (connector.indexed.size() != 1)
+        const auto ops = rig.indexed();
+        if (ops.size() != 1)
         {
             return nlohmann::json {};
         }
-        const auto document = nlohmann::json::parse(std::get<2>(connector.indexed.front()), nullptr, false);
+        const auto document = nlohmann::json::parse(ops.front().body, nullptr, false);
         return document.is_discarded() ? nlohmann::json {} : document;
     }
 } // namespace
@@ -181,16 +162,20 @@ TEST(ConfigEndpointTest, AgentIdHeaderNameIsLowerCase)
  */
 TEST(ConfigEndpointTest, IndexesTheSanitizedModulesUnderTheAgentIdAndFixedIndexName)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
     const auto body = R"({"modules":{"fim":{"cpu":42},"logcollector":{"lines":1}}})";
 
-    const auto response = run(makeRequest(body, "007"), connector);
+    const auto response = run(makeRequest(body, "007"), rig);
 
     ASSERT_EQ(200, response.status);
     EXPECT_EQ("{}", response.body);
 
-    ASSERT_EQ(1U, connector->indexed.size());
-    const auto& [id, index, data] = connector->indexed.front();
+    const auto ops = rig->indexed();
+    ASSERT_EQ(1U, ops.size());
+    const auto& id = ops.front().id;
+    const auto& index = ops.front().index;
+    const auto& data = ops.front().body;
+    EXPECT_EQ("007", ops.front().tag) << "the tag is what a deletion cancels";
     EXPECT_EQ("007", id);
     EXPECT_EQ("wazuh-agent-config", index);
 
@@ -207,12 +192,12 @@ TEST(ConfigEndpointTest, IndexesTheSanitizedModulesUnderTheAgentIdAndFixedIndexN
 /// `modules` is derived from `content`'s keys, so the two can never drift apart.
 TEST(ConfigEndpointTest, ModulesListsExactlyTheContentKeys)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
     const auto body = R"({"modules":{"fim":{},"logcollector":{}}})";
 
-    ASSERT_EQ(200, run(makeRequest(body, "007"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(body, "007"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     const auto modules = document["/wazuh/agent/configuration/modules"_json_pointer];
     ASSERT_TRUE(modules.is_array());
     ASSERT_EQ(2U, modules.size());
@@ -227,12 +212,12 @@ TEST(ConfigEndpointTest, ModulesListsExactlyTheContentKeys)
  */
 TEST(ConfigEndpointTest, ADuplicateModuleNameIsResolvedByTheLastEntryWinning)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
     const auto body = R"({"modules":{"fim":{"cpu":1},"fim":{"cpu":2}}})";
 
-    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(body, "001"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
     EXPECT_EQ(1U, content.size());
     EXPECT_EQ(2, content.at("fim").at("cpu").get<int>());
@@ -243,11 +228,11 @@ TEST(ConfigEndpointTest, ADuplicateModuleNameIsResolvedByTheLastEntryWinning)
 
 TEST(ConfigEndpointTest, IndexedDocumentStampsTheWcsSchemaVersion)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
 
-    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     EXPECT_EQ("1.0", document["/wazuh/schema/version"_json_pointer].get<std::string>());
 }
 
@@ -257,11 +242,11 @@ TEST(ConfigEndpointTest, IndexedDocumentStampsTheWcsSchemaVersion)
  */
 TEST(ConfigEndpointTest, IndexedDocumentModifiedAtIsIso8601WithMillisecondsAndZulu)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
 
-    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     const auto timestamp = document["/state/modified_at"_json_pointer].get<std::string>();
 
     ASSERT_EQ(24U, timestamp.size()) << "unexpected timestamp: " << timestamp;
@@ -273,11 +258,11 @@ TEST(ConfigEndpointTest, IndexedDocumentModifiedAtIsIso8601WithMillisecondsAndZu
 /// The layout generation of `configuration`, not a per-report counter -- always 1 for this layout.
 TEST(ConfigEndpointTest, IndexedDocumentVersionIsAlwaysOne)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
 
-    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     EXPECT_EQ(1, document["/state/document_version"_json_pointer].get<int>());
 }
 
@@ -307,12 +292,12 @@ TEST(ConfigEndpointTest, ResponseIsAnEmptyJsonAcknowledgment)
  */
 TEST(ConfigEndpointTest, AnEmptyModulesObjectIsRejected)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
 
-    const auto response = run(makeRequest(R"({"modules":{}})", "001"), connector);
+    const auto response = run(makeRequest(R"({"modules":{}})", "001"), rig);
 
     EXPECT_EQ(400, response.status);
-    EXPECT_TRUE(connector->indexed.empty()) << "an empty report must never overwrite the stored document";
+    EXPECT_TRUE(rig->indexed().empty()) << "an empty report must never overwrite the stored document";
 }
 
 /**
@@ -322,12 +307,12 @@ TEST(ConfigEndpointTest, AnEmptyModulesObjectIsRejected)
  */
 TEST(ConfigEndpointTest, ModuleConfigurationIsStoredVerbatim)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
     const auto body = R"({"modules":{"fim":{"cpu":1,"undeclared":"kept"}}})";
 
-    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(body, "001"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     const auto content = document["/wazuh/agent/configuration/content"_json_pointer];
     EXPECT_EQ(1U, content.size()) << content.dump();
     EXPECT_EQ(1, content.at("fim").at("cpu").get<int>());
@@ -387,14 +372,14 @@ TEST(ConfigEndpointTest, ReportsNestedPastTheLimitAreRejectedBeforeParsing)
         return R"({"modules":{"fim":{"x":)" + std::string(arrays, '[') + std::string(arrays, ']') + "}}}";
     };
 
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    EXPECT_EQ(200, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH), "001"), connector).status);
-    EXPECT_EQ(1U, connector->indexed.size());
+    auto rig = std::make_shared<Rig>();
+    EXPECT_EQ(200, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH), "001"), rig).status);
+    EXPECT_EQ(1U, rig->indexed().size());
 
-    connector = std::make_shared<FakeAsyncConnector>();
-    EXPECT_EQ(400, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH + 1), "001"), connector).status);
-    EXPECT_EQ(400, run(makeRequest(nested(1'000'000), "001"), connector).status);
-    EXPECT_TRUE(connector->indexed.empty());
+    rig = std::make_shared<Rig>();
+    EXPECT_EQ(400, run(makeRequest(nested(invsync::common::MAX_JSON_NESTING_DEPTH + 1), "001"), rig).status);
+    EXPECT_EQ(400, run(makeRequest(nested(1'000'000), "001"), rig).status);
+    EXPECT_TRUE(rig->indexed().empty());
 }
 
 TEST(ConfigEndpointTest, The400BodyIsValidParseableJsonEvenWhenTheReasonContainsQuotes)
@@ -435,11 +420,11 @@ TEST(ConfigEndpointTest, ANonCanonicalAgentIdHeaderIsRejected)
 {
     for (const auto* agentId : {"1", "07", "0007", "agent-one", "4294967297"})
     {
-        auto connector = std::make_shared<FakeAsyncConnector>();
-        const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", agentId), connector);
+        auto rig = std::make_shared<Rig>();
+        const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", agentId), rig);
 
         EXPECT_EQ(400, response.status) << "header '" << agentId << "'";
-        EXPECT_TRUE(connector->indexed.empty()) << "header '" << agentId << "'";
+        EXPECT_TRUE(rig->indexed().empty()) << "header '" << agentId << "'";
     }
 }
 
@@ -447,8 +432,9 @@ TEST(ConfigEndpointTest, ANonCanonicalAgentIdHeaderIsRejected)
 // here would be a daemon crash.
 TEST(ConfigEndpointTest, NullRequestIsToleratedAndStillAnswered)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
+    auto rig = std::make_shared<Rig>();
+    auto handler =
+        invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
     auto responder = std::make_shared<CapturingResponder>();
 
     handler(nullptr, responder);
@@ -461,8 +447,9 @@ TEST(ConfigEndpointTest, NullRequestIsToleratedAndStillAnswered)
 // holding the request would silently pin the transport's in-flight byte reservation.
 TEST(ConfigEndpointTest, HandlerDoesNotRetainTheRequest)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
+    auto rig = std::make_shared<Rig>();
+    auto handler =
+        invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
     auto responder = std::make_shared<CapturingResponder>();
 
     auto request = makeRequest(R"({"modules":{"fim":{}}})", "001");
@@ -478,110 +465,145 @@ TEST(ConfigEndpointTest, HandlerDoesNotRetainTheRequest)
  * The indexer gate. An unreachable indexer is a transient, server-side condition, so the caller gets a
  * 503 to retry rather than a 200 that pretends the document was handled.
  */
-TEST(ConfigEndpointTest, UnavailableIndexerYields503)
+TEST(ConfigEndpointTest, PostAcceptedIs200)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+    auto rig = std::make_shared<Rig>();
 
-    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{"cpu":1}}})", "007"), rig);
 
-    EXPECT_EQ(503, response.status);
-    EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
-    EXPECT_TRUE(connector->indexed.empty());
+    EXPECT_EQ(200, response.status);
+    EXPECT_EQ("{}", response.body);
+    const auto ops = rig->indexed();
+    ASSERT_EQ(1U, ops.size());
+    EXPECT_EQ("007", ops.front().id);
+    EXPECT_EQ("007", ops.front().tag);
+    EXPECT_EQ("wazuh-agent-config", ops.front().index);
+    EXPECT_EQ(indexer_client::Op::Kind::Index, ops.front().kind);
+    EXPECT_TRUE(rig->writer->cancelled().empty()) << "/config never cancels anything";
 }
 
-TEST(ConfigEndpointTest, AWriteFailureOnAnAvailableIndexerYields503NotBadRequest)
+/// With no node the client would use, the caller gets a 503 to retry, and nothing is posted.
+TEST(ConfigEndpointTest, NoUsableNodeIs503)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    connector->throwOnIndex = true;
+    auto rig = std::make_shared<Rig>(/*usable=*/false);
 
-    const auto response = run(makeRequest(R"({"modules":{"fim":{"cpu":1}}})", "001"), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig);
 
     EXPECT_EQ(503, response.status);
     EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
-    EXPECT_TRUE(connector->indexed.empty());
+    EXPECT_TRUE(rig->indexed().empty());
+}
+
+/// A refused post is a 503, never a 200 and never a 400: the document was fine, the client did not admit it.
+TEST(ConfigEndpointTest, PostRefusedIs503)
+{
+    for (const auto cause :
+         {indexer_client::Cause::QueueFull, indexer_client::Cause::Unavailable, indexer_client::Cause::ClientClosed})
+    {
+        auto rig = std::make_shared<Rig>();
+        rig->writer->refuseWith(cause);
+
+        const auto response = run(makeRequest(R"({"modules":{"fim":{"cpu":1}}})", "001"), rig);
+
+        EXPECT_EQ(503, response.status) << indexer_client::toString(cause);
+        EXPECT_NE(response.body.find("Service unavailable"), std::string::npos) << response.body;
+        EXPECT_EQ(1U, rig->indexed().size()) << "the handler did offer the op: " << indexer_client::toString(cause);
+    }
 }
 
 /**
- * The weak capture's other branch: stop() has already cleared the facade's connector, so lock() fails.
+ * The weak captures' other branch: stop() has already cleared the facade's Client or its writer, so lock() fails.
  * Same 503 to the caller (retry later is the same advice), distinguished only in the logs.
  */
-TEST(ConfigEndpointTest, AnExpiredConnectorYields503)
+TEST(ConfigEndpointTest, ClientGoneIs503)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
-    auto responder = std::make_shared<CapturingResponder>();
+    {
+        auto rig = std::make_shared<Rig>();
+        auto handler = invsync::endpoints::config::makeHandler(
+            rig->client, std::shared_ptr<indexer_client::IWriter> {}, testClusterIdentity(), rig->sweeper);
+        auto responder = std::make_shared<CapturingResponder>();
+        handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
+        ASSERT_TRUE(responder->captured.has_value());
+        EXPECT_EQ(503, responder->captured->status);
+        EXPECT_TRUE(rig->indexed().empty());
+    }
 
-    connector.reset(); // the facade's phase-2 teardown, from the handler's point of view
-
-    handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
-
-    ASSERT_TRUE(responder->captured.has_value());
-    EXPECT_EQ(503, responder->captured->status);
+    {
+        auto rig = std::make_shared<Rig>();
+        auto handler =
+            invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
+        auto responder = std::make_shared<CapturingResponder>();
+        rig->client.reset(); // the facade's phase-2 teardown, from the handler's point of view
+        handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
+        ASSERT_TRUE(responder->captured.has_value());
+        EXPECT_EQ(503, responder->captured->status);
+        EXPECT_TRUE(rig->indexed().empty());
+    }
 }
 
-/**
- * Pins the ORDER of the checks, which is a deliberate design decision rather than an accident: a
- * malformed document is the caller's fault and stays a 400 even while the indexer is down. With the
- * checks reversed the agent would get a 503 and retry forever a payload that can never work.
- */
 TEST(ConfigEndpointTest, ValidationStillWinsOverAnUnavailableIndexer)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+    auto rig = std::make_shared<Rig>(/*usable=*/false);
 
     for (const auto* body : {"", "{", "{}", R"("a string")", "not json at all", R"({"modules":{"fim":42}})"})
     {
-        const auto response = run(makeRequest(body, "001"), connector);
+        const auto response = run(makeRequest(body, "001"), rig);
         EXPECT_EQ(400, response.status) << "body: " << body;
     }
 }
 
 TEST(ConfigEndpointTest, AMissingAgentIdHeaderIsRejectedEvenWhenTheIndexerIsDown)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>(/*available=*/false);
+    auto rig = std::make_shared<Rig>(/*usable=*/false);
 
-    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "", /*withAgentHeader=*/false), connector);
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "", /*withAgentHeader=*/false), rig);
 
     EXPECT_EQ(400, response.status);
     EXPECT_NE(response.body.find("agent id"), std::string::npos) << response.body;
 }
 
 /**
- * The load-bearing property of the whole injection: the handler holds the connector WEAKLY.
+ * The load-bearing property of the whole injection: the handler holds the Client and the writer WEAKLY.
  *
- * If it ever captured a strong reference, the facade's stop() would stop destroying the connector at
- * the point its phase-2 comment claims -- the transport's route table would keep it alive, and its
- * destructor (with its background threads) would run later, on whatever thread released the last
- * responder. This test is what makes that regression a failure instead of a subtle shutdown change.
+ * If it ever captured a strong reference, the facade's stop() would stop destroying them at the point its phase-2
+ * comment claims -- the transport's route table would keep them alive, and their destructors (with the
+ * Client's threads) would run later, on whatever thread released the last responder.
  */
-TEST(ConfigEndpointTest, HandlerDoesNotHoldTheConnectorAliveAfterReturning)
+TEST(ConfigEndpointTest, HandlerDoesNotHoldTheClientOrTheWriterAliveAfterReturning)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
-    std::weak_ptr<FakeAsyncConnector> observer {connector};
+    auto rig = std::make_shared<Rig>();
+    std::weak_ptr<invsync::test::FakeIndexerClient> clientObserver {rig->client};
+    std::weak_ptr<invsync::test::FakeWriter> writerObserver {rig->writer};
 
-    auto handler = invsync::endpoints::config::makeHandler(connector, testClusterIdentity());
+    auto handler =
+        invsync::endpoints::config::makeHandler(rig->client, rig->writer, testClusterIdentity(), rig->sweeper);
     auto responder = std::make_shared<CapturingResponder>();
     handler(makeRequest(R"({"modules":{"fim":{}}})", "001"), responder);
-    ASSERT_EQ(200, responder->captured->status) << "the handler must have used the connector";
+    ASSERT_EQ(200, responder->captured->status) << "the handler must have used the client and the writer";
 
-    connector.reset();
+    rig->client.reset();
+    rig->writer.reset();
+    rig->events->m_agentStateWriter.reset();
 
-    EXPECT_TRUE(observer.expired())
-        << "the handler (still alive) must not keep the connector alive -- see stop()'s phase 2";
+    EXPECT_TRUE(clientObserver.expired())
+        << "the handler (still alive) must not keep the Client alive -- see stop()'s phase 2";
+    EXPECT_TRUE(writerObserver.expired())
+        << "the handler (still alive) must not keep the writer alive -- see stop()'s phase 2";
 }
 
 /// The agent's groups and host land under `wazuh.agent`, next to the authenticated id and the
 /// configuration, and nothing else from the `agent` block follows them.
 TEST(ConfigEndpointTest, CopiesReportedGroupsAndHostUnderWazuhAgent)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
     const auto body = R"({"modules":{"fim":{"cpu":42}},)"
                       R"("agent":{"id":"999","version":"v5.0.0","groups":["default"],)"
                       R"("host":{"architecture":"aarch64","hostname":"db-01",)"
                       R"("os":{"name":"Amazon Linux","platform":"amzn","type":"linux","version":"2023"}}}})";
 
-    ASSERT_EQ(200, run(makeRequest(body, "007"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(body, "007"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     const auto& agent = document["/wazuh/agent"_json_pointer];
     EXPECT_EQ("007", agent.at("id").get<std::string>()) << "claimed 999";
     EXPECT_EQ(nlohmann::json::parse(R"(["default"])"), agent.at("groups"));
@@ -594,11 +616,11 @@ TEST(ConfigEndpointTest, CopiesReportedGroupsAndHostUnderWazuhAgent)
 /// An agent that predates the metadata sends no `agent` block: no empty groups or host are made up.
 TEST(ConfigEndpointTest, AReportWithoutAgentMetadataIndexesNoGroupsOrHost)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
 
-    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     const auto& agent = document["/wazuh/agent"_json_pointer];
     EXPECT_FALSE(agent.contains("groups"));
     EXPECT_FALSE(agent.contains("host"));
@@ -607,12 +629,12 @@ TEST(ConfigEndpointTest, AReportWithoutAgentMetadataIndexesNoGroupsOrHost)
 /// Bad metadata is left empty, never a 400: the agent would resend it every cycle and stop reporting.
 TEST(ConfigEndpointTest, InvalidAgentMetadataIsLeftEmptyNotRejected)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
     const auto body = R"({"modules":{"fim":{}},"agent":{"groups":"default","host":{"os":{"version":2023}}}})";
 
-    ASSERT_EQ(200, run(makeRequest(body, "001"), connector).status);
+    ASSERT_EQ(200, run(makeRequest(body, "001"), rig).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     EXPECT_EQ(nlohmann::json::array(), document["/wazuh/agent/groups"_json_pointer]);
     EXPECT_EQ("", document["/wazuh/agent/host/os/version"_json_pointer].get<std::string>());
     EXPECT_TRUE(document["/wazuh/agent/configuration/content"_json_pointer].contains("fim"));
@@ -625,12 +647,12 @@ TEST(ConfigEndpointTest, InvalidAgentMetadataIsLeftEmptyNotRejected)
  */
 TEST(ConfigEndpointTest, StampsTheInjectedClusterName)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
     invsync::common::ClusterIdentity cluster {"prod-cluster"};
 
-    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector, cluster).status);
+    ASSERT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig, cluster).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     EXPECT_EQ("prod-cluster", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
 }
 
@@ -642,13 +664,57 @@ TEST(ConfigEndpointTest, StampsTheInjectedClusterName)
  */
 TEST(ConfigEndpointTest, AnEmptyClusterIdentityIsStampedAsEmptyStringNotOmitted)
 {
-    auto connector = std::make_shared<FakeAsyncConnector>();
+    auto rig = std::make_shared<Rig>();
 
-    ASSERT_EQ(
-        200,
-        run(makeRequest(R"({"modules":{"fim":{}}})", "001"), connector, invsync::common::ClusterIdentity {}).status);
+    ASSERT_EQ(200,
+              run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig, invsync::common::ClusterIdentity {}).status);
 
-    const auto document = soleIndexedDocument(*connector);
+    const auto document = soleIndexedDocument(*rig);
     ASSERT_TRUE(document.contains("wazuh"));
     EXPECT_EQ("", document["/wazuh/cluster/name"_json_pointer].get<std::string>());
+}
+
+/**
+ * An agent enrolled again with the id of one just deleted: its first accepted report withdraws that id from the
+ * deletion's pending sweep, which would otherwise delete the new agent's document by `_id` a window or two later. Only
+ * that id: another agent's pending sweep stays.
+ */
+TEST(ConfigEndpointTest, AcceptedWriteWithdrawsTheAgentFromThePendingSweep)
+{
+    auto rig = std::make_shared<Rig>();
+    rig->sweeper->note("001");
+    rig->sweeper->note("002");
+
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig);
+    ASSERT_EQ(200, response.status);
+
+    rig->sweeper->stop();
+    const auto stats = rig->sweeper->stats();
+    EXPECT_EQ(1U, stats.forgotten) << "the reporting agent's sweep is withdrawn";
+    EXPECT_EQ(1U, stats.dropped) << "the other agent's sweep was still pending at stop()";
+}
+
+/// A refused write stores nothing, so the pending sweep stays: the agent retries and the accepted retry withdraws it.
+TEST(ConfigEndpointTest, RefusedWriteKeepsThePendingSweep)
+{
+    auto rig = std::make_shared<Rig>();
+    rig->writer->refuseWith(indexer_client::Cause::QueueFull);
+    rig->sweeper->note("001");
+
+    const auto response = run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig);
+    ASSERT_EQ(503, response.status);
+
+    rig->sweeper->stop();
+    EXPECT_EQ(0U, rig->sweeper->stats().forgotten);
+    EXPECT_EQ(1U, rig->sweeper->stats().dropped);
+}
+
+/// Without a sweeper (the facade's slot already reset) the write is still accepted.
+TEST(ConfigEndpointTest, ExpiredSweeperDoesNotFailTheWrite)
+{
+    auto rig = std::make_shared<Rig>();
+    rig->sweeper.reset();
+
+    EXPECT_EQ(200, run(makeRequest(R"({"modules":{"fim":{}}})", "001"), rig).status);
+    EXPECT_EQ(1U, rig->indexed().size());
 }

@@ -13,16 +13,27 @@ add_library(wIndexerConnector::iwIndexerConnector ALIAS wIndexerConnector_iwInde
 # Implementation
 add_library(wIndexerConnector_wIndexerConnector STATIC
     ${SRC_DIR}/windexerconnector.cpp
+    ${SRC_DIR}/engineConfigSource.cpp
+    ${SRC_DIR}/engineIndexerRuntime.cpp
+    ${SRC_DIR}/indexerMetrics.cpp
 )
 target_include_directories(wIndexerConnector_wIndexerConnector
     PUBLIC
     ${INC_DIR}
+    PRIVATE
+    ${SHARED_MODULES}/keystore/include
 )
 target_link_libraries(wIndexerConnector_wIndexerConnector
     PUBLIC
     base
     wIndexerConnector::iwIndexerConnector
-    indexer_connector
+    indexer_client
+    # registerIndexerMetrics() takes the fastmetrics IManager.
+    fastmetrics::ifastmetrics
+    PRIVATE
+    # Keystore::get: keystore_core is keystore without its Log::GLOBAL_LOG_FUNCTION, which the engine defines
+    # (base) and assigns, so the keystore logs reach the engine's sink.
+    keystore_core
 )
 add_library(wIndexerConnector::wIndexerConnector ALIAS wIndexerConnector_wIndexerConnector)
 
@@ -41,6 +52,9 @@ add_library(wIndexerConnector::mocks ALIAS wIndexerConnector_mocks)
 
 add_executable(wIndexerConnector_utest
     ${UNIT_SRC_DIR}/wic_test.cpp
+    ${UNIT_SRC_DIR}/engineConfigSource_test.cpp
+    ${UNIT_SRC_DIR}/engineIndexerRuntime_test.cpp
+    ${UNIT_SRC_DIR}/indexerMetrics_test.cpp
 )
 target_link_libraries(wIndexerConnector_utest
     PRIVATE
@@ -48,8 +62,12 @@ target_link_libraries(wIndexerConnector_utest
     GTest::gmock
     wIndexerConnector::wIndexerConnector
     wIndexerConnector::mocks
+    fastmetrics::fastmetrics
 )
-target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include)
+# The client library's mocks and its in-process fake indexer (header-only, written on cpp-httplib, whose include
+# directory the engine already adds).
+target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR} ${SHARED_MODULES}/keystore/include
+    ${SHARED_MODULES}/indexer_client/tests/mocks ${SHARED_MODULES}/indexer_client/tests/fake)
 gtest_discover_tests(wIndexerConnector_utest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
 
 endif(ENGINE_BUILD_TEST)
